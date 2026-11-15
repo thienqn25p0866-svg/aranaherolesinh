@@ -90,7 +90,6 @@ interface Room {
   status: "LOBBY" | "PLAYING";
   hostId: string;
   players: Map<string, RoomPlayerState>;
-  sockets: Map<string, WebSocket>;
   matchPlayerCount: number;
   powerMultiplier: number;
   wave: number;
@@ -102,8 +101,20 @@ interface Room {
   enemies: Map<number, ServerEnemy>;
 }
 
+interface ClientSession {
+  playerId: string;
+  mode: "ws" | "http";
+  roomId: string | null;
+  ws?: WebSocket;
+  queue: unknown[];
+  waiter: ((events: unknown[]) => void) | null;
+  waiterTimer: ReturnType<typeof setTimeout> | null;
+  lastSeen: number;
+}
+
 const rooms = new Map<string, Room>();
-const socketMeta = new Map<WebSocket, { roomId: string | null; playerId: string }>();
+const sessions = new Map<string, ClientSession>();
+const wsToPlayerId = new Map<WebSocket, string>();
 
 function generateRoomId(): string {
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -186,18 +197,44 @@ function serializeRoom(room: Room) {
   };
 }
 
-function sendJson(ws: WebSocket | undefined, data: unknown) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify(data));
+function drainSessionQueue(session: ClientSession): unknown[] {
+  if (session.queue.length === 0) return [];
+  return session.queue.splice(0, session.queue.length);
+}
+
+function sendToPlayer(playerId: string, data: unknown) {
+  const session = sessions.get(playerId);
+  if (!session) return;
+  if (session.mode === "ws") {
+    const ws = session.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    try {
+      ws.send(JSON.stringify(data));
+    } catch {
+    }
+    return;
+  }
+
+  session.queue.push(data);
+  if (session.queue.length > 220) {
+    const dropIdx = session.queue.findIndex((item: any) => item?.type === "WORLD_SYNC" || item?.type === "PLAYER_STATE");
+    session.queue.splice(dropIdx >= 0 ? dropIdx : 0, 1);
+  }
+  if (session.waiter) {
+    const resolveWaiter = session.waiter;
+    session.waiter = null;
+    if (session.waiterTimer) {
+      clearTimeout(session.waiterTimer);
+      session.waiterTimer = null;
+    }
+    resolveWaiter(drainSessionQueue(session));
+  }
 }
 
 function broadcastRoom(room: Room, data: unknown, excludePlayerId?: string) {
-  const payload = JSON.stringify(data);
-  for (const [pid, sock] of room.sockets.entries()) {
+  for (const pid of room.players.keys()) {
     if (excludePlayerId && pid === excludePlayerId) continue;
-    if (sock.readyState === WebSocket.OPEN) {
-      sock.send(payload);
-    }
+    sendToPlayer(pid, data);
   }
 }
 
@@ -299,16 +336,16 @@ function checkAllPlayersDead(room: Room) {
   });
 }
 
-function removePlayerFromCurrentRoom(ws: WebSocket) {
-  const meta = socketMeta.get(ws);
-  if (!meta || !meta.roomId) return;
-  const room = rooms.get(meta.roomId);
-  const playerId = meta.playerId;
-  meta.roomId = null;
+function removePlayerFromCurrentRoom(playerId: string) {
+  const session = sessions.get(playerId);
+  const currentRoomId = session?.roomId || null;
+  if (session) session.roomId = null;
+  if (!currentRoomId) return;
+
+  const room = rooms.get(currentRoomId);
   if (!room) return;
 
   room.players.delete(playerId);
-  room.sockets.delete(playerId);
 
   if (room.players.size === 0) {
     rooms.delete(room.id);
@@ -373,15 +410,549 @@ function startRoomMatch(room: Room) {
   });
 }
 
+function handleClientMessage(playerId: string, msg: Record<string, any>) {
+  if (!msg || typeof msg.type !== "string") return;
+  const session = sessions.get(playerId);
+  if (!session) return;
+  session.lastSeen = Date.now();
+
+  if (msg.type === "PING") {
+    sendToPlayer(playerId, { type: "PONG", ts: Date.now() });
+    return;
+  }
+
+  if (msg.type === "CREATE_ROOM") {
+    removePlayerFromCurrentRoom(playerId);
+    const roomId = generateRoomId();
+    const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "eohyen";
+    const name = sanitizeName(msg.playerName, 1);
+    const pos = getSpawnPosition(0);
+
+    const hostPlayer: RoomPlayerState = {
+      id: playerId,
+      name,
+      heroId,
+      isHost: true,
+      ready: true,
+      slot: 0,
+      alive: true,
+      readyNextWave: true,
+      totalDamage: 0,
+      x: pos.x,
+      y: pos.y,
+      facing: 0,
+      hp: 960,
+      maxHp: 960,
+      shield: 0,
+      level: 1,
+      moveSpeedFactor: 0,
+      walkCyclePhase: 0,
+      attackAnimTimer: 0,
+      attackAnimAngle: 0,
+      attackSwingParity: 1,
+      weaponSkillTimer: 0,
+      weaponSkillDur: 0.46,
+      weaponCritTimer: 0,
+      bowRecoilTimer: 0,
+      buffs: {},
+    };
+
+    const room: Room = {
+      id: roomId,
+      status: "LOBBY",
+      hostId: playerId,
+      players: new Map([[playerId, hostPlayer]]),
+      matchPlayerCount: 1,
+      powerMultiplier: 1,
+      wave: 1,
+      waveTotal: 10,
+      waveSpawned: 0,
+      waveKilled: 0,
+      waveCleared: false,
+      waveStartTime: Date.now(),
+      enemies: new Map(),
+    };
+
+    rooms.set(roomId, room);
+    session.roomId = roomId;
+    sendToPlayer(playerId, {
+      type: "ROOM_JOINED",
+      playerId,
+      room: serializeRoom(room),
+    });
+    return;
+  }
+
+  if (msg.type === "JOIN_ROOM") {
+    const code = String(msg.roomId || "").trim().toUpperCase();
+    const room = rooms.get(code);
+    if (!room) {
+      sendToPlayer(playerId, { type: "ROOM_ERROR", message: `Không tìm thấy phòng "${code}".` });
+      return;
+    }
+    if (room.status !== "LOBBY") {
+      sendToPlayer(playerId, { type: "ROOM_ERROR", message: "Phòng này đang trong trận đấu." });
+      return;
+    }
+    if (room.players.size >= MAX_PLAYERS_PER_ROOM && !room.players.has(playerId)) {
+      sendToPlayer(playerId, { type: "ROOM_ERROR", message: "Phòng đã đầy (tối đa 4 người chơi)." });
+      return;
+    }
+
+    if (session.roomId && session.roomId !== code) {
+      removePlayerFromCurrentRoom(playerId);
+    }
+
+    const slot = getNextFreeSlot(room);
+    const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
+    const name = sanitizeName(msg.playerName, slot + 1);
+    const pos = getSpawnPosition(slot);
+
+    const joinedPlayer: RoomPlayerState = {
+      id: playerId,
+      name,
+      heroId,
+      isHost: false,
+      ready: false,
+      slot,
+      alive: true,
+      readyNextWave: false,
+      totalDamage: 0,
+      x: pos.x,
+      y: pos.y,
+      facing: 0,
+      hp: 960,
+      maxHp: 960,
+      shield: 0,
+      level: 1,
+      moveSpeedFactor: 0,
+      walkCyclePhase: 0,
+      attackAnimTimer: 0,
+      attackAnimAngle: 0,
+      attackSwingParity: 1,
+      weaponSkillTimer: 0,
+      weaponSkillDur: 0.46,
+      weaponCritTimer: 0,
+      bowRecoilTimer: 0,
+      buffs: {},
+    };
+
+    room.players.set(playerId, joinedPlayer);
+    session.roomId = code;
+
+    sendToPlayer(playerId, {
+      type: "ROOM_JOINED",
+      playerId,
+      room: serializeRoom(room),
+    });
+    broadcastRoom(room, { type: "ROOM_UPDATE", room: serializeRoom(room) }, playerId);
+    return;
+  }
+
+  if (msg.type === "LEAVE_ROOM") {
+    removePlayerFromCurrentRoom(playerId);
+    sendToPlayer(playerId, { type: "LEFT_ROOM" });
+    return;
+  }
+
+  const room = session.roomId ? rooms.get(session.roomId) : undefined;
+  if (!room) return;
+  const player = room.players.get(playerId);
+  if (!player) return;
+
+  if (msg.type === "SELECT_HERO") {
+    if (typeof msg.heroId === "string" && msg.heroId) {
+      player.heroId = msg.heroId;
+      broadcastRoomUpdate(room);
+    }
+    return;
+  }
+
+  if (msg.type === "SET_NAME") {
+    player.name = sanitizeName(msg.playerName, player.slot + 1);
+    broadcastRoomUpdate(room);
+    return;
+  }
+
+  if (msg.type === "TOGGLE_READY") {
+    if (room.status !== "LOBBY") return;
+    player.ready = typeof msg.ready === "boolean" ? msg.ready : !player.ready;
+    broadcastRoomUpdate(room);
+    return;
+  }
+
+  if (msg.type === "START_MATCH") {
+    if (room.hostId !== playerId) {
+      sendToPlayer(playerId, { type: "ROOM_ERROR", message: "Chỉ đội trưởng mới có thể bắt đầu trận." });
+      return;
+    }
+    if (room.status !== "LOBBY") return;
+    const notReady = Array.from(room.players.values()).filter((p) => !p.isHost && !p.ready);
+    if (notReady.length > 0) {
+      sendToPlayer(playerId, {
+        type: "ROOM_ERROR",
+        message: `Chờ ${notReady.map((p) => p.name).join(", ")} nhấn Sẵn sàng!`,
+      });
+      return;
+    }
+    startRoomMatch(room);
+    return;
+  }
+
+  if (msg.type === "RESTART_MATCH") {
+    if (room.hostId !== playerId) return;
+    startRoomMatch(room);
+    return;
+  }
+
+  if (room.status !== "PLAYING") return;
+
+  if (msg.type === "WAVE_META") {
+    if (room.hostId !== playerId) return;
+    room.wave = Number(msg.wave) || room.wave;
+    room.waveTotal = Number(msg.waveTotal) || room.waveTotal;
+    room.waveSpawned = Number(msg.waveSpawned) || 0;
+    room.waveCleared = false;
+    room.waveStartTime = Date.now();
+    broadcastRoom(
+      room,
+      {
+        type: "WAVE_META_SYNC",
+        wave: room.wave,
+        waveTotal: room.waveTotal,
+        waveSpawned: room.waveSpawned,
+      },
+      playerId
+    );
+    return;
+  }
+
+  if (msg.type === "SPAWN_ENEMIES") {
+    if (room.hostId !== playerId || !Array.isArray(msg.enemies)) return;
+    const added: ServerEnemy[] = [];
+    for (const rawEnemy of msg.enemies) {
+      if (!rawEnemy || typeof rawEnemy.id !== "number") continue;
+      const enemy: ServerEnemy = {
+        id: rawEnemy.id,
+        kind: String(rawEnemy.kind || "minion"),
+        bossWave: rawEnemy.bossWave ? Number(rawEnemy.bossWave) : undefined,
+        name: String(rawEnemy.name || "Quái"),
+        x: Number(rawEnemy.x) || 1000,
+        y: Number(rawEnemy.y) || 700,
+        radius: Number(rawEnemy.radius) || 18,
+        hp: Math.max(1, Math.round(Number(rawEnemy.hp) || 100)),
+        maxHp: Math.max(1, Math.round(Number(rawEnemy.maxHp) || 100)),
+        damage: Math.max(1, Math.round(Number(rawEnemy.damage) || 20)),
+        baseDamage: rawEnemy.baseDamage ? Math.round(Number(rawEnemy.baseDamage)) : undefined,
+        speed: Number(rawEnemy.speed) || 110,
+        baseSpeed: rawEnemy.baseSpeed ? Number(rawEnemy.baseSpeed) : undefined,
+        xpValue: Math.max(1, Math.round(Number(rawEnemy.xpValue) || 24)),
+        color: String(rawEnemy.color || "#22C55E"),
+        accentColor: rawEnemy.accentColor ? String(rawEnemy.accentColor) : undefined,
+        facing: Number(rawEnemy.facing) || 0,
+        phase: Number(rawEnemy.phase) || 1,
+      };
+      room.enemies.set(enemy.id, enemy);
+      added.push(enemy);
+    }
+    if (typeof msg.waveSpawned === "number") {
+      room.waveSpawned = Math.max(room.waveSpawned, msg.waveSpawned);
+    }
+    if (added.length > 0) {
+      broadcastRoom(
+        room,
+        {
+          type: "ENEMIES_SPAWNED",
+          enemies: added,
+          waveSpawned: room.waveSpawned,
+          waveTotal: room.waveTotal,
+        },
+        playerId
+      );
+    }
+    return;
+  }
+
+  if (msg.type === "DAMAGE_ENEMY") {
+    const enemyId = Number(msg.enemyId);
+    const enemy = room.enemies.get(enemyId);
+    if (!enemy || enemy.hp <= 0) return;
+
+    const rawDmg = Math.max(1, Math.min(999999, Math.round(Number(msg.dmg) || 0)));
+    if (rawDmg <= 0) return;
+
+    const actualDmg = Math.min(enemy.hp, rawDmg);
+    enemy.hp = Math.max(0, enemy.hp - actualDmg);
+    player.totalDamage += actualDmg;
+
+    const knockX = Number(msg.knockX) || 0;
+    const knockY = Number(msg.knockY) || 0;
+    if (knockX !== 0 || knockY !== 0) {
+      const factor = enemy.kind === "boss" ? 0.25 : 1;
+      enemy.x = Math.max(enemy.radius, Math.min(2000 - enemy.radius, enemy.x + knockX * factor));
+      enemy.y = Math.max(enemy.radius, Math.min(1400 - enemy.radius, enemy.y + knockY * factor));
+    }
+
+    if (msg.effects && typeof msg.effects === "object") {
+      if (typeof msg.effects.slowFactor === "number") {
+        enemy.slowFactor = Math.max(enemy.slowFactor || 0, msg.effects.slowFactor);
+      }
+      if (typeof msg.effects.stunTimer === "number") {
+        enemy.stunTimer = Math.max(enemy.stunTimer || 0, msg.effects.stunTimer);
+      }
+      if (typeof msg.effects.frozenTimer === "number") {
+        enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, msg.effects.frozenTimer);
+      }
+      if (typeof msg.effects.bao_marks === "number") {
+        enemy.bao_marks = msg.effects.bao_marks;
+      }
+      if (typeof msg.effects.tin_hasMark === "boolean") {
+        enemy.tin_hasMark = msg.effects.tin_hasMark;
+      }
+      if (typeof msg.effects.gau_quakeTimer === "number") {
+        enemy.gau_quakeTimer = Math.max(enemy.gau_quakeTimer || 0, msg.effects.gau_quakeTimer);
+      }
+    }
+
+    const killed = enemy.hp <= 0;
+    if (killed) {
+      room.enemies.delete(enemyId);
+      room.waveKilled++;
+    }
+
+    broadcastRoom(room, {
+      type: "ENEMY_HIT",
+      enemyId,
+      hp: enemy.hp,
+      maxHp: enemy.maxHp,
+      dmg: actualDmg,
+      isCrit: Boolean(msg.isCrit),
+      byPlayerId: playerId,
+      knockX,
+      knockY,
+      killed,
+      x: enemy.x,
+      y: enemy.y,
+      waveKilled: room.waveKilled,
+      effects: msg.effects || null,
+      quiet: Boolean(msg.quiet),
+    });
+
+    if (killed) {
+      checkWaveCompletion(room);
+    }
+    return;
+  }
+
+  if (msg.type === "WORLD_SNAPSHOT") {
+    if (room.hostId !== playerId) return;
+    if (typeof msg.waveSpawned === "number") {
+      room.waveSpawned = Math.max(room.waveSpawned, msg.waveSpawned);
+    }
+
+    const syncedEnemies: Array<Record<string, unknown>> = [];
+    if (Array.isArray(msg.enemies)) {
+      for (const e of msg.enemies) {
+        if (!e || typeof e.id !== "number") continue;
+        const serverEnemy = room.enemies.get(e.id);
+        if (!serverEnemy || serverEnemy.hp <= 0) continue;
+        serverEnemy.x = Number(e.x) || serverEnemy.x;
+        serverEnemy.y = Number(e.y) || serverEnemy.y;
+        serverEnemy.facing = Number(e.facing) || 0;
+        serverEnemy.phase = Number(e.phase) || serverEnemy.phase || 1;
+        serverEnemy.stunTimer = Number(e.stunTimer) || 0;
+        serverEnemy.slowFactor = Number(e.slowFactor) || 0;
+        serverEnemy.frozenTimer = Number(e.frozenTimer) || 0;
+        serverEnemy.bao_marks = Number(e.bao_marks) || 0;
+        serverEnemy.gau_quakeTimer = Number(e.gau_quakeTimer) || 0;
+        serverEnemy.tin_hasMark = Boolean(e.tin_hasMark);
+        serverEnemy.burnCount = Number(e.burnCount) || 0;
+
+        syncedEnemies.push({
+          id: serverEnemy.id,
+          x: Math.round(serverEnemy.x * 10) / 10,
+          y: Math.round(serverEnemy.y * 10) / 10,
+          facing: Math.round(serverEnemy.facing * 100) / 100,
+          hp: serverEnemy.hp,
+          maxHp: serverEnemy.maxHp,
+          phase: serverEnemy.phase,
+          stunTimer: serverEnemy.stunTimer,
+          slowFactor: serverEnemy.slowFactor,
+          frozenTimer: serverEnemy.frozenTimer,
+          bao_marks: serverEnemy.bao_marks,
+          gau_quakeTimer: serverEnemy.gau_quakeTimer,
+          tin_hasMark: serverEnemy.tin_hasMark,
+          burnCount: serverEnemy.burnCount,
+        });
+      }
+    }
+
+    broadcastRoom(
+      room,
+      {
+        type: "WORLD_SYNC",
+        wave: room.wave,
+        waveTotal: room.waveTotal,
+        waveSpawned: room.waveSpawned,
+        waveKilled: room.waveKilled,
+        enemies: syncedEnemies,
+        bossWarnings: Array.isArray(msg.bossWarnings) ? msg.bossWarnings : [],
+        bossBeams: Array.isArray(msg.bossBeams) ? msg.bossBeams : [],
+        bossShockRings: Array.isArray(msg.bossShockRings) ? msg.bossShockRings : [],
+      },
+      playerId
+    );
+    return;
+  }
+
+  if (msg.type === "SYNC_PLAYER") {
+    const s = msg.state;
+    if (!s || typeof s !== "object") return;
+    const wasAlive = player.alive;
+    player.x = Math.max(20, Math.min(1980, Number(s.x) || player.x));
+    player.y = Math.max(20, Math.min(1380, Number(s.y) || player.y));
+    player.facing = Number(s.facing) || 0;
+    player.hp = Math.max(0, Math.round(Number(s.hp) ?? player.hp));
+    player.maxHp = Math.max(1, Math.round(Number(s.maxHp) || player.maxHp));
+    player.shield = Math.max(0, Math.round(Number(s.shield) || 0));
+    player.level = Math.max(1, Math.round(Number(s.level) || player.level));
+    player.alive = player.hp > 0 && s.alive !== false;
+    player.moveSpeedFactor = Number(s.moveSpeedFactor) || 0;
+    player.walkCyclePhase = Number(s.walkCyclePhase) || 0;
+    player.attackAnimTimer = Number(s.attackAnimTimer) || 0;
+    player.attackAnimAngle = Number(s.attackAnimAngle) || 0;
+    player.attackSwingParity = Number(s.attackSwingParity) || 1;
+    player.weaponSkillTimer = Number(s.weaponSkillTimer) || 0;
+    player.weaponSkillDur = Number(s.weaponSkillDur) || 0.46;
+    player.weaponCritTimer = Number(s.weaponCritTimer) || 0;
+    player.bowRecoilTimer = Number(s.bowRecoilTimer) || 0;
+    if (s.buffs && typeof s.buffs === "object") {
+      player.buffs = s.buffs;
+    }
+
+    broadcastRoom(
+      room,
+      {
+        type: "PLAYER_STATE",
+        player: {
+          id: player.id,
+          name: player.name,
+          heroId: player.heroId,
+          isHost: player.isHost,
+          slot: player.slot,
+          alive: player.alive,
+          x: player.x,
+          y: player.y,
+          facing: player.facing,
+          hp: player.hp,
+          maxHp: player.maxHp,
+          shield: player.shield,
+          level: player.level,
+          moveSpeedFactor: player.moveSpeedFactor,
+          walkCyclePhase: player.walkCyclePhase,
+          attackAnimTimer: player.attackAnimTimer,
+          attackAnimAngle: player.attackAnimAngle,
+          attackSwingParity: player.attackSwingParity,
+          weaponSkillTimer: player.weaponSkillTimer,
+          weaponSkillDur: player.weaponSkillDur,
+          weaponCritTimer: player.weaponCritTimer,
+          bowRecoilTimer: player.bowRecoilTimer,
+          buffs: player.buffs,
+        },
+      },
+      playerId
+    );
+
+    if (wasAlive && !player.alive) {
+      broadcastRoom(room, {
+        type: "PLAYER_DOWNED",
+        playerId: player.id,
+        playerName: player.name,
+        room: serializeRoom(room),
+      });
+      checkAllPlayersDead(room);
+    }
+    return;
+  }
+
+  if (msg.type === "PLAYER_VFX") {
+    if (!Array.isArray(msg.events) || msg.events.length === 0) return;
+    broadcastRoom(
+      room,
+      {
+        type: "REMOTE_VFX",
+        playerId,
+        heroId: player.heroId,
+        events: msg.events.slice(0, 24),
+      },
+      playerId
+    );
+    return;
+  }
+
+  if (msg.type === "WAVE_READY") {
+    if (!room.waveCleared) return;
+    player.readyNextWave = typeof msg.ready === "boolean" ? msg.ready : true;
+    broadcastRoomUpdate(room);
+    return;
+  }
+
+  if (msg.type === "NEXT_WAVE") {
+    if (room.hostId !== playerId || !room.waveCleared) return;
+    if (room.wave >= MAX_WAVES) {
+      room.status = "LOBBY";
+      for (const p of room.players.values()) {
+        p.ready = p.isHost;
+        p.alive = true;
+      }
+      broadcastRoom(room, {
+        type: "MATCH_OVER",
+        victory: true,
+        wave: room.wave,
+        room: serializeRoom(room),
+      });
+      return;
+    }
+    room.wave += 1;
+    room.waveSpawned = 0;
+    room.waveKilled = 0;
+    room.waveCleared = false;
+    room.waveStartTime = Date.now();
+    room.enemies.clear();
+    for (const p of room.players.values()) {
+      p.alive = true;
+      p.readyNextWave = false;
+      if (p.maxHp > 0) p.hp = p.maxHp;
+    }
+    broadcastRoom(room, {
+      type: "WAVE_STARTED",
+      wave: room.wave,
+      room: serializeRoom(room),
+    });
+  }
+}
+
 async function createApp() {
   const app = express();
-  app.use(express.json());
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
+  app.use(express.json({ limit: "1mb" }));
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, rooms: rooms.size });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true, rooms: rooms.size, sessions: sessions.size });
   });
 
   app.get("/api/rooms/:roomId", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
     const code = String(req.params.roomId || "").trim().toUpperCase();
     const room = rooms.get(code);
     if (!room) {
@@ -391,13 +962,209 @@ async function createApp() {
     res.json({ exists: true, room: serializeRoom(room) });
   });
 
+  app.post("/api/coop/connect", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const playerId = generatePlayerId();
+    const session: ClientSession = {
+      playerId,
+      mode: "http",
+      roomId: null,
+      queue: [],
+      waiter: null,
+      waiterTimer: null,
+      lastSeen: Date.now(),
+    };
+    sessions.set(playerId, session);
+    sendToPlayer(playerId, { type: "CONNECTED", playerId });
+    res.json({ ok: true, playerId, events: drainSessionQueue(session) });
+  });
+
+  app.post("/api/coop/send", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const playerId = typeof req.body?.playerId === "string" ? req.body.playerId : "";
+    const session = sessions.get(playerId);
+    if (!session || session.mode !== "http") {
+      res.status(404).json({ ok: false, expired: true, message: "Phiên Co-op không tồn tại hoặc đã hết hạn." });
+      return;
+    }
+    session.lastSeen = Date.now();
+    const list: Array<Record<string, any>> = Array.isArray(req.body?.messages)
+      ? req.body.messages
+      : req.body?.payload && typeof req.body.payload === "object"
+      ? [req.body.payload]
+      : [];
+
+    for (const msg of list) {
+      if (msg && typeof msg === "object") {
+        handleClientMessage(playerId, msg);
+      }
+    }
+    res.json({ ok: true, events: drainSessionQueue(session) });
+  });
+
+  app.get("/api/coop/poll", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const playerId = typeof req.query.playerId === "string" ? req.query.playerId : "";
+    const session = sessions.get(playerId);
+    if (!session || session.mode !== "http") {
+      res.status(404).json({ ok: false, expired: true });
+      return;
+    }
+    session.lastSeen = Date.now();
+
+    const immediate = drainSessionQueue(session);
+    const waitMs = Math.max(0, Math.min(2500, Number(req.query.wait) || 1500));
+    if (immediate.length > 0 || waitMs === 0) {
+      res.json({ ok: true, events: immediate });
+      return;
+    }
+
+    if (session.waiter) {
+      const prevWaiter = session.waiter;
+      session.waiter = null;
+      if (session.waiterTimer) {
+        clearTimeout(session.waiterTimer);
+        session.waiterTimer = null;
+      }
+      prevWaiter([]);
+    }
+
+    let finished = false;
+    const finish = (events: unknown[]) => {
+      if (finished) return;
+      finished = true;
+      if (session.waiter === finish) session.waiter = null;
+      if (session.waiterTimer) {
+        clearTimeout(session.waiterTimer);
+        session.waiterTimer = null;
+      }
+      if (!res.headersSent) {
+        res.json({ ok: true, events });
+      }
+    };
+
+    session.waiter = finish;
+    session.waiterTimer = setTimeout(() => finish([]), waitMs);
+    req.on("close", () => {
+      if (session.waiter === finish) {
+        session.waiter = null;
+      }
+      if (session.waiterTimer) {
+        clearTimeout(session.waiterTimer);
+        session.waiterTimer = null;
+      }
+    });
+  });
+
+  app.post("/api/coop/leave", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const playerId = typeof req.body?.playerId === "string" ? req.body.playerId : "";
+    if (playerId && sessions.has(playerId)) {
+      const session = sessions.get(playerId);
+      if (session?.waiter) {
+        session.waiter([]);
+      }
+      removePlayerFromCurrentRoom(playerId);
+      sessions.delete(playerId);
+    }
+    res.json({ ok: true });
+  });
+
   const server = http.createServer(app);
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ noServer: true });
+  const aliveSockets = new WeakMap<WebSocket, boolean>();
+
+  wss.on("error", (err) => {
+    console.warn("WebSocketServer error:", err?.message || err);
+  });
+
+  server.on("upgrade", (req, socket, head) => {
+    socket.on("error", () => {});
+    let pathname = "/";
+    try {
+      pathname = new URL(req.url || "/", "http://localhost").pathname;
+    } catch {
+      return;
+    }
+    if (pathname !== "/ws") return;
+    try {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
+      });
+    } catch (err) {
+      console.warn("WS upgrade failed:", err);
+      try {
+        socket.destroy();
+      } catch {
+      }
+    }
+  });
+
+  const heartbeatInterval = setInterval(() => {
+    for (const client of wss.clients) {
+      if (aliveSockets.get(client) === false) {
+        try {
+          client.terminate();
+        } catch {
+        }
+        continue;
+      }
+      aliveSockets.set(client, false);
+      try {
+        if (client.readyState === WebSocket.OPEN) {
+          client.ping();
+        }
+      } catch {
+      }
+    }
+
+    const now = Date.now();
+    for (const [pid, session] of sessions.entries()) {
+      if (session.mode === "http" && now - session.lastSeen > 35000) {
+        if (session.waiter) {
+          session.waiter([]);
+        }
+        removePlayerFromCurrentRoom(pid);
+        sessions.delete(pid);
+      }
+    }
+  }, 10000);
+
+  server.on("close", () => {
+    clearInterval(heartbeatInterval);
+  });
 
   wss.on("connection", (ws: WebSocket) => {
+    aliveSockets.set(ws, true);
+    ws.on("pong", () => {
+      aliveSockets.set(ws, true);
+    });
     const playerId = generatePlayerId();
-    socketMeta.set(ws, { roomId: null, playerId });
-    sendJson(ws, { type: "CONNECTED", playerId });
+    const session: ClientSession = {
+      playerId,
+      mode: "ws",
+      roomId: null,
+      ws,
+      queue: [],
+      waiter: null,
+      waiterTimer: null,
+      lastSeen: Date.now(),
+    };
+    sessions.set(playerId, session);
+    wsToPlayerId.set(ws, playerId);
+    sendToPlayer(playerId, { type: "CONNECTED", playerId });
+
+    const cleanupWs = () => {
+      const pid = wsToPlayerId.get(ws);
+      wsToPlayerId.delete(ws);
+      if (pid) {
+        removePlayerFromCurrentRoom(pid);
+        sessions.delete(pid);
+      }
+    };
+
+    ws.on("error", cleanupWs);
+    ws.on("close", cleanupWs);
 
     ws.on("message", (raw) => {
       let msg: Record<string, any>;
@@ -407,542 +1174,41 @@ async function createApp() {
         return;
       }
       if (!msg || typeof msg.type !== "string") return;
-
-      const meta = socketMeta.get(ws);
-      if (!meta) return;
-
-      if (msg.type === "PING") {
-        sendJson(ws, { type: "PONG", ts: Date.now() });
-        return;
-      }
-
-      if (msg.type === "CREATE_ROOM") {
-        removePlayerFromCurrentRoom(ws);
-        const roomId = generateRoomId();
-        const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "eohyen";
-        const name = sanitizeName(msg.playerName, 1);
-        const pos = getSpawnPosition(0);
-
-        const hostPlayer: RoomPlayerState = {
-          id: playerId,
-          name,
-          heroId,
-          isHost: true,
-          ready: true,
-          slot: 0,
-          alive: true,
-          readyNextWave: true,
-          totalDamage: 0,
-          x: pos.x,
-          y: pos.y,
-          facing: 0,
-          hp: 960,
-          maxHp: 960,
-          shield: 0,
-          level: 1,
-          moveSpeedFactor: 0,
-          walkCyclePhase: 0,
-          attackAnimTimer: 0,
-          attackAnimAngle: 0,
-          attackSwingParity: 1,
-          weaponSkillTimer: 0,
-          weaponSkillDur: 0.46,
-          weaponCritTimer: 0,
-          bowRecoilTimer: 0,
-          buffs: {},
-        };
-
-        const room: Room = {
-          id: roomId,
-          status: "LOBBY",
-          hostId: playerId,
-          players: new Map([[playerId, hostPlayer]]),
-          sockets: new Map([[playerId, ws]]),
-          matchPlayerCount: 1,
-          powerMultiplier: 1,
-          wave: 1,
-          waveTotal: 10,
-          waveSpawned: 0,
-          waveKilled: 0,
-          waveCleared: false,
-          waveStartTime: Date.now(),
-          enemies: new Map(),
-        };
-
-        rooms.set(roomId, room);
-        meta.roomId = roomId;
-        sendJson(ws, {
-          type: "ROOM_JOINED",
-          playerId,
-          room: serializeRoom(room),
-        });
-        return;
-      }
-
-      if (msg.type === "JOIN_ROOM") {
-        const code = String(msg.roomId || "").trim().toUpperCase();
-        const room = rooms.get(code);
-        if (!room) {
-          sendJson(ws, { type: "ROOM_ERROR", message: `Không tìm thấy phòng "${code}".` });
-          return;
-        }
-        if (room.status !== "LOBBY") {
-          sendJson(ws, { type: "ROOM_ERROR", message: "Phòng này đang trong trận đấu." });
-          return;
-        }
-        if (room.players.size >= MAX_PLAYERS_PER_ROOM && !room.players.has(playerId)) {
-          sendJson(ws, { type: "ROOM_ERROR", message: "Phòng đã đầy (tối đa 4 người chơi)." });
-          return;
-        }
-
-        if (meta.roomId && meta.roomId !== code) {
-          removePlayerFromCurrentRoom(ws);
-        }
-
-        const slot = getNextFreeSlot(room);
-        const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
-        const name = sanitizeName(msg.playerName, slot + 1);
-        const pos = getSpawnPosition(slot);
-
-        const joinedPlayer: RoomPlayerState = {
-          id: playerId,
-          name,
-          heroId,
-          isHost: false,
-          ready: false,
-          slot,
-          alive: true,
-          readyNextWave: false,
-          totalDamage: 0,
-          x: pos.x,
-          y: pos.y,
-          facing: 0,
-          hp: 960,
-          maxHp: 960,
-          shield: 0,
-          level: 1,
-          moveSpeedFactor: 0,
-          walkCyclePhase: 0,
-          attackAnimTimer: 0,
-          attackAnimAngle: 0,
-          attackSwingParity: 1,
-          weaponSkillTimer: 0,
-          weaponSkillDur: 0.46,
-          weaponCritTimer: 0,
-          bowRecoilTimer: 0,
-          buffs: {},
-        };
-
-        room.players.set(playerId, joinedPlayer);
-        room.sockets.set(playerId, ws);
-        meta.roomId = code;
-
-        sendJson(ws, {
-          type: "ROOM_JOINED",
-          playerId,
-          room: serializeRoom(room),
-        });
-        broadcastRoom(room, { type: "ROOM_UPDATE", room: serializeRoom(room) }, playerId);
-        return;
-      }
-
-      if (msg.type === "LEAVE_ROOM") {
-        removePlayerFromCurrentRoom(ws);
-        sendJson(ws, { type: "LEFT_ROOM" });
-        return;
-      }
-
-      const room = meta.roomId ? rooms.get(meta.roomId) : undefined;
-      if (!room) return;
-      const player = room.players.get(playerId);
-      if (!player) return;
-
-      if (msg.type === "SELECT_HERO") {
-        if (typeof msg.heroId === "string" && msg.heroId) {
-          player.heroId = msg.heroId;
-          broadcastRoomUpdate(room);
-        }
-        return;
-      }
-
-      if (msg.type === "SET_NAME") {
-        player.name = sanitizeName(msg.playerName, player.slot + 1);
-        broadcastRoomUpdate(room);
-        return;
-      }
-
-      if (msg.type === "TOGGLE_READY") {
-        if (room.status !== "LOBBY") return;
-        player.ready = typeof msg.ready === "boolean" ? msg.ready : !player.ready;
-        broadcastRoomUpdate(room);
-        return;
-      }
-
-      if (msg.type === "START_MATCH") {
-        if (room.hostId !== playerId) {
-          sendJson(ws, { type: "ROOM_ERROR", message: "Chỉ đội trưởng mới có thể bắt đầu trận." });
-          return;
-        }
-        if (room.status !== "LOBBY") return;
-        const notReady = Array.from(room.players.values()).filter((p) => !p.isHost && !p.ready);
-        if (notReady.length > 0) {
-          sendJson(ws, {
-            type: "ROOM_ERROR",
-            message: `Chờ ${notReady.map((p) => p.name).join(", ")} nhấn Sẵn sàng!`,
-          });
-          return;
-        }
-        startRoomMatch(room);
-        return;
-      }
-
-      if (msg.type === "RESTART_MATCH") {
-        if (room.hostId !== playerId) return;
-        startRoomMatch(room);
-        return;
-      }
-
-      if (room.status !== "PLAYING") return;
-
-      if (msg.type === "WAVE_META") {
-        if (room.hostId !== playerId) return;
-        room.wave = Number(msg.wave) || room.wave;
-        room.waveTotal = Number(msg.waveTotal) || room.waveTotal;
-        room.waveSpawned = Number(msg.waveSpawned) || 0;
-        room.waveCleared = false;
-        room.waveStartTime = Date.now();
-        broadcastRoom(
-          room,
-          {
-            type: "WAVE_META_SYNC",
-            wave: room.wave,
-            waveTotal: room.waveTotal,
-            waveSpawned: room.waveSpawned,
-          },
-          playerId
-        );
-        return;
-      }
-
-      if (msg.type === "SPAWN_ENEMIES") {
-        if (room.hostId !== playerId || !Array.isArray(msg.enemies)) return;
-        const added: ServerEnemy[] = [];
-        for (const rawEnemy of msg.enemies) {
-          if (!rawEnemy || typeof rawEnemy.id !== "number") continue;
-          const enemy: ServerEnemy = {
-            id: rawEnemy.id,
-            kind: String(rawEnemy.kind || "minion"),
-            bossWave: rawEnemy.bossWave ? Number(rawEnemy.bossWave) : undefined,
-            name: String(rawEnemy.name || "Quái"),
-            x: Number(rawEnemy.x) || 1000,
-            y: Number(rawEnemy.y) || 700,
-            radius: Number(rawEnemy.radius) || 18,
-            hp: Math.max(1, Math.round(Number(rawEnemy.hp) || 100)),
-            maxHp: Math.max(1, Math.round(Number(rawEnemy.maxHp) || 100)),
-            damage: Math.max(1, Math.round(Number(rawEnemy.damage) || 20)),
-            baseDamage: rawEnemy.baseDamage ? Math.round(Number(rawEnemy.baseDamage)) : undefined,
-            speed: Number(rawEnemy.speed) || 110,
-            baseSpeed: rawEnemy.baseSpeed ? Number(rawEnemy.baseSpeed) : undefined,
-            xpValue: Math.max(1, Math.round(Number(rawEnemy.xpValue) || 24)),
-            color: String(rawEnemy.color || "#22C55E"),
-            accentColor: rawEnemy.accentColor ? String(rawEnemy.accentColor) : undefined,
-            facing: Number(rawEnemy.facing) || 0,
-            phase: Number(rawEnemy.phase) || 1,
-          };
-          room.enemies.set(enemy.id, enemy);
-          added.push(enemy);
-        }
-        if (typeof msg.waveSpawned === "number") {
-          room.waveSpawned = Math.max(room.waveSpawned, msg.waveSpawned);
-        }
-        if (added.length > 0) {
-          broadcastRoom(
-            room,
-            {
-              type: "ENEMIES_SPAWNED",
-              enemies: added,
-              waveSpawned: room.waveSpawned,
-              waveTotal: room.waveTotal,
-            },
-            playerId
-          );
-        }
-        return;
-      }
-
-      if (msg.type === "DAMAGE_ENEMY") {
-        const enemyId = Number(msg.enemyId);
-        const enemy = room.enemies.get(enemyId);
-        if (!enemy || enemy.hp <= 0) return;
-
-        const rawDmg = Math.max(1, Math.min(999999, Math.round(Number(msg.dmg) || 0)));
-        if (rawDmg <= 0) return;
-
-        const actualDmg = Math.min(enemy.hp, rawDmg);
-        enemy.hp = Math.max(0, enemy.hp - actualDmg);
-        player.totalDamage += actualDmg;
-
-        const knockX = Number(msg.knockX) || 0;
-        const knockY = Number(msg.knockY) || 0;
-        if (knockX !== 0 || knockY !== 0) {
-          const factor = enemy.kind === "boss" ? 0.25 : 1;
-          enemy.x = Math.max(enemy.radius, Math.min(2000 - enemy.radius, enemy.x + knockX * factor));
-          enemy.y = Math.max(enemy.radius, Math.min(1400 - enemy.radius, enemy.y + knockY * factor));
-        }
-
-        if (msg.effects && typeof msg.effects === "object") {
-          if (typeof msg.effects.slowFactor === "number") {
-            enemy.slowFactor = Math.max(enemy.slowFactor || 0, msg.effects.slowFactor);
-          }
-          if (typeof msg.effects.stunTimer === "number") {
-            enemy.stunTimer = Math.max(enemy.stunTimer || 0, msg.effects.stunTimer);
-          }
-          if (typeof msg.effects.frozenTimer === "number") {
-            enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, msg.effects.frozenTimer);
-          }
-          if (typeof msg.effects.bao_marks === "number") {
-            enemy.bao_marks = msg.effects.bao_marks;
-          }
-          if (typeof msg.effects.tin_hasMark === "boolean") {
-            enemy.tin_hasMark = msg.effects.tin_hasMark;
-          }
-          if (typeof msg.effects.gau_quakeTimer === "number") {
-            enemy.gau_quakeTimer = Math.max(enemy.gau_quakeTimer || 0, msg.effects.gau_quakeTimer);
-          }
-        }
-
-        const killed = enemy.hp <= 0;
-        if (killed) {
-          room.enemies.delete(enemyId);
-          room.waveKilled++;
-        }
-
-        broadcastRoom(room, {
-          type: "ENEMY_HIT",
-          enemyId,
-          hp: enemy.hp,
-          maxHp: enemy.maxHp,
-          dmg: actualDmg,
-          isCrit: Boolean(msg.isCrit),
-          byPlayerId: playerId,
-          knockX,
-          knockY,
-          killed,
-          x: enemy.x,
-          y: enemy.y,
-          waveKilled: room.waveKilled,
-          effects: msg.effects || null,
-          quiet: Boolean(msg.quiet),
-        });
-
-        if (killed) {
-          checkWaveCompletion(room);
-        }
-        return;
-      }
-
-      if (msg.type === "WORLD_SNAPSHOT") {
-        if (room.hostId !== playerId) return;
-        if (typeof msg.waveSpawned === "number") {
-          room.waveSpawned = Math.max(room.waveSpawned, msg.waveSpawned);
-        }
-
-        const syncedEnemies: Array<Record<string, unknown>> = [];
-        if (Array.isArray(msg.enemies)) {
-          for (const e of msg.enemies) {
-            if (!e || typeof e.id !== "number") continue;
-            const serverEnemy = room.enemies.get(e.id);
-            if (!serverEnemy || serverEnemy.hp <= 0) continue;
-            serverEnemy.x = Number(e.x) || serverEnemy.x;
-            serverEnemy.y = Number(e.y) || serverEnemy.y;
-            serverEnemy.facing = Number(e.facing) || 0;
-            serverEnemy.phase = Number(e.phase) || serverEnemy.phase || 1;
-            serverEnemy.stunTimer = Number(e.stunTimer) || 0;
-            serverEnemy.slowFactor = Number(e.slowFactor) || 0;
-            serverEnemy.frozenTimer = Number(e.frozenTimer) || 0;
-            serverEnemy.bao_marks = Number(e.bao_marks) || 0;
-            serverEnemy.gau_quakeTimer = Number(e.gau_quakeTimer) || 0;
-            serverEnemy.tin_hasMark = Boolean(e.tin_hasMark);
-            serverEnemy.burnCount = Number(e.burnCount) || 0;
-
-            syncedEnemies.push({
-              id: serverEnemy.id,
-              x: Math.round(serverEnemy.x * 10) / 10,
-              y: Math.round(serverEnemy.y * 10) / 10,
-              facing: Math.round(serverEnemy.facing * 100) / 100,
-              hp: serverEnemy.hp,
-              maxHp: serverEnemy.maxHp,
-              phase: serverEnemy.phase,
-              stunTimer: serverEnemy.stunTimer,
-              slowFactor: serverEnemy.slowFactor,
-              frozenTimer: serverEnemy.frozenTimer,
-              bao_marks: serverEnemy.bao_marks,
-              gau_quakeTimer: serverEnemy.gau_quakeTimer,
-              tin_hasMark: serverEnemy.tin_hasMark,
-              burnCount: serverEnemy.burnCount,
-            });
-          }
-        }
-
-        broadcastRoom(
-          room,
-          {
-            type: "WORLD_SYNC",
-            wave: room.wave,
-            waveTotal: room.waveTotal,
-            waveSpawned: room.waveSpawned,
-            waveKilled: room.waveKilled,
-            enemies: syncedEnemies,
-            bossWarnings: Array.isArray(msg.bossWarnings) ? msg.bossWarnings : [],
-            bossBeams: Array.isArray(msg.bossBeams) ? msg.bossBeams : [],
-            bossShockRings: Array.isArray(msg.bossShockRings) ? msg.bossShockRings : [],
-          },
-          playerId
-        );
-        return;
-      }
-
-      if (msg.type === "SYNC_PLAYER") {
-        const s = msg.state;
-        if (!s || typeof s !== "object") return;
-        const wasAlive = player.alive;
-        player.x = Math.max(20, Math.min(1980, Number(s.x) || player.x));
-        player.y = Math.max(20, Math.min(1380, Number(s.y) || player.y));
-        player.facing = Number(s.facing) || 0;
-        player.hp = Math.max(0, Math.round(Number(s.hp) ?? player.hp));
-        player.maxHp = Math.max(1, Math.round(Number(s.maxHp) || player.maxHp));
-        player.shield = Math.max(0, Math.round(Number(s.shield) || 0));
-        player.level = Math.max(1, Math.round(Number(s.level) || player.level));
-        player.alive = player.hp > 0 && s.alive !== false;
-        player.moveSpeedFactor = Number(s.moveSpeedFactor) || 0;
-        player.walkCyclePhase = Number(s.walkCyclePhase) || 0;
-        player.attackAnimTimer = Number(s.attackAnimTimer) || 0;
-        player.attackAnimAngle = Number(s.attackAnimAngle) || 0;
-        player.attackSwingParity = Number(s.attackSwingParity) || 1;
-        player.weaponSkillTimer = Number(s.weaponSkillTimer) || 0;
-        player.weaponSkillDur = Number(s.weaponSkillDur) || 0.46;
-        player.weaponCritTimer = Number(s.weaponCritTimer) || 0;
-        player.bowRecoilTimer = Number(s.bowRecoilTimer) || 0;
-        if (s.buffs && typeof s.buffs === "object") {
-          player.buffs = s.buffs;
-        }
-
-        broadcastRoom(
-          room,
-          {
-            type: "PLAYER_STATE",
-            player: {
-              id: player.id,
-              name: player.name,
-              heroId: player.heroId,
-              isHost: player.isHost,
-              slot: player.slot,
-              alive: player.alive,
-              x: player.x,
-              y: player.y,
-              facing: player.facing,
-              hp: player.hp,
-              maxHp: player.maxHp,
-              shield: player.shield,
-              level: player.level,
-              moveSpeedFactor: player.moveSpeedFactor,
-              walkCyclePhase: player.walkCyclePhase,
-              attackAnimTimer: player.attackAnimTimer,
-              attackAnimAngle: player.attackAnimAngle,
-              attackSwingParity: player.attackSwingParity,
-              weaponSkillTimer: player.weaponSkillTimer,
-              weaponSkillDur: player.weaponSkillDur,
-              weaponCritTimer: player.weaponCritTimer,
-              bowRecoilTimer: player.bowRecoilTimer,
-              buffs: player.buffs,
-            },
-          },
-          playerId
-        );
-
-        if (wasAlive && !player.alive) {
-          broadcastRoom(room, {
-            type: "PLAYER_DOWNED",
-            playerId: player.id,
-            playerName: player.name,
-            room: serializeRoom(room),
-          });
-          checkAllPlayersDead(room);
-        }
-        return;
-      }
-
-      if (msg.type === "PLAYER_VFX") {
-        if (!Array.isArray(msg.events) || msg.events.length === 0) return;
-        broadcastRoom(
-          room,
-          {
-            type: "REMOTE_VFX",
-            playerId,
-            heroId: player.heroId,
-            events: msg.events.slice(0, 24),
-          },
-          playerId
-        );
-        return;
-      }
-
-      if (msg.type === "WAVE_READY") {
-        if (!room.waveCleared) return;
-        player.readyNextWave = typeof msg.ready === "boolean" ? msg.ready : true;
-        broadcastRoomUpdate(room);
-        return;
-      }
-
-      if (msg.type === "NEXT_WAVE") {
-        if (room.hostId !== playerId || !room.waveCleared) return;
-        if (room.wave >= MAX_WAVES) {
-          room.status = "LOBBY";
-          for (const p of room.players.values()) {
-            p.ready = p.isHost;
-            p.alive = true;
-          }
-          broadcastRoom(room, {
-            type: "MATCH_OVER",
-            victory: true,
-            wave: room.wave,
-            room: serializeRoom(room),
-          });
-          return;
-        }
-        room.wave += 1;
-        room.waveSpawned = 0;
-        room.waveKilled = 0;
-        room.waveCleared = false;
-        room.waveStartTime = Date.now();
-        room.enemies.clear();
-        for (const p of room.players.values()) {
-          p.alive = true;
-          p.readyNextWave = false;
-          if (p.maxHp > 0) p.hp = p.maxHp;
-        }
-        broadcastRoom(room, {
-          type: "WAVE_STARTED",
-          wave: room.wave,
-          room: serializeRoom(room),
-        });
-      }
-    });
-
-    ws.on("close", () => {
-      removePlayerFromCurrentRoom(ws);
-      socketMeta.delete(ws);
+      handleClientMessage(playerId, msg);
     });
   });
 
   const isProd = process.env.NODE_ENV === "production";
   if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
+    const disableHmr = process.env.DISABLE_HMR === "true";
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR === "true" ? false : { server },
+        hmr: disableHmr ? false : true,
+        ws: disableHmr ? false : { server, path: "/__vite_ws" },
+        ...(disableHmr ? { watch: null } : {}),
       },
+      plugins: disableHmr
+        ? [
+            {
+              name: "disable-vite-client-ws",
+              enforce: "post" as const,
+              transform(code: string, id: string) {
+                if (id.replace(/\\/g, "/").endsWith("/vite/dist/client/client.mjs")) {
+                  return {
+                    code: code.replace(
+                      "transport.connect(createHMRHandler(handleMessage));",
+                      "/* HMR disabled: WebSocket transport suppressed */"
+                    ),
+                    map: null,
+                  };
+                }
+                return null;
+              },
+            },
+          ]
+        : [],
       appType: "spa",
     });
     app.use(vite.middlewares);
