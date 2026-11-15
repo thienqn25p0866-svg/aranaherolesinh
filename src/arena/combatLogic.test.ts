@@ -470,7 +470,8 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
 });
 
 test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact design specs', async () => {
-  const { Mi, zr, Ff, um } = await import('./gameData.js');
+  const { Mi, zr, Ff } = await import('./gameData.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
   assert.equal(Mi.length, 13, 'Must preserve all 10 heroes + add Luan, Tai Du, Nguyen');
   const heroIds = new Set(Mi.map((h: any) => h.id));
@@ -480,20 +481,24 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
   }
 
   const danh = Mi.find((h: any) => h.id === 'danh');
+  assert.ok(danh);
   assert.equal(danh.skills[2].cooldown, 22);
 
   const luan = Mi.find((h: any) => h.id === 'luan');
+  assert.ok(luan);
   assert.equal(luan.stats.hp, 950);
   assert.equal(luan.stats.damage, 40);
   assert.equal(luan.stats.ap, 55);
   assert.equal(luan.skills[1].aimType, 'CIRCLE_FREE');
 
   const taidu = Mi.find((h: any) => h.id === 'taidu');
+  assert.ok(taidu);
   assert.equal(taidu.stats.hp, 1050);
   assert.equal(taidu.stats.damage, 52);
   assert.equal(taidu.skills[2].aimType, 'PATH');
 
   const nguyen = Mi.find((h: any) => h.id === 'nguyen');
+  assert.ok(nguyen);
   assert.equal(nguyen.stats.hp, 1500);
   assert.equal(nguyen.stats.damage, 35);
   assert.equal(nguyen.stats.ap, 45);
@@ -510,7 +515,7 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
   for (const it of newItems) {
     slotCounts[it.slot] = (slotCounts[it.slot] || 0) + 1;
     assert.ok(it.icon && it.icon.startsWith('data:image/svg+xml'), `Item ${it.id} missing icon`);
-    assert.ok(it.price > 0, `Item ${it.id} invalid price`);
+    assert.ok(it.cost > 0, `Item ${it.id} invalid cost`);
   }
   assert.deepEqual(slotCounts, { weapon: 16, armor: 14, gloves: 12, boots: 12, necklace: 14, relic: 12 });
 
@@ -528,11 +533,10 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
     }
   }
 
-  const iconManifest = um();
   for (const id of heroIds) {
-    assert.ok(iconManifest[id], `Missing skill icon entries for ${id}`);
+    assert.ok(HERO_SKILL_ICONS[id], `Missing skill icon entries for ${id}`);
     for (const k of ['atk', 'passive', 'c1', 'c2', 'c3']) {
-      assert.ok(iconManifest[id][k], `Missing ${id}.${k} icon`);
+      assert.ok(HERO_SKILL_ICONS[id][k], `Missing ${id}.${k} icon`);
     }
   }
 });
