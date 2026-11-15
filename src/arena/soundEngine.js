@@ -764,6 +764,45 @@ class SoundEngine {
     this.playShieldBlock();
     this.playTone(520, 1040, 0.22, "sine", 0.18, 0.03);
   }
+
+  playDroneSwitch() {
+    if (this.canThrottle("droneSwitch", 80)) return;
+    this.playTone(520, 1040, 0.11, "sine", 0.18);
+    this.playTone(780, 1320, 0.1, "triangle", 0.12, 0.04);
+  }
+
+  playTurretShot() {
+    if (this.canThrottle("turretShot", 70)) return;
+    this.playTone(860, 280, 0.09, "square", 0.09);
+    this.playFilteredNoise({ duration: 0.07, filterType: "bandpass", freqStart: 1900, freqEnd: 700, q: 2.0, gainPeak: 0.11 });
+  }
+
+  playPortalOpen() {
+    if (this.canThrottle("portalOpen", 90)) return;
+    this.playTone(260, 680, 0.28, "sine", 0.18);
+    this.playTone(520, 980, 0.24, "triangle", 0.14, 0.04);
+    this.playFilteredNoise({ duration: 0.26, filterType: "bandpass", freqStart: 1600, freqEnd: 520, q: 1.8, gainPeak: 0.18 });
+  }
+
+  playLaserRay() {
+    if (this.canThrottle("laserRay", 95)) return;
+    this.playTone(180, 72, 0.42, "sawtooth", 0.24);
+    this.playTone(920, 320, 0.36, "sawtooth", 0.16, 0.02);
+    this.playFilteredNoise({ duration: 0.38, filterType: "bandpass", freqStart: 2400, freqEnd: 480, q: 1.4, gainPeak: 0.24 });
+  }
+
+  playSanctuaryWave() {
+    if (this.canThrottle("sanctuaryWave", 90)) return;
+    this.playTone(440, 660, 0.26, "sine", 0.18);
+    this.playTone(554, 830, 0.28, "sine", 0.14, 0.04);
+    this.playTone(659, 988, 0.3, "triangle", 0.12, 0.08);
+  }
+
+  playMissileBarrage() {
+    if (this.canThrottle("missileBarrage", 85)) return;
+    this.playTone(260, 82, 0.26, "sawtooth", 0.2);
+    this.playFilteredNoise({ duration: 0.28, filterType: "lowpass", freqStart: 1300, freqEnd: 220, q: 1.2, gainPeak: 0.25 });
+  }
 }
 
 export const R = new SoundEngine();

@@ -524,19 +524,21 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
   const activeKinds = new Set(activeItems.map((it: any) => it.activeSkill.kind));
   assert.equal(activeKinds.size, 24, 'All 24 active items must have distinct activeSkill.kind');
 
+  const ffMap = Ff as Record<string, Array<{ id: string; name: string; desc: string; items: string[] }>>;
   for (const h of Mi) {
-    assert.ok(Array.isArray(Ff[h.id]) && Ff[h.id].length >= 1, `Missing build presets for ${h.id}`);
-    for (const preset of Ff[h.id]) {
+    assert.ok(Array.isArray(ffMap[h.id]) && ffMap[h.id].length >= 1, `Missing build presets for ${h.id}`);
+    for (const preset of ffMap[h.id]) {
       for (const itemId of preset.items) {
         assert.ok(itemIds.has(itemId), `Preset ${preset.id} references unknown item ${itemId}`);
       }
     }
   }
 
-  for (const id of heroIds) {
-    assert.ok(HERO_SKILL_ICONS[id], `Missing skill icon entries for ${id}`);
+  const skillIconsMap = HERO_SKILL_ICONS as Record<string, Record<string, string>>;
+  for (const id of heroIds as Set<string>) {
+    assert.ok(skillIconsMap[id], `Missing skill icon entries for ${id}`);
     for (const k of ['atk', 'passive', 'c1', 'c2', 'c3']) {
-      assert.ok(HERO_SKILL_ICONS[id][k], `Missing ${id}.${k} icon`);
+      assert.ok(skillIconsMap[id][k], `Missing ${id}.${k} icon`);
     }
   }
 });
