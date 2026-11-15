@@ -74,14 +74,46 @@ export const HERO_SKILL_ICONS = {
     passive: _svgIcon("danh_passive", "#431407", "#F59E0B", '<polygon points="32,12 50,45 14,45" fill="none" stroke="#F59E0B" stroke-width="2.6"/><circle cx="32" cy="14" r="3.8" fill="#38BDF8"/><circle cx="16" cy="44" r="3.8" fill="#F59E0B"/><circle cx="48" cy="44" r="3.8" fill="#EF4444"/><circle cx="32" cy="33" r="6" fill="#FEF08A"/>'),
     c1: _svgIcon("danh_c1", "#450A0A", "#F97316", '<path d="M14 44 C26 42 36 32 48 16" fill="none" stroke="#F97316" stroke-width="4.5" stroke-linecap="round"/><path d="M16 50 C30 48 40 38 52 24" fill="none" stroke="#FEF08A" stroke-width="2.4" stroke-linecap="round"/><path d="M36 14 L50 14 L46 28 Z" fill="#EF4444"/>'),
     c2: _svgIcon("danh_c2", "#450A0A", "#EF4444", '<path d="M13 38 C22 20 36 18 49 26 C44 33 44 40 50 46 C36 46 24 46 13 38 Z" fill="#DC2626" stroke="#FEF08A" stroke-width="2"/><circle cx="42" cy="29" r="3" fill="#FEF08A"/><path d="M18 32 L34 32" stroke="#FDE047" stroke-width="2.5" stroke-linecap="round"/>'),
-    c3: _svgIcon("danh_c3", "#450A0A", "#F59E0B", '<path d="M32 10 L39 26 L53 32 L39 38 L32 54 L25 38 L11 32 L25 26 Z" fill="#DC2626" stroke="#FEF08A" stroke-width="2.2"/><path d="M22 18 C28 12 38 12 43 20 C38 25 35 32 32 44 C29 32 26 25 22 18 Z" fill="#F97316" stroke="#FFFFFF" stroke-width="1.4"/>', true)
+    c3: _svgIcon(
+      "danh_c3",
+      "#5C0A0A",
+      "#FBBF24",
+      '<defs><radialGradient id="d_fire" cx="50%" cy="54%" r="50%"><stop offset="0%" stop-color="#FEF08A"/><stop offset="45%" stop-color="#F97316"/><stop offset="100%" stop-color="rgba(185,28,28,0)"/></radialGradient><linearGradient id="d_horn" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#DC2626"/><stop offset="55%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#FEF9C3"/></linearGradient></defs><circle cx="32" cy="34" r="24" fill="url(#d_fire)"/><circle cx="32" cy="34" r="21" fill="none" stroke="#FBBF24" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/><path d="M10 38 C11 23 19 16 25 22 L21 34 C16 39 12 41 10 38 Z" fill="rgba(239,68,68,0.85)" stroke="#FDE047" stroke-width="1.4"/><path d="M54 38 C53 23 45 16 39 22 L43 34 C48 39 52 41 54 38 Z" fill="rgba(239,68,68,0.85)" stroke="#FDE047" stroke-width="1.4"/><path d="M23 22 C16 14 14 9 19 8 C21 12 24 15 28 19 Z" fill="url(#d_horn)"/><path d="M41 22 C48 14 50 9 45 8 C43 12 40 15 36 19 Z" fill="url(#d_horn)"/><path d="M32 15 L43 24 L40 41 L32 49 L24 41 L21 24 Z" fill="#991B1B" stroke="#FEF08A" stroke-width="1.8"/><path d="M32 18 L38 26 L36 39 L32 45 L28 39 L26 26 Z" fill="#DC2626"/><path d="M25 28 L30 30 L27 32 Z" fill="#FEF08A"/><path d="M39 28 L34 30 L37 32 Z" fill="#FEF08A"/><path d="M26 42 Q32 56 38 42 Q32 48 26 42 Z" fill="#FEF08A"/><path d="M20 50 Q32 58 44 50" fill="none" stroke="#FB923C" stroke-width="2.4" stroke-linecap="round"/>',
+      true
+    )
   },
   luan: {
-    atk: _svgIcon("luan_atk", "#2E1065", "#C084FC", '<circle cx="32" cy="32" r="13" fill="#4C1D95" stroke="#E879F9" stroke-width="2.4"/><circle cx="32" cy="32" r="5.5" fill="#F5D0FE"/><ellipse cx="32" cy="32" rx="22" ry="8" transform="rotate(-28 32 32)" fill="none" stroke="#A855F7" stroke-width="2"/><ellipse cx="32" cy="32" rx="22" ry="8" transform="rotate(28 32 32)" fill="none" stroke="#67E8F9" stroke-width="1.5"/>'),
-    passive: _svgIcon("luan_passive", "#1E1B4B", "#E879F9", '<path d="M14 48 L28 24 L36 38 L50 16" fill="none" stroke="#E879F9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="48" r="4" fill="#C084FC"/><circle cx="50" cy="16" r="4" fill="#34D399"/><path d="M22 18 L28 24 M36 38 L44 46" stroke="#A855F7" stroke-width="2" stroke-linecap="round"/>'),
-    c1: _svgIcon("luan_c1", "#2E1065", "#A855F7", '<polygon points="18,48 14,22 25,30" fill="#E879F9"/><polygon points="32,48 31,11 40,28" fill="#F5D0FE" stroke="#A855F7" stroke-width="1.4"/><polygon points="46,48 51,22 39,30" fill="#C084FC"/><circle cx="32" cy="48" r="4" fill="#67E8F9"/>'),
-    c2: _svgIcon("luan_c2", "#240954", "#E879F9", '<ellipse cx="21" cy="34" rx="8" ry="15" fill="rgba(124,58,237,0.5)" stroke="#E879F9" stroke-width="2.4"/><ellipse cx="43" cy="30" rx="8" ry="15" fill="rgba(168,85,247,0.5)" stroke="#67E8F9" stroke-width="2.4"/><path d="M22 32 L42 32" stroke="#FFFFFF" stroke-width="2.4" stroke-dasharray="4 3"/><circle cx="32" cy="32" r="3" fill="#F5D0FE"/>'),
-    c3: _svgIcon("luan_c3", "#1B063B", "#E879F9", '<path d="M10 32 L54 32" stroke="#E879F9" stroke-width="9" stroke-linecap="round"/><path d="M10 32 L54 32" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/><path d="M32 32 L48 16 M32 32 L48 48" stroke="#C084FC" stroke-width="3.5" stroke-linecap="round"/><circle cx="32" cy="32" r="6" fill="#67E8F9" stroke="#FFFFFF" stroke-width="1.5"/>', true)
+    atk: _svgIcon(
+      "luan_atk",
+      "#24094E",
+      "#C084FC",
+      '<defs><radialGradient id="l_orb" cx="46%" cy="44%" r="52%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="32%" stop-color="#F5D0FE"/><stop offset="68%" stop-color="#9333EA"/><stop offset="100%" stop-color="#3B0764"/></radialGradient></defs><circle cx="32" cy="32" r="20" fill="rgba(168,85,247,0.22)"/><ellipse cx="32" cy="32" rx="23" ry="8.5" transform="rotate(-30 32 32)" fill="none" stroke="#E879F9" stroke-width="2"/><ellipse cx="32" cy="32" rx="23" ry="8.5" transform="rotate(30 32 32)" fill="none" stroke="#67E8F9" stroke-width="1.8" stroke-dasharray="9 4"/><circle cx="32" cy="32" r="11.5" fill="url(#l_orb)" stroke="#F5D0FE" stroke-width="1.8"/><circle cx="29" cy="29" r="3.4" fill="#FFFFFF"/><circle cx="51" cy="21" r="2.2" fill="#67E8F9"/><circle cx="13" cy="43" r="2" fill="#F0ABFC"/>'
+    ),
+    passive: _svgIcon(
+      "luan_passive",
+      "#1A0B3B",
+      "#E879F9",
+      '<defs><linearGradient id="l_rift" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7C3AED"/><stop offset="50%" stop-color="#F0ABFC"/><stop offset="100%" stop-color="#67E8F9"/></linearGradient></defs><path d="M11 50 L23 33 L29 38 L37 22 L43 27 L53 13" fill="none" stroke="#7C3AED" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/><path d="M11 50 L23 33 L29 38 L37 22 L43 27 L53 13" fill="none" stroke="url(#l_rift)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 50 L23 33 L29 38 L37 22 L43 27 L53 13" fill="none" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 20 Q24 23 28 31" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round"/><path d="M48 44 Q40 41 35 33" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="20" r="3.2" fill="#34D399" stroke="#ECFDF5" stroke-width="1"/><circle cx="48" cy="44" r="3.2" fill="#34D399" stroke="#ECFDF5" stroke-width="1"/><circle cx="32" cy="31" r="4.8" fill="#0F172A" stroke="#F0ABFC" stroke-width="2"/><circle cx="32" cy="31" r="2" fill="#6EE7B7"/>'
+    ),
+    c1: _svgIcon(
+      "luan_c1",
+      "#290C58",
+      "#D946EF",
+      '<circle cx="32" cy="49" r="9" fill="rgba(103,232,249,0.28)"/><path d="M22 49 L32 45 L42 49" fill="none" stroke="#67E8F9" stroke-width="2.2" stroke-linecap="round"/><polygon points="14,45 9,25 21,34" fill="#A855F7" stroke="#E9D5FF" stroke-width="1.2"/><polygon points="22,46 19,16 29,30" fill="#C084FC" stroke="#F5D0FE" stroke-width="1.2"/><polygon points="32,46 32,9 39,28 32,46 25,28" fill="#F5D0FE" stroke="#FFFFFF" stroke-width="1.4"/><polygon points="42,46 45,16 35,30" fill="#C084FC" stroke="#F5D0FE" stroke-width="1.2"/><polygon points="50,45 55,25 43,34" fill="#A855F7" stroke="#E9D5FF" stroke-width="1.2"/><circle cx="32" cy="48" r="3.8" fill="#FFFFFF" stroke="#67E8F9" stroke-width="1.5"/>'
+    ),
+    c2: _svgIcon(
+      "luan_c2",
+      "#1F0747",
+      "#E879F9",
+      '<ellipse cx="18" cy="33" rx="8" ry="17" fill="rgba(124,58,237,0.45)" stroke="#E879F9" stroke-width="2.4"/><ellipse cx="18" cy="33" rx="4" ry="11" fill="#090418" stroke="#67E8F9" stroke-width="1.4"/><ellipse cx="46" cy="21" rx="7" ry="11" fill="rgba(168,85,247,0.45)" stroke="#67E8F9" stroke-width="2"/><ellipse cx="46" cy="45" rx="7" ry="11" fill="rgba(168,85,247,0.45)" stroke="#E879F9" stroke-width="2"/><path d="M19 33 L31 33 L45 21 M31 33 L45 45" fill="none" stroke="#F0ABFC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 33 L31 33 L45 21 M31 33 L45 45" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="33" r="3" fill="#67E8F9"/>'
+    ),
+    c3: _svgIcon(
+      "luan_c3",
+      "#190438",
+      "#F0ABFC",
+      '<line x1="9" y1="32" x2="35" y2="32" stroke="#A855F7" stroke-width="11" stroke-linecap="round" opacity="0.75"/><line x1="9" y1="32" x2="35" y2="32" stroke="#E879F9" stroke-width="6" stroke-linecap="round"/><line x1="9" y1="32" x2="55" y2="32" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round"/><ellipse cx="34" cy="32" rx="6" ry="16" fill="rgba(15,23,42,0.75)" stroke="#67E8F9" stroke-width="2.2"/><path d="M35 32 L53 14 M35 32 L53 50" stroke="#E879F9" stroke-width="5" stroke-linecap="round"/><path d="M35 32 L53 14 M35 32 L53 50" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="32" r="5" fill="#F5D0FE" stroke="#67E8F9" stroke-width="1.6"/>',
+      true
+    )
   },
   taidu: {
     atk: _svgIcon("taidu_atk", "#431407", "#38BDF8", '<rect x="13" y="27" width="32" height="10" rx="3" fill="#EA580C" stroke="#FED7AA" stroke-width="1.8"/><rect x="38" y="29" width="15" height="5" rx="2" fill="#38BDF8"/><circle cx="24" cy="32" r="3.2" fill="#E0F2FE"/><path d="M18 22 H34" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>'),
