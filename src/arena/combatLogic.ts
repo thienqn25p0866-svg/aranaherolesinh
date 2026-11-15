@@ -458,6 +458,8 @@ export type TaiDuDroneMode = 'attack' | 'guard' | 'pursuit';
 
 export const TAI_DU_DRONE_MODES: TaiDuDroneMode[] = ['attack', 'guard', 'pursuit'];
 
+export const LUAN_C3_MONOCHROME_DURATION = 1.5;
+
 export function cycleTaiDuDroneMode(current: TaiDuDroneMode): TaiDuDroneMode {
   const idx = TAI_DU_DRONE_MODES.indexOf(current);
   return TAI_DU_DRONE_MODES[(idx + 1) % TAI_DU_DRONE_MODES.length];
@@ -468,14 +470,20 @@ export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
     return {
       mode: 'guard' as const,
       label: 'Hộ Vệ',
-      fireInterval: 0.9,
-      damageScale: 0.35,
+      color: '#34D399',
+      fireInterval: 1.05,
+      damageScale: 0.24,
+      dmgRatio: 0.24,
       orbitRadius: 42,
-      healInterval: 1.5,
-      healPctMaxHp: 0.045,
-      guardAbsorbPct: 0.28,
-      guardPulseThreshold: 140,
-      guardPulseHealRatio: 0.14,
+      orbitDist: 42,
+      scanRange: 280,
+      prioritizeLowHp: false,
+      healInterval: 1.65,
+      healPctMaxHp: 0.03,
+      healPct: 0.03,
+      guardAbsorbPct: 0.2,
+      guardPulseThreshold: 150,
+      guardPulseHealRatio: 0.09,
       pursuitSpeedBonus: 0,
     };
   }
@@ -483,25 +491,37 @@ export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
     return {
       mode: 'pursuit' as const,
       label: 'Truy Kích',
-      fireInterval: 0.36,
-      damageScale: 0.52,
+      color: '#F97316',
+      fireInterval: 0.48,
+      damageScale: 0.36,
+      dmgRatio: 0.36,
       orbitRadius: 118,
+      orbitDist: 118,
+      scanRange: 470,
+      prioritizeLowHp: true,
       healInterval: 0,
       healPctMaxHp: 0,
+      healPct: 0,
       guardAbsorbPct: 0,
       guardPulseThreshold: 0,
       guardPulseHealRatio: 0,
-      pursuitSpeedBonus: 28,
+      pursuitSpeedBonus: 22,
     };
   }
   return {
     mode: 'attack' as const,
     label: 'Tấn Công',
-    fireInterval: 0.48,
-    damageScale: 0.64,
+    color: '#38BDF8',
+    fireInterval: 0.62,
+    damageScale: 0.42,
+    dmgRatio: 0.42,
     orbitRadius: 56,
+    orbitDist: 56,
+    scanRange: 380,
+    prioritizeLowHp: false,
     healInterval: 0,
     healPctMaxHp: 0,
+    healPct: 0,
     guardAbsorbPct: 0,
     guardPulseThreshold: 0,
     guardPulseHealRatio: 0,
@@ -526,7 +546,7 @@ export function computeNguyenOverhealConversion(params: {
   const rawHeal = Math.max(0, params.rawHeal || 0);
   const threshold = params.lowHpThreshold ?? 0.45;
   const isLowHp = currentHp / maxHp <= threshold;
-  const lowHpMult = isLowHp ? 1 + (params.lowHpBonusAmp ?? 0.6) : 1;
+  const lowHpMult = isLowHp ? 1 + (params.lowHpBonusAmp ?? 0.35) : 1;
   const ampMult = 1 + Math.max(0, params.healAmp || 0);
   const totalEffectiveHeal = Math.round(rawHeal * ampMult * lowHpMult);
 
@@ -535,7 +555,7 @@ export function computeNguyenOverhealConversion(params: {
   const nextHp = currentHp + actualHpHealed;
 
   const overheal = Math.max(0, totalEffectiveHeal - actualHpHealed);
-  const shieldCap = Math.round(maxHp * (params.shieldCapRatio ?? 1.0));
+  const shieldCap = Math.round(maxHp * (params.shieldCapRatio ?? 0.65));
   const convert = params.convertOverheal !== false;
   const shieldAdded = convert ? Math.max(0, Math.min(overheal, Math.max(0, shieldCap - currentShield))) : 0;
   const nextShield = currentShield + shieldAdded;
@@ -544,6 +564,7 @@ export function computeNguyenOverhealConversion(params: {
     nextHp,
     nextShield,
     actualHpHealed,
+    healedHp: actualHpHealed,
     shieldAdded,
     overheal,
     totalEffectiveHeal,

@@ -18,6 +18,9 @@ import {
   detectClientEnvironment,
   isPrivateOrDevOrigin,
   classifyJoinCode,
+  cycleTaiDuDroneMode,
+  getTaiDuDroneProfile,
+  computeNguyenOverhealConversion,
 } from './combatLogic.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.5s', () => {
@@ -400,10 +403,10 @@ test('P2PRoomHost and P2PRoomPeerClient auto-transition Peer into room and match
   }
 });
 
-test('Nguyen overheal converts 100% into stackable shield and scales strongly at low HP', async () => {
+test('Nguyen overheal converts 100% into stackable shield (capped at 65% Max HP) and scales at low HP', async () => {
   const { computeNguyenOverhealConversion } = await import('./combatLogic.ts');
 
-  // Full HP overheal -> 100% becomes shield up to cap (maxHp * 1.0 = 1500)
+  // Full HP overheal -> 100% becomes shield up to cap (maxHp * 0.65 = 832 for 1280 HP, 975 for 1500 HP)
   const overhealRes = computeNguyenOverhealConversion({
     currentHp: 1400,
     maxHp: 1500,
@@ -414,22 +417,23 @@ test('Nguyen overheal converts 100% into stackable shield and scales strongly at
   assert.equal(overhealRes.isLowHp, false);
   assert.equal(overhealRes.totalEffectiveHeal, 480);
   assert.equal(overhealRes.actualHpHealed, 100);
+  assert.equal(overhealRes.healedHp, 100);
   assert.equal(overhealRes.nextHp, 1500);
   assert.equal(overhealRes.shieldAdded, 380);
   assert.equal(overhealRes.nextShield, 580);
 
-  // Low HP triggers +60% healing amplification
+  // Low HP triggers default +35% healing amplification
   const lowHpRes = computeNguyenOverhealConversion({
     currentHp: 450,
     maxHp: 1500,
     currentShield: 0,
     rawHeal: 300,
-    lowHpBonusAmp: 0.6,
   });
   assert.equal(lowHpRes.isLowHp, true);
-  assert.equal(lowHpRes.totalEffectiveHeal, 480);
-  assert.equal(lowHpRes.actualHpHealed, 480);
-  assert.equal(lowHpRes.nextHp, 930);
+  assert.equal(lowHpRes.totalEffectiveHeal, 405);
+  assert.equal(lowHpRes.actualHpHealed, 405);
+  assert.equal(lowHpRes.healedHp, 405);
+  assert.equal(lowHpRes.nextHp, 855);
 });
 
 test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Dragon Form work accurately', async () => {
@@ -486,22 +490,22 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
 
   const luan = Mi.find((h: any) => h.id === 'luan');
   assert.ok(luan);
-  assert.equal(luan.stats.hp, 950);
-  assert.equal(luan.stats.damage, 40);
-  assert.equal(luan.stats.ap, 55);
+  assert.equal(luan.stats.hp, 880);
+  assert.equal(luan.stats.damage, 32);
+  assert.equal(luan.stats.ap, 46);
   assert.equal(luan.skills[1].aimType, 'CIRCLE_FREE');
 
   const taidu = Mi.find((h: any) => h.id === 'taidu');
   assert.ok(taidu);
-  assert.equal(taidu.stats.hp, 1050);
-  assert.equal(taidu.stats.damage, 52);
+  assert.equal(taidu.stats.hp, 960);
+  assert.equal(taidu.stats.damage, 40);
   assert.equal(taidu.skills[2].aimType, 'PATH');
 
   const nguyen = Mi.find((h: any) => h.id === 'nguyen');
   assert.ok(nguyen);
-  assert.equal(nguyen.stats.hp, 1500);
-  assert.equal(nguyen.stats.damage, 35);
-  assert.equal(nguyen.stats.ap, 45);
+  assert.equal(nguyen.stats.hp, 1280);
+  assert.equal(nguyen.stats.damage, 26);
+  assert.equal(nguyen.stats.ap, 36);
 
   assert.equal(zr.length, 220, 'Item catalog must contain 140 existing + 80 new = 220 items');
   const itemIds = new Set(zr.map((it: any) => it.id));
@@ -542,6 +546,94 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
     }
   }
 });
+
+test('Tai Du and Nguyen complete kits, drone profiles, overheal cap, Luan C3 monochrome, and combo detection work accurately', async () => {
+  const { Mi, Pf } = await import('./gameData.js');
+  const { LUAN_C3_MONOCHROME_DURATION } = await import('./combatLogic.ts');
+  const taidu = Mi.find((h: any) => h.id === 'taidu');
+  const nguyen = Mi.find((h: any) => h.id === 'nguyen');
+
+  assert.equal(LUAN_C3_MONOCHROME_DURATION, 1.5);
+
+  assert.ok(taidu);
+  assert.equal(taidu.critDmgRatio, 1.65);
+  assert.equal(taidu.skills[2].aimType, 'PATH');
+
+  const attackProfile = getTaiDuDroneProfile('attack');
+  assert.equal(attackProfile.orbitDist, 56);
+  assert.equal(attackProfile.scanRange, 380);
+  assert.equal(attackProfile.dmgRatio, 0.42);
+  assert.equal(attackProfile.healPct, 0);
+  assert.equal(attackProfile.prioritizeLowHp, false);
+  assert.match(attackProfile.color, /^#[0-9A-F]{6}$/i);
+
+  let mode = cycleTaiDuDroneMode('attack');
+  assert.equal(mode, 'guard');
+  const guardProfile = getTaiDuDroneProfile(mode);
+  assert.equal(guardProfile.guardAbsorbPct, 0.2);
+  assert.equal(guardProfile.healPctMaxHp, 0.03);
+  assert.equal(guardProfile.healPct, 0.03);
+  assert.equal(guardProfile.orbitDist, 42);
+  assert.equal(guardProfile.scanRange, 280);
+  assert.equal(guardProfile.dmgRatio, 0.24);
+  assert.equal(guardProfile.prioritizeLowHp, false);
+  assert.match(guardProfile.color, /^#[0-9A-F]{6}$/i);
+
+  mode = cycleTaiDuDroneMode(mode);
+  assert.equal(mode, 'pursuit');
+  const pursuitProfile = getTaiDuDroneProfile(mode);
+  assert.equal(pursuitProfile.pursuitSpeedBonus, 22);
+  assert.equal(pursuitProfile.orbitDist, 118);
+  assert.equal(pursuitProfile.scanRange, 470);
+  assert.equal(pursuitProfile.dmgRatio, 0.36);
+  assert.equal(pursuitProfile.healPct, 0);
+  assert.equal(pursuitProfile.prioritizeLowHp, true);
+  assert.match(pursuitProfile.color, /^#[0-9A-F]{6}$/i);
+  assert.equal(cycleTaiDuDroneMode(mode), 'attack');
+
+  assert.ok(nguyen);
+  assert.equal(nguyen.stats.hp, 1280);
+  const cappedShield = computeNguyenOverhealConversion({
+    currentHp: 1280,
+    maxHp: 1280,
+    currentShield: 750,
+    rawHeal: 500,
+    shieldCapRatio: 0.65,
+  });
+  assert.equal(cappedShield.actualHpHealed, 0);
+  assert.equal(cappedShield.shieldAdded, 82);
+  assert.equal(cappedShield.nextShield, 832);
+
+  const lowHpAmp = computeNguyenOverhealConversion({
+    currentHp: 576,
+    maxHp: 1280,
+    currentShield: 0,
+    rawHeal: 200,
+    lowHpThreshold: 0.45,
+    lowHpBonusAmp: 0.35,
+  });
+  assert.equal(lowHpAmp.isLowHp, true);
+  assert.equal(lowHpAmp.totalEffectiveHeal, 270);
+
+  const taiDuTracker = new Pf();
+  taiDuTracker.record({ heroId: 'taidu', action: 'c1', hitCount: 1 });
+  taiDuTracker.record({ heroId: 'taidu', action: 'c2', hitCount: 2 });
+  assert.equal(taiDuTracker.detectComboName('taidu', false, false), 'Hỏa Lực Liên Hoàn');
+  taiDuTracker.record({ heroId: 'taidu', action: 'c3', hitCount: 3 });
+  assert.equal(taiDuTracker.detectComboName('taidu', false, false), 'Oanh Tạc Hủy Diệt!');
+
+  const taiDuUltOnly = new Pf();
+  taiDuUltOnly.record({ heroId: 'taidu', action: 'c3', hitCount: 2 });
+  assert.equal(taiDuUltOnly.detectComboName('taidu', false, false), 'Bão Tên Lửa Công Nghệ!');
+
+  const nguyenTracker = new Pf();
+  nguyenTracker.record({ heroId: 'nguyen', action: 'c1', hitCount: 1 });
+  nguyenTracker.record({ heroId: 'nguyen', action: 'c2', hitCount: 1 });
+  assert.equal(nguyenTracker.detectComboName('nguyen', false, false), 'Tam Vệ Tinh Hộ Mệnh!');
+  nguyenTracker.record({ heroId: 'nguyen', action: 'c3', hitCount: 2 });
+  assert.equal(nguyenTracker.detectComboName('nguyen', false, false), 'Đại Thánh Địa Sinh Mệnh!');
+});
+
 
 
 

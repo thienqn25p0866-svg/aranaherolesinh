@@ -1389,13 +1389,15 @@ function drawLuanCoreOrb(ctx, p, t, state, isMono) {
 }
 
 function drawTaiDuTechRifle(ctx, p, t, state, isMono) {
-  let recoil = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 5.5 : 0;
-  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (state.hasAtk ? 0.5 : 0), 0, 1.3);
+  let recoil = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 6.5 : 0;
+  let skillPulse = state.skillAlpha > 0 ? Math.sin(state.skillAlpha * Math.PI) * 3 : 0;
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (state.hasAtk ? 0.65 : 0), 0, 1.4);
   let mode = p.taidu_droneMode || "attack";
+  let barrelParity = p.taidu_barrelParity || 1;
   let coreCol = isMono ? "#FFFFFF" : mode === "guard" ? "#34D399" : mode === "pursuit" ? "#FBBF24" : "#38BDF8";
 
   ctx.save();
-  ctx.translate(10 - recoil, 6);
+  ctx.translate(10 - recoil - skillPulse * 0.5, 6);
 
   // Stock & tactical grip
   ctx.fillStyle = isMono ? "#111111" : "#1E293B";
@@ -1413,33 +1415,44 @@ function drawTaiDuTechRifle(ctx, p, t, state, isMono) {
   ctx.stroke();
 
   // Heavy orange-blue pulse barrel shroud
-  ctx.fillStyle = isMono ? "#333333" : "#F97316";
+  ctx.fillStyle = isMono ? "#333333" : "#EA580C";
   ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(10, -4.4, 21, 8.8, 2.2) : ctx.rect(10, -4.4, 21, 8.8);
+  ctx.roundRect ? ctx.roundRect(10, -4.8, 22, 9.6, 2.4) : ctx.rect(10, -4.8, 22, 9.6);
   ctx.fill();
   ctx.stroke();
 
-  // Upper cyan plasma rail & holographic sight
+  // Mode-reactive capacitor strip & pulsing plasma core
   ctx.fillStyle = coreCol;
-  ctx.fillRect(11, -1.6, 17, 3.2);
-  ctx.fillStyle = isMono ? "#000000" : "#0F172A";
-  ctx.fillRect(14, -6.5, 9, 2.2);
+  ctx.fillRect(11, -1.7, 18, 3.4);
+  ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+  ctx.fillRect(13 + (Math.sin(t * 9) * 0.5 + 0.5) * 9, -1.1, 5, 2.2);
 
-  // Extended twin railgun muzzle prongs
+  // Holographic targeting optic on top rail
+  ctx.fillStyle = isMono ? "#000000" : "#0F172A";
+  ctx.fillRect(14, -7.2, 10, 2.4);
+  ctx.fillStyle = coreCol;
+  ctx.fillRect(16, -6.6, 6, 1.2);
+
+  // Extended twin railgun muzzle prongs (alternating kickback per shot)
+  let topKick = state.hasAtk && barrelParity < 0 ? recoil * 0.45 : 0;
+  let botKick = state.hasAtk && barrelParity > 0 ? recoil * 0.45 : 0;
   ctx.fillStyle = isMono ? "#777777" : "#38BDF8";
-  ctx.fillRect(30, -3.5, 6.5, 2.2);
-  ctx.fillRect(30, 1.3, 6.5, 2.2);
+  ctx.fillRect(31 - topKick, -3.9, 7.2, 2.3);
+  ctx.fillRect(31 - botKick, 1.6, 7.2, 2.3);
 
   if (flare > 0.25) {
-    drawFourPointStar(ctx, 38, 0, 7.5 * flare, 2.2 * flare, "#FEF08A", "#F97316");
+    let muzzleY = state.hasAtk ? (barrelParity < 0 ? -2.7 : 2.7) : 0;
+    drawFourPointStar(ctx, 39.5, muzzleY, 8.2 * flare, 2.4 * flare, "#FEF08A", mode === "guard" ? "#34D399" : "#F97316");
   }
-  drawHandGrip(ctx, 2, 2, "#EA580C", "#38BDF8", 3.6, isMono);
+  drawHandGrip(ctx, 2, 2, "#EA580C", coreCol, 3.6, isMono);
   ctx.restore();
 }
 
 function drawNguyenLifeAegis(ctx, p, t, state, isMono) {
-  let flare = clamp(state.skillAlpha + state.critAlpha * 0.75 + (state.hasAtk ? 0.45 : 0), 0, 1.3);
-  let sweep = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 0.42 : Math.sin(t * 2.4) * 0.05;
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.75 + (state.hasAtk ? 0.55 : 0), 0, 1.35);
+  let parity = p.attackSwingParity || 1;
+  let sweep = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 0.52 * parity : Math.sin(t * 2.4) * 0.05;
+  let bucklerPush = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 4.5 : state.skillAlpha > 0 ? Math.sin(state.skillAlpha * Math.PI) * 5.5 : 0;
 
   ctx.save();
   ctx.rotate(sweep);
@@ -1447,31 +1460,45 @@ function drawNguyenLifeAegis(ctx, p, t, state, isMono) {
 
   // Emerald & Gold Sanctuary Staff / Conduit Shaft
   ctx.strokeStyle = isMono ? "#111111" : "#FBBF24";
-  ctx.lineWidth = 3.2;
+  ctx.lineWidth = 3.4;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(-10, 9);
-  ctx.lineTo(14, -6);
+  ctx.lineTo(15, -6);
+  ctx.stroke();
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-6, 6.5);
+  ctx.lineTo(12, -4);
   ctx.stroke();
 
-  // Floating Golden-Emerald Life Crest Ring
+  // Floating Golden-Emerald Life Crest Ring + 4-petal spinning lotus
   ctx.save();
-  ctx.translate(15, -7);
-  ctx.rotate(t * 1.4);
+  ctx.translate(16, -7);
+  ctx.rotate(t * (1.5 + flare * 2.2));
   ctx.strokeStyle = isMono ? "#000000" : "#10B981";
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.arc(0, 0, 8.5 + flare * 1.5, -2.1, 2.1);
+  ctx.arc(0, 0, 9.2 + flare * 1.6, -2.2, 2.2);
   ctx.stroke();
   ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.7;
   ctx.beginPath();
-  ctx.arc(0, 0, 6.2 + flare * 1.2, 0.8, 5.1);
+  ctx.arc(0, 0, 6.6 + flare * 1.2, 0.7, 5.2);
   ctx.stroke();
+
+  for (let i = 0; i < 4; i++) {
+    let pa = (Math.PI / 2) * i;
+    ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#34D399" : "#FDE047";
+    ctx.beginPath();
+    ctx.ellipse(Math.cos(pa) * 5.8, Math.sin(pa) * 5.8, 2.8, 1.5, pa, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Radiant golden life core inside ring
   ctx.beginPath();
-  ctx.arc(0, 0, 4.2 + flare * 1.1, 0, Math.PI * 2);
+  ctx.arc(0, 0, 4.3 + flare * 1.1, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
   ctx.fill();
   ctx.strokeStyle = isMono ? "#000000" : "#059669";
@@ -1479,17 +1506,24 @@ function drawNguyenLifeAegis(ctx, p, t, state, isMono) {
   ctx.stroke();
   ctx.restore();
 
-  // Off-hand glowing energy buckler on left side
+  // Off-hand glowing reactive energy buckler on left side
   ctx.save();
-  ctx.translate(5, -13);
-  ctx.rotate(-0.45);
-  ctx.fillStyle = isMono ? "#222222" : "rgba(16, 185, 129, 0.72)";
+  ctx.translate(5 + bucklerPush, -13);
+  ctx.rotate(-0.42);
+  if (flare > 0.25) {
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(52, 211, 153, 0.7)";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(2, 0, 10 + flare * 2.5, -1.1, 1.1);
+    ctx.stroke();
+  }
+  ctx.fillStyle = isMono ? "#222222" : "rgba(16, 185, 129, 0.78)";
   ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-2, -8);
-  ctx.quadraticCurveTo(8, 0, -2, 8);
-  ctx.quadraticCurveTo(2, 0, -2, -8);
+  ctx.moveTo(-2, -9);
+  ctx.quadraticCurveTo(9, 0, -2, 9);
+  ctx.quadraticCurveTo(2.5, 0, -2, -9);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -1941,21 +1975,28 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
 
   if (h.kind === "taidu_bolt" || h.kind === "turret_shot") {
     let isTurret = h.kind === "turret_shot";
-    ctx.strokeStyle = isMono ? "#000000" : isTurret ? "rgba(56, 189, 248, 0.7)" : "rgba(249, 115, 22, 0.72)";
-    ctx.lineWidth = isTurret ? 2.6 : 3.4;
+    let mainCol = h.color || (isTurret ? "#38BDF8" : "#F97316");
+    ctx.strokeStyle = isMono ? "#000000" : isTurret ? "rgba(56, 189, 248, 0.65)" : "rgba(249, 115, 22, 0.68)";
+    ctx.lineWidth = isTurret ? 3.2 : 4.2;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(-18, 0);
-    ctx.lineTo(9, 0);
+    ctx.moveTo(-22, 0);
+    ctx.lineTo(10, 0);
+    ctx.stroke();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = isTurret ? 1.4 : 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-14, 0);
+    ctx.lineTo(11, 0);
     ctx.stroke();
     ctx.fillStyle = isMono ? "#FFFFFF" : isTurret ? "#BAE6FD" : "#FEF08A";
-    ctx.strokeStyle = isMono ? "#000000" : isTurret ? "#0284C7" : "#EA580C";
+    ctx.strokeStyle = isMono ? "#000000" : mainCol;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(14, 0);
-    ctx.lineTo(3, -4);
+    ctx.moveTo(15, 0);
+    ctx.lineTo(2, -4.4);
     ctx.lineTo(5, 0);
-    ctx.lineTo(3, 4);
+    ctx.lineTo(2, 4.4);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -1963,49 +2004,73 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   }
 
   if (h.kind === "taidu_missile") {
-    // Twin flame jet wake
-    let flk = Math.sin(elapsedTime * 28 + (h.id || 0)) * 2.2;
-    ctx.strokeStyle = isMono ? "#000000" : "#F97316";
-    ctx.lineWidth = 3.5;
+    let flk = Math.sin(elapsedTime * 32 + (h.id || 0)) * 2.4;
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(249, 115, 22, 0.6)";
+    ctx.lineWidth = 5.5;
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(-11, 0);
-    ctx.lineTo(-23, flk * 0.6);
+    ctx.lineTo(-27, flk * 0.7);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.lineTo(-20, flk * 0.4);
     ctx.stroke();
 
-    // Missile chassis & warhead
+    // Seeker warhead fuselage + stabilizer fins
     ctx.fillStyle = isMono ? "#222222" : "#0EA5E9";
     ctx.strokeStyle = "#070B14";
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(16, 0);
-    ctx.lineTo(6, -5);
-    ctx.lineTo(-10, -5);
-    ctx.lineTo(-14, -8);
+    ctx.moveTo(17, 0);
+    ctx.lineTo(7, -5.2);
+    ctx.lineTo(-10, -5.2);
+    ctx.lineTo(-15, -9);
     ctx.lineTo(-10, 0);
-    ctx.lineTo(-14, 8);
-    ctx.lineTo(-10, 5);
-    ctx.lineTo(6, 5);
+    ctx.lineTo(-15, 9);
+    ctx.lineTo(-10, 5.2);
+    ctx.lineTo(7, 5.2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(10, 0, 5.2, -0.9, 0.9);
+    ctx.stroke();
     ctx.fillStyle = "#FEF08A";
     ctx.beginPath();
-    ctx.arc(9, 0, 2.5, 0, Math.PI * 2);
+    ctx.arc(9.5, 0, 2.7, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
 
   if (h.kind === "nguyen_bolt") {
-    ctx.strokeStyle = isMono ? "#000000" : "rgba(52, 211, 153, 0.55)";
-    ctx.lineWidth = 3.6;
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(52, 211, 153, 0.62)";
+    ctx.lineWidth = 4.4;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(-16, 0);
+    ctx.moveTo(-18, 0);
     ctx.lineTo(0, 0);
     ctx.stroke();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.arc(0, 0, Math.max(6, h.radius), 0, Math.PI * 2);
+    ctx.moveTo(-11, 0);
+    ctx.lineTo(2, 0);
+    ctx.stroke();
+    ctx.rotate(elapsedTime * 8);
+    for (let i = 0; i < 4; i++) {
+      let a = (Math.PI / 2) * i;
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#34D399";
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * 5.2, Math.sin(a) * 5.2, 3.6, 1.8, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(5.5, (h.radius || 8) * 0.72), 0, Math.PI * 2);
     ctx.fillStyle = isMono ? "#000000" : "#10B981";
     ctx.fill();
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
@@ -2299,8 +2364,116 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle || 0);
     let reach = h.radius * (0.35 + 0.65 * Math.pow(f, 0.75));
-    drawTaperedArc(ctx, 0, 0, reach, -(h.spread || Math.PI) * 0.5, (h.spread || Math.PI) * 0.5, 11 * alpha + 2, "#10B981", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.72, -(h.spread || Math.PI) * 0.42, (h.spread || Math.PI) * 0.42, 6 * alpha + 1.2, "#34D399", "#FFFFFF", isMono);
+    let half = (h.spread || Math.PI) * 0.5;
+    let waveGrad = ctx.createRadialGradient(0, 0, reach * 0.15, 0, 0, reach);
+    waveGrad.addColorStop(0, "rgba(16, 185, 129, 0)");
+    waveGrad.addColorStop(0.55, isMono ? "rgba(0,0,0,0.18)" : `rgba(52, 211, 153, ${0.26 * alpha})`);
+    waveGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+    ctx.fillStyle = waveGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, reach, -half, half);
+    ctx.closePath();
+    ctx.fill();
+
+    drawTaperedArc(ctx, 0, 0, reach, -half, half, 11.5 * alpha + 2, "#10B981", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.72, -half * 0.84, half * 0.84, 6.5 * alpha + 1.2, "#34D399", "#FFFFFF", isMono);
+    for (let i = -2; i <= 2; i++) {
+      let pa = i * (half * 0.38);
+      let pr = reach * (0.72 + f * 0.24);
+      ctx.save();
+      ctx.translate(Math.cos(pa) * pr, Math.sin(pa) * pr);
+      ctx.rotate(pa + f * 2);
+      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 4.5 * alpha + 1.5, 2.2 * alpha + 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+
+  if (h.kind === "taidu_hex_blast") {
+    let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.62));
+    if (!Number.isFinite(h.x) || !Number.isFinite(h.y) || !Number.isFinite(r) || r <= 0) return;
+    let mainCol = isMono ? "#000000" : h.color || "#F97316";
+    let accentCol = isMono ? "#FFFFFF" : h.accentColor || "#38BDF8";
+    let blastGrad = ctx.createRadialGradient(h.x, h.y, r * 0.12, h.x, h.y, r);
+    blastGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.6)" : `rgba(254, 240, 138, ${0.55 * alpha})`);
+    blastGrad.addColorStop(0.5, isMono ? "rgba(0,0,0,0.3)" : `rgba(249, 115, 22, ${0.34 * alpha})`);
+    blastGrad.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = blastGrad;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer hexagonal tech shockwave
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.rotate(f * 0.45);
+    ctx.strokeStyle = mainCol;
+    ctx.lineWidth = 5.5 * alpha + 1.4;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      let a = (Math.PI / 3) * i;
+      let px = Math.cos(a) * r;
+      let py = Math.sin(a) * r;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    // Inner ionized targeting ring & radial vector spikes
+    ctx.strokeStyle = accentCol;
+    ctx.lineWidth = 2.8 * alpha + 0.9;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      let a = (Math.PI / 3) * i + Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.48, Math.sin(a) * r * 0.48);
+      ctx.lineTo(Math.cos(a) * r * 1.08, Math.sin(a) * r * 1.08);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (h.kind === "nguyen_lotus_boom") {
+    let r = h.radius * (0.2 + 0.8 * Math.pow(f, 0.64));
+    if (!Number.isFinite(h.x) || !Number.isFinite(h.y) || !Number.isFinite(r) || r <= 0) return;
+    let lotusGrad = ctx.createRadialGradient(h.x, h.y, r * 0.12, h.x, h.y, r);
+    lotusGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.5)" : `rgba(254, 240, 138, ${0.42 * alpha})`);
+    lotusGrad.addColorStop(0.6, isMono ? "rgba(0,0,0,0.22)" : `rgba(16, 185, 129, ${0.28 * alpha})`);
+    lotusGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
+    ctx.fillStyle = lotusGrad;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.strokeStyle = isMono ? "#000000" : "#10B981";
+    ctx.lineWidth = 6 * alpha + 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 2.8 * alpha + 0.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.rotate(f * 0.8);
+    for (let i = 0; i < 8; i++) {
+      let a = (Math.PI * 2 / 8) * i;
+      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7";
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * r * 0.65, Math.sin(a) * r * 0.65, r * 0.16, r * 0.06, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
     return;
   }
 
@@ -3344,10 +3517,36 @@ export function drawDanhDragonForm(ctx, x, y, radius, facing, elapsedTime, isMon
   ctx.restore();
 }
 
-export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgress, isMono) {
+export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgress, isMono, opts = {}) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   let colPrimary = isMono ? "#FFFFFF" : mode === "guard" ? "#34D399" : mode === "pursuit" ? "#F97316" : "#38BDF8";
   let colGlow = isMono ? "#CCCCCC" : mode === "guard" ? "#A7F3D0" : mode === "pursuit" ? "#FEF08A" : "#BAE6FD";
   let bob = Math.sin(elapsedTime * 6.5) * 3.5;
+
+  // Guard energy tether or Pursuit laser designator in world space
+  if (mode === "guard" && typeof opts.playerX === "number" && typeof opts.playerY === "number") {
+    ctx.save();
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.4)" : "rgba(52, 211, 153, 0.45)";
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x, y + bob);
+    ctx.lineTo(opts.playerX, opts.playerY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  } else if (mode === "pursuit" && typeof opts.targetX === "number" && typeof opts.targetY === "number") {
+    ctx.save();
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.35)" : "rgba(249, 115, 22, 0.32)";
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(x, y + bob);
+    ctx.lineTo(opts.targetX, opts.targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.translate(x, y + bob);
@@ -3360,7 +3559,7 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
 
   // Outer rotating energy ring + guard absorb charge gauge
   ctx.save();
-  ctx.rotate(elapsedTime * (mode === "pursuit" ? 5.5 : 3.2));
+  ctx.rotate(elapsedTime * (mode === "pursuit" ? 5.8 : 3.2));
   ctx.strokeStyle = colPrimary;
   ctx.lineWidth = 1.8;
   ctx.setLineDash([6, 4]);
@@ -3372,14 +3571,27 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
 
   if (mode === "guard" && shieldProgress > 0) {
     ctx.strokeStyle = "#FEF08A";
-    ctx.lineWidth = 2.6;
+    ctx.lineWidth = 2.8;
     ctx.beginPath();
-    ctx.arc(0, 0, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, shieldProgress));
+    ctx.arc(0, 0, 18.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, shieldProgress));
     ctx.stroke();
   }
 
   // Hex chassis oriented toward target/facing
   ctx.rotate(facing);
+  if (mode === "pursuit") {
+    // High-velocity plasma jet flames behind thrusters
+    let flk = 4 + Math.sin(elapsedTime * 28) * 2.5;
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
+    ctx.beginPath();
+    ctx.moveTo(-12, -5);
+    ctx.lineTo(-19 - flk, -7);
+    ctx.lineTo(-12, -2);
+    ctx.moveTo(-12, 5);
+    ctx.lineTo(-19 - flk, 7);
+    ctx.lineTo(-12, 2);
+    ctx.fill();
+  }
   ctx.fillStyle = isMono ? "#111111" : "#0F172A";
   ctx.strokeStyle = colPrimary;
   ctx.lineWidth = 2.2;
@@ -3409,7 +3621,7 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
   ctx.closePath();
   ctx.fill();
 
-  // Central optic lens
+  // Central optic lens + optional muzzle star
   ctx.fillStyle = colGlow;
   ctx.beginPath();
   ctx.arc(2, 0, 4.4, 0, Math.PI * 2);
@@ -3419,6 +3631,10 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
   ctx.arc(3.5, 0, 1.8, 0, Math.PI * 2);
   ctx.fill();
 
+  if ((opts.muzzleTimer || 0) > 0) {
+    drawFourPointStar(ctx, 16, 0, 6.2, 2.0, "#FEF08A", colPrimary);
+  }
+
   ctx.restore();
 }
 
@@ -3426,6 +3642,20 @@ export function drawTaiDuTurret(ctx, turret, elapsedTime, isMono) {
   let lifeRatio = Math.max(0, 1 - (turret.life || 0) / Math.max(0.1, turret.maxLife || 10));
   let spin = elapsedTime * 3.0;
   let recoil = Math.max(0, (turret.muzzleTimer || 0) / 0.12) * 4;
+
+  // Faint cyan laser designator when locked on target
+  if (turret.hasTarget && typeof turret.targetX === "number" && typeof turret.targetY === "number") {
+    ctx.save();
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.28)" : "rgba(56, 189, 248, 0.28)";
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(turret.x, turret.y);
+    ctx.lineTo(turret.targetX, turret.targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.translate(turret.x, turret.y);
@@ -3664,7 +3894,7 @@ export function drawLuanBeam(ctx, beam, isMono) {
   ctx.lineCap = "round";
 
   // Outer void aura
-  ctx.strokeStyle = isMono ? "rgba(0,0,0,0.58)" : (beam.isBranch ? "rgba(56, 189, 248, 0.46)" : "rgba(168, 85, 247, 0.52)");
+  ctx.strokeStyle = isMono ? "rgba(0,0,0,0.72)" : (beam.isBranch ? "rgba(56, 189, 248, 0.46)" : "rgba(168, 85, 247, 0.52)");
   ctx.lineWidth = w * 2.05;
   ctx.beginPath();
   ctx.moveTo(beam.x1, beam.y1);
@@ -3672,7 +3902,7 @@ export function drawLuanBeam(ctx, beam, isMono) {
   ctx.stroke();
 
   // Mid plasma beam
-  ctx.strokeStyle = isMono ? "#333333" : (beam.isBranch ? "#38BDF8" : "#A855F7");
+  ctx.strokeStyle = isMono ? "#000000" : (beam.isBranch ? "#38BDF8" : "#A855F7");
   ctx.lineWidth = w;
   ctx.beginPath();
   ctx.moveTo(beam.x1, beam.y1);
@@ -3688,7 +3918,7 @@ export function drawLuanBeam(ctx, beam, isMono) {
   ctx.stroke();
 
   // High-voltage arcane crackle along the beam
-  ctx.strokeStyle = isMono ? "#DDDDDD" : "#F5D0FE";
+  ctx.strokeStyle = isMono ? "#000000" : "#F5D0FE";
   ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.moveTo(beam.x1, beam.y1);
@@ -3726,10 +3956,24 @@ export function drawNguyenSatellites(ctx, x, y, baseAngle, elapsedTime, orbitRad
   ctx.stroke();
   ctx.setLineDash([]);
 
+  // Harmonic golden triangle links connecting the 3 satellites
+  let pts = [];
   for (let i = 0; i < 3; i++) {
     let a = baseAngle + (Math.PI * 2 / 3) * i;
-    let sx = Math.cos(a) * orbitRadius;
-    let sy = Math.sin(a) * orbitRadius;
+    pts.push({ x: Math.cos(a) * orbitRadius, y: Math.sin(a) * orbitRadius });
+  }
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.35)" : "rgba(253, 224, 71, 0.36)";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  ctx.lineTo(pts[1].x, pts[1].y);
+  ctx.lineTo(pts[2].x, pts[2].y);
+  ctx.closePath();
+  ctx.stroke();
+
+  for (let i = 0; i < 3; i++) {
+    let sx = pts[i].x;
+    let sy = pts[i].y;
 
     ctx.save();
     ctx.translate(sx, sy);
@@ -3794,6 +4038,176 @@ export function drawNguyenSanctuaryWave(ctx, wave, isMono) {
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.84, 0, Math.PI * 2);
   ctx.stroke();
+
+  // 6 floating golden-emerald sanctuary petals riding the pulse
+  for (let i = 0; i < 6; i++) {
+    let a = (Math.PI / 3) * i + p * 1.4;
+    ctx.save();
+    ctx.translate(Math.cos(a) * r * 0.92, Math.sin(a) * r * 0.92);
+    ctx.rotate(a);
+    ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 7 * alpha + 2, 3 * alpha + 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+export function drawTaiDuCarpetStrike(ctx, strike, elapsedTime, isMono) {
+  let prog = clamp((strike.timer || 0) / Math.max(0.05, strike.delay || 0.15), 0, 1);
+  let r = strike.radius || 95;
+
+  ctx.save();
+  ctx.translate(strike.x, strike.y);
+
+  // Target zone fill & pulsing cybernetic lock reticle
+  ctx.fillStyle = isMono ? "rgba(0,0,0,0.16)" : `rgba(249, 115, 22, ${0.14 + 0.16 * prog})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = isMono ? "#000000" : "#F97316";
+  ctx.lineWidth = 2.4;
+  ctx.setLineDash([10, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Shrinking lock-on countdown ring
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(8, r * (1 - prog * 0.85)), 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Crosshair reticle
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-14, 0);
+  ctx.lineTo(14, 0);
+  ctx.moveTo(0, -14);
+  ctx.lineTo(0, 14);
+  ctx.stroke();
+
+  // Descending aerial missile body right before detonation
+  if (prog > 0.25) {
+    let fallY = -(1 - prog) * 360;
+    ctx.save();
+    ctx.translate(0, fallY);
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(56, 189, 248, 0.55)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, -45);
+    ctx.lineTo(0, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F97316";
+    ctx.beginPath();
+    ctx.moveTo(0, 10);
+    ctx.lineTo(-6, -8);
+    ctx.lineTo(6, -8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+export function drawNguyenSanctuaryField(ctx, field, elapsedTime, isMono) {
+  let remainFade = Math.min(1, ((field.duration || 3.2) - (field.timer || 0)) / 0.45);
+  let fadeIn = Math.min(1, (field.timer || 0.2) / 0.22);
+  let alpha = Math.max(0, Math.min(fadeIn, remainFade));
+  let r = field.radius || 230;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(field.x, field.y);
+
+  // Soft sanctuary floor aura
+  let grad = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+  grad.addColorStop(0, isMono ? "rgba(255,255,255,0.16)" : "rgba(254, 240, 138, 0.22)");
+  grad.addColorStop(0.55, isMono ? "rgba(0,0,0,0.18)" : "rgba(16, 185, 129, 0.20)");
+  grad.addColorStop(1, "rgba(16, 185, 129, 0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rotating outer sanctuary glyph border
+  ctx.save();
+  ctx.rotate(elapsedTime * 0.85);
+  ctx.strokeStyle = isMono ? "#000000" : "#10B981";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([16, 8]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 6-petal sacred geometry lotus inside field
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(254, 240, 138, 0.58)";
+  ctx.lineWidth = 1.8;
+  for (let i = 0; i < 6; i++) {
+    let a = (Math.PI / 3) * i;
+    ctx.beginPath();
+    ctx.ellipse(Math.cos(a) * r * 0.44, Math.sin(a) * r * 0.44, r * 0.34, r * 0.14, a, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Rising golden-emerald healing motes
+  for (let i = 0; i < 8; i++) {
+    let phase = (elapsedTime * 0.9 + i * 0.13) % 1;
+    let ma = (Math.PI * 2 / 8) * i + elapsedTime * 0.6;
+    let mr = r * (0.25 + 0.62 * (i % 3) * 0.33);
+    ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7";
+    ctx.globalAlpha = alpha * (1 - phase);
+    ctx.beginPath();
+    ctx.arc(Math.cos(ma) * mr, Math.sin(ma) * mr - phase * 22, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+export function drawNguyenBastionAura(ctx, x, y, radius, elapsedTime, shieldRatio, isEmergency, isMono) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Hexagonal emerald-gold sanctuary shield dome
+  let r = radius + 14;
+  ctx.fillStyle = isMono ? "rgba(255,255,255,0.14)" : isEmergency ? "rgba(254, 240, 138, 0.24)" : "rgba(16, 185, 129, 0.18)";
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.rotate(elapsedTime * 1.6);
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    let a = (Math.PI / 3) * i;
+    let px = Math.cos(a) * r;
+    let py = Math.sin(a) * r;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // Golden shield capacity arc around the octagon
+  if (shieldRatio > 0) {
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, shieldRatio));
+    ctx.stroke();
+  }
+  ctx.restore();
 
   ctx.restore();
 }
