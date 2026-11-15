@@ -1,0 +1,6 @@
+{
+  "name": "Arena Hero — Đấu Trường MOBA 2D",
+  "description": "Đấu trường sinh tồn MOBA 2D với 10 vị tướng, 80 trang bị, 5 đại trùm 3 giai đoạn và kỹ năng định hướng.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
