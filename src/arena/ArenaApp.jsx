@@ -5,7 +5,7 @@ import { GameEngine as Hf } from "./GameEngine";
 import { SKILL_ICON_DATA_URLS } from "./skillIcons";
 import { mpClient } from "./multiplayerClient";
 import { MultiplayerLobbyModal } from "./MultiplayerLobbyModal";
-import { detectClientEnvironment } from "./combatLogic";
+import { detectClientEnvironment, isPrivateOrDevOrigin, classifyJoinCode } from "./combatLogic";
 var Df = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(), If = (s) => s.replace(/^([A-Z])|[\s-_]+(\w)/g, (a, l, m) => m ? m.toUpperCase() : l.toLowerCase()), dm = (s) => {
   let a = If(s);
   return a.charAt(0).toUpperCase() + a.slice(1);
@@ -1176,7 +1176,18 @@ function ny() {
       if (msg.type === "ROOM_JOINED") {
         setMpRoom(msg.room || null);
         setMpBusy(false);
+        setP2pBusy(false);
         setMpError("");
+        setP2pAnswerCode("");
+        setP2pIncomingOffer("");
+        if (a.current?.gameState !== "PLAYING") {
+          setMpLobbyOpen(true);
+        }
+        if (msg.room?.hostId && msg.room.hostId !== mpClient.playerId) {
+          G(`Đã vào phòng ${msg.room.roomId}! Chờ Chủ phòng bấm Bắt Đầu Trận.`);
+        }
+      } else if (msg.type === "P2P_INVITE_READY") {
+        msg.inviteCode && setP2pInviteCode(msg.inviteCode);
       } else if (msg.type === "ROOM_UPDATE" || msg.type === "PLAYER_DOWNED" || msg.type === "WAVE_COMPLETED") {
         msg.room && setMpRoom(msg.room);
       } else if (msg.type === "PLAYER_LEFT") {
@@ -1184,20 +1195,27 @@ function ny() {
         msg.newHostId === mpClient.playerId && G("B\u1EA1n \u0111\xE3 tr\u1EDF th\xE0nh \u0110\u1ED9i tr\u01B0\u1EDFng m\u1EDBi!");
       } else if (msg.type === "ROOM_ERROR") {
         setMpBusy(false);
+        setP2pBusy(false);
         let errTxt = msg.message || "L\u1ED7i k\u1EBFt n\u1ED1i ph\xF2ng ch\u01A1i.";
         setMpError(errTxt);
         G(errTxt);
       } else if (msg.type === "LEFT_ROOM") {
         setMpRoom(null);
         setMpBusy(false);
+        setP2pBusy(false);
         setMpError("");
       } else if (msg.type === "WS_CLOSE") {
         setMpBusy(false);
+        setP2pBusy(false);
         a.current?.multiplayer?.active && G("M\u1EA5t k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7 Co-op!");
       } else if (msg.type === "MATCH_STARTED") {
         setMpRoom(msg.room || null);
         setMpLobbyOpen(false);
         setMpMenuOpen(false);
+        setMpBusy(false);
+        setP2pBusy(false);
+        setP2pAnswerCode("");
+        setP2pIncomingOffer("");
         nt(false);
         setMpMatchResult(null);
         let myMem = msg.room?.members?.find((mem) => mem.id === mpClient.playerId);
@@ -1231,16 +1249,39 @@ function ny() {
     }
   }, [l, re.wave, re.boss?.hp]), (0, ie.useEffect)(() => {
     let syncViewport = () => {
-      let vv = window.visualViewport;
-      let w = vv ? Math.round(vv.width) : window.innerWidth;
-      let h = vv ? Math.round(vv.height) : window.innerHeight;
-      document.documentElement.style.setProperty("--app-w", `${w}px`);
-      document.documentElement.style.setProperty("--app-h", `${h}px`);
+      let inIframe = false;
+      try {
+        inIframe = window.self !== window.top;
+      } catch {
+        inIframe = true;
+      }
+      let docW = document.documentElement?.clientWidth || 0;
+      let docH = document.documentElement?.clientHeight || 0;
+      let winW = window.innerWidth || docW;
+      let winH = window.innerHeight || docH;
+      let vv = !inIframe ? window.visualViewport : null;
+      let w = vv && vv.width >= 100 ? Math.round(vv.width) : Math.round(winW);
+      let h = vv && vv.height >= 100 ? Math.round(vv.height) : Math.round(winH);
+      if (w >= 100) {
+        document.documentElement.style.setProperty("--app-w", `${w}px`);
+      } else {
+        document.documentElement.style.removeProperty("--app-w");
+      }
+      if (h >= 100) {
+        document.documentElement.style.setProperty("--app-h", `${h}px`);
+      } else {
+        document.documentElement.style.removeProperty("--app-h");
+      }
       let fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
       setIsFullscreen(fs);
       a.current?.resizeCanvas();
     };
     syncViewport();
+    let rootObs = null;
+    if (typeof ResizeObserver !== "undefined" && document.documentElement) {
+      rootObs = new ResizeObserver(() => syncViewport());
+      rootObs.observe(document.documentElement);
+    }
     window.addEventListener("resize", syncViewport);
     window.addEventListener("orientationchange", syncViewport);
     document.addEventListener("fullscreenchange", syncViewport);
@@ -1248,6 +1289,7 @@ function ny() {
     window.visualViewport?.addEventListener("resize", syncViewport);
     window.visualViewport?.addEventListener("scroll", syncViewport);
     return () => {
+      rootObs?.disconnect();
       window.removeEventListener("resize", syncViewport);
       window.removeEventListener("orientationchange", syncViewport);
       document.removeEventListener("fullscreenchange", syncViewport);
@@ -1337,21 +1379,49 @@ function ny() {
   }, handleCreateRoom = () => {
     R.playClick();
     setMpError("");
+    setP2pAnswerCode("");
     setMpBusy(true);
-    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", p.id).catch((err) => {
+    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", p.id).then((res) => {
+      setMpBusy(false);
+      if (res?.mode === "p2p") {
+        setP2pInviteCode(res.inviteCode || "");
+        setP2pIncomingAnswer("");
+        if (res.inviteError) {
+          G(`\u0110\xE3 t\u1EA1o ph\xF2ng P2P! (${res.inviteError})`);
+        } else {
+          G("\u0110\xE3 t\u1EA1o ph\xF2ng P2P tr\u1EF1c ti\u1EBFp! B\u1EA5m B\u1EAFt \u0110\u1EA7u Tr\u1EADn \u0111\u1EC3 ch\u01A1i ho\u1EB7c sao ch\xE9p M\xE3 M\u1EDDi g\u1EEDi b\u1EA1n b\xE8.");
+        }
+      }
+    }).catch((err) => {
       setMpBusy(false);
       setMpError(err?.message || "Kh\xF4ng th\u1EC3 t\u1EA1o ph\xF2ng.");
     });
   }, handleJoinRoom = () => {
-    let code = mpJoinCode.trim().toUpperCase();
-    if (!code) {
-      setMpError("Vui l\xF2ng nh\u1EADp m\xE3 ID ph\xF2ng.");
+    let classified = classifyJoinCode(mpJoinCode);
+    if (classified.kind === "empty") {
+      setMpError("Vui l\xF2ng nh\u1EADp m\xE3 ID ph\xF2ng ho\u1EB7c m\xE3 m\u1EDDi P2P (AH1...).");
       return;
     }
     R.playClick();
     setMpError("");
+    if (classified.kind === "p2p_signal") {
+      setP2pAnswerCode("");
+      setP2pBusy(true);
+      mpClient.joinP2PWithOffer(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", p.id).then((res) => {
+        setP2pBusy(false);
+        setP2pIncomingOffer(classified.normalized);
+        setP2pAnswerCode(res?.answerCode || "");
+        G("\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i! H\xE3y sao ch\xE9p g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng.");
+      }).catch((err) => {
+        setP2pBusy(false);
+        setMpError(err?.message || "Kh\xF4ng th\u1EC3 x\u1EED l\xFD M\xE3 M\u1EDDi P2P.");
+      });
+      return;
+    }
     setMpBusy(true);
-    mpClient.joinRoom(code, mpName.trim() || "Chi\u1EBFn Binh", p.id).catch((err) => {
+    mpClient.joinRoom(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", p.id).then(() => {
+      setMpBusy(false);
+    }).catch((err) => {
       setMpBusy(false);
       setMpError(err?.message || "Kh\xF4ng th\u1EC3 tham gia ph\xF2ng.");
     });
@@ -1641,7 +1711,7 @@ function ny() {
             let j = await w.text();
             if (/^\s*<!doctype\s+html/i.test(j) && !/<script\b[^>]*src=["'][^"']*(@vite\/client|\/src\/main\.tsx)/i.test(j) && j.length > 1e5) {
               const liveOrigin = typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol) ? window.location.origin : "";
-              if (liveOrigin && !j.includes("window.__ARENA_API_URL__")) {
+              if (liveOrigin && !isPrivateOrDevOrigin(liveOrigin) && !j.includes("window.__ARENA_API_URL__")) {
                 const injected = `<script>window.__ARENA_API_URL__=${JSON.stringify(liveOrigin)};<\/script>`;
                 j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
               }
@@ -1797,9 +1867,9 @@ function ny() {
     R.playClick(), C(true);
   }, children: ["\u{1F4D6} ", ze.guide] }), (0, u.jsxs)("button", { className: "btn-secondary text-xs py-2.5", onClick: () => {
     R.playClick(), D(true);
-  }, children: ["\u2699\uFE0F ", ze.settings] })] })] })] }), (0, u.jsx)("footer", { className: "relative z-10 text-center text-xs text-slate-500 font-mono-numbers", children: "10 T\u01B0\u1EDBng Huy\u1EC1n Tho\u1EA1i \xB7 140 Trang B\u1ECB 6 C\u1EA5p \xB7 15 M\xE0n Sinh T\u1ED3n \xB7 5 \u0110\u1EA1i Tr\xF9m C\u00F3 V\u0169 Kh\xED Ri\xEAng" })] }), l === "HERO_SELECT" && (0, u.jsxs)("div", { className: "screen", children: [(0, u.jsxs)("header", { className: "flex justify-between items-center border-b border-slate-800 pb-3 gap-2", children: [(0, u.jsxs)("button", { className: "btn-secondary text-xs px-3 py-2", onClick: () => {
+  }, children: ["\u2699\uFE0F ", ze.settings] })] })] })] }), (0, u.jsx)("footer", { className: "relative z-10 text-center text-xs text-slate-500 font-mono-numbers", children: "10 T\u01B0\u1EDBng Huy\u1EC1n Tho\u1EA1i \xB7 140 Trang B\u1ECB 6 C\u1EA5p \xB7 15 M\xE0n Sinh T\u1ED3n \xB7 5 \u0110\u1EA1i Tr\xF9m C\u00F3 V\u0169 Kh\xED Ri\xEAng" })] }), l === "HERO_SELECT" && (0, u.jsxs)("div", { className: "screen", children: [(0, u.jsxs)("header", { className: "flex flex-wrap justify-between items-center border-b border-slate-800 pb-3 gap-2", children: [(0, u.jsxs)("button", { className: "btn-secondary text-xs px-3 py-2 shrink-0", onClick: () => {
     R.playClick(), m("MENU");
-  }, children: ["\u2190 ", ze.back] }), (0, u.jsx)("h2", { className: "font-moba text-lg sm:text-xl font-extrabold text-white text-neon-gold", children: ze.heroSelect }), (0, u.jsxs)("div", { className: "flex gap-2", children: [(0, u.jsx)("button", { className: "btn-secondary text-xs px-2.5 py-2 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { className: "btn-secondary text-xs px-3 py-2 border-amber-500/40 text-amber-200", onClick: () => {
+  }, children: ["\u2190 ", ze.back] }), (0, u.jsx)("h2", { className: "font-moba text-base sm:text-xl font-extrabold text-white text-neon-gold truncate min-w-0", children: ze.heroSelect }), (0, u.jsxs)("div", { className: "flex gap-2 shrink-0 flex-wrap", children: [(0, u.jsx)("button", { className: "btn-secondary text-xs px-2.5 py-2 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { className: "btn-secondary text-xs px-3 py-2 border-amber-500/40 text-amber-200", onClick: () => {
     R.playClick(), je(p.id), N(true);
   }, children: "\u{1FA99} Trang B\u1ECB" }), (0, u.jsxs)("button", { className: "btn-primary text-xs px-4 py-2", onClick: () => ke(p), children: [ze.enterArena, " \u2192"] })] })] }), (0, u.jsxs)("div", { className: "flex-1 overflow-y-auto py-3 grid grid-cols-1 md:grid-cols-2 gap-4", children: [(0, u.jsx)("div", { className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 gap-2.5 max-h-[70vh] overflow-y-auto pr-1", children: Mi.map((w) => {
     let j = w.id === p.id;

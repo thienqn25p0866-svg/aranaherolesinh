@@ -112,8 +112,8 @@ export function MultiplayerLobbyModal({
               💡{" "}
               {envInfo.isFileProtocol
                 ? isVi
-                  ? "Bạn đang mở file HTML tải về máy (offline). Để chơi với bạn bè ngay từ file này mà không cần server, hãy dùng mục P2P TRỰC TIẾP ngay bên dưới — hoặc mở link web trên Chrome/Safari."
-                  : "You opened a downloaded HTML file. Use DIRECT P2P MODE below to co-op with friends directly from this file, or open the hosted web URL in Chrome/Safari."
+                  ? "Bạn đang mở file HTML tải về máy. Bấm '➕ TẠO PHÒNG NGAY' sẽ tự động mở phòng P2P Trực Tiếp để chơi Co-op cùng bạn bè mà không cần máy chủ!"
+                  : "You opened a downloaded HTML file. Clicking 'Create Room' will automatically start a Direct P2P Room without needing a server!"
                 : isVi
                 ? "Bạn đang mở trong trình duyệt Zalo/Messenger. Nếu tạo phòng gặp lỗi kết nối, hãy bấm nút ⋯ ở góc trên và chọn 'Mở bằng trình duyệt' (Safari/Chrome)."
                 : "Inside Zalo/Messenger browser: if connection fails, tap ⋯ and choose 'Open in Safari/Chrome'."}
@@ -161,6 +161,38 @@ export function MultiplayerLobbyModal({
                 </div>
               </div>
 
+              {p2pAnswerCode && (
+                <div className="rounded-2xl bg-sky-950/80 border-2 border-sky-400/80 p-3.5 space-y-2 shadow-lg shadow-sky-950/60">
+                  <div className="text-xs font-moba font-extrabold text-sky-200">
+                    ✓{" "}
+                    {isVi
+                      ? "Đã tạo Mã Phản Hồi! Hãy sao chép gửi lại cho Chủ Phòng:"
+                      : "Reply Code Ready! Copy and send back to Host:"}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={p2pAnswerCode}
+                      className="flex-1 min-w-0 rounded-lg bg-[#030710] border border-sky-500/50 px-2.5 py-2 text-xs font-mono-numbers text-sky-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onCopyText?.(p2pAnswerCode, isVi ? "Đã sao chép Mã Phản Hồi!" : "Reply Code copied!")}
+                      className="min-h-[38px] px-3.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-moba text-xs font-black shrink-0"
+                    >
+                      📋 {isVi ? "SAO CHÉP" : "COPY"}
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-amber-200 leading-relaxed">
+                    ⏳{" "}
+                    {isVi
+                      ? "Đang chờ Chủ phòng dán mã & bấm 'GHÉP ĐÔI'. Ngay khi ghép thành công, màn hình bạn sẽ TỰ ĐỘNG vào phòng!"
+                      : "Waiting for Host to click Connect Peer — your screen will automatically enter the room!"}
+                  </div>
+                </div>
+              )}
+
               {/* Two Options: CREATE ROOM & JOIN ROOM */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* CREATE ROOM */}
@@ -174,8 +206,8 @@ export function MultiplayerLobbyModal({
                     </h3>
                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                       {isVi
-                        ? "Hệ thống sẽ sinh một mã ID phòng duy nhất gồm 6 ký tự. Gửi mã này cho bạn bè (tối đa 4 người) để cùng chiến đấu."
-                        : "Generates a unique 6-character Room ID. Share it with up to 3 teammates to co-op."}
+                        ? "Tạo phòng ngay lập tức: dùng mã 6 ký tự khi có máy chủ web, hoặc tự động tạo phòng P2P Trực Tiếp nếu mở từ file HTML tải về máy."
+                        : "Creates a room immediately: uses a 6-char Room ID on hosted servers or automatically starts Direct P2P on downloaded HTML."}
                     </p>
                   </div>
                   <button
@@ -186,8 +218,8 @@ export function MultiplayerLobbyModal({
                   >
                     {busy
                       ? isVi
-                        ? "ĐANG KẾT NỐI..."
-                        : "CONNECTING..."
+                        ? "ĐANG TẠO PHÒNG..."
+                        : "CREATING ROOM..."
                       : isVi
                       ? "➕ TẠO PHÒNG NGAY"
                       : "➕ CREATE ROOM"}
@@ -207,20 +239,22 @@ export function MultiplayerLobbyModal({
                       🔎 {isVi ? "LỰA CHỌN 2" : "OPTION 2"}
                     </div>
                     <h3 className="font-moba text-lg font-black text-white mt-2">
-                      {isVi ? "TÌM PHÒNG BẰNG ID" : "JOIN ROOM BY ID"}
+                      {isVi ? "VÀO PHÒNG BẰNG MÃ" : "JOIN ROOM BY CODE"}
                     </h3>
                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                       {isVi
-                        ? "Nhập mã ID phòng 6 ký tự từ đội trưởng để tham gia chiến trường Co-op."
-                        : "Enter the 6-character Room ID from your host to join the co-op lobby."}
+                        ? "Nhập ID phòng 6 ký tự (VD: A7K9P2) hoặc dán Mã Mời P2P (AH1...) từ đội trưởng."
+                        : "Enter a 6-char Room ID (e.g. A7K9P2) or paste a P2P Invite Code (AH1...)."}
                     </p>
                     <input
                       type="text"
-                      maxLength={8}
                       value={joinCode}
-                      onChange={(e) => onChangeJoinCode(e.target.value.toUpperCase())}
-                      placeholder={isVi ? "VD: A7K9P2" : "e.g. A7K9P2"}
-                      className="mt-2.5 w-full rounded-xl bg-[#050A16] border border-cyan-500/50 focus:border-cyan-300 px-3 py-2.5 text-center font-mono-numbers text-base font-black tracking-[0.25em] text-cyan-200 uppercase outline-none"
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        onChangeJoinCode(/^ah1/i.test(raw.trim()) ? raw : raw.toUpperCase());
+                      }}
+                      placeholder={isVi ? "VD: A7K9P2 hoặc AH1..." : "e.g. A7K9P2 or AH1..."}
+                      className="mt-2.5 w-full rounded-xl bg-[#050A16] border border-cyan-500/50 focus:border-cyan-300 px-3 py-2.5 text-center font-mono-numbers text-sm sm:text-base font-black tracking-wider text-cyan-200 outline-none"
                     />
                   </div>
                   <button
@@ -305,28 +339,6 @@ export function MultiplayerLobbyModal({
                         {isVi ? "TẠO MÃ ĐÁP" : "JOIN"}
                       </button>
                     </div>
-                    {p2pAnswerCode && (
-                      <div className="rounded-lg bg-sky-950/60 border border-sky-400/50 p-2 space-y-1.5">
-                        <div className="text-[11px] font-bold text-sky-200">
-                          ✓ {isVi ? "Gửi Mã Phản Hồi này lại cho Chủ Phòng (đang chờ ghép đôi...):" : "Send this Reply Code back to Host:"}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            readOnly
-                            value={p2pAnswerCode}
-                            className="flex-1 min-w-0 rounded bg-[#030710] border border-sky-500/40 px-2 py-1 text-[11px] font-mono-numbers text-sky-100"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => onCopyText?.(p2pAnswerCode, isVi ? "Đã sao chép Mã Phản Hồi!" : "Reply Code copied!")}
-                            className="min-h-[32px] px-2.5 rounded bg-sky-500 text-slate-950 font-moba text-[11px] font-black shrink-0"
-                          >
-                            📋 {isVi ? "SAO CHÉP" : "COPY"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -434,7 +446,7 @@ export function MultiplayerLobbyModal({
                       🔄 {isVi ? "Tạo mã mời mới" : "New Invite Code"}
                     </button>
                   </div>
-                  {p2pInviteCode && (
+                  {p2pInviteCode ? (
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
@@ -449,6 +461,10 @@ export function MultiplayerLobbyModal({
                       >
                         📋 {isVi ? "SAO CHÉP MÃ MỜI" : "COPY INVITE"}
                       </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-[#050A16] border border-emerald-500/30 px-2.5 py-2 text-[11px] text-emerald-200/85">
+                      ⏳ {isVi ? "Đang tạo Mã Mời P2P (AH1...) — hoặc bấm 'Tạo mã mời mới'." : "Generating P2P Invite Code (AH1...)..."}
                     </div>
                   )}
                   <div className="flex items-center gap-2">

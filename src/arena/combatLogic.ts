@@ -189,6 +189,65 @@ export function isLocalFileProtocol(protocol: string): boolean {
   return p === 'file:' || p === 'content:' || p === 'blob:';
 }
 
+export function isPrivateOrDevOrigin(originOrUrl: string): boolean {
+  const raw = (originOrUrl || '').trim();
+  if (!raw) return true;
+  let hostname = '';
+  let protocol = '';
+  try {
+    const parsed = new URL(raw);
+    hostname = (parsed.hostname || '').toLowerCase();
+    protocol = (parsed.protocol || '').toLowerCase();
+  } catch {
+    return true;
+  }
+  if (protocol !== 'http:' && protocol !== 'https:') return true;
+  if (
+    !hostname ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname === '::1' ||
+    hostname === '[::1]' ||
+    hostname.endsWith('.local')
+  ) {
+    return true;
+  }
+  if (/^ais-dev-/i.test(hostname)) {
+    return true;
+  }
+  if (/^10\.\d+\.\d+\.\d+$/.test(hostname) || /^192\.168\.\d+\.\d+$/.test(hostname)) {
+    return true;
+  }
+  const m172 = hostname.match(/^172\.(\d+)\.\d+\.\d+$/);
+  if (m172) {
+    const second = Number(m172[1]);
+    if (second >= 16 && second <= 31) return true;
+  }
+  return false;
+}
+
+export function classifyJoinCode(rawCode: string): {
+  kind: 'empty' | 'p2p_signal' | 'server_room';
+  normalized: string;
+} {
+  const stripped = String(rawCode || '').trim().replace(/\s+/g, '');
+  if (!stripped) {
+    return { kind: 'empty', normalized: '' };
+  }
+  const p2pMatch = stripped.match(/^(ah1[gj]):(.+)$/i);
+  if (p2pMatch) {
+    return {
+      kind: 'p2p_signal',
+      normalized: `${p2pMatch[1].toUpperCase()}:${p2pMatch[2]}`,
+    };
+  }
+  return {
+    kind: 'server_room',
+    normalized: stripped.toUpperCase(),
+  };
+}
+
 export function buildCoopWsUrl(params: {
   protocol: string;
   host: string;
@@ -199,11 +258,9 @@ export function buildCoopWsUrl(params: {
     if (override.startsWith('ws://') || override.startsWith('wss://')) {
       return { ok: true, url: override };
     }
-    if (override.startsWith('http://')) {
-      return { ok: true, url: override.replace(/^http:\/\//, 'ws://') };
-    }
-    if (override.startsWith('https://')) {
-      return { ok: true, url: override.replace(/^https:\/\//, 'wss://') };
+    if (override.startsWith('http://') || override.startsWith('https://')) {
+      const wsBase = override.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://').replace(/\/+$/, '');
+      return { ok: true, url: wsBase.endsWith('/ws') ? wsBase : `${wsBase}/ws` };
     }
   }
 
@@ -212,7 +269,7 @@ export function buildCoopWsUrl(params: {
       ok: false,
       reason: 'file_protocol',
       message:
-        'Bạn đang mở file HTML đã tải về máy nên không có máy chủ gốc để tạo mã 6 ký tự. Hãy mở link web trên Chrome/Safari hoặc dùng chế độ P2P Trực Tiếp bên dưới để chơi với bạn bè!',
+        'Bạn đang mở file HTML đã tải về máy. Hệ thống sẽ dùng chế độ P2P Trực Tiếp để bạn tạo phòng và mời bạn bè bằng Mã Mời AH1...!',
     };
   }
 
@@ -252,7 +309,7 @@ export function buildCoopHttpBase(params: {
       ok: false,
       reason: 'file_protocol',
       message:
-        'Bạn đang mở file HTML đã tải về máy nên không kết nối được máy chủ web. Hãy mở link web trên Chrome/Safari hoặc dùng chế độ P2P Trực Tiếp bên dưới!',
+        'Bạn đang mở file HTML đã tải về máy. Hệ thống sẽ tự chuyển sang chế độ P2P Trực Tiếp (hoặc bạn có thể dán link máy chủ vào mục Kết nối link)!',
     };
   }
 
@@ -396,3 +453,162 @@ export function detectClientEnvironment(params: {
     supportsNativeFullscreen,
   };
 }
+
+export type TaiDuDroneMode = 'attack' | 'guard' | 'pursuit';
+
+export const TAI_DU_DRONE_MODES: TaiDuDroneMode[] = ['attack', 'guard', 'pursuit'];
+
+export function cycleTaiDuDroneMode(current: TaiDuDroneMode): TaiDuDroneMode {
+  const idx = TAI_DU_DRONE_MODES.indexOf(current);
+  return TAI_DU_DRONE_MODES[(idx + 1) % TAI_DU_DRONE_MODES.length];
+}
+
+export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
+  if (mode === 'guard') {
+    return {
+      mode: 'guard' as const,
+      label: 'Hộ Vệ',
+      fireInterval: 0.9,
+      damageScale: 0.35,
+      orbitRadius: 42,
+      healInterval: 1.5,
+      healPctMaxHp: 0.045,
+      guardAbsorbPct: 0.28,
+      guardPulseThreshold: 140,
+      guardPulseHealRatio: 0.14,
+      pursuitSpeedBonus: 0,
+    };
+  }
+  if (mode === 'pursuit') {
+    return {
+      mode: 'pursuit' as const,
+      label: 'Truy Kích',
+      fireInterval: 0.36,
+      damageScale: 0.52,
+      orbitRadius: 118,
+      healInterval: 0,
+      healPctMaxHp: 0,
+      guardAbsorbPct: 0,
+      guardPulseThreshold: 0,
+      guardPulseHealRatio: 0,
+      pursuitSpeedBonus: 28,
+    };
+  }
+  return {
+    mode: 'attack' as const,
+    label: 'Tấn Công',
+    fireInterval: 0.48,
+    damageScale: 0.64,
+    orbitRadius: 56,
+    healInterval: 0,
+    healPctMaxHp: 0,
+    guardAbsorbPct: 0,
+    guardPulseThreshold: 0,
+    guardPulseHealRatio: 0,
+    pursuitSpeedBonus: 0,
+  };
+}
+
+export function computeNguyenOverhealConversion(params: {
+  currentHp: number;
+  maxHp: number;
+  currentShield: number;
+  rawHeal: number;
+  healAmp?: number;
+  lowHpThreshold?: number;
+  lowHpBonusAmp?: number;
+  shieldCapRatio?: number;
+  convertOverheal?: boolean;
+}) {
+  const maxHp = Math.max(1, params.maxHp);
+  const currentHp = Math.max(0, Math.min(maxHp, params.currentHp));
+  const currentShield = Math.max(0, params.currentShield || 0);
+  const rawHeal = Math.max(0, params.rawHeal || 0);
+  const threshold = params.lowHpThreshold ?? 0.45;
+  const isLowHp = currentHp / maxHp <= threshold;
+  const lowHpMult = isLowHp ? 1 + (params.lowHpBonusAmp ?? 0.6) : 1;
+  const ampMult = 1 + Math.max(0, params.healAmp || 0);
+  const totalEffectiveHeal = Math.round(rawHeal * ampMult * lowHpMult);
+
+  const missingHp = Math.max(0, maxHp - currentHp);
+  const actualHpHealed = Math.min(missingHp, totalEffectiveHeal);
+  const nextHp = currentHp + actualHpHealed;
+
+  const overheal = Math.max(0, totalEffectiveHeal - actualHpHealed);
+  const shieldCap = Math.round(maxHp * (params.shieldCapRatio ?? 1.0));
+  const convert = params.convertOverheal !== false;
+  const shieldAdded = convert ? Math.max(0, Math.min(overheal, Math.max(0, shieldCap - currentShield))) : 0;
+  const nextShield = currentShield + shieldAdded;
+
+  return {
+    nextHp,
+    nextShield,
+    actualHpHealed,
+    shieldAdded,
+    overheal,
+    totalEffectiveHeal,
+    isLowHp,
+  };
+}
+
+export function computeLuanPortalBeamTransform(params: {
+  baseDamage: number;
+  baseRange: number;
+  portalCount: number;
+  passThroughCount: number;
+}) {
+  const passed = Math.max(0, params.passThroughCount || 0);
+  if (passed <= 0) {
+    return {
+      damage: Math.round(params.baseDamage),
+      range: Math.round(params.baseRange),
+      splitStreams: 1,
+      boosted: false,
+    };
+  }
+  const activePortals = Math.max(1, Math.min(3, params.portalCount || 1));
+  const splitStreams = activePortals >= 2 ? 3 : 2;
+  return {
+    damage: Math.round(params.baseDamage * 1.28),
+    range: Math.round(params.baseRange * 1.45),
+    splitStreams,
+    boosted: true,
+  };
+}
+
+export function computeItemParryAndReflect(params: {
+  incomingDamage: number;
+  parryChance?: number;
+  reflectPct?: number;
+  damageReduction?: number;
+  parryRoll?: number;
+}) {
+  const incoming = Math.max(0, params.incomingDamage || 0);
+  const dr = Math.max(0, Math.min(0.75, params.damageReduction || 0));
+  const parryChance = Math.max(0, Math.min(0.6, params.parryChance || 0));
+  const roll = params.parryRoll ?? 1;
+  const parried = parryChance > 0 && roll < parryChance;
+
+  if (parried) {
+    const damageTaken = Math.max(1, Math.round(incoming * 0.2 * (1 - dr)));
+    const reflectDamage = Math.round(incoming * (0.45 + Math.max(0, params.reflectPct || 0)));
+    return { parried: true, damageTaken, reflectDamage };
+  }
+
+  const damageTaken = Math.max(1, Math.round(incoming * (1 - dr)));
+  const reflectDamage = Math.round(incoming * Math.max(0, params.reflectPct || 0));
+  return { parried: false, damageTaken, reflectDamage };
+}
+
+export function computeDanhDragonFormModifiers(active: boolean) {
+  return {
+    duration: 12,
+    cooldown: 22,
+    ccImmune: active,
+    damageReductionBonus: active ? 0.35 : 0,
+    attackSpeedMult: active ? 1.35 : 1.0,
+    basicDmgMult: active ? 1.35 : 1.0,
+    transformsC1C2ToFireBreath: active,
+  };
+}
+

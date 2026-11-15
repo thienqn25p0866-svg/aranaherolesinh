@@ -1,4 +1,11 @@
-import { buildCoopWsUrl, buildCoopHttpBase, coalesceCoopOutbox } from "./combatLogic";
+import {
+  buildCoopWsUrl,
+  buildCoopHttpBase,
+  coalesceCoopOutbox,
+  isLocalFileProtocol,
+  isPrivateOrDevOrigin,
+  classifyJoinCode,
+} from "./combatLogic";
 import { P2PRoomHost, P2PRoomPeerClient } from "./webrtcCoop";
 
 const CRITICAL_HTTP_TYPES = new Set([
@@ -75,25 +82,30 @@ class MultiplayerClient {
     }
   }
 
+  _getInjectedOverrideUrl() {
+    if (typeof window === "undefined") return "";
+    const protocol = window.location?.protocol || "";
+    const rawWs = typeof window.__ARENA_WS_URL__ === "string" ? window.__ARENA_WS_URL__.trim() : "";
+    const rawApi = typeof window.__ARENA_API_URL__ === "string" ? window.__ARENA_API_URL__.trim() : "";
+    const candidate = rawWs || rawApi;
+    if (!candidate) return "";
+    if (isLocalFileProtocol(protocol) && isPrivateOrDevOrigin(candidate)) {
+      return "";
+    }
+    return candidate;
+  }
+
+  _getEffectiveOverrideUrl() {
+    return this._getInjectedOverrideUrl() || this._getSavedServerUrl();
+  }
+
   getCustomServerUrl() {
     if (typeof window === "undefined") return "";
-    if (typeof window.__ARENA_API_URL__ === "string" && window.__ARENA_API_URL__.trim()) {
-      return window.__ARENA_API_URL__.trim();
-    }
-    return this._getSavedServerUrl();
+    return this._getEffectiveOverrideUrl();
   }
 
   getWsUrlResult() {
-    let overrideUrl = "";
-    if (typeof window !== "undefined") {
-      if (typeof window.__ARENA_WS_URL__ === "string" && window.__ARENA_WS_URL__.trim()) {
-        overrideUrl = window.__ARENA_WS_URL__;
-      } else if (typeof window.__ARENA_API_URL__ === "string" && window.__ARENA_API_URL__.trim()) {
-        overrideUrl = window.__ARENA_API_URL__;
-      } else {
-        overrideUrl = this._getSavedServerUrl();
-      }
-    }
+    const overrideUrl = this._getEffectiveOverrideUrl();
     return buildCoopWsUrl({
       protocol: typeof window !== "undefined" ? window.location.protocol : "http:",
       host: typeof window !== "undefined" ? window.location.host : "",
@@ -102,14 +114,7 @@ class MultiplayerClient {
   }
 
   getHttpBaseResult() {
-    let overrideUrl = "";
-    if (typeof window !== "undefined") {
-      if (typeof window.__ARENA_API_URL__ === "string" && window.__ARENA_API_URL__.trim()) {
-        overrideUrl = window.__ARENA_API_URL__;
-      } else {
-        overrideUrl = this._getSavedServerUrl();
-      }
-    }
+    const overrideUrl = this._getEffectiveOverrideUrl();
     return buildCoopHttpBase({
       protocol: typeof window !== "undefined" ? window.location.protocol : "http:",
       host: typeof window !== "undefined" ? window.location.host : "",
@@ -153,14 +158,24 @@ class MultiplayerClient {
     if (notifyServer && this.playerId && this.httpBaseUrl) {
       const url = `${this.httpBaseUrl}/api/coop/leave`;
       const body = JSON.stringify({ playerId: this.playerId });
+      const cred = this._isCrossOriginHttp() ? "omit" : "same-origin";
       try {
-        if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        if (!this._isCrossOriginHttp() && typeof navigator !== "undefined" && navigator.sendBeacon) {
           navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
         } else {
-          fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+          fetch(url, { method: "POST", credentials: cred, headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
         }
       } catch {
       }
+    }
+  }
+
+  _isCrossOriginHttp() {
+    if (typeof window === "undefined" || !this.httpBaseUrl) return false;
+    try {
+      return new URL(this.httpBaseUrl).origin !== window.location.origin;
+    } catch {
+      return true;
     }
   }
 
@@ -168,7 +183,7 @@ class MultiplayerClient {
     if (!msg || !msg.type) return;
 
     if (msg.type === "CONNECTED") {
-      this.playerId = msg.playerId;
+      this.playerId = msg.playerId || this.playerId;
     } else if (msg.type === "ROOM_JOINED") {
       this.playerId = msg.playerId || this.playerId;
       this.room = msg.room;
@@ -182,7 +197,18 @@ class MultiplayerClient {
       msg.type === "MATCH_OVER"
     ) {
       if (msg.room) {
+        const hadNoRoom = !this.room;
         this.room = msg.room;
+        if (
+          hadNoRoom &&
+          msg.type === "ROOM_UPDATE" &&
+          this.playerId &&
+          Array.isArray(msg.room.members) &&
+          msg.room.members.some((m) => m.id === this.playerId)
+        ) {
+          this.emit({ type: "ROOM_JOINED", playerId: this.playerId, room: msg.room });
+          return;
+        }
       }
     } else if (msg.type === "LEFT_ROOM") {
       this.room = null;
@@ -211,7 +237,7 @@ class MultiplayerClient {
           if (this.ws === ws) this.ws = null;
           reject(new Error("WebSocket handshake timeout"));
         }
-      }, 2500);
+      }, 1400);
 
       ws.onopen = () => {
         if (this.ws !== ws) return;
@@ -276,12 +302,13 @@ class MultiplayerClient {
     this.httpBaseUrl = httpRes.baseUrl;
 
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 2000) : null;
 
     let res;
     try {
       res = await fetch(`${this.httpBaseUrl}/api/coop/connect`, {
         method: "POST",
+        credentials: this._isCrossOriginHttp() ? "omit" : "same-origin",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         body: JSON.stringify({}),
@@ -329,6 +356,7 @@ class MultiplayerClient {
           `${this.httpBaseUrl}/api/coop/poll?playerId=${encodeURIComponent(this.playerId)}&wait=1800`,
           {
             method: "GET",
+            credentials: this._isCrossOriginHttp() ? "omit" : "same-origin",
             cache: "no-store",
             signal: abortCtrl ? abortCtrl.signal : undefined,
           }
@@ -380,6 +408,7 @@ class MultiplayerClient {
     try {
       const res = await fetch(`${this.httpBaseUrl}/api/coop/send`, {
         method: "POST",
+        credentials: this._isCrossOriginHttp() ? "omit" : "same-origin",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         body: JSON.stringify({ playerId: this.playerId, messages: batch }),
@@ -527,9 +556,17 @@ class MultiplayerClient {
     this.p2pHost = host;
     this.connected = true;
     host.start();
-    const invite = await host.createInviteOffer();
+    let inviteCode = "";
+    let inviteError = "";
+    try {
+      const invite = await host.createInviteOffer();
+      inviteCode = invite?.code || "";
+    } catch (err) {
+      inviteError = err?.message || "Chưa tạo được mã mời P2P tự động.";
+    }
     this.emit({ type: "WS_OPEN", transport: "p2p_host" });
-    return { room: this.room, inviteCode: invite.code };
+    this.emit({ type: "P2P_INVITE_READY", inviteCode, inviteError });
+    return { mode: "p2p", room: this.room, inviteCode, inviteError };
   }
 
   async createP2PInviteOffer() {
@@ -574,6 +611,9 @@ class MultiplayerClient {
     });
     this.p2pPeer = peer;
     const answerCode = await peer.createAnswerFromOffer(offerCode, playerName, heroId);
+    if (peer.playerId) {
+      this.playerId = peer.playerId;
+    }
     return { answerCode };
   }
 
@@ -661,11 +701,54 @@ class MultiplayerClient {
   }
 
   async createRoom(playerName, heroId) {
-    await this._ensureSend({ type: "CREATE_ROOM", playerName, heroId });
+    if (this.transportMode === "p2p_host" && this.p2pHost && this.room) {
+      return { mode: "p2p", room: this.room, inviteCode: "" };
+    }
+
+    const protocol = typeof window !== "undefined" ? window.location?.protocol || "http:" : "http:";
+    const hasCustomServer = Boolean(this._getEffectiveOverrideUrl());
+    const localFile = isLocalFileProtocol(protocol);
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+
+    if (!offline && !(localFile && !hasCustomServer)) {
+      try {
+        await this._ensureSend({ type: "CREATE_ROOM", playerName, heroId });
+        return { mode: "server", room: this.room };
+      } catch (err) {
+        console.info("Co-op server unavailable during CREATE_ROOM, falling back to Direct P2P:", err?.message || err);
+      }
+    }
+
+    return await this.startP2PHost(playerName, heroId);
   }
 
   async joinRoom(roomId, playerName, heroId) {
-    await this._ensureSend({ type: "JOIN_ROOM", roomId, playerName, heroId });
+    const classified = classifyJoinCode(roomId);
+    if (classified.kind === "empty") {
+      throw new Error("Vui lòng nhập mã ID phòng hoặc mã mời P2P (AH1...).");
+    }
+    if (classified.kind === "p2p_signal") {
+      const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId);
+      return { mode: "p2p", ...p2pRes };
+    }
+
+    const protocol = typeof window !== "undefined" ? window.location?.protocol || "http:" : "http:";
+    const hasCustomServer = Boolean(this._getEffectiveOverrideUrl());
+    if (isLocalFileProtocol(protocol) && !hasCustomServer) {
+      throw new Error(
+        "Bạn đang mở file HTML tải về máy (không có máy chủ web). Để vào phòng bạn bè từ file này, hãy dán Mã Mời P2P (bắt đầu bằng AH1...) vào đây hoặc ở mục P2P Trực Tiếp bên dưới."
+      );
+    }
+
+    try {
+      await this._ensureSend({ type: "JOIN_ROOM", roomId: classified.normalized, playerName, heroId });
+      return { mode: "server", room: this.room };
+    } catch (err) {
+      throw new Error(
+        err?.message ||
+          "Không thể kết nối máy chủ Co-op để tìm mã 6 ký tự. Nếu chơi qua file HTML tải về máy, hãy dán Mã Mời P2P (AH1...) từ Chủ phòng."
+      );
+    }
   }
 
   leaveRoom() {

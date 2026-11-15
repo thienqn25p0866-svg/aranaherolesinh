@@ -1185,9 +1185,8 @@ async function createApp() {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: disableHmr ? false : true,
-        ws: disableHmr ? false : { server, path: "/__vite_ws" },
-        ...(disableHmr ? { watch: null } : {}),
+        hmr: disableHmr ? false : { server, path: "/__vite_ws" },
+        ...(disableHmr ? { ws: false, watch: null } : {}),
       },
       plugins: disableHmr
         ? [
@@ -1197,10 +1196,15 @@ async function createApp() {
               transform(code: string, id: string) {
                 if (id.replace(/\\/g, "/").endsWith("/vite/dist/client/client.mjs")) {
                   return {
-                    code: code.replace(
-                      "transport.connect(createHMRHandler(handleMessage));",
-                      "/* HMR disabled: WebSocket transport suppressed */"
-                    ),
+                    code: code
+                      .replace(
+                        "transport.connect(createHMRHandler(handleMessage));",
+                        "/* HMR disabled: WebSocket transport suppressed */"
+                      )
+                      .replace(
+                        /new WebSocket\(/g,
+                        "/* HMR disabled */ (() => { throw new Error('HMR disabled'); })("
+                      ),
                     map: null,
                   };
                 }

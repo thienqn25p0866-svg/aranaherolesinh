@@ -1203,6 +1203,7 @@ function drawDanhGreatsword(ctx, p, t, state, isMono) {
   let isCharging = p.chargeState && p.chargeState.active;
   let chargeRatio = isCharging ? clamp(p.chargeState.elapsed / Math.max(0.1, p.chargeState.maxDur), 0, 1) : 0;
   let isBuffed =
+    p.danh_dragonTimer > 0 ||
     p.danh_khaiSonTimer > 0 ||
     p.danh_longNgamTimer > 0 ||
     p.danh_thienPhatTimer > 0 ||
@@ -1336,6 +1337,168 @@ function drawDanhGreatsword(ctx, p, t, state, isMono) {
   ctx.restore();
 }
 
+function drawLuanCoreOrb(ctx, p, t, state, isMono) {
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.9 + (state.hasAtk ? 0.55 : 0), 0, 1.3);
+  let thrust = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 9 : 0;
+  let hover = Math.sin(t * 4.2) * 2.2;
+  let ox = 25 + thrust;
+  let oy = hover;
+
+  ctx.save();
+  // Twin tilted dimensional orbital rings around Luận's floating core orb
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.rotate(t * 2.2);
+  ctx.strokeStyle = isMono ? "#111111" : "#A855F7";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 13.5 + flare * 2, 5.2, 0.35, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.rotate(-t * 4.1 + 1.1);
+  ctx.strokeStyle = isMono ? "#555555" : "#E879F9";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 11 + flare * 1.6, 4.4, -0.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Dark void-violet core sphere
+  let orbR = 7.4 + flare * 1.6;
+  let orbGrad = ctx.createRadialGradient(ox - 2, oy - 2, 1, ox, oy, orbR);
+  if (isMono) {
+    orbGrad.addColorStop(0, "#FFFFFF");
+    orbGrad.addColorStop(1, "#000000");
+  } else {
+    orbGrad.addColorStop(0, "#F5D0FE");
+    orbGrad.addColorStop(0.42, "#9333EA");
+    orbGrad.addColorStop(1, "#1E1038");
+  }
+  ctx.beginPath();
+  ctx.arc(ox, oy, orbR, 0, Math.PI * 2);
+  ctx.fillStyle = orbGrad;
+  ctx.fill();
+  ctx.strokeStyle = isMono ? "#000000" : "#E879F9";
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  // Crystalline fracture core star
+  drawFourPointStar(ctx, ox, oy, 6 + flare * 3, 2.1, "#FFFFFF", isMono ? "#000000" : "#C084FC");
+  drawHandGrip(ctx, 13, 8, "#4C1D95", "#C084FC", 3.4, isMono);
+  ctx.restore();
+}
+
+function drawTaiDuTechRifle(ctx, p, t, state, isMono) {
+  let recoil = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 5.5 : 0;
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (state.hasAtk ? 0.5 : 0), 0, 1.3);
+  let mode = p.taidu_droneMode || "attack";
+  let coreCol = isMono ? "#FFFFFF" : mode === "guard" ? "#34D399" : mode === "pursuit" ? "#FBBF24" : "#38BDF8";
+
+  ctx.save();
+  ctx.translate(10 - recoil, 6);
+
+  // Stock & tactical grip
+  ctx.fillStyle = isMono ? "#111111" : "#1E293B";
+  ctx.strokeStyle = "#070B14";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-6, -3.5);
+  ctx.lineTo(14, -4.5);
+  ctx.lineTo(14, 4.5);
+  ctx.lineTo(-4, 4.2);
+  ctx.lineTo(-9, 6.5);
+  ctx.lineTo(-9, -1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Heavy orange-blue pulse barrel shroud
+  ctx.fillStyle = isMono ? "#333333" : "#F97316";
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(10, -4.4, 21, 8.8, 2.2) : ctx.rect(10, -4.4, 21, 8.8);
+  ctx.fill();
+  ctx.stroke();
+
+  // Upper cyan plasma rail & holographic sight
+  ctx.fillStyle = coreCol;
+  ctx.fillRect(11, -1.6, 17, 3.2);
+  ctx.fillStyle = isMono ? "#000000" : "#0F172A";
+  ctx.fillRect(14, -6.5, 9, 2.2);
+
+  // Extended twin railgun muzzle prongs
+  ctx.fillStyle = isMono ? "#777777" : "#38BDF8";
+  ctx.fillRect(30, -3.5, 6.5, 2.2);
+  ctx.fillRect(30, 1.3, 6.5, 2.2);
+
+  if (flare > 0.25) {
+    drawFourPointStar(ctx, 38, 0, 7.5 * flare, 2.2 * flare, "#FEF08A", "#F97316");
+  }
+  drawHandGrip(ctx, 2, 2, "#EA580C", "#38BDF8", 3.6, isMono);
+  ctx.restore();
+}
+
+function drawNguyenLifeAegis(ctx, p, t, state, isMono) {
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.75 + (state.hasAtk ? 0.45 : 0), 0, 1.3);
+  let sweep = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 0.42 : Math.sin(t * 2.4) * 0.05;
+
+  ctx.save();
+  ctx.rotate(sweep);
+  ctx.translate(14, 0);
+
+  // Emerald & Gold Sanctuary Staff / Conduit Shaft
+  ctx.strokeStyle = isMono ? "#111111" : "#FBBF24";
+  ctx.lineWidth = 3.2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-10, 9);
+  ctx.lineTo(14, -6);
+  ctx.stroke();
+
+  // Floating Golden-Emerald Life Crest Ring
+  ctx.save();
+  ctx.translate(15, -7);
+  ctx.rotate(t * 1.4);
+  ctx.strokeStyle = isMono ? "#000000" : "#10B981";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, 8.5 + flare * 1.5, -2.1, 2.1);
+  ctx.stroke();
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, 6.2 + flare * 1.2, 0.8, 5.1);
+  ctx.stroke();
+
+  // Radiant golden life core inside ring
+  ctx.beginPath();
+  ctx.arc(0, 0, 4.2 + flare * 1.1, 0, Math.PI * 2);
+  ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+  ctx.fill();
+  ctx.strokeStyle = isMono ? "#000000" : "#059669";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.restore();
+
+  // Off-hand glowing energy buckler on left side
+  ctx.save();
+  ctx.translate(5, -13);
+  ctx.rotate(-0.45);
+  ctx.fillStyle = isMono ? "#222222" : "rgba(16, 185, 129, 0.72)";
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(-2, -8);
+  ctx.quadraticCurveTo(8, 0, -2, 8);
+  ctx.quadraticCurveTo(2, 0, -2, -8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  drawHandGrip(ctx, 2, 2, "#059669", "#FDE047", 3.6, isMono);
+  ctx.restore();
+}
+
 export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
   let atkDur = Math.max(0.06, p.weaponAttackDuration || 0.22);
   let hasAtk = p.attackAnimTimer > 0;
@@ -1366,7 +1529,10 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
     duccong: 1.24,
     gau: 1.22,
     bao: 1.30,
-    danh: 1.30
+    danh: 1.30,
+    luan: 1.24,
+    taidu: 1.28,
+    nguyen: 1.26
   };
   let sc = scaleMap[heroId] || 1.26;
   ctx.save();
@@ -1402,6 +1568,15 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       break;
     case "danh":
       drawDanhGreatsword(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "luan":
+      drawLuanCoreOrb(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "taidu":
+      drawTaiDuTechRifle(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "nguyen":
+      drawNguyenLifeAegis(ctx, p, elapsedTime, state, isMono);
       break;
     default:
       break;
@@ -1659,6 +1834,143 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     return;
   }
 
+  if (h.kind === "luan_shard") {
+    let sc = h.portalBoosted ? 1.28 : 1.0;
+    ctx.scale(sc, sc);
+    ctx.strokeStyle = isMono ? "#000000" : h.portalBoosted ? "rgba(232, 121, 249, 0.72)" : "rgba(168, 85, 247, 0.55)";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-22, 0);
+    ctx.lineTo(-4, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#111111" : "#3B0764";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : h.portalBoosted ? "#F5D0FE" : "#C084FC";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(15, 0);
+    ctx.lineTo(-2, -6.5);
+    ctx.lineTo(-10, 0);
+    ctx.lineTo(-2, 6.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#F5D0FE";
+    ctx.beginPath();
+    ctx.moveTo(9, 0);
+    ctx.lineTo(-1, -2.5);
+    ctx.lineTo(-5, 0);
+    ctx.lineTo(-1, 2.5);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "taidu_bolt" || h.kind === "turret_shot") {
+    let isTurret = h.kind === "turret_shot";
+    ctx.strokeStyle = isMono ? "#000000" : isTurret ? "rgba(56, 189, 248, 0.7)" : "rgba(249, 115, 22, 0.72)";
+    ctx.lineWidth = isTurret ? 2.6 : 3.4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-18, 0);
+    ctx.lineTo(9, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : isTurret ? "#BAE6FD" : "#FEF08A";
+    ctx.strokeStyle = isMono ? "#000000" : isTurret ? "#0284C7" : "#EA580C";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(3, -4);
+    ctx.lineTo(5, 0);
+    ctx.lineTo(3, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "taidu_missile") {
+    // Twin flame jet wake
+    let flk = Math.sin(elapsedTime * 28 + (h.id || 0)) * 2.2;
+    ctx.strokeStyle = isMono ? "#000000" : "#F97316";
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-11, 0);
+    ctx.lineTo(-23, flk * 0.6);
+    ctx.stroke();
+
+    // Missile chassis & warhead
+    ctx.fillStyle = isMono ? "#222222" : "#0EA5E9";
+    ctx.strokeStyle = "#070B14";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.lineTo(6, -5);
+    ctx.lineTo(-10, -5);
+    ctx.lineTo(-14, -8);
+    ctx.lineTo(-10, 0);
+    ctx.lineTo(-14, 8);
+    ctx.lineTo(-10, 5);
+    ctx.lineTo(6, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(9, 0, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "nguyen_bolt") {
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(52, 211, 153, 0.55)";
+    ctx.lineWidth = 3.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(0, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(6, h.radius), 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : "#10B981";
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, 5.2, 1.8, "#FEF08A", null);
+    return;
+  }
+
+  if (h.kind === "boomerang_glaive") {
+    ctx.rotate(elapsedTime * 16);
+    ctx.strokeStyle = isMono ? "#000000" : "#FBBF24";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 13, -1.35, 1.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, 13, Math.PI - 1.35, Math.PI + 1.35);
+    ctx.stroke();
+    ctx.fillStyle = "#38BDF8";
+    ctx.beginPath();
+    ctx.arc(0, 0, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "wisp_bolt") {
+    ctx.beginPath();
+    ctx.arc(0, 0, 6.2, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#C084FC";
+    ctx.fill();
+    ctx.strokeStyle = "#38BDF8";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    return;
+  }
+
   ctx.beginPath();
   ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#000000" : h.color;
@@ -1802,6 +2114,68 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.beginPath();
     ctx.moveTo(24, 0);
     ctx.lineTo(reach + 12, 0);
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "danh_firebreath") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let reach = h.radius * (0.45 + 0.55 * Math.min(1, f * 1.45));
+    let half = h.spread * 0.5;
+    // Outer crimson dragon-blaze cone
+    ctx.fillStyle = isMono ? "rgba(0,0,0,0.45)" : `rgba(239, 68, 68, ${0.42 * alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.arc(0, 0, reach, -half, half);
+    ctx.closePath();
+    ctx.fill();
+    // Inner blazing gold plasma core
+    ctx.fillStyle = isMono ? "rgba(255,255,255,0.45)" : `rgba(251, 191, 36, ${0.52 * alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.arc(0, 0, reach * 0.72, -half * 0.68, half * 0.68);
+    ctx.closePath();
+    ctx.fill();
+    drawTaperedArc(ctx, 0, 0, reach * 0.94, -half, half, 12 * alpha + 2, "#F97316", "#FEF08A", isMono);
+    return;
+  }
+
+  if (h.kind === "luan_portal_wave") {
+    let r = h.radius * (0.28 + 0.72 * f);
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = isMono ? "#000000" : "#A855F7";
+    ctx.lineWidth = 6 * alpha + 1.4;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r * 0.74, 0, Math.PI * 2);
+    ctx.strokeStyle = "#F5D0FE";
+    ctx.lineWidth = 2.6 * alpha;
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "nguyen_wave") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    let reach = h.radius * (0.35 + 0.65 * Math.pow(f, 0.75));
+    drawTaperedArc(ctx, 0, 0, reach, -(h.spread || Math.PI) * 0.5, (h.spread || Math.PI) * 0.5, 11 * alpha + 2, "#10B981", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.72, -(h.spread || Math.PI) * 0.42, (h.spread || Math.PI) * 0.42, 6 * alpha + 1.2, "#34D399", "#FFFFFF", isMono);
+    return;
+  }
+
+  if (h.kind === "shield_explode") {
+    let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.65));
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = isMono ? "#000000" : h.color || "#38BDF8";
+    ctx.lineWidth = 7 * alpha + 1.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r * 0.75, 0, Math.PI * 2);
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 3 * alpha;
     ctx.stroke();
     return;
   }
@@ -2233,7 +2607,7 @@ export function drawHeroBody(ctx, opts) {
     ctx.arc(-radius * 0.02, 0, radius * 0.29, 0, Math.PI * 2);
     ctx.fill();
   } else if (heroId === "danh") {
-    // Dragon Swordsman golden chevron + glowing dragon core
+    // Dragon Swordsman golden chevron + glowing dragon core + fierce dragon horns when Ult active
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
     ctx.lineWidth = 2.4;
     ctx.lineCap = "round";
@@ -2243,6 +2617,16 @@ export function drawHeroBody(ctx, opts) {
     ctx.lineTo(radius * 0.18, 0);
     ctx.lineTo(-radius * 0.36, radius * 0.44);
     ctx.stroke();
+    if (isUlt) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#F97316";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(0, -radius * 0.5);
+      ctx.lineTo(-radius * 0.55, -radius * 0.72);
+      ctx.moveTo(0, radius * 0.5);
+      ctx.lineTo(-radius * 0.55, radius * 0.72);
+      ctx.stroke();
+    }
     ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
     ctx.beginPath();
     ctx.moveTo(0, -4);
@@ -2250,6 +2634,76 @@ export function drawHeroBody(ctx, opts) {
     ctx.lineTo(0, 4);
     ctx.lineTo(-5, 0);
     ctx.closePath();
+    ctx.fill();
+  } else if (heroId === "luan") {
+    // Luận — Deep violet-dark spatial fracture arcs + luminous magenta diamond orb core
+    ctx.fillStyle = isMono ? "#111111" : "#1E1038";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#C084FC";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.52, -radius * 0.36);
+    ctx.lineTo(-radius * 0.12, -radius * 0.08);
+    ctx.lineTo(-radius * 0.44, radius * 0.32);
+    ctx.moveTo(radius * 0.16, -radius * 0.46);
+    ctx.lineTo(-radius * 0.04, 0);
+    ctx.lineTo(radius * 0.22, radius * 0.44);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F5D0FE";
+    ctx.beginPath();
+    ctx.moveTo(0, -5.5);
+    ctx.lineTo(5.5, 0);
+    ctx.lineTo(0, 5.5);
+    ctx.lineTo(-5.5, 0);
+    ctx.closePath();
+    ctx.fill();
+  } else if (heroId === "taidu") {
+    // Tài Du — High-tech orange & cyan armored visor plating + amber targeting core
+    ctx.fillStyle = isMono ? "#222222" : "#0F172A";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.54, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.54, -Math.PI * 0.45, Math.PI * 0.45);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#F97316";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.48, -radius * 0.28);
+    ctx.lineTo(-radius * 0.08, 0);
+    ctx.lineTo(-radius * 0.48, radius * 0.28);
+    ctx.stroke();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.6, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (heroId === "nguyen") {
+    // Nguyên — Emerald guardian body with radiant golden life cross-lotus & energy aura ring
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.56, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    // Golden four-petal life cross
+    ctx.beginPath();
+    ctx.moveTo(0, -radius * 0.46);
+    ctx.lineTo(radius * 0.16, -radius * 0.16);
+    ctx.lineTo(radius * 0.46, 0);
+    ctx.lineTo(radius * 0.16, radius * 0.16);
+    ctx.lineTo(0, radius * 0.46);
+    ctx.lineTo(-radius * 0.16, radius * 0.16);
+    ctx.lineTo(-radius * 0.46, 0);
+    ctx.lineTo(-radius * 0.16, -radius * 0.16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = isMono ? "#000000" : "#059669";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.18, 0, Math.PI * 2);
     ctx.fill();
   } else {
     // Generic fallback inner crest
@@ -2515,7 +2969,21 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#10B981";
     ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.roundRect(30, -22, 22, 44, 5);
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(30, -22, 22, 44, 5);
+    } else {
+      const rx = 30, ry = -22, rw = 22, rh = 44, rr = 5;
+      ctx.moveTo(rx + rr, ry);
+      ctx.lineTo(rx + rw - rr, ry);
+      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rr);
+      ctx.lineTo(rx + rw, ry + rh - rr);
+      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rr, ry + rh);
+      ctx.lineTo(rx + rr, ry + rh);
+      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rr);
+      ctx.lineTo(rx, ry + rr);
+      ctx.quadraticCurveTo(rx, ry, rx + rr, ry);
+      ctx.closePath();
+    }
     ctx.fill();
     ctx.stroke();
 
