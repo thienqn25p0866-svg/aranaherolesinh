@@ -5,6 +5,7 @@ import {
   isLocalFileProtocol,
   isPrivateOrDevOrigin,
   classifyJoinCode,
+  isSixDigitCode,
 } from "./combatLogic";
 import { P2PRoomHost, P2PRoomPeerClient } from "./webrtcCoop";
 
@@ -176,6 +177,91 @@ class MultiplayerClient {
       return new URL(this.httpBaseUrl).origin !== window.location.origin;
     } catch {
       return true;
+    }
+  }
+
+  _isCrossOriginUrl(baseUrl) {
+    if (typeof window === "undefined" || !baseUrl) return false;
+    try {
+      return new URL(baseUrl).origin !== window.location.origin;
+    } catch {
+      return true;
+    }
+  }
+
+  async _postP2PSignal(kind, payload, forCode) {
+    if (!payload) return null;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
+    const httpRes = this.getHttpBaseResult();
+    if (!httpRes.ok || !httpRes.baseUrl) return null;
+
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 3500) : null;
+    try {
+      const res = await fetch(`${httpRes.baseUrl}/api/p2p/signal`, {
+        method: "POST",
+        credentials: this._isCrossOriginUrl(httpRes.baseUrl) ? "omit" : "same-origin",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ kind, payload, forCode }),
+        signal: controller ? controller.signal : undefined,
+      });
+      if (!res || !res.ok) return null;
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) return null;
+      const data = await res.json().catch(() => null);
+      if (data && data.ok && typeof data.code === "string" && isSixDigitCode(data.code)) {
+        return data.code;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  async _fetchP2PSignal(code, { optional = false } = {}) {
+    const clean = String(code || "").trim().replace(/\s+/g, "");
+    if (!isSixDigitCode(clean)) {
+      if (optional) return null;
+      throw new Error("Mã P2P phải gồm đúng 6 chữ số.");
+    }
+    const httpRes = this.getHttpBaseResult();
+    if (!httpRes.ok || !httpRes.baseUrl) {
+      if (optional) return null;
+      throw new Error("Không có kết nối máy chủ để tra cứu mã 6 số. Nếu chơi offline, hãy dán nguyên văn mã AH1...");
+    }
+
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 3500) : null;
+    try {
+      const res = await fetch(`${httpRes.baseUrl}/api/p2p/signal/${encodeURIComponent(clean)}`, {
+        method: "GET",
+        credentials: this._isCrossOriginUrl(httpRes.baseUrl) ? "omit" : "same-origin",
+        cache: "no-store",
+        signal: controller ? controller.signal : undefined,
+      });
+      if (!res) {
+        if (optional) return null;
+        throw new Error("Không thể kết nối máy chủ để tra cứu mã 6 số.");
+      }
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        if (optional) return null;
+        throw new Error("Máy chủ không trả về dữ liệu mã 6 số hợp lệ.");
+      }
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !data.ok) {
+        if (optional) return null;
+        throw new Error(data?.message || `Không tìm thấy mã ${clean} hoặc mã đã hết hạn.`);
+      }
+      return data;
+    } catch (err) {
+      if (optional) return null;
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 
@@ -560,7 +646,9 @@ class MultiplayerClient {
     let inviteError = "";
     try {
       const invite = await host.createInviteOffer();
-      inviteCode = invite?.code || "";
+      const rawCode = invite?.code || "";
+      const shortCode = rawCode ? await this._postP2PSignal("offer", rawCode) : null;
+      inviteCode = shortCode || rawCode;
     } catch (err) {
       inviteError = err?.message || "Chưa tạo được mã mời P2P tự động.";
     }
@@ -573,17 +661,51 @@ class MultiplayerClient {
     if (!this.p2pHost || this.transportMode !== "p2p_host") {
       throw new Error("Bạn chưa tạo phòng P2P.");
     }
-    return await this.p2pHost.createInviteOffer();
+    const raw = await this.p2pHost.createInviteOffer();
+    const rawCode = raw?.code || "";
+    const shortCode = rawCode ? await this._postP2PSignal("offer", rawCode) : null;
+    return {
+      ...raw,
+      rawCode,
+      code: shortCode || rawCode,
+    };
   }
 
-  async acceptP2PAnswer(answerCode) {
+  async acceptP2PAnswer(answerInput) {
     if (!this.p2pHost || this.transportMode !== "p2p_host") {
       throw new Error("Bạn chưa tạo phòng P2P.");
     }
-    return await this.p2pHost.acceptJoinAnswer(answerCode);
+    const cleanInput = String(answerInput || "").trim().replace(/\s+/g, "");
+    let resolvedAnswer = cleanInput;
+    if (isSixDigitCode(cleanInput)) {
+      const fetched = await this._fetchP2PSignal(cleanInput);
+      if (fetched.kind === "offer") {
+        throw new Error("Mã 6 số này là mã mời phòng, không phải Mã Phản Hồi từ bạn bè.");
+      }
+      if (!fetched.payload) {
+        throw new Error(`Không tìm thấy Mã Phản Hồi ${cleanInput} hoặc mã đã hết hạn.`);
+      }
+      resolvedAnswer = fetched.payload;
+    }
+    return await this.p2pHost.acceptJoinAnswer(resolvedAnswer);
   }
 
-  async joinP2PWithOffer(offerCode, playerName, heroId) {
+  async joinP2PWithOffer(offerInput, playerName, heroId, opts = {}) {
+    const cleanInput = String(offerInput || "").trim().replace(/\s+/g, "");
+    let resolvedOffer = cleanInput;
+    let usedShortOfferCode;
+    if (isSixDigitCode(cleanInput)) {
+      const fetched = opts?.preFetched || (await this._fetchP2PSignal(cleanInput));
+      if (fetched.kind === "answer") {
+        throw new Error("Mã 6 số này là Mã Phản Hồi P2P, không phải Mã Chia Sẻ phòng!");
+      }
+      if (!fetched.payload) {
+        throw new Error(`Không tìm thấy Mã Chia Sẻ ${cleanInput} hoặc mã đã hết hạn.`);
+      }
+      resolvedOffer = fetched.payload;
+      usedShortOfferCode = cleanInput;
+    }
+
     this.stopHeartbeat();
     this._cleanupSocket(this.ws);
     this.ws = null;
@@ -610,11 +732,15 @@ class MultiplayerClient {
       },
     });
     this.p2pPeer = peer;
-    const answerCode = await peer.createAnswerFromOffer(offerCode, playerName, heroId);
+    const rawAnswer = await peer.createAnswerFromOffer(resolvedOffer, playerName, heroId);
     if (peer.playerId) {
       this.playerId = peer.playerId;
     }
-    return { answerCode };
+    const shortAnswer = rawAnswer
+      ? await this._postP2PSignal("answer", rawAnswer, usedShortOfferCode)
+      : null;
+    const answerCode = shortAnswer || rawAnswer;
+    return { answerCode, rawAnswerCode: rawAnswer };
   }
 
   isConnected() {
@@ -725,7 +851,7 @@ class MultiplayerClient {
   async joinRoom(roomId, playerName, heroId) {
     const classified = classifyJoinCode(roomId);
     if (classified.kind === "empty") {
-      throw new Error("Vui lòng nhập mã ID phòng hoặc mã mời P2P (AH1...).");
+      throw new Error("Vui lòng nhập mã 6 số hoặc mã mời P2P (AH1...).");
     }
     if (classified.kind === "p2p_signal") {
       const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId);
@@ -736,8 +862,21 @@ class MultiplayerClient {
     const hasCustomServer = Boolean(this._getEffectiveOverrideUrl());
     if (isLocalFileProtocol(protocol) && !hasCustomServer) {
       throw new Error(
-        "Bạn đang mở file HTML tải về máy (không có máy chủ web). Để vào phòng bạn bè từ file này, hãy dán Mã Mời P2P (bắt đầu bằng AH1...) vào đây hoặc ở mục P2P Trực Tiếp bên dưới."
+        "Bạn đang mở file HTML tải về máy (không có máy chủ web). Để vào phòng bạn bè từ file này, hãy dán Mã Mời P2P (AH1...) hoặc nhập Link máy chủ."
       );
+    }
+
+    if (isSixDigitCode(classified.normalized) && this.getHttpBaseResult().ok) {
+      const p2pSignal = await this._fetchP2PSignal(classified.normalized, { optional: true });
+      if (p2pSignal) {
+        if (p2pSignal.kind === "answer") {
+          throw new Error("Mã 6 số này là Mã Phản Hồi P2P. Chỉ Chủ phòng mới dán mã này ở ô Ghép Đôi trong phòng P2P!");
+        }
+        if (p2pSignal.kind === "offer" && p2pSignal.payload) {
+          const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: p2pSignal });
+          return { mode: "p2p", ...p2pRes };
+        }
+      }
     }
 
     try {
@@ -746,7 +885,7 @@ class MultiplayerClient {
     } catch (err) {
       throw new Error(
         err?.message ||
-          "Không thể kết nối máy chủ Co-op để tìm mã 6 ký tự. Nếu chơi qua file HTML tải về máy, hãy dán Mã Mời P2P (AH1...) từ Chủ phòng."
+          "Không thể kết nối máy chủ Co-op để tìm mã 6 số. Nếu chơi qua file HTML tải về máy, hãy dán Mã Mời P2P (AH1...) từ Chủ phòng."
       );
     }
   }

@@ -1,4 +1,6 @@
-export const MAX_BOSS_CC_SEC = 2.5;
+export const MAX_WAVES = 27;
+export const BOSS_WAVES = [3, 6, 9, 12, 15, 18, 21, 24, 27] as const;
+export const MAX_BOSS_CC_SEC = 2.6;
 
 export const TIN_RESONANCE_MAX = 4;
 export const TIN_RESONANCE_DURATION = 6.0;
@@ -21,8 +23,17 @@ export function clampBossCcDuration(durationSec: number): number {
 }
 
 /**
- * Scales boss crowd-control duration upward with boss wave (3 -> 30) and phase (1 -> 3),
- * strictly capped at 2.5s maximum.
+ * Exact per-boss CC progression: starts at 1.0s on Boss 1 (Wave 3)
+ * and increases by +0.2s for each subsequent boss up to 2.6s at Wave 27.
+ */
+export function getBossStageCcDuration(bossWave: number): number {
+  const bossIndex = Math.max(0, Math.round((Math.max(3, bossWave) - 3) / 3));
+  return clampBossCcDuration(1.0 + bossIndex * 0.2);
+}
+
+/**
+ * Scales boss crowd-control duration upward with boss wave (3 -> 27) and phase (1 -> 3),
+ * strictly capped at 2.6s maximum.
  */
 export function getBossCcDuration(
   baseSec: number,
@@ -31,10 +42,10 @@ export function getBossCcDuration(
   ccType: BossCcType = 'stun'
 ): number {
   if (!Number.isFinite(baseSec) || baseSec <= 0) return 0;
-  const waveTier = Math.max(0, (Math.max(3, bossWave) - 3) / 3); // 0 at w3, 1 at w6, 4 at w15, up to 9 at w30
+  const waveTier = Math.max(0, (Math.max(3, bossWave) - 3) / 3); // 0 at w3 .. 8 at w27
   const phaseTier = Math.max(0, Math.min(2, phase - 1));
   const typeScale = ccType === 'slow' ? 1.15 : ccType === 'root' ? 1.08 : 1.0;
-  const waveScale = 1 + Math.min(0.95, waveTier * 0.14) + phaseTier * 0.14;
+  const waveScale = 1 + Math.min(1.12, waveTier * 0.14) + phaseTier * 0.14;
   return clampBossCcDuration(baseSec * waveScale * typeScale);
 }
 
@@ -45,10 +56,25 @@ export function getBossPowerModifiers(bossWave: number): {
 } {
   const waveTier = Math.max(0, (Math.max(3, bossWave) - 3) / 3);
   return {
-    hpMultiplier: Math.round((1.15 + Math.min(0.18, waveTier * 0.025)) * 1000) / 1000,
-    damageMultiplier: Math.round((1.12 + Math.min(0.16, waveTier * 0.02)) * 1000) / 1000,
-    speedMultiplier: Math.round((1.03 + Math.min(0.07, waveTier * 0.01)) * 1000) / 1000,
+    hpMultiplier: Math.round((1.28 + Math.min(0.24, waveTier * 0.03)) * 1000) / 1000,
+    damageMultiplier: Math.round((1.22 + Math.min(0.20, waveTier * 0.025)) * 1000) / 1000,
+    speedMultiplier: Math.round((1.06 + Math.min(0.08, waveTier * 0.01)) * 1000) / 1000,
   };
+}
+
+export const LUAN_C1_BASE_DMG = 28;
+export const LUAN_C1_AP_RATIO = 0.38;
+export const LUAN_RIFT_BASE_DMG = 7;
+export const LUAN_RIFT_AP_RATIO = 0.13;
+export const LUAN_RIFT_TICK_INTERVAL = 0.5;
+export const LUAN_RIFT_MAX_SEGMENTS = 14;
+
+export function computeLuanC1ShardDamage(ap: number): number {
+  return Math.round(LUAN_C1_BASE_DMG + LUAN_C1_AP_RATIO * Math.max(0, ap || 0));
+}
+
+export function computeLuanRiftTickDamage(ap: number): number {
+  return Math.round(LUAN_RIFT_BASE_DMG + LUAN_RIFT_AP_RATIO * Math.max(0, ap || 0));
 }
 
 export interface TinResonanceState {
@@ -227,6 +253,44 @@ export function isPrivateOrDevOrigin(originOrUrl: string): boolean {
   return false;
 }
 
+export const ITEM_TIER_RANK: Record<string, number> = {
+  basic: 1,
+  intermediate: 2,
+  advanced: 3,
+  rare: 4,
+  epic: 5,
+  mythic: 6,
+};
+
+export function parseItemNumericId(id: string): number {
+  const n = parseInt(String(id || '').replace('item_', ''), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function sortItemsByRarityAsc<T extends { id: string; tier: string; cost: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const rankDiff = (ITEM_TIER_RANK[a.tier] ?? 99) - (ITEM_TIER_RANK[b.tier] ?? 99);
+    if (rankDiff !== 0) return rankDiff;
+    const costDiff = (a.cost || 0) - (b.cost || 0);
+    if (costDiff !== 0) return costDiff;
+    return parseItemNumericId(a.id) - parseItemNumericId(b.id);
+  });
+}
+
+export function sortItemsByRarityDesc<T extends { id: string; tier: string; cost: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const rankDiff = (ITEM_TIER_RANK[b.tier] ?? 0) - (ITEM_TIER_RANK[a.tier] ?? 0);
+    if (rankDiff !== 0) return rankDiff;
+    const costDiff = (b.cost || 0) - (a.cost || 0);
+    if (costDiff !== 0) return costDiff;
+    return parseItemNumericId(a.id) - parseItemNumericId(b.id);
+  });
+}
+
+export function isSixDigitCode(rawCode: string): boolean {
+  return /^\d{6}$/.test(String(rawCode || '').trim().replace(/\s+/g, ''));
+}
+
 export function classifyJoinCode(rawCode: string): {
   kind: 'empty' | 'p2p_signal' | 'server_room';
   normalized: string;
@@ -346,11 +410,15 @@ export function coalesceCoopOutbox<T extends { type?: string }>(messages: T[]): 
 const COOP_WAVE_TARGET_TIMES: Record<number, number> = {
   1: 22, 2: 26, 3: 48, 4: 32, 5: 36,
   6: 58, 7: 40, 8: 44, 9: 68, 10: 50,
-  11: 55, 12: 78, 13: 60, 14: 65, 15: 95,
+  11: 55, 12: 78, 13: 60, 14: 65, 15: 88,
+  16: 65, 17: 70, 18: 98, 19: 75, 20: 80,
+  21: 108, 22: 85, 23: 90, 24: 118, 25: 95,
+  26: 100, 27: 135,
 };
 
 const COOP_BOSS_COIN_REWARDS: Record<number, number> = {
-  3: 150, 6: 220, 9: 300, 12: 400, 15: 550,
+  3: 150, 6: 220, 9: 300, 12: 400, 15: 500,
+  18: 620, 21: 760, 24: 920, 27: 1200,
 };
 
 export function computeCoopWaveReward(params: {
@@ -360,7 +428,7 @@ export function computeCoopWaveReward(params: {
   maxWaves?: number;
 }) {
   const wave = Math.max(1, Math.round(params.wave));
-  const maxWaves = params.maxWaves || 15;
+  const maxWaves = params.maxWaves || MAX_WAVES;
   const elapsedSec = Math.max(0.5, params.elapsedSec || 1);
   const baseCoins = 100 + 100 * (wave - 1);
   const targetSec = COOP_WAVE_TARGET_TIMES[wave] || 35;
@@ -390,7 +458,7 @@ export function computeCoopWaveReward(params: {
     speedClass = 'speed-slow';
   }
 
-  const isBossWave = wave === 3 || wave === 6 || wave === 9 || wave === 12 || wave === 15;
+  const isBossWave = (BOSS_WAVES as readonly number[]).includes(wave);
   const bossCoins = isBossWave ? COOP_BOSS_COIN_REWARDS[wave] || 150 : 0;
   const totalEarned = baseCoins + speedCoins + bossCoins;
 
@@ -632,4 +700,104 @@ export function computeDanhDragonFormModifiers(active: boolean) {
     transformsC1C2ToFireBreath: active,
   };
 }
+
+export type LayoutMode = 'auto' | 'portrait' | 'standard';
+export type PortraitFovPreset = 'wide' | 'balanced' | 'close';
+
+export interface CameraViewportConfig {
+  isPortrait: boolean;
+  zoom: number;
+  focusX: number;
+  focusY: number;
+  visibleWorldW: number;
+  visibleWorldH: number;
+}
+
+export function isPortraitViewport(
+  viewW: number,
+  viewH: number,
+  layoutMode: LayoutMode = 'auto'
+): boolean {
+  if (layoutMode === 'portrait') return true;
+  if (layoutMode === 'standard') return false;
+  return viewW > 0 && viewH > 0 && viewH > viewW && viewW <= 760;
+}
+
+export function computeCameraViewportConfig(params: {
+  viewW: number;
+  viewH: number;
+  layoutMode?: LayoutMode;
+  fovPreset?: PortraitFovPreset;
+}): CameraViewportConfig {
+  const viewW = Math.max(1, Number(params.viewW) || 1);
+  const viewH = Math.max(1, Number(params.viewH) || 1);
+  const layoutMode: LayoutMode = params.layoutMode || 'auto';
+  const fovPreset: PortraitFovPreset = params.fovPreset || 'balanced';
+  const isPortrait = isPortraitViewport(viewW, viewH, layoutMode);
+
+  if (!isPortrait) {
+    return {
+      isPortrait: false,
+      zoom: 1,
+      focusX: viewW / 2,
+      focusY: viewH / 2,
+      visibleWorldW: viewW,
+      visibleWorldH: viewH,
+    };
+  }
+
+  const presetBounds: Record<PortraitFovPreset, { targetW: number; minZoom: number; maxZoom: number }> = {
+    wide: { targetW: 780, minZoom: 0.46, maxZoom: 0.9 },
+    balanced: { targetW: 680, minZoom: 0.52, maxZoom: 0.92 },
+    close: { targetW: 540, minZoom: 0.62, maxZoom: 0.98 },
+  };
+  const cfg = presetBounds[fovPreset] || presetBounds.balanced;
+  const rawZoom = viewW / cfg.targetW;
+  const zoom = Math.round(Math.max(cfg.minZoom, Math.min(cfg.maxZoom, rawZoom)) * 1000) / 1000;
+  const focusX = viewW / 2;
+  const focusY = Math.round(viewH * 0.435);
+
+  return {
+    isPortrait: true,
+    zoom,
+    focusX,
+    focusY,
+    visibleWorldW: Math.round(viewW / zoom),
+    visibleWorldH: Math.round(viewH / zoom),
+  };
+}
+
+export function screenToWorldWithCamera(
+  screenX: number,
+  screenY: number,
+  cameraX: number,
+  cameraY: number,
+  vp: CameraViewportConfig
+): { x: number; y: number } {
+  const z = vp.zoom > 0 ? vp.zoom : 1;
+  return {
+    x: (screenX - vp.focusX) / z + cameraX,
+    y: (screenY - vp.focusY) / z + cameraY,
+  };
+}
+
+export function worldToScreenWithCamera(
+  worldX: number,
+  worldY: number,
+  cameraX: number,
+  cameraY: number,
+  vp: CameraViewportConfig
+): { x: number; y: number } {
+  const z = vp.zoom > 0 ? vp.zoom : 1;
+  return {
+    x: vp.focusX + (worldX - cameraX) * z,
+    y: vp.focusY + (worldY - cameraY) * z,
+  };
+}
+
+export function computeJoystickDragRadius(zoneWidthPx: number): number {
+  if (!Number.isFinite(zoneWidthPx) || zoneWidthPx <= 0) return 42;
+  return Math.max(28, Math.min(44, Math.round(zoneWidthPx * 0.31)));
+}
+
 

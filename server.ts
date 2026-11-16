@@ -11,21 +11,22 @@ const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3000);
 const MAX_PLAYERS_PER_ROOM = 4;
-const MAX_WAVES = 15;
-const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MAX_WAVES = 27;
+const P2P_SIGNAL_TTL_MS = 20 * 60 * 1000;
+const MAX_P2P_SIGNALS = 2000;
 
 const WAVE_TARGET_TIMES: Record<number, number> = {
   1: 22, 2: 26, 3: 48, 4: 32, 5: 36,
   6: 58, 7: 40, 8: 44, 9: 68, 10: 50,
-  11: 55, 12: 78, 13: 60, 14: 65, 15: 95,
+  11: 55, 12: 78, 13: 60, 14: 65, 15: 88,
   16: 65, 17: 70, 18: 98, 19: 75, 20: 80,
   21: 108, 22: 85, 23: 90, 24: 118, 25: 95,
-  26: 100, 27: 128, 28: 105, 29: 112, 30: 155,
+  26: 100, 27: 135,
 };
 
 const BOSS_COIN_REWARDS: Record<number, number> = {
-  3: 150, 6: 220, 9: 300, 12: 400, 15: 550,
-  18: 700, 21: 880, 24: 1100, 27: 1400, 30: 2000,
+  3: 150, 6: 220, 9: 300, 12: 400, 15: 500,
+  18: 620, 21: 760, 24: 920, 27: 1200,
 };
 
 interface RoomPlayerState {
@@ -112,19 +113,42 @@ interface ClientSession {
   lastSeen: number;
 }
 
+interface P2PSignalRecord {
+  code: string;
+  kind: "offer" | "answer";
+  payload: string;
+  forCode?: string;
+  createdAt: number;
+}
+
 const rooms = new Map<string, Room>();
 const sessions = new Map<string, ClientSession>();
 const wsToPlayerId = new Map<WebSocket, string>();
+const p2pSignals = new Map<string, P2PSignalRecord>();
+
+function cleanupExpiredP2PSignals(now = Date.now()) {
+  for (const [code, rec] of p2pSignals.entries()) {
+    if (now - rec.createdAt > P2P_SIGNAL_TTL_MS) {
+      p2pSignals.delete(code);
+    }
+  }
+  while (p2pSignals.size > MAX_P2P_SIGNALS) {
+    const oldestKey = p2pSignals.keys().next().value;
+    if (!oldestKey) break;
+    p2pSignals.delete(oldestKey);
+  }
+}
+
+function generateSixDigitCode(): string {
+  for (let attempt = 0; attempt < 250; attempt++) {
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+    if (!rooms.has(code) && !p2pSignals.has(code)) return code;
+  }
+  return String(crypto.randomInt(100000, 1000000));
+}
 
 function generateRoomId(): string {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    let code = "";
-    for (let i = 0; i < 6; i++) {
-      code += ROOM_ALPHABET[crypto.randomInt(0, ROOM_ALPHABET.length)];
-    }
-    if (!rooms.has(code)) return code;
-  }
-  return crypto.randomBytes(3).toString("hex").toUpperCase();
+  return generateSixDigitCode();
 }
 
 function generatePlayerId(): string {
@@ -280,11 +304,7 @@ function checkWaveCompletion(room: Room) {
   }
 
   const isBossWave =
-    room.wave === 3 ||
-    room.wave === 6 ||
-    room.wave === 9 ||
-    room.wave === 12 ||
-    room.wave === 15;
+    room.wave >= 3 && room.wave <= MAX_WAVES && room.wave % 3 === 0;
   const bossCoins = isBossWave ? BOSS_COIN_REWARDS[room.wave] || 150 : 0;
   const totalEarned = baseCoins + speedCoins + bossCoins;
 
@@ -962,6 +982,60 @@ async function createApp() {
     res.json({ exists: true, room: serializeRoom(room) });
   });
 
+  app.post("/api/p2p/signal", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    cleanupExpiredP2PSignals();
+    const kind = req.body?.kind === "answer" ? "answer" : req.body?.kind === "offer" ? "offer" : "";
+    const payload = typeof req.body?.payload === "string" ? req.body.payload.trim() : "";
+    const forCode = typeof req.body?.forCode === "string" ? req.body.forCode.trim() : undefined;
+
+    if (!kind) {
+      res.status(400).json({ ok: false, message: "Loại tín hiệu P2P không hợp lệ." });
+      return;
+    }
+    if (!/^AH1[GJ]:[A-Za-z0-9_-]{8,}$/i.test(payload) || payload.length > 32768) {
+      res.status(400).json({ ok: false, message: "Dữ liệu tín hiệu P2P không hợp lệ." });
+      return;
+    }
+
+    const code = generateSixDigitCode();
+    p2pSignals.set(code, {
+      code,
+      kind,
+      payload,
+      forCode,
+      createdAt: Date.now(),
+    });
+    res.json({
+      ok: true,
+      code,
+      kind,
+      expiresInSec: Math.round(P2P_SIGNAL_TTL_MS / 1000),
+    });
+  });
+
+  app.get("/api/p2p/signal/:code", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    cleanupExpiredP2PSignals();
+    const code = String(req.params.code || "").trim();
+    if (!/^\d{6}$/.test(code)) {
+      res.status(400).json({ ok: false, message: "Mã P2P phải gồm đúng 6 chữ số." });
+      return;
+    }
+    const rec = p2pSignals.get(code);
+    if (!rec) {
+      res.status(404).json({ ok: false, message: `Không tìm thấy mã ${code} hoặc mã đã hết hạn.` });
+      return;
+    }
+    res.json({
+      ok: true,
+      code: rec.code,
+      kind: rec.kind,
+      payload: rec.payload,
+      forCode: rec.forCode || null,
+    });
+  });
+
   app.post("/api/coop/connect", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     const playerId = generatePlayerId();
@@ -1119,6 +1193,7 @@ async function createApp() {
     }
 
     const now = Date.now();
+    cleanupExpiredP2PSignals(now);
     for (const [pid, session] of sessions.entries()) {
       if (session.mode === "http" && now - session.lastSeen > 35000) {
         if (session.waiter) {
@@ -1225,7 +1300,7 @@ async function createApp() {
   }
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Arena Hero server listening on http://0.0.0.0:${PORT}`);
+    console.log(`Arena Hero 11.8 server listening on http://0.0.0.0:${PORT}`);
   });
 }
 

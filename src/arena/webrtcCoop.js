@@ -1,7 +1,6 @@
-import { computeCoopWaveReward } from "./combatLogic";
+import { computeCoopWaveReward, MAX_WAVES } from "./combatLogic";
 
 const MAX_PLAYERS = 4;
-const MAX_WAVES = 15;
 const RTC_ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
@@ -135,11 +134,12 @@ export class P2PRoomHost {
     this.hostId = `p2p_${Math.random().toString(36).slice(2, 10)}`;
     this.onLocalEvent = onLocalEvent;
     this.onPeersChanged = onPeersChanged;
-    this.peers = new Map(); // peerId -> { pc, dc, state: 'pending'|'open'|'closed', playerId }
+    this.peers = new Map(); // peerId -> { pc, dc, state: 'pending'|'open'|'closed', playerId, joinedAcked, matchStartedAcked }
     this.pendingPeerCounter = 0;
+    this.syncRetryTimer = null;
 
     const pos = getSpawnPosition(0);
-    const codeSuffix = Math.random().toString(36).toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 4).padEnd(4, "P");
+    const codeSuffix = String(Math.floor(100000 + Math.random() * 900000));
     this.room = {
       id: `P2-${codeSuffix}`,
       status: "LOBBY",
@@ -153,6 +153,7 @@ export class P2PRoomHost {
             heroId: heroId || "eohyen",
             isHost: true,
             ready: true,
+            joinedRoom: true,
             slot: 0,
             alive: true,
             readyNextWave: true,
@@ -185,6 +186,7 @@ export class P2PRoomHost {
       waveKilled: 0,
       waveCleared: false,
       waveStartTime: Date.now(),
+      matchNonce: 0,
       enemies: new Map(),
     };
   }
@@ -216,6 +218,7 @@ export class P2PRoomHost {
         heroId: p.heroId,
         isHost: p.isHost,
         ready: p.ready,
+        joinedRoom: p.isHost ? true : Boolean(p.joinedRoom),
         slot: p.slot,
         alive: p.alive,
         readyNextWave: p.readyNextWave,
@@ -276,6 +279,62 @@ export class P2PRoomHost {
     this.broadcastRoom({ type: "ROOM_UPDATE", room: this.serializeRoom() });
   }
 
+  _buildSpawnsMap() {
+    const spawns = {};
+    for (const p of this.room.players.values()) {
+      const sp = getSpawnPosition(p.slot);
+      spawns[p.id] = { x: p.x || sp.x, y: p.y || sp.y, slot: p.slot };
+    }
+    return spawns;
+  }
+
+  _sendActiveMatchSync(targetId) {
+    if (this.room.status !== "PLAYING") return;
+    this.sendToPlayer(targetId, {
+      type: "MATCH_STARTED",
+      room: this.serializeRoom(),
+      wave: this.room.wave,
+      matchNonce: this.room.matchNonce || 1,
+      playerCount: this.room.matchPlayerCount,
+      powerMultiplier: this.room.powerMultiplier,
+      spawns: this._buildSpawnsMap(),
+    });
+    if (this.room.enemies.size > 0) {
+      this.sendToPlayer(targetId, {
+        type: "ENEMIES_SPAWNED",
+        enemies: Array.from(this.room.enemies.values()),
+        waveSpawned: this.room.waveSpawned,
+        waveTotal: this.room.waveTotal,
+      });
+    }
+  }
+
+  _ensureSyncRetryLoop() {
+    if (this.syncRetryTimer) return;
+    this.syncRetryTimer = setInterval(() => {
+      let needsRetry = false;
+      for (const [pid, peer] of this.peers.entries()) {
+        if (!peer || peer.state === "closed" || !this.room.players.has(pid)) continue;
+        if (!peer.joinedAcked) {
+          needsRetry = true;
+          this.sendToPlayer(pid, {
+            type: "ROOM_JOINED",
+            playerId: pid,
+            room: this.serializeRoom(),
+          });
+        }
+        if (this.room.status === "PLAYING" && !peer.matchStartedAcked) {
+          needsRetry = true;
+          this._sendActiveMatchSync(pid);
+        }
+      }
+      if (!needsRetry && this.syncRetryTimer) {
+        clearInterval(this.syncRetryTimer);
+        this.syncRetryTimer = null;
+      }
+    }, 450);
+  }
+
   async createInviteOffer() {
     if (typeof RTCPeerConnection === "undefined") {
       throw new Error("Trình duyệt này không hỗ trợ WebRTC P2P.");
@@ -287,7 +346,16 @@ export class P2PRoomHost {
     const pc = new RTCPeerConnection({ iceServers: RTC_ICE_SERVERS });
     const dc = pc.createDataChannel("arena-coop", { ordered: true });
 
-    const peerRecord = { pc, dc, state: "pending", playerId: slotId, pendingQueue: [], disconnectTimer: null };
+    const peerRecord = {
+      pc,
+      dc,
+      state: "pending",
+      playerId: slotId,
+      pendingQueue: [],
+      disconnectTimer: null,
+      joinedAcked: false,
+      matchStartedAcked: false,
+    };
     this.peers.set(slotId, peerRecord);
 
     const onDisconnect = () => {
@@ -333,6 +401,9 @@ export class P2PRoomHost {
           playerId: slotId,
           room: this.serializeRoom(),
         });
+        if (!peerRecord.joinedAcked || (this.room.status === "PLAYING" && !peerRecord.matchStartedAcked)) {
+          this._ensureSyncRetryLoop();
+        }
       }
       this.onPeersChanged?.();
     };
@@ -361,16 +432,19 @@ export class P2PRoomHost {
           clearTimeout(peerRecord.disconnectTimer);
           peerRecord.disconnectTimer = null;
         }
+        if (dc.readyState === "open" && peerRecord.state !== "open") {
+          handleOpen();
+        }
       } else if (st === "failed" || st === "closed") {
         onDisconnect();
       } else if (st === "disconnected" && !peerRecord.disconnectTimer) {
-        // Give mobile browsers time to recover when switching between Zalo/Messenger and Chrome
+        // Give mobile browsers plenty of time when switching between Zalo/Messenger and Chrome/Safari
         peerRecord.disconnectTimer = setTimeout(() => {
           peerRecord.disconnectTimer = null;
           if (pc.connectionState === "disconnected" || pc.connectionState === "failed" || pc.connectionState === "closed") {
             onDisconnect();
           }
-        }, 8000);
+        }, 25000);
       }
     };
 
@@ -402,6 +476,9 @@ export class P2PRoomHost {
       Array.from(this.peers.values()).find((p) => p.state === "pending");
     if (!target) {
       throw new Error("Không tìm thấy lời mời đang chờ khớp. Hãy bấm 'Tạo Mã Mời Mới' rồi gửi lại cho bạn bè.");
+    }
+    if (target.pc.signalingState === "stable") {
+      return { peerId: target.playerId, alreadyAccepted: true };
     }
     await target.pc.setRemoteDescription({ type: "answer", sdp: payload.sdp });
     return { peerId: target.playerId };
@@ -464,7 +541,12 @@ export class P2PRoomHost {
     this.room.waveKilled = 0;
     this.room.waveCleared = false;
     this.room.waveStartTime = Date.now();
+    this.room.matchNonce = (this.room.matchNonce || 0) + 1;
     this.room.enemies.clear();
+
+    for (const peer of this.peers.values()) {
+      peer.matchStartedAcked = false;
+    }
 
     const spawns = {};
     for (const p of this.room.players.values()) {
@@ -484,10 +566,14 @@ export class P2PRoomHost {
       type: "MATCH_STARTED",
       room: this.serializeRoom(),
       wave: 1,
+      matchNonce: this.room.matchNonce,
       playerCount: this.room.matchPlayerCount,
       powerMultiplier: this.room.powerMultiplier,
       spawns,
     });
+    if (this.peers.size > 0) {
+      this._ensureSyncRetryLoop();
+    }
   }
 
   handleMessage(playerId, msg) {
@@ -498,31 +584,32 @@ export class P2PRoomHost {
       return;
     }
 
+    if (msg.type === "P2P_JOIN_ACK") {
+      const peer = this.peers.get(playerId);
+      const player = this.room.players.get(playerId);
+      if (peer) peer.joinedAcked = true;
+      if (player && !player.joinedRoom) {
+        player.joinedRoom = true;
+        this.broadcastRoomUpdate();
+      }
+      return;
+    }
+
+    if (msg.type === "P2P_MATCH_ACK") {
+      const peer = this.peers.get(playerId);
+      if (peer) {
+        peer.joinedAcked = true;
+        peer.matchStartedAcked = true;
+      }
+      const player = this.room.players.get(playerId);
+      if (player && !player.joinedRoom) {
+        player.joinedRoom = true;
+      }
+      return;
+    }
+
     if (msg.type === "JOIN_ROOM" || msg.type === "P2P_HELLO") {
-      const sendActiveMatchSync = (targetId) => {
-        if (this.room.status !== "PLAYING") return;
-        const spawns = {};
-        for (const p of this.room.players.values()) {
-          const sp = getSpawnPosition(p.slot);
-          spawns[p.id] = { x: p.x || sp.x, y: p.y || sp.y, slot: p.slot };
-        }
-        this.sendToPlayer(targetId, {
-          type: "MATCH_STARTED",
-          room: this.serializeRoom(),
-          wave: this.room.wave,
-          playerCount: this.room.matchPlayerCount,
-          powerMultiplier: this.room.powerMultiplier,
-          spawns,
-        });
-        if (this.room.enemies.size > 0) {
-          this.sendToPlayer(targetId, {
-            type: "ENEMIES_SPAWNED",
-            enemies: Array.from(this.room.enemies.values()),
-            waveSpawned: this.room.waveSpawned,
-            waveTotal: this.room.waveTotal,
-          });
-        }
-      };
+      const peer = this.peers.get(playerId);
 
       if (this.room.players.has(playerId)) {
         const existing = this.room.players.get(playerId);
@@ -546,7 +633,10 @@ export class P2PRoomHost {
         if (updated) {
           this.broadcastRoomUpdate();
         }
-        sendActiveMatchSync(playerId);
+        if (peer && !peer.joinedAcked) {
+          this._ensureSyncRetryLoop();
+        }
+        this._sendActiveMatchSync(playerId);
         return;
       }
       if (this.room.players.size >= MAX_PLAYERS) {
@@ -560,7 +650,8 @@ export class P2PRoomHost {
         name: sanitizeName(msg.playerName, slot + 1),
         heroId: typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung",
         isHost: false,
-        ready: true,
+        ready: this.room.status === "PLAYING",
+        joinedRoom: !peer,
         slot,
         alive: true,
         readyNextWave: false,
@@ -594,7 +685,10 @@ export class P2PRoomHost {
         room: this.serializeRoom(),
       });
       this.broadcastRoom({ type: "ROOM_UPDATE", room: this.serializeRoom() }, playerId);
-      sendActiveMatchSync(playerId);
+      if (peer) {
+        this._ensureSyncRetryLoop();
+      }
+      this._sendActiveMatchSync(playerId);
       return;
     }
 
@@ -620,6 +714,12 @@ export class P2PRoomHost {
     const player = this.room.players.get(playerId);
     if (!player) return;
 
+    const peer = this.peers.get(playerId);
+    if (peer && !peer.joinedAcked) {
+      peer.joinedAcked = true;
+      player.joinedRoom = true;
+    }
+
     if (msg.type === "SELECT_HERO") {
       if (typeof msg.heroId === "string" && msg.heroId) {
         player.heroId = msg.heroId;
@@ -643,6 +743,14 @@ export class P2PRoomHost {
 
     if (msg.type === "START_MATCH") {
       if (playerId !== this.hostId || this.room.status !== "LOBBY") return;
+      const unjoined = Array.from(this.room.players.values()).filter((p) => !p.isHost && !p.joinedRoom);
+      if (unjoined.length > 0) {
+        this.sendToPlayer(playerId, {
+          type: "ROOM_ERROR",
+          message: `Đợi ${unjoined.map((p) => p.name).join(", ")} hoàn tất vào phòng rồi mới bắt đầu!`,
+        });
+        return;
+      }
       const notReady = Array.from(this.room.players.values()).filter((p) => !p.isHost && !p.ready);
       if (notReady.length > 0) {
         this.sendToPlayer(playerId, {
@@ -856,6 +964,9 @@ export class P2PRoomHost {
     }
 
     if (msg.type === "SYNC_PLAYER") {
+      if (peer) {
+        peer.matchStartedAcked = true;
+      }
       const s = msg.state;
       if (!s || typeof s !== "object") return;
       const wasAlive = player.alive;
@@ -981,7 +1092,15 @@ export class P2PRoomHost {
   }
 
   destroy() {
+    if (this.syncRetryTimer) {
+      clearInterval(this.syncRetryTimer);
+      this.syncRetryTimer = null;
+    }
     for (const peer of this.peers.values()) {
+      if (peer.disconnectTimer) {
+        clearTimeout(peer.disconnectTimer);
+        peer.disconnectTimer = null;
+      }
       try {
         peer.dc?.close();
       } catch {
@@ -1005,6 +1124,7 @@ export class P2PRoomPeerClient {
     this.onEvent = onEvent;
     this.onClose = onClose;
     this.joinedRoom = false;
+    this.inMatch = false;
     this.connectedNotified = false;
     this.helloTimer = null;
     this.disconnectTimer = null;
@@ -1020,7 +1140,11 @@ export class P2PRoomPeerClient {
   }
 
   _sendHelloNow() {
-    if (this.destroyed || this.joinedRoom) {
+    if (this.destroyed) {
+      this._stopHelloLoop();
+      return;
+    }
+    if (this.joinedRoom && this.inMatch) {
       this._stopHelloLoop();
       return;
     }
@@ -1037,13 +1161,14 @@ export class P2PRoomPeerClient {
     }
     const payload = await decodeSignalPayload(offerCode);
     if (!payload || payload.k !== "O" || typeof payload.sdp !== "string") {
-      throw new Error("Mã mời không hợp lệ (cần mã từ Chủ phòng P2P bắt đầu bằng AH1...).");
+      throw new Error("Mã mời không hợp lệ.");
     }
 
     this.playerId = payload.pid || `p2p_m_${Math.random().toString(36).slice(2, 8)}`;
     this.playerName = playerName;
     this.heroId = heroId;
     this.joinedRoom = false;
+    this.inMatch = false;
     this.connectedNotified = false;
 
     const pc = new RTCPeerConnection({ iceServers: RTC_ICE_SERVERS });
@@ -1051,12 +1176,14 @@ export class P2PRoomPeerClient {
 
     if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
       this._onVisibility = () => {
-        if (document.visibilityState === "visible" && !this.joinedRoom && this.isOpen()) {
+        if (document.visibilityState === "visible" && (!this.joinedRoom || !this.inMatch) && this.isOpen()) {
           this._sendHelloNow();
         }
       };
       document.addEventListener("visibilitychange", this._onVisibility);
     }
+
+    let handleOpenRef = null;
 
     const bindDataChannel = (dc) => {
       if (!dc || this.destroyed) return;
@@ -1070,9 +1197,10 @@ export class P2PRoomPeerClient {
         }
         this._sendHelloNow();
         if (!this.joinedRoom && !this.helloTimer) {
-          this.helloTimer = setInterval(() => this._sendHelloNow(), 450);
+          this.helloTimer = setInterval(() => this._sendHelloNow(), 400);
         }
       };
+      handleOpenRef = handleOpen;
 
       dc.onmessage = (msgEv) => {
         let msg;
@@ -1081,9 +1209,31 @@ export class P2PRoomPeerClient {
         } catch {
           return;
         }
-        if (msg?.type === "ROOM_JOINED" || msg?.type === "MATCH_STARTED") {
+        if (msg?.type === "ROOM_JOINED") {
           this.joinedRoom = true;
           this._stopHelloLoop();
+          this.send({ type: "P2P_JOIN_ACK" });
+          if (msg.room?.status === "PLAYING") {
+            this.inMatch = true;
+          }
+        } else if (msg?.type === "MATCH_STARTED") {
+          this.joinedRoom = true;
+          this.inMatch = true;
+          this._stopHelloLoop();
+          this.send({ type: "P2P_JOIN_ACK" });
+          this.send({ type: "P2P_MATCH_ACK" });
+        } else if (msg?.type === "MATCH_OVER" || msg?.type === "LEFT_ROOM") {
+          this.inMatch = false;
+        } else if (msg?.type === "ROOM_UPDATE") {
+          if (!this.joinedRoom && msg.room?.members?.some((m) => m.id === this.playerId)) {
+            this.joinedRoom = true;
+            this._stopHelloLoop();
+            this.send({ type: "P2P_JOIN_ACK" });
+            this.onEvent?.({ type: "ROOM_JOINED", playerId: this.playerId, room: msg.room });
+          }
+          if (msg.room?.status === "PLAYING" && !this.inMatch) {
+            this._sendHelloNow();
+          }
         } else if (msg?.type === "CONNECTED" && !this.joinedRoom) {
           this._sendHelloNow();
         }
@@ -1113,7 +1263,9 @@ export class P2PRoomPeerClient {
           clearTimeout(this.disconnectTimer);
           this.disconnectTimer = null;
         }
-        if (!this.joinedRoom && this.isOpen()) {
+        if (this.dc && this.dc.readyState === "open" && !this.connectedNotified && handleOpenRef) {
+          handleOpenRef();
+        } else if (!this.joinedRoom && this.isOpen()) {
           this._sendHelloNow();
         }
       } else if (st === "failed" || st === "closed") {
@@ -1126,7 +1278,7 @@ export class P2PRoomPeerClient {
             this._stopHelloLoop();
             this.onClose?.();
           }
-        }, 8000);
+        }, 25000);
       }
     };
 

@@ -2108,6 +2108,149 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     return;
   }
 
+  if (h.kind === "frost_bolt") {
+    ctx.strokeStyle = isMono ? "#333333" : "#7DD3FC";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(4, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#000000" : "#E0F2FE";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#0284C7";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(0, -5);
+    ctx.lineTo(3, 0);
+    ctx.lineTo(0, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "void_bolt") {
+    ctx.rotate(elapsedTime * 9);
+    ctx.fillStyle = isMono ? "#000000" : "#4C1D95";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#E879F9";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(9, 0);
+    ctx.lineTo(0, 9);
+    ctx.lineTo(-9, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#38BDF8";
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "cyber_bolt") {
+    ctx.fillStyle = isMono ? "#111111" : "#0284C7";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(15, 0);
+    ctx.lineTo(2, -6);
+    ctx.lineTo(-14, -4);
+    ctx.lineTo(-10, 0);
+    ctx.lineTo(-14, 4);
+    ctx.lineTo(2, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(4, 0, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "thunder_lance") {
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-22, 0);
+    ctx.lineTo(-8, -4);
+    ctx.lineTo(-2, 4);
+    ctx.lineTo(18, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#000000" : "#38BDF8";
+    ctx.beginPath();
+    ctx.moveTo(22, 0);
+    ctx.lineTo(7, -5.5);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(7, 5.5);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "venom_fang") {
+    ctx.fillStyle = isMono ? "#111111" : "#16A34A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#A3E635";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.quadraticCurveTo(2, -8, -12, -3);
+    ctx.lineTo(-7, 0);
+    ctx.lineTo(-12, 3);
+    ctx.quadraticCurveTo(2, 8, 16, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "blood_crystal") {
+    ctx.fillStyle = isMono ? "#000000" : "#BE123C";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(15, 0);
+    ctx.lineTo(0, -6.5);
+    ctx.lineTo(-12, 0);
+    ctx.lineTo(0, 6.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(2, 0, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "seraph_spear") {
+    ctx.strokeStyle = isMono ? "#000000" : "#FBBF24";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.lineTo(14, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#DC2626";
+    ctx.strokeStyle = isMono ? "#000000" : "#FEF08A";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(22, 0);
+    ctx.lineTo(5, -7);
+    ctx.lineTo(9, 0);
+    ctx.lineTo(5, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#FBBF24";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(-4, 0, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+
   ctx.beginPath();
   ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#000000" : h.color;
@@ -3199,6 +3342,180 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.arc(r * 0.38, -3.2, 2.1, 0, Math.PI * 2);
     ctx.arc(r * 0.38, 3.2, 2.1, 0, Math.PI * 2);
     ctx.fill();
+  } else if (enemy.kind === "frost_archer") {
+    // Xạ Thủ Băng — Ice Recurve Bow + Hooded Marksman
+    ctx.save();
+    ctx.translate(r * 0.55, 0);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#7DD3FC";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(-r * 0.15, 0, r * 0.85, -1.05, 1.05);
+    ctx.stroke();
+    ctx.strokeStyle = "#E0F2FE";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(-1.05) * r * 0.85 - r * 0.15, Math.sin(-1.05) * r * 0.85);
+    ctx.lineTo(-r * 0.05, 0);
+    ctx.lineTo(Math.cos(1.05) * r * 0.85 - r * 0.15, Math.sin(1.05) * r * 0.85);
+    ctx.stroke();
+    // Ice arrow nocked
+    ctx.strokeStyle = "#38BDF8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.1, 0);
+    ctx.lineTo(r * 0.85, 0);
+    ctx.stroke();
+    ctx.restore();
+
+    // Frost cloak & hood
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#0369A1";
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#444444" : "#BAE6FD";
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.fillStyle = "#082F49";
+    ctx.beginPath();
+    ctx.arc(r * 0.25, 0, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7DD3FC";
+    ctx.fillRect(r * 0.34, -3.5, 3.2, 2.2);
+    ctx.fillRect(r * 0.34, 1.3, 3.2, 2.2);
+  } else if (enemy.kind === "bomber") {
+    // Quái Bom Cảm Tử — Unstable Volatile Bomb Carrier
+    let priming = (enemy.fuseTimer || 0) > 0;
+    let pulse = priming ? 0.82 + 0.35 * Math.sin((elapsedTime || 0) * 26) : 0.92 + 0.1 * Math.sin((elapsedTime || 0) * 7 + enemy.id);
+    if (priming) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.45 * pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = "#EF4444";
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : priming ? "#DC2626" : "#3F3F46";
+    ctx.fill();
+    ctx.strokeStyle = priming ? "#FEF08A" : "#F97316";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // Glowing volatile bomb core on back/center
+    ctx.beginPath();
+    ctx.arc(-r * 0.1, 0, r * 0.48 * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = priming ? "#FEF08A" : "#F97316";
+    ctx.fill();
+    // Fuse spark
+    ctx.strokeStyle = "#E5E7EB";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.4, -r * 0.4);
+    ctx.quadraticCurveTo(-r * 0.85, -r * 0.9, -r * 0.55, -r * 1.15);
+    ctx.stroke();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(-r * 0.55, -r * 1.15, 3.5 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    // Crazy eyes
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(r * 0.46, -r * 0.24, 2.5, 0, Math.PI * 2);
+    ctx.arc(r * 0.46, r * 0.24, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (enemy.kind === "assassin") {
+    // Sát Thủ Bóng Đêm — Twin Shadow Blades & Sleek Cowl
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#222222" : "#F43F5E";
+      ctx.strokeStyle = "#FDF2F8";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.25, s * r * 0.48);
+      ctx.lineTo(r * 1.35, s * r * 0.72);
+      ctx.lineTo(r * 0.65, s * r * 0.28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(r * 1.05, 0);
+    ctx.lineTo(0, -r * 0.78);
+    ctx.lineTo(-r * 0.9, -r * 0.35);
+    ctx.lineTo(-r * 0.9, r * 0.35);
+    ctx.lineTo(0, r * 0.78);
+    ctx.closePath();
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#311042";
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#555555" : "#C084FC";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#FB7185";
+    ctx.fillRect(r * 0.36, -3.5, 4, 2);
+    ctx.fillRect(r * 0.36, 1.5, 4, 2);
+  } else if (enemy.kind === "shield_knight") {
+    // Khiên Binh Phản Chấn — Heavy Tower Shield + War Mace
+    // War mace on right side
+    ctx.save();
+    ctx.translate(r * 0.25, r * 0.78);
+    ctx.strokeStyle = "#64748B";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.4, 0);
+    ctx.lineTo(r * 0.85, 0);
+    ctx.stroke();
+    ctx.fillStyle = "#CBD5E1";
+    ctx.beginPath();
+    ctx.arc(r * 0.9, 0, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // Armored body
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#334155";
+    ctx.fill();
+    ctx.strokeStyle = "#94A3B8";
+    ctx.lineWidth = 2.6;
+    ctx.stroke();
+    // Large Curved Tower Shield held in front
+    ctx.fillStyle = isMono ? "#222222" : hit ? "#FFFFFF" : "#0EA5E9";
+    ctx.strokeStyle = "#E0F2FE";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(r * 0.22, 0, r * 0.95, -0.95, 0.95);
+    ctx.lineTo(r * 0.52, Math.sin(0.95) * r * 0.65);
+    ctx.arc(r * 0.05, 0, r * 0.68, 0.95, -0.95, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (enemy.kind === "void_acolyte") {
+    // Tín Đồ Hư Không — Orbiting Runes & Abyssal Robe
+    for (let k = 0; k < 3; k++) {
+      let a = (elapsedTime || 0) * 3.5 + (Math.PI * 2 / 3) * k;
+      let rx = Math.cos(a) * (r * 1.25);
+      let ry = Math.sin(a) * (r * 1.25);
+      ctx.fillStyle = "#38BDF8";
+      ctx.beginPath();
+      ctx.arc(rx, ry, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#1E1B4B";
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#555555" : "#818CF8";
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.fillStyle = "#A855F7";
+    ctx.beginPath();
+    ctx.moveTo(r * 0.55, 0);
+    ctx.lineTo(0, -r * 0.45);
+    ctx.lineTo(-r * 0.45, 0);
+    ctx.lineTo(0, r * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#F0ABFC";
+    ctx.beginPath();
+    ctx.arc(r * 0.32, 0, 2.4, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     // Quái Nhỏ — Armed Goblin Raider with Jagged Cleaver Blade
     // Jagged Cleaver
@@ -3375,42 +3692,132 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
     ctx.beginPath();
     ctx.arc(43, 0, 5.5, 0, Math.PI * 2);
     ctx.fill();
-  } else {
-    // Wave 15 Chaos Demon Lord — Apocalyptic Chaos Greatsword
-    ctx.strokeStyle = "#78716C";
+  } else if (wave === 15) {
+    // Wave 15 Siege Automaton Rex — Twin-Barrel Siege Plasma Cannon
+    ctx.fillStyle = isMono ? "#222222" : "#1E293B";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2.4;
+    ctx.fillRect(-14, -14, 54, 28);
+    ctx.strokeRect(-14, -14, 54, 28);
+    // Twin cannon barrels
+    ctx.fillStyle = isMono ? "#444444" : "#64748B";
+    ctx.fillRect(36, -11, 34, 8);
+    ctx.fillRect(36, 3, 34, 8);
+    ctx.strokeStyle = "#38BDF8";
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(36, -11, 34, 8);
+    ctx.strokeRect(36, 3, 34, 8);
+    // Glowing reactor chamber
+    ctx.fillStyle = isPhaseBoost ? "#FEF08A" : "#38BDF8";
+    ctx.beginPath();
+    ctx.arc(14, 0, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (wave === 18) {
+    // Wave 18 Thunder Archon Raijin — Storm-Forged Lightning Naginata
+    ctx.strokeStyle = isMono ? "#333333" : "#0284C7";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-24, 0);
+    ctx.lineTo(44, 0);
+    ctx.stroke();
+    // Gold ring guard
+    ctx.strokeStyle = "#FDE047";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(38, 0, 9, 0, Math.PI * 2);
+    ctx.stroke();
+    // Curved lightning naginata blade
+    ctx.fillStyle = isMono ? "#000000" : "#38BDF8";
+    ctx.strokeStyle = "#FDE047";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(42, -4);
+    ctx.quadraticCurveTo(68, -14, 86, -4);
+    ctx.quadraticCurveTo(64, 9, 42, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (wave === 21) {
+    // Wave 21 Abyssal Venom Wyrm — Serrated Venom Fang Sickle
+    ctx.strokeStyle = "#14532D";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(-18, 0);
-    ctx.lineTo(62, 0);
+    ctx.lineTo(40, 0);
     ctx.stroke();
-
-    ctx.fillStyle = isMono ? "#222222" : "#F59E0B";
-    ctx.beginPath();
-    ctx.moveTo(10, -16);
-    ctx.lineTo(18, -6);
-    ctx.lineTo(18, 6);
-    ctx.lineTo(10, 16);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = isMono ? "#000000" : "#DC2626";
-    ctx.beginPath();
-    ctx.moveTo(60, -10);
-    ctx.lineTo(88, 0);
-    ctx.lineTo(60, 10);
-    ctx.lineTo(16, 8);
-    ctx.lineTo(16, -8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#FEF08A";
+    ctx.fillStyle = isMono ? "#111111" : "#16A34A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#A3E635";
     ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(36, -5);
+    ctx.quadraticCurveTo(72, -16, 78, 22);
+    ctx.quadraticCurveTo(56, 8, 34, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#BEF264";
+    ctx.beginPath();
+    ctx.arc(64, 10, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (wave === 24) {
+    // Wave 24 Crimson Blood Sovereign — Blood-Moon Crescent Glaive
+    ctx.strokeStyle = "#4C0519";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-22, 0);
+    ctx.lineTo(48, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#000000" : "#BE123C";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(44, -22);
+    ctx.quadraticCurveTo(76, -8, 84, 0);
+    ctx.quadraticCurveTo(76, 8, 44, 22);
+    ctx.quadraticCurveTo(56, 0, 44, -22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(58, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Wave 27 Final Boss Fallen Seraphim Lucifer — Celestial-Apocalypse Greatsword
+    ctx.strokeStyle = "#78716C";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.lineTo(66, 0);
     ctx.stroke();
 
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 1.6;
+    ctx.fillStyle = isMono ? "#222222" : "#FBBF24";
     ctx.beginPath();
-    ctx.moveTo(22, 0);
-    ctx.lineTo(74, 0);
+    ctx.moveTo(8, -19);
+    ctx.lineTo(20, -6);
+    ctx.lineTo(20, 6);
+    ctx.lineTo(8, 19);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = isMono ? "#000000" : "#1E1B4B";
+    ctx.beginPath();
+    ctx.moveTo(64, -11);
+    ctx.lineTo(94, 0);
+    ctx.lineTo(64, 11);
+    ctx.lineTo(18, 9);
+    ctx.lineTo(18, -9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#FBBF24";
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    ctx.strokeStyle = "#DC2626";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(24, 0);
+    ctx.lineTo(80, 0);
     ctx.stroke();
   }
 

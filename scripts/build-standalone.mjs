@@ -48,6 +48,8 @@ if (inlineScripts.length > 0) {
 
 fs.mkdirSync(publicAssetsDir, { recursive: true });
 const outTargets = [
+  path.join(publicAssetsDir, "arena_hero_11_8.html"),
+  path.join(publicAssetsDir, "arena_hero_11_8.txt"),
   path.join(publicAssetsDir, "arena_hero_5_0.html"),
   path.join(publicAssetsDir, "arena_hero_5_0.txt"),
   path.join(publicAssetsDir, "arena_hero_4_0.html"),
@@ -59,9 +61,9 @@ for (const outPath of outTargets) {
 }
 
 if (fs.existsSync(distAssetsDir)) {
-  for (const name of ["arena_hero_5_0.html", "arena_hero_5_0.txt", "arena_hero_4_0.html", "arena_hero_4_0.txt"]) {
+  for (const name of ["arena_hero_11_8.html", "arena_hero_11_8.txt", "arena_hero_5_0.html", "arena_hero_5_0.txt", "arena_hero_4_0.html", "arena_hero_4_0.txt"]) {
     fs.writeFileSync(path.join(distAssetsDir, name), html, "utf8");
   }
 }
 
-console.log(`Built standalone Arena Hero 5.0 HTML (${(Buffer.byteLength(html, "utf8") / 1024).toFixed(1)} KB)`);
+console.log(`Built standalone Arena Hero 11.8 HTML (${(Buffer.byteLength(html, "utf8") / 1024).toFixed(1)} KB)`);

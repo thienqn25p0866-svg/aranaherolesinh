@@ -1,12 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  MAX_WAVES,
+  BOSS_WAVES,
   MAX_BOSS_CC_SEC,
   TIN_RESONANCE_MAX,
   LONGHOI_MAX_BURN_STACKS,
   clampBossCcDuration,
+  getBossStageCcDuration,
   getBossCcDuration,
   getBossPowerModifiers,
+  computeLuanC1ShardDamage,
+  computeLuanRiftTickDamage,
+  LUAN_RIFT_TICK_INTERVAL,
+  computeCoopWaveReward,
   computeTinStackGain,
   computeTinCooldownTickRate,
   applyTinBasicHitCooldownRefund,
@@ -18,32 +25,46 @@ import {
   detectClientEnvironment,
   isPrivateOrDevOrigin,
   classifyJoinCode,
+  isSixDigitCode,
+  ITEM_TIER_RANK,
+  sortItemsByRarityAsc,
+  sortItemsByRarityDesc,
   cycleTaiDuDroneMode,
   getTaiDuDroneProfile,
   computeNguyenOverhealConversion,
+  isPortraitViewport,
+  computeCameraViewportConfig,
+  screenToWorldWithCamera,
+  worldToScreenWithCamera,
+  computeJoystickDragRadius,
 } from './combatLogic.ts';
 
-test('Boss CC scaling increases with wave and phase while strictly capped at 2.5s', () => {
+test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
   const w3p1 = getBossCcDuration(0.85, 3, 1, 'stun');
   const w9p2 = getBossCcDuration(0.85, 9, 2, 'stun');
   const w15p3 = getBossCcDuration(1.4, 15, 3, 'stun');
   const w30p3 = getBossCcDuration(3.0, 30, 3, 'slow');
 
+  assert.equal(MAX_BOSS_CC_SEC, 2.6);
   assert.ok(w9p2 > w3p1, 'Wave 9 phase 2 CC should exceed Wave 3 phase 1 CC');
   assert.ok(w15p3 > w9p2, 'Wave 15 phase 3 CC should exceed Wave 9 phase 2 CC');
-  assert.ok(w15p3 <= MAX_BOSS_CC_SEC, 'Wave 15 CC must not exceed 2.5s');
-  assert.equal(w30p3, MAX_BOSS_CC_SEC, 'Extreme wave/base CC must clamp at 2.5s');
-  assert.equal(clampBossCcDuration(99), 2.5);
+  assert.ok(w15p3 <= MAX_BOSS_CC_SEC, 'Wave 15 CC must not exceed 2.6s');
+  assert.equal(w30p3, MAX_BOSS_CC_SEC, 'Extreme wave/base CC must clamp at 2.6s');
+  assert.equal(clampBossCcDuration(99), 2.6);
   assert.equal(clampBossCcDuration(-1), 0);
 });
 
-test('Boss power modifiers grant a subtle HP and damage boost across waves', () => {
+test('Boss power modifiers grant a buffed HP, damage, and speed boost across waves (11.8)', () => {
   const early = getBossPowerModifiers(3);
   const late = getBossPowerModifiers(15);
-  assert.ok(early.hpMultiplier >= 1.15);
-  assert.ok(early.damageMultiplier >= 1.12);
+  const finalBoss = getBossPowerModifiers(27);
+  assert.ok(early.hpMultiplier >= 1.28);
+  assert.ok(early.damageMultiplier >= 1.22);
+  assert.ok(early.speedMultiplier >= 1.06);
   assert.ok(late.hpMultiplier > early.hpMultiplier);
   assert.ok(late.damageMultiplier > early.damageMultiplier);
+  assert.ok(finalBoss.hpMultiplier > late.hpMultiplier);
+  assert.ok(finalBoss.damageMultiplier > late.damageMultiplier);
 });
 
 test('Tin Void Resonance builds up to 4 stacks, boosts cooldown rate, and triggers Overload recast', () => {
@@ -378,8 +399,29 @@ test('P2PRoomHost and P2PRoomPeerClient auto-transition Peer into room and match
     assert.equal(peer.joinedRoom, true);
     assert.equal(host.serializeRoom().playerCount, 2);
 
-    // Host starts match -> BOTH Host and Peer must receive MATCH_STARTED
-    host.startMatch();
+    // Peer MUST start unready in LOBBY so Host waits for Peer to enter, pick hero, and click Ready
+    const guestInRoom = host.serializeRoom().members.find((m: any) => m.id === peer.playerId);
+    assert.ok(guestInRoom, 'Guest should exist in serialized room');
+    assert.equal(guestInRoom.ready, false, 'Guest must start with ready=false in LOBBY');
+    assert.equal(guestInRoom.joinedRoom, true, 'Guest must acknowledge ROOM_JOINED via P2P_JOIN_ACK');
+
+    // Host START_MATCH must be rejected while Peer has ready=false
+    host.handleMessage(host.hostId, { type: 'START_MATCH' });
+    const blockedErr = hostEvents.find((e) => e.type === 'ROOM_ERROR');
+    assert.ok(blockedErr, 'Host START_MATCH must be blocked while Peer is not ready');
+    assert.equal(host.serializeRoom().status, 'LOBBY');
+
+    // Peer selects hero and toggles Ready -> Host can start match cleanly
+    peer.send({ type: 'SELECT_HERO', heroId: 'luan' });
+    peer.send({ type: 'TOGGLE_READY', ready: true });
+    await new Promise((r) => setTimeout(r, 30));
+
+    const updatedGuest = host.serializeRoom().members.find((m: any) => m.id === peer.playerId);
+    assert.ok(updatedGuest, 'Updated guest should exist in serialized room');
+    assert.equal(updatedGuest.heroId, 'luan');
+    assert.equal(updatedGuest.ready, true);
+
+    host.handleMessage(host.hostId, { type: 'START_MATCH' });
     await new Promise((r) => setTimeout(r, 40));
 
     const hostStarted = hostEvents.find((e) => e.type === 'MATCH_STARTED');
@@ -387,11 +429,13 @@ test('P2PRoomHost and P2PRoomPeerClient auto-transition Peer into room and match
     assert.ok(hostStarted, 'Host must receive MATCH_STARTED');
     assert.ok(peerStarted, 'Peer must receive MATCH_STARTED automatically when host starts');
     assert.equal(peerStarted.room.status, 'PLAYING');
+    assert.ok(peerStarted.matchNonce >= 1);
+    assert.equal(peer.inMatch, true);
     assert.ok(peerStarted.spawns[peer.playerId!], 'Peer spawn coordinates must be present');
 
     // Late P2P_HELLO recovery while match is already PLAYING also delivers MATCH_STARTED
     const beforeCount = peerEvents.filter((e) => e.type === 'MATCH_STARTED').length;
-    host.handleMessage(peer.playerId!, { type: 'P2P_HELLO', playerName: 'DongDoi', heroId: 'tin' });
+    host.handleMessage(peer.playerId!, { type: 'P2P_HELLO', playerName: 'DongDoi', heroId: 'luan' });
     await new Promise((r) => setTimeout(r, 30));
     const afterCount = peerEvents.filter((e) => e.type === 'MATCH_STARTED').length;
     assert.equal(afterCount, beforeCount + 1, 'Late P2P_HELLO during PLAYING must re-sync MATCH_STARTED');
@@ -634,7 +678,121 @@ test('Tai Du and Nguyen complete kits, drone profiles, overheal cap, Luan C3 mon
   assert.equal(nguyenTracker.detectComboName('nguyen', false, false), 'Đại Thánh Địa Sinh Mệnh!');
 });
 
+test('Equipment sorting orders strictly by ascending rarity and price without mutating catalog, and 6-digit code validator works', async () => {
+  const { zr } = await import('./gameData.js');
+  const sortedAsc = sortItemsByRarityAsc(zr);
+  assert.equal(sortedAsc.length, zr.length);
 
+  for (let i = 1; i < sortedAsc.length; i++) {
+    const prev = sortedAsc[i - 1];
+    const curr = sortedAsc[i];
+    const prevRank = ITEM_TIER_RANK[prev.tier];
+    const currRank = ITEM_TIER_RANK[curr.tier];
+    assert.ok(prevRank <= currRank, `Expected tier ${prev.tier} (${prevRank}) <= ${curr.tier} (${currRank}) at index ${i}`);
+    if (prevRank === currRank) {
+      assert.ok(prev.cost <= curr.cost, `Expected cost ${prev.cost} <= ${curr.cost} within tier ${curr.tier}`);
+    }
+  }
+  assert.equal(sortedAsc[0].tier, 'basic');
+  assert.equal(sortedAsc[sortedAsc.length - 1].tier, 'mythic');
 
+  const sortedDesc = sortItemsByRarityDesc(zr);
+  assert.equal(sortedDesc[0].tier, 'mythic');
+  assert.equal(sortedDesc[sortedDesc.length - 1].tier, 'basic');
 
+  assert.equal(isSixDigitCode('482915'), true);
+  assert.equal(isSixDigitCode(' 009 123 '), true);
+  assert.equal(isSixDigitCode('A7K9P2'), false);
+  assert.equal(isSixDigitCode('12345'), false);
+  assert.equal(isSixDigitCode('AH1G:abcdef'), false);
+});
+
+test('27-wave expansion has 9 bosses with +0.2s CC scaling from 1.0s to 2.6s and Wave 15 is mid-boss', async () => {
+  assert.equal(MAX_WAVES, 27);
+  assert.deepEqual(BOSS_WAVES, [3, 6, 9, 12, 15, 18, 21, 24, 27]);
+
+  const expectedCc = [1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6];
+  const actualCc = BOSS_WAVES.map((w) => getBossStageCcDuration(w));
+  assert.deepEqual(actualCc, expectedCc);
+
+  const w15Reward = computeCoopWaveReward({ wave: 15, elapsedSec: 60, kills: 20 });
+  assert.equal(w15Reward.isFinalWave, false);
+  assert.equal(w15Reward.bossCoins, 500);
+
+  const w27Reward = computeCoopWaveReward({ wave: 27, elapsedSec: 90, kills: 25 });
+  assert.equal(w27Reward.isFinalWave, true);
+  assert.equal(w27Reward.bossCoins, 1200);
+
+  const { hm, Cf, _f } = await import('./gameData.js');
+  assert.deepEqual(Object.keys(hm).map(Number).sort((a, b) => a - b), BOSS_WAVES);
+  assert.equal(hm[15].skills.length, 3);
+  assert.equal(hm[27].skills.length, 6);
+  assert.ok(hm[15].baseHP < hm[27].baseHP);
+  assert.ok(hm[15].baseDMG < hm[27].baseDMG);
+  const bossNames = new Set(BOSS_WAVES.map((w) => hm[w].name));
+  assert.equal(bossNames.size, 9);
+  assert.equal(Cf[27], 140);
+  assert.equal(_f[27], 1200);
+});
+
+test('Version 11.8 Luan nerf reduces Rift passive and C1 shard damage while matching catalog text', async () => {
+  assert.equal(computeLuanC1ShardDamage(100), 66);
+  assert.equal(computeLuanRiftTickDamage(100), 20);
+  assert.equal(LUAN_RIFT_TICK_INTERVAL, 0.5);
+
+  const { Mi } = await import('./gameData.js');
+  const luan = Mi.find((h: any) => h.id === 'luan');
+  assert.ok(luan);
+  assert.match(luan.skills[0].description.vi, /28 \+ 38% AP/);
+  assert.match(luan.skills[0].description.en, /28 \+ 38% AP/);
+  assert.match(luan.passive.vi, /7 \+ 13% AP/);
+});
+
+test('Portrait viewport detection respects auto, portrait, and standard layout modes', () => {
+  assert.equal(isPortraitViewport(390, 844, 'auto'), true);
+  assert.equal(isPortraitViewport(360, 740, 'auto'), true);
+  assert.equal(isPortraitViewport(844, 390, 'auto'), false);
+  assert.equal(isPortraitViewport(1280, 720, 'auto'), false);
+  assert.equal(isPortraitViewport(900, 1400, 'auto'), false);
+
+  assert.equal(isPortraitViewport(1280, 720, 'portrait'), true);
+  assert.equal(isPortraitViewport(390, 844, 'standard'), false);
+});
+
+test('Portrait camera viewport widens FOV, shifts hero focus upward, and round-trips world/screen coordinates', () => {
+  const desktop = computeCameraViewportConfig({ viewW: 1280, viewH: 720, layoutMode: 'auto', fovPreset: 'balanced' });
+  assert.equal(desktop.isPortrait, false);
+  assert.equal(desktop.zoom, 1);
+  assert.equal(desktop.focusX, 640);
+  assert.equal(desktop.focusY, 360);
+
+  const balanced = computeCameraViewportConfig({ viewW: 390, viewH: 844, layoutMode: 'auto', fovPreset: 'balanced' });
+  const wide = computeCameraViewportConfig({ viewW: 390, viewH: 844, layoutMode: 'auto', fovPreset: 'wide' });
+  const close = computeCameraViewportConfig({ viewW: 390, viewH: 844, layoutMode: 'auto', fovPreset: 'close' });
+
+  assert.equal(balanced.isPortrait, true);
+  assert.ok(wide.zoom < balanced.zoom && balanced.zoom < close.zoom, 'Wide zoom < balanced zoom < close zoom');
+  assert.ok(balanced.visibleWorldW >= 650, `Expected unobstructed horizontal FOV >= 650, got ${balanced.visibleWorldW}`);
+  assert.ok(wide.visibleWorldW > balanced.visibleWorldW);
+  assert.ok(balanced.focusY < 844 / 2, 'Portrait hero focus should sit slightly above vertical center');
+
+  const camX = 1420;
+  const camY = 980;
+  const sampleWorld = { x: 1615.5, y: 812.25 };
+  const screenPt = worldToScreenWithCamera(sampleWorld.x, sampleWorld.y, camX, camY, balanced);
+  const backToWorld = screenToWorldWithCamera(screenPt.x, screenPt.y, camX, camY, balanced);
+  assert.ok(Math.abs(backToWorld.x - sampleWorld.x) < 1e-6);
+  assert.ok(Math.abs(backToWorld.y - sampleWorld.y) < 1e-6);
+
+  const heroScreen = worldToScreenWithCamera(camX, camY, camX, camY, balanced);
+  assert.equal(heroScreen.x, balanced.focusX);
+  assert.equal(heroScreen.y, balanced.focusY);
+});
+
+test('Joystick drag radius scales ergonomically between compact portrait (116px) and standard (144px+) zones', () => {
+  assert.equal(computeJoystickDragRadius(116), 36);
+  assert.equal(computeJoystickDragRadius(144), 44);
+  assert.equal(computeJoystickDragRadius(80), 28);
+  assert.equal(computeJoystickDragRadius(0), 42);
+});
 
