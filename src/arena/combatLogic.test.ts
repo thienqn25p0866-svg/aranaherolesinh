@@ -5,6 +5,7 @@ import {
   BOSS_WAVES,
   MAX_BOSS_CC_SEC,
   TIN_RESONANCE_MAX,
+  TIN_OVERLOAD_SHIELD_RATIO,
   LONGHOI_MAX_BURN_STACKS,
   clampBossCcDuration,
   getBossStageCcDuration,
@@ -29,8 +30,11 @@ import {
   ITEM_TIER_RANK,
   sortItemsByRarityAsc,
   sortItemsByRarityDesc,
+  TAI_DU_MAX_TURRETS,
+  TAI_DU_DRONE_OVERDRIVE_DURATION,
   cycleTaiDuDroneMode,
   getTaiDuDroneProfile,
+  computeTaiDuDroneShot,
   computeNguyenOverhealConversion,
   isPortraitViewport,
   computeCameraViewportConfig,
@@ -83,11 +87,12 @@ test('Tin Void Resonance builds up to 4 stacks, boosts cooldown rate, and trigge
   assert.equal(overload.next.stacks, 0);
   assert.equal(overload.next.empowered, true);
   assert.ok(overload.next.recastTimer > 0);
-  assert.equal(overload.c2c3RefundSec, 1.5);
+  assert.equal(overload.c2c3RefundSec, 0.8);
+  assert.equal(TIN_OVERLOAD_SHIELD_RATIO, 0.07);
 
   const refunded = applyTinBasicHitCooldownRefund([4.0, 6.0, 10.0]);
-  assert.equal(refunded[0], 3.65);
-  assert.equal(refunded[1], 5.65);
+  assert.equal(refunded[0], 3.8);
+  assert.equal(refunded[1], 5.8);
   assert.ok(refunded[2] < 10.0);
 });
 
@@ -531,6 +536,14 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
+  const tin = Mi.find((h: any) => h.id === 'tin');
+  assert.ok(tin);
+  assert.equal(tin.stats.hp, 840);
+  assert.equal(tin.stats.damage, 44);
+  assert.equal(tin.skills[0].cooldown, 5.5);
+  assert.equal(tin.skills[1].cooldown, 7.5);
+  assert.equal(tin.skills[2].cooldown, 23);
+
   const danh = Mi.find((h: any) => h.id === 'danh');
   assert.ok(danh);
   assert.equal(danh.skills[2].cooldown, 22);
@@ -605,11 +618,13 @@ test('Tai Du and Nguyen complete kits, drone profiles, overheal cap, Luan C3 mon
   assert.ok(taidu);
   assert.equal(taidu.critDmgRatio, 1.65);
   assert.equal(taidu.skills[2].aimType, 'PATH');
+  assert.equal(TAI_DU_MAX_TURRETS, 2);
+  assert.equal(TAI_DU_DRONE_OVERDRIVE_DURATION, 3.0);
 
   const attackProfile = getTaiDuDroneProfile('attack');
   assert.equal(attackProfile.orbitDist, 56);
-  assert.equal(attackProfile.scanRange, 380);
-  assert.equal(attackProfile.dmgRatio, 0.42);
+  assert.equal(attackProfile.scanRange, 390);
+  assert.equal(attackProfile.dmgRatio, 0.44);
   assert.equal(attackProfile.healPct, 0);
   assert.equal(attackProfile.prioritizeLowHp, false);
   assert.match(attackProfile.color, /^#[0-9A-F]{6}$/i);
@@ -621,22 +636,34 @@ test('Tai Du and Nguyen complete kits, drone profiles, overheal cap, Luan C3 mon
   assert.equal(guardProfile.healPctMaxHp, 0.03);
   assert.equal(guardProfile.healPct, 0.03);
   assert.equal(guardProfile.orbitDist, 42);
-  assert.equal(guardProfile.scanRange, 280);
-  assert.equal(guardProfile.dmgRatio, 0.24);
+  assert.equal(guardProfile.scanRange, 290);
+  assert.equal(guardProfile.dmgRatio, 0.26);
   assert.equal(guardProfile.prioritizeLowHp, false);
   assert.match(guardProfile.color, /^#[0-9A-F]{6}$/i);
 
   mode = cycleTaiDuDroneMode(mode);
   assert.equal(mode, 'pursuit');
   const pursuitProfile = getTaiDuDroneProfile(mode);
-  assert.equal(pursuitProfile.pursuitSpeedBonus, 22);
+  assert.equal(pursuitProfile.pursuitSpeedBonus, 24);
   assert.equal(pursuitProfile.orbitDist, 118);
-  assert.equal(pursuitProfile.scanRange, 470);
-  assert.equal(pursuitProfile.dmgRatio, 0.36);
+  assert.equal(pursuitProfile.scanRange, 480);
+  assert.equal(pursuitProfile.dmgRatio, 0.38);
   assert.equal(pursuitProfile.healPct, 0);
   assert.equal(pursuitProfile.prioritizeLowHp, true);
   assert.match(pursuitProfile.color, /^#[0-9A-F]{6}$/i);
   assert.equal(cycleTaiDuDroneMode(mode), 'attack');
+
+  const normalShot = computeTaiDuDroneShot({ mode: 'attack', effectiveAtk: 100, overdriveActive: false, targetHpRatio: 0.8 });
+  const overdriveShot = computeTaiDuDroneShot({ mode: 'attack', effectiveAtk: 100, overdriveActive: true, targetHpRatio: 0.8 });
+  assert.equal(normalShot.pierceLeft, 1);
+  assert.ok(overdriveShot.fireInterval < normalShot.fireInterval);
+  assert.ok(overdriveShot.damage > normalShot.damage);
+
+  const pursuitNormal = computeTaiDuDroneShot({ mode: 'pursuit', effectiveAtk: 100, overdriveActive: false, targetHpRatio: 0.8 });
+  const pursuitExec = computeTaiDuDroneShot({ mode: 'pursuit', effectiveAtk: 100, overdriveActive: false, targetHpRatio: 0.3 });
+  assert.equal(pursuitNormal.pierceLeft, 2);
+  assert.equal(pursuitExec.isExecute, true);
+  assert.ok(pursuitExec.damage > pursuitNormal.damage);
 
   assert.ok(nguyen);
   assert.equal(nguyen.stats.hp, 1280);

@@ -1839,6 +1839,42 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     return;
   }
 
+  if (h.kind === "tin_slash_wave") {
+    let sc = h.empowered ? 1.25 : 1.0;
+    ctx.scale(sc, sc);
+    let glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
+    glow.addColorStop(0, isMono ? "rgba(255,255,255,0.6)" : "rgba(244, 63, 94, 0.55)");
+    glow.addColorStop(1, "rgba(244, 63, 94, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer crimson crescent blade
+    ctx.fillStyle = isMono ? "#000000" : "#E11D48";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.quadraticCurveTo(4, -22, -16, -24);
+    ctx.quadraticCurveTo(1, -9, 1, 0);
+    ctx.quadraticCurveTo(1, 9, -16, 24);
+    ctx.quadraticCurveTo(4, 22, 14, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner bright spatial rift edge
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-10, -18);
+    ctx.quadraticCurveTo(5, -7, 11, 0);
+    ctx.quadraticCurveTo(5, 7, -10, 18);
+    ctx.stroke();
+    return;
+  }
+
   if (h.kind === "tin_crystal_throw") {
     ctx.rotate(elapsedTime * 14);
     ctx.fillStyle = isMono ? "#000000" : "#E11D48";
@@ -1970,6 +2006,60 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
       ctx.lineTo(5, 6);
       ctx.stroke();
     }
+    return;
+  }
+
+  if (h.kind === "taidu_rail") {
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(56, 189, 248, 0.72)";
+    ctx.lineWidth = 8.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-42, 0);
+    ctx.lineTo(18, 0);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-36, 0);
+    ctx.lineTo(20, 0);
+    ctx.stroke();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-22, 0);
+    ctx.lineTo(22, 0);
+    ctx.stroke();
+    // Side ionized rail prongs
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.beginPath();
+    ctx.moveTo(24, 0);
+    ctx.lineTo(6, -6.5);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(6, 6.5);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (h.kind === "taidu_turret_rocket") {
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(249, 115, 22, 0.65)";
+    ctx.lineWidth = 4.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-18, 0);
+    ctx.lineTo(-4, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#222222" : "#F97316";
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(12, 0);
+    ctx.lineTo(-2, -4.5);
+    ctx.lineTo(-6, 0);
+    ctx.lineTo(-2, 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
     return;
   }
 
@@ -3964,9 +4054,21 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
   ctx.ellipse(0, 18 - bob, 10, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Outer rotating energy ring + guard absorb charge gauge
+  // Outer rotating energy ring + Overdrive aura + guard absorb charge gauge
+  if ((opts.overdrive || 0) > 0) {
+    ctx.save();
+    ctx.rotate(-elapsedTime * 6.5);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 2.4;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 21, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
   ctx.save();
-  ctx.rotate(elapsedTime * (mode === "pursuit" ? 5.8 : 3.2));
+  ctx.rotate(elapsedTime * (mode === "pursuit" || (opts.overdrive || 0) > 0 ? 6.2 : 3.2));
   ctx.strokeStyle = colPrimary;
   ctx.lineWidth = 1.8;
   ctx.setLineDash([6, 4]);
@@ -4484,24 +4586,36 @@ export function drawTaiDuCarpetStrike(ctx, strike, elapsedTime, isMono) {
   ctx.setLineDash([]);
 
   // Shrinking lock-on countdown ring
-  ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : strike.isOrbital ? "#FEF08A" : "#38BDF8";
+  ctx.lineWidth = strike.isOrbital ? 3.5 : 2.5;
   ctx.beginPath();
   ctx.arc(0, 0, Math.max(8, r * (1 - prog * 0.85)), 0, Math.PI * 2);
   ctx.stroke();
 
   // Crosshair reticle
-  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : strike.isOrbital ? "#F43F5E" : "#FEF08A";
+  ctx.lineWidth = strike.isOrbital ? 2.4 : 1.6;
+  let ch = strike.isOrbital ? 28 : 14;
   ctx.beginPath();
-  ctx.moveTo(-14, 0);
-  ctx.lineTo(14, 0);
-  ctx.moveTo(0, -14);
-  ctx.lineTo(0, 14);
+  ctx.moveTo(-ch, 0);
+  ctx.lineTo(ch, 0);
+  ctx.moveTo(0, -ch);
+  ctx.lineTo(0, ch);
   ctx.stroke();
 
+  if (strike.isOrbital) {
+    // Vertical orbital satellite laser guide beam
+    let bw = 6 + prog * 26;
+    let bGrad = ctx.createLinearGradient(-bw, 0, bw, 0);
+    bGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
+    bGrad.addColorStop(0.5, isMono ? "rgba(255,255,255,0.55)" : `rgba(56, 189, 248, ${0.22 + prog * 0.45})`);
+    bGrad.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = bGrad;
+    ctx.fillRect(-bw, -480, bw * 2, 480);
+  }
+
   // Descending aerial missile body right before detonation
-  if (prog > 0.25) {
+  if (prog > 0.25 && !strike.isOrbital) {
     let fallY = -(1 - prog) * 360;
     ctx.save();
     ctx.translate(0, fallY);

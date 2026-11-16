@@ -3,11 +3,12 @@ export const BOSS_WAVES = [3, 6, 9, 12, 15, 18, 21, 24, 27] as const;
 export const MAX_BOSS_CC_SEC = 2.6;
 
 export const TIN_RESONANCE_MAX = 4;
-export const TIN_RESONANCE_DURATION = 6.0;
-export const TIN_HASTE_PER_STACK = 0.08;
-export const TIN_BASIC_HIT_CD_REFUND = 0.35;
-export const TIN_RECAST_WINDOW_SEC = 2.5;
-export const TIN_EMPOWERED_SKILL_MULT = 1.25;
+export const TIN_RESONANCE_DURATION = 4.5;
+export const TIN_HASTE_PER_STACK = 0.05;
+export const TIN_BASIC_HIT_CD_REFUND = 0.2;
+export const TIN_RECAST_WINDOW_SEC = 2.0;
+export const TIN_EMPOWERED_SKILL_MULT = 1.15;
+export const TIN_OVERLOAD_SHIELD_RATIO = 0.07;
 
 export const LONGHOI_MAX_BURN_STACKS = 100;
 export const LONGHOI_BURN_DURATION = 3.0;
@@ -102,7 +103,7 @@ export function computeTinStackGain(
         recastTimer: TIN_RECAST_WINDOW_SEC,
       },
       triggeredOverload: true,
-      c2c3RefundSec: 1.5,
+      c2c3RefundSec: 0.8,
     };
   }
 
@@ -116,7 +117,7 @@ export function computeTinStackGain(
         recastTimer: TIN_RECAST_WINDOW_SEC,
       },
       triggeredOverload: true,
-      c2c3RefundSec: 1.5,
+      c2c3RefundSec: 0.8,
     };
   }
 
@@ -528,6 +529,9 @@ export const TAI_DU_DRONE_MODES: TaiDuDroneMode[] = ['attack', 'guard', 'pursuit
 
 export const LUAN_C3_MONOCHROME_DURATION = 1.5;
 
+export const TAI_DU_DRONE_OVERDRIVE_DURATION = 3.0;
+export const TAI_DU_MAX_TURRETS = 2;
+
 export function cycleTaiDuDroneMode(current: TaiDuDroneMode): TaiDuDroneMode {
   const idx = TAI_DU_DRONE_MODES.indexOf(current);
   return TAI_DU_DRONE_MODES[(idx + 1) % TAI_DU_DRONE_MODES.length];
@@ -539,20 +543,22 @@ export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
       mode: 'guard' as const,
       label: 'Hộ Vệ',
       color: '#34D399',
-      fireInterval: 1.05,
-      damageScale: 0.24,
-      dmgRatio: 0.24,
+      fireInterval: 0.92,
+      damageScale: 0.26,
+      dmgRatio: 0.26,
       orbitRadius: 42,
       orbitDist: 42,
-      scanRange: 280,
+      scanRange: 290,
       prioritizeLowHp: false,
-      healInterval: 1.65,
+      healInterval: 1.7,
       healPctMaxHp: 0.03,
       healPct: 0.03,
       guardAbsorbPct: 0.2,
-      guardPulseThreshold: 150,
-      guardPulseHealRatio: 0.09,
+      guardPulseThreshold: 160,
+      guardPulseHealRatio: 0.08,
       pursuitSpeedBonus: 0,
+      executeThreshold: 0,
+      executeBonusMult: 1,
     };
   }
   if (mode === 'pursuit') {
@@ -560,12 +566,12 @@ export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
       mode: 'pursuit' as const,
       label: 'Truy Kích',
       color: '#F97316',
-      fireInterval: 0.48,
-      damageScale: 0.36,
-      dmgRatio: 0.36,
+      fireInterval: 0.46,
+      damageScale: 0.38,
+      dmgRatio: 0.38,
       orbitRadius: 118,
       orbitDist: 118,
-      scanRange: 470,
+      scanRange: 480,
       prioritizeLowHp: true,
       healInterval: 0,
       healPctMaxHp: 0,
@@ -573,19 +579,21 @@ export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
       guardAbsorbPct: 0,
       guardPulseThreshold: 0,
       guardPulseHealRatio: 0,
-      pursuitSpeedBonus: 22,
+      pursuitSpeedBonus: 24,
+      executeThreshold: 0.35,
+      executeBonusMult: 1.25,
     };
   }
   return {
     mode: 'attack' as const,
     label: 'Tấn Công',
     color: '#38BDF8',
-    fireInterval: 0.62,
-    damageScale: 0.42,
-    dmgRatio: 0.42,
+    fireInterval: 0.55,
+    damageScale: 0.44,
+    dmgRatio: 0.44,
     orbitRadius: 56,
     orbitDist: 56,
-    scanRange: 380,
+    scanRange: 390,
     prioritizeLowHp: false,
     healInterval: 0,
     healPctMaxHp: 0,
@@ -594,6 +602,31 @@ export function getTaiDuDroneProfile(mode: TaiDuDroneMode) {
     guardPulseThreshold: 0,
     guardPulseHealRatio: 0,
     pursuitSpeedBonus: 0,
+    executeThreshold: 0,
+    executeBonusMult: 1,
+  };
+}
+
+export function computeTaiDuDroneShot(params: {
+  mode: TaiDuDroneMode;
+  effectiveAtk: number;
+  overdriveActive?: boolean;
+  targetHpRatio?: number;
+}) {
+  const profile = getTaiDuDroneProfile(params.mode);
+  const overdriveMult = params.overdriveActive ? 1.18 : 1;
+  const fireInterval = params.overdriveActive ? Math.round(profile.fireInterval * 0.65 * 100) / 100 : profile.fireInterval;
+  const isExecute =
+    profile.executeThreshold > 0 &&
+    typeof params.targetHpRatio === 'number' &&
+    params.targetHpRatio <= profile.executeThreshold;
+  const execMult = isExecute ? profile.executeBonusMult : 1;
+  const damage = Math.max(1, Math.round(Math.max(1, params.effectiveAtk) * profile.dmgRatio * overdriveMult * execMult));
+  return {
+    damage,
+    fireInterval,
+    isExecute,
+    pierceLeft: params.mode === 'pursuit' ? 2 : 1,
   };
 }
 

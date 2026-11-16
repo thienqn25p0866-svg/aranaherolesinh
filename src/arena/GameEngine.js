@@ -1,6 +1,6 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
 import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura } from "./weaponRenderer";
-import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera } from "./combatLogic";
+import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
 export class GameEngine {
   constructor(s) {
@@ -81,12 +81,12 @@ export class GameEngine {
       let p = g.stats || {};
       p.atk && (l.atk += p.atk), p.matk && (l.matk += p.matk), p.hp && (l.hp += p.hp), p.hpRegen && (l.hpRegen += p.hpRegen), p.ms && (l.ms += p.ms), p.as && (l.as += p.as), p.crit && (l.crit += p.crit), p.critExtraDmg && (l.critExtraDmg += p.critExtraDmg), p.cdr && (l.cdr += p.cdr), p.lifesteal && (l.lifesteal += p.lifesteal), p.reflect && (l.reflect += p.reflect), p.dmgRed && (l.dmgRed += p.dmgRed), p.lightningChance && (l.lightningChance = p.lightningChance, l.lightningDmg = p.lightningDmg || 35), p.frostThornsChance && (l.frostThornsChance = p.frostThornsChance), p.killHeal && (l.killHeal += p.killHeal), p.autoShield20 && (l.autoShield20 = Math.max(l.autoShield20, p.autoShield20)), p.dashAttackSpeed && (l.dashAttackSpeed = Math.max(l.dashAttackSpeed, p.dashAttackSpeed)), p.skillBurstChance && (l.skillBurstChance = p.skillBurstChance, l.skillBurstDmg = p.skillBurstDmg || 40), p.autoShield30 && (l.autoShield30 = Math.max(l.autoShield30, p.autoShield30)), p.bossDmgBonus && (l.bossDmgBonus += p.bossDmgBonus), p.hitProcCount && (l.hitProcCount = p.hitProcCount, l.hitProcDmg = Math.max(l.hitProcDmg, p.hitProcDmg || 0)), p.healAmp && (l.healAmp += p.healAmp), p.bossSkillExtraDmg && (l.bossSkillExtraDmg += p.bossSkillExtraDmg), p.autoShield25 && (l.autoShield25 = Math.max(l.autoShield25, p.autoShield25)), p.frostSlowDur && (l.frostSlowDur = Math.max(l.frostSlowDur, p.frostSlowDur)), p.aoeAmp && (l.aoeAmp += p.aoeAmp), p.autoHeal20 && (l.autoHeal20 = Math.max(l.autoHeal20, p.autoHeal20), p.autoHeal20Cd && (l.autoHeal20Cd = p.autoHeal20Cd)), p.waveStartShield && (l.waveStartShield += p.waveStartShield), p.skillMoveSpeedBonus && (l.skillMoveSpeedBonus = Math.max(l.skillMoveSpeedBonus, p.skillMoveSpeedBonus));
     }
-    return l.cdr = Math.min(0.45, l.cdr), l.ms = Math.min(0.5, l.ms), l.lifesteal = Math.min(0.25, l.lifesteal), l.dmgRed = Math.min(0.35, l.dmgRed), s === "kin" ? (l.as = Math.min(0.85, l.as), l.crit = Math.min(0.92, l.crit * 1.65 + 0.35), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 2)) : s === "longhoi" ? (l.as = Math.min(0.45, l.as), l.crit = Math.min(0.55, l.crit + 0.08)) : s === "taidu" ? (l.as = Math.min(0.65, l.as), l.crit = Math.min(0.6, l.crit + 0.14)) : s === "nguyen" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.4, l.crit + 0.08)) : (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.5, l.crit)), l;
+    return l.cdr = Math.min(0.45, l.cdr), l.ms = Math.min(0.5, l.ms), l.lifesteal = Math.min(0.25, l.lifesteal), l.dmgRed = Math.min(0.35, l.dmgRed), s === "kin" ? (l.as = Math.min(0.85, l.as), l.crit = Math.min(0.92, l.crit * 1.65 + 0.35), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 2)) : s === "longhoi" ? (l.as = Math.min(0.45, l.as), l.crit = Math.min(0.55, l.crit + 0.08)) : s === "taidu" ? (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.56, l.crit + 0.12)) : s === "tin" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.45, l.crit + 0.08)) : s === "nguyen" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.4, l.crit + 0.08)) : (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.5, l.crit)), l;
   }
   initPlayer() {
     let s = this.getHeroGearStats(this.currentHero.id), a = this.currentHero.stats.hp + s.hp;
     this.duccong_pads = [null, null, null];
-    this.player = { x: Se / 2, y: Ce / 2, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, berserkTimer: 0, berserkHealPerHit: 22, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: Se / 2 - 42, taidu_droneY: Ce / 2 - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: Se / 2, targetY: Ce / 2 }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
+    this.player = { x: Se / 2, y: Ce / 2, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, berserkTimer: 0, berserkHealPerHit: 22, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: Se / 2 - 42, taidu_droneY: Ce / 2 - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: Se / 2, targetY: Ce / 2 }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
   }
   computeHeroStats() {
     if (!this.currentHero) return;
@@ -103,14 +103,14 @@ export class GameEngine {
   }
   getEffectiveAttackInterval() {
     let s = this.getHeroGearStats(this.currentHero.id), a = 1 + this.player.attackSpeedBonus + s.as;
-    this.player.berserkTimer > 0 && (a += 0.25), this.player.dung_c3_buff_timer > 0 && (a += 0.9), this.player.kin_asBuffTimer > 0 && (a += 0.35), this.player.dashBuffAsTimer > 0 && (a += 0.2), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (a += 0.15), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (a += computeDanhDragonFormModifiers(true).attackSpeedMult - 1);
+    this.player.berserkTimer > 0 && (a += 0.25), this.player.dung_c3_buff_timer > 0 && (a += 0.9), this.player.kin_asBuffTimer > 0 && (a += 0.35), this.player.dashBuffAsTimer > 0 && (a += 0.2), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (a += 0.18), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (a += 0.15), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (a += computeDanhDragonFormModifiers(true).attackSpeedMult - 1);
     let l = this.currentHero.stats.attackInterval || 0.55;
     return Math.max(0.09, l / a);
   }
   getEffectiveMoveSpeed() {
     if (this.player.stunTimer > 0 || this.player.rootTimer > 0) return 0;
     let s = 1 + this.getHeroGearStats(this.currentHero.id).ms, tdSpeed = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(this.player.taidu_droneMode || "attack").pursuitSpeedBonus || 0 : 0;
-    return this.player.berserkTimer > 0 && (s += 0.15), this.player.longhoi_msBuffTimer > 0 && (s += 0.12), this.currentHero.id === "bao" && this.player.bao_stealthTimer > 0 && (s += 0.25), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (s += 0.2), this.currentHero.id === "danh" && this.player.chargeState.active && (s *= 0.55), this.player.slowTimer > 0 && (s *= Math.max(0.35, 1 - this.player.slowFactor)), (this.currentHero.stats.speed + tdSpeed) * 2.15 * s;
+    return this.player.berserkTimer > 0 && (s += 0.15), this.player.longhoi_msBuffTimer > 0 && (s += 0.12), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (s += 0.12), this.currentHero.id === "bao" && this.player.bao_stealthTimer > 0 && (s += 0.25), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (s += 0.2), this.currentHero.id === "danh" && this.player.chargeState.active && (s *= 0.55), this.player.slowTimer > 0 && (s *= Math.max(0.35, 1 - this.player.slowFactor)), (this.currentHero.stats.speed + tdSpeed) * 2.15 * s;
   }
   isBossImmune(s) {
     return false;
@@ -130,6 +130,10 @@ export class GameEngine {
     }
     if (this.currentHero.id === "danh" && (this.player.chargeState.active || this.player.danh_animTimer > 0 || this.player.danh_dragonTimer > 0) && s !== "burn") {
       this.player.ccResistTimer <= 0 && (this.player.ccResistTimer = 0.6, this.addFloatingText(this.player.x, this.player.y - 30, "\u{1F6E1}\uFE0F MI\u1EC4N KH\u1ED0NG!", "#FBBF24", 14));
+      return;
+    }
+    if (this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && s !== "burn") {
+      this.player.ccResistTimer <= 0 && (this.player.ccResistTimer = 0.55, this.addFloatingText(this.player.x, this.player.y - 30, "\u{1F6E1}\uFE0F L\u00C3NH \u0110\u1ECAA MI\u1EC4N KH\u1ED0NG!", "#FB7185", 14));
       return;
     }
     if (!(this.player.hp <= 0 || this.player.dashActive)) if (s === "knockback") {
@@ -330,7 +334,7 @@ export class GameEngine {
         let H = h.lightningDmg || 35;
         f += H, R.playElectricZap(), this.createBranchingLightning(this.player.x, this.player.y, s.x, s.y, "#FCD34D", 2.8), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: s.x, y2: s.y, color: "#FCD34D", width: 2.8 }), this.addFloatingText(s.x, s.y - 20, `SẤM +${H}`, "#FCD34D", 13);
       }
-      let C = (h.lifesteal + (this.currentHero.id === "tin" ? 0.1 : 0)) * (this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 ? 2 : 1);
+      let C = (h.lifesteal + (this.currentHero.id === "tin" ? 0.05 : 0)) * (this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 ? 2 : 1);
       if (C > 0) {
         let H = Math.min(s.hp, f);
         this.healPlayer(Math.round(H * C), "LIFESTEAL");
@@ -348,7 +352,7 @@ export class GameEngine {
         showText && healed > 0 && (this.player.luan_vampTextCd = 0.4);
       }
     }
-    this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 && s.kind === "boss" && (f = Math.round(f * 1.2)), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (f = Math.round(f * 1.25));
+    (s.taidu_empTimer || 0) > 0 && (f = Math.round(f * 1.1)), this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 && s.kind === "boss" && (f = Math.round(f * 1.2)), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (f = Math.round(f * 1.25));
     let T = Math.min(s.hp, f);
     if (this.multiplayer.active) {
       let predictedKill = s.hp - f <= 0;
@@ -425,9 +429,11 @@ export class GameEngine {
         this.player.cooldowns[1] = Math.max(0, this.player.cooldowns[1] - res.c2c3RefundSec);
         this.player.cooldowns[2] = Math.max(0, this.player.cooldowns[2] - res.c2c3RefundSec);
       }
+      this.addPlayerShield(Math.round(this.player.maxHp * TIN_OVERLOAD_SHIELD_RATIO), 2.5);
       R.playElectricZap();
-      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 74, spread: Math.PI * 2, color: "#FB7185", life: 0, maxLife: 0.28, kind: "shockwave" });
-      this.addFloatingText(this.player.x, this.player.y - 42, "⚡ QUÁ TẢI HƯ KHÔNG! LƯỚT C1 FREE (+25% ST)", "#FB7185", 15);
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 84, spread: Math.PI * 2, color: "#FB7185", life: 0, maxLife: 0.3, kind: "shockwave" });
+      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 84, spread: Math.PI * 2, color: "#FB7185", maxLife: 0.3, kind: "shockwave" });
+      this.addFloatingText(this.player.x, this.player.y - 42, "\u26A1 QU\u00C1 T\u1EA2I! KHI\u00CAN +7% \xB7 L\u01AF\u1EDAT C1 FREE (+15% ST)", "#FB7185", 15);
     }
   }
   damagePlayer(s, a = null) {
@@ -436,21 +442,24 @@ export class GameEngine {
     this.currentHero.id === "gau" && (m += 0.30), tdGuardProf && (m += tdGuardProf.guardAbsorbPct), this.currentHero.id === "nguyen" && this.player.nguyen_satellitesTimer > 0 && (m += 0.20), this.player.shieldTimer > 0 && this.player.shieldDmgRed > 0 && (m += this.player.shieldDmgRed), this.currentHero.id === "gau" && this.player.gau_c2_guardTimer > 0 && (m += 0.35, this.player.gau_c2_counterWaveTimer = 0.22, a && this.player.gau_c2_stacks < 4 && (this.player.gau_c2_stacks++, this.addFloatingText(this.player.x, this.player.y - 34, `\u{1F6E1}\uFE0F PH\u1EA2N CH\u1EA4N ${this.player.gau_c2_stacks}/4`, "#FBBF24", 13))), this.currentHero.id === "danh" && this.player.chargeState.active && this.player.chargeState.kind === "danh_c2" && (m += 0.20), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (m += computeDanhDragonFormModifiers(true).damageReductionBonus), this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 ? (m += 0.75, m = Math.min(0.88, m)) : this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 ? m = Math.min(0.80, m) : this.currentHero.id === "nguyen" && this.player.nguyen_satellitesTimer > 0 ? m = Math.min(0.68, m) : m = Math.min(0.65, m);
     if (tdGuardProf && s > 0) {
       let absorbed = Math.max(1, Math.round(s * tdGuardProf.guardAbsorbPct));
+      let threshold = tdGuardProf.guardPulseThreshold || 160;
       this.player.taidu_droneShieldAccum = (this.player.taidu_droneShieldAccum || 0) + absorbed;
-      if (this.player.taidu_droneShieldAccum >= 150) {
-        this.player.taidu_droneShieldAccum -= 150;
-        let pulseHeal = Math.round(this.player.maxHp * 0.09);
+      if (this.player.taidu_droneShieldAccum >= threshold) {
+        this.player.taidu_droneShieldAccum -= threshold;
+        let pulseHeal = Math.round(this.player.maxHp * (tdGuardProf.guardPulseHealRatio || 0.08));
+        let pulseShield = Math.round(this.player.maxHp * 0.06);
         this.healPlayer(pulseHeal, "HEAL", `+${pulseHeal} HP (XUNG H\u1ED8 V\u1EC6)`);
-        this.emitAllySupport({ x: this.player.x, y: this.player.y, radius: 260, heal: pulseHeal, label: `+${pulseHeal} HP (XUNG H\u1ED8 V\u1EC6)`, color: "#34D399" });
-        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 145, spread: Math.PI * 2, color: "#34D399", accentColor: "#FEF08A", life: 0, maxLife: 0.36, kind: "taidu_hex_blast" });
-        this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 145, spread: Math.PI * 2, color: "#34D399", accentColor: "#FEF08A", maxLife: 0.36, kind: "taidu_hex_blast" });
+        this.addPlayerShield(pulseShield, 2.5);
+        this.emitAllySupport({ x: this.player.x, y: this.player.y, radius: 260, heal: pulseHeal, shield: pulseShield, label: `+${pulseHeal} HP \xB7 KHI\u00CAN +${pulseShield}`, color: "#34D399" });
+        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 150, spread: Math.PI * 2, color: "#34D399", accentColor: "#FEF08A", life: 0, maxLife: 0.36, kind: "taidu_hex_blast" });
+        this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 150, spread: Math.PI * 2, color: "#34D399", accentColor: "#FEF08A", maxLife: 0.36, kind: "taidu_hex_blast" });
         this.spawnParticles(this.player.x, this.player.y, "#34D399", 14, 50, 170, 3.2, 0.38);
-        let pulseDmg = Math.round(40 + 0.42 * this.getEffectiveDamage());
+        let pulseDmg = Math.round(40 + 0.38 * this.getEffectiveDamage());
         for (let e of [...this.enemies]) {
           let dx = e.x - this.player.x, dy = e.y - this.player.y, d = Math.hypot(dx, dy);
-          if (d <= 145 + e.radius) {
+          if (d <= 150 + e.radius) {
             let kb = Math.atan2(dy, dx);
-            this.damageEnemy(e, pulseDmg, Math.cos(kb) * 26, Math.sin(kb) * 26, true);
+            this.damageEnemy(e, pulseDmg, Math.cos(kb) * 28, Math.sin(kb) * 28, true);
           }
         }
         R.playSanctuaryWave();
@@ -650,14 +659,47 @@ export class GameEngine {
       }
       h.length > 0 && this.player.berserkTimer > 0 && this.healPlayer(((this.player.berserkHealPerHit || 22) + Math.round(this.player.maxHp * 0.01)) * (p ? 2 : 1), "HEAL");
     } else if (this.currentHero.id === "tin") {
-      R.playSlash(), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 18, spread: 1.65, color: "#FB7185", life: 0, maxLife: 0.22, crossed: true, kind: "slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 18, spread: 1.65, color: "#FB7185", maxLife: 0.22, crossed: true, kind: "slash" }), this.spawnSpatialTear(this.player.x + Math.cos(l - 0.45) * 35, this.player.y + Math.sin(l - 0.45) * 35, this.player.x + Math.cos(l + 0.45) * (s + 35), this.player.y + Math.sin(l + 0.45) * (s + 35), "#F43F5E", 8), this.queueVfx("tear", { x1: this.player.x + Math.cos(l - 0.45) * 35, y1: this.player.y + Math.sin(l - 0.45) * 35, x2: this.player.x + Math.cos(l + 0.45) * (s + 35), y2: this.player.y + Math.sin(l + 0.45) * (s + 35), color: "#F43F5E", width: 8 });
+      R.playSlash();
+      this.player.tin_basicCount = (this.player.tin_basicCount || 0) + 1;
+      let isWaveAtk = this.player.tin_basicCount >= 3;
+      if (isWaveAtk) {
+        this.player.tin_basicCount = 0;
+        let wx = this.player.x + Math.cos(l) * 26, wy = this.player.y + Math.sin(l) * 26, wDmg = Math.round(m * 0.95);
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "tin_slash_wave", x: wx, y: wy, vx: Math.cos(l) * 780, vy: Math.sin(l) * 780, radius: 20, damage: wDmg, color: "#F43F5E", angle: l, distanceTraveled: 0, maxDistance: s + 140, pierceLeft: 99, hitIds: /* @__PURE__ */ new Set() });
+        this.queueVfx("proj_vis", { kind: "tin_slash_wave", x: wx, y: wy, vx: Math.cos(l) * 780, vy: Math.sin(l) * 780, radius: 20, color: "#F43F5E", angle: l, maxDistance: s + 140, pierceLeft: 99 });
+        this.addFloatingText(this.player.x, this.player.y - 26, "\u{1FA78} KI\u1EBEM KH\u00CD H\u01AF KH\u00D4NG!", "#FB7185", 14);
+      }
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 22, spread: 1.75, color: "#FB7185", life: 0, maxLife: 0.22, crossed: true, kind: "slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 22, spread: 1.75, color: "#FB7185", maxLife: 0.22, crossed: true, kind: "slash" }), this.spawnSpatialTear(this.player.x + Math.cos(l - 0.45) * 35, this.player.y + Math.sin(l - 0.45) * 35, this.player.x + Math.cos(l + 0.45) * (s + 38), this.player.y + Math.sin(l + 0.45) * (s + 38), "#F43F5E", 9), this.queueVfx("tear", { x1: this.player.x + Math.cos(l - 0.45) * 35, y1: this.player.y + Math.sin(l - 0.45) * 35, x2: this.player.x + Math.cos(l + 0.45) * (s + 38), y2: this.player.y + Math.sin(l + 0.45) * (s + 38), color: "#F43F5E", width: 9 });
       let hitAny = false, effScale = m / Math.max(1, this.currentHero.stats.damage);
       for (let c of [...this.enemies]) {
         let g = c.x - this.player.x, p = c.y - this.player.y, h = Math.hypot(g, p) - c.radius;
-        if (h <= s + 15 && (Math.abs(Math.atan2(Math.sin(Math.atan2(p, g) - l), Math.cos(Math.atan2(p, g) - l))) <= 0.95 || h < 32)) {
+        if (h <= s + 18 && (Math.abs(Math.atan2(Math.sin(Math.atan2(p, g) - l), Math.cos(Math.atan2(p, g) - l))) <= 1.0 || h < 34)) {
           hitAny = true;
           let f = 0;
-          this.isBossImmune(c) ? (c.tin_hasMark = false, c.tin_hits = 0, this.notifyBossImmune(c, "MI\u1EC4N NHI\u1EC4M D\u1EA4U \u1EA4N")) : (c.tin_hits = (c.tin_hits || 0) + 1, c.tin_hasMark ? (f += Math.round(68 * effScale), c.tin_hasMark = false, c.tin_hits = 0, this.addFloatingText(c.x, c.y - 20, `K\xCDCH N\u1ED4 D\u1EA4U +${f} DMG`, "#F43F5E", 15), this.spawnRedCrystals(c.x, c.y, 8, 80, 200), this.healPlayer(28, "HEAL", "+28 HP (D\u1EA4U \u1EA4N)"), this.player.cooldowns[0] = Math.max(0, this.player.cooldowns[0] - 1.2), this.player.cooldowns[1] = Math.max(0, this.player.cooldowns[1] - 1.2), this.grantTinResonance(1, false)) : c.tin_hits >= 3 && (c.tin_hasMark = true, this.addFloatingText(c.x, c.y - 20, "HUY\u1EBET \u1EA2NH \u1EA4N!", "#F43F5E", 14), this.spawnRedCrystals(c.x, c.y, 4, 40, 100))), this.damageEnemy(c, m + f);
+          if (this.isBossImmune(c)) {
+            c.tin_hasMark = false, c.tin_hits = 0, this.notifyBossImmune(c, "MI\u1EC4N NHI\u1EC4M D\u1EA4U \u1EA4N");
+          } else {
+            c.tin_hits = (c.tin_hits || 0) + 1;
+            if (c.tin_hasMark) {
+              let burstDmg = Math.round(48 * effScale), splashDmg = Math.round(30 * effScale), markHeal = Math.max(16, Math.round(this.player.maxHp * 0.015));
+              f += burstDmg;
+              c.tin_hasMark = false, c.tin_hits = 0;
+              this.addFloatingText(c.x, c.y - 22, `\u{1F4A5} HUY\u1EBET \u1EA4N B\u1ED8C PH\u00C1T +${burstDmg}!`, "#F43F5E", 15);
+              this.slashes.push({ x: c.x, y: c.y, angle: 0, radius: 72, spread: Math.PI * 2, color: "#F43F5E", life: 0, maxLife: 0.25, kind: "shockwave" });
+              this.queueVfx("slash", { x: c.x, y: c.y, angle: 0, radius: 72, spread: Math.PI * 2, color: "#F43F5E", maxLife: 0.25, kind: "shockwave" });
+              this.spawnRedCrystals(c.x, c.y, 10, 80, 210);
+              this.healPlayer(markHeal, "HEAL", `+${markHeal} HP (HUY\u1EBET \u1EA4N)`);
+              this.player.cooldowns[0] = Math.max(0, this.player.cooldowns[0] - 0.5);
+              this.player.cooldowns[1] = Math.max(0, this.player.cooldowns[1] - 0.5);
+              this.grantTinResonance(1, false);
+              for (let spl of [...this.enemies]) {
+                if (spl !== c && spl.hp > 0 && Math.hypot(spl.x - c.x, spl.y - c.y) <= 72 + spl.radius) this.damageEnemy(spl, splashDmg, 0, 0, true);
+              }
+            } else if (c.tin_hits >= 3) {
+              c.tin_hasMark = true, this.addFloatingText(c.x, c.y - 20, "HUY\u1EBET \u1EA2NH \u1EA4N!", "#F43F5E", 14), this.spawnRedCrystals(c.x, c.y, 4, 40, 100);
+            }
+          }
+          this.damageEnemy(c, m + f);
         }
       }
       hitAny && (this.player.cooldowns = applyTinBasicHitCooldownRefund(this.player.cooldowns));
@@ -747,12 +789,16 @@ export class GameEngine {
       this.carveLuanRift(sx, sy, rx2, ry2, ap, 8);
     } else if (this.currentHero.id === "taidu") {
       this.player.taidu_barrelParity = -(this.player.taidu_barrelParity || 1);
-      let perp = l + Math.PI / 2, off = this.player.taidu_barrelParity * 6.5, sx = this.player.x + Math.cos(l) * 32 + Math.cos(perp) * off, sy = this.player.y + Math.sin(l) * 32 + Math.sin(perp) * off, boltDmg = Math.round(m * 0.78);
-      R.playTurretShot();
-      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "taidu_bolt", x: sx, y: sy, vx: Math.cos(l) * 860, vy: Math.sin(l) * 860, radius: 7, damage: boltDmg, color: "#F97316", angle: l, distanceTraveled: 0, maxDistance: s + 85, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
-      this.queueVfx("proj_vis", { kind: "taidu_bolt", x: sx, y: sy, vx: Math.cos(l) * 860, vy: Math.sin(l) * 860, radius: 7, color: "#F97316", angle: l, maxDistance: s + 85, pierceLeft: 1 });
-      this.spawnParticles(sx, sy, "#38BDF8", 4, 30, 95, 2.2, 0.2);
-      this.comboManager.record({ heroId: "taidu", action: "basic", hitCount: 1, damageDealt: boltDmg });
+      this.player.taidu_basicCount = (this.player.taidu_basicCount || 0) + 1;
+      let isRail = this.player.taidu_basicCount >= 3;
+      isRail && (this.player.taidu_basicCount = 0);
+      let perp = l + Math.PI / 2, off = isRail ? 0 : this.player.taidu_barrelParity * 6.5, sx = this.player.x + Math.cos(l) * 32 + Math.cos(perp) * off, sy = this.player.y + Math.sin(l) * 32 + Math.sin(perp) * off;
+      let pKind = isRail ? "taidu_rail" : "taidu_bolt", boltDmg = Math.round(m * (isRail ? 1.15 : 0.85)), pSpd = isRail ? 980 : 860, pMaxDist = s + (isRail ? 125 : 85), pPierce = isRail ? 3 : 1, pRad = isRail ? 11 : 8, pCol = isRail ? "#38BDF8" : "#F97316";
+      isRail ? R.playElectricZap() : R.playTurretShot();
+      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: pKind, empDur: isRail ? 2.0 : 0, x: sx, y: sy, vx: Math.cos(l) * pSpd, vy: Math.sin(l) * pSpd, radius: pRad, damage: boltDmg, color: pCol, angle: l, distanceTraveled: 0, maxDistance: pMaxDist, pierceLeft: pPierce, hitIds: /* @__PURE__ */ new Set() });
+      this.queueVfx("proj_vis", { kind: pKind, x: sx, y: sy, vx: Math.cos(l) * pSpd, vy: Math.sin(l) * pSpd, radius: pRad, color: pCol, angle: l, maxDistance: pMaxDist, pierceLeft: pPierce });
+      this.spawnParticles(sx, sy, isRail ? "#FACC15" : "#38BDF8", isRail ? 7 : 4, 35, 115, 2.4, 0.22);
+      this.comboManager.record({ heroId: "taidu", action: "basic", hitCount: 1, empowered: isRail, damageDealt: boltDmg });
     } else if (this.currentHero.id === "nguyen") {
       let ap = this.getEffectiveAP(), dir = this.player.attackSwingParity || 1, waveDmg = Math.round(m * 0.78);
       R.playShieldBlock();
@@ -890,29 +936,61 @@ export class GameEngine {
       let empMult = this.player.tin_empowered ? (this.player.tin_empowered = false, TIN_EMPOWERED_SKILL_MULT) : 1;
       if (s === 0) {
         R.playDash(), T(), this.player.dashActive = true, this.player.dashKind = "tin_c1", this.player.dashTimer = 0.2;
-        let b = g.range / 0.2;
-        this.player.dashVx = Math.cos(a) * b, this.player.dashVy = Math.sin(a) * b, this.player.dashDamage = 95 * v * empMult, this.player.dashHitIds.clear(), this.player.tin_c1_refunded_c2 = false, this.player.tin_c1_charges = 0, this.player.tin_c1_recast_timer = 0, isTinFreeRecast ? this.addFloatingText(this.player.x, this.player.y - 26, "\u26A1 \u1EA2NH B\u1ED8 MI\u1EC4N PH\xCD!", "#FB7185", 14) : (this.player.cooldowns[0] = f, this.grantTinResonance(1, false)), this.spawnSpatialTear(this.player.x, this.player.y, this.player.x + Math.cos(a) * g.range, this.player.y + Math.sin(a) * g.range, "#F43F5E", 12), this.queueVfx("tear", { x1: this.player.x, y1: this.player.y, x2: this.player.x + Math.cos(a) * g.range, y2: this.player.y + Math.sin(a) * g.range, color: "#F43F5E", width: 12 });
+        let b = g.range / 0.2, sx = this.player.x, sy = this.player.y, ex = Math.max(40, Math.min(Se - 40, sx + Math.cos(a) * g.range)), ey = Math.max(40, Math.min(Ce - 40, sy + Math.sin(a) * g.range));
+        this.player.dashVx = Math.cos(a) * b, this.player.dashVy = Math.sin(a) * b, this.player.dashDamage = 72 * v * empMult, this.player.dashHitIds.clear(), this.player.tin_c1_refunded_c2 = false, this.player.tin_c1_shieldGranted = false, this.player.tin_c1_charges = 0, this.player.tin_c1_recast_timer = 0;
+        isTinFreeRecast ? this.addFloatingText(this.player.x, this.player.y - 26, "\u26A1 \u1EA2NH B\u1ED8 MI\u1EC4N PH\u00CD!", "#FB7185", 14) : (this.player.cooldowns[0] = f, this.grantTinResonance(1, false));
+        this.player.tin_afterSlashes = this.player.tin_afterSlashes || [];
+        this.player.tin_afterSlashes.push({ kind: "rift", timer: 0.24, x1: sx, y1: sy, x2: ex, y2: ey, damage: Math.round(38 * v * empMult) });
+        this.spawnSpatialTear(sx, sy, ex, ey, "#F43F5E", 13), this.queueVfx("tear", { x1: sx, y1: sy, x2: ex, y2: ey, color: "#F43F5E", width: 13 });
+        this.comboManager.record({ heroId: "tin", action: "c1", hitCount: 1, empowered: empMult > 1 });
       } else if (s === 1) {
         R.playSlash(), R.playOrb();
-        let b = g.range || 270, c2Heal = Math.max(240, Math.round(this.player.maxHp * 0.18));
+        let b = g.range || 290, c2Heal = Math.max(85, Math.round(this.player.maxHp * 0.07));
         this.healPlayer(c2Heal, "HEAL", `+${c2Heal} HP (MA TH\u1EA0CH)`), this.grantTinResonance(1, false);
-        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "tin_crystal_throw", x: this.player.x + Math.cos(a) * 18, y: this.player.y + Math.sin(a) * 18, vx: Math.cos(a) * 920, vy: Math.sin(a) * 920, radius: 16, damage: 155 * v * empMult, color: "#EF4444", angle: a, distanceTraveled: 0, maxDistance: b, pierceLeft: 99, hitIds: /* @__PURE__ */ new Set(), hasHealedPlayer: false }), this.queueVfx("proj_vis", { kind: "tin_crystal_throw", x: this.player.x + Math.cos(a) * 18, y: this.player.y + Math.sin(a) * 18, vx: Math.cos(a) * 920, vy: Math.sin(a) * 920, radius: 16, color: "#EF4444", angle: a, maxDistance: b, pierceLeft: 99 }), this.spawnRedCrystals(this.player.x, this.player.y, 6, 50, 140), this.queueVfx("particles", { x: this.player.x, y: this.player.y, color: "#F43F5E", count: 8, minSpd: 50, maxSpd: 140, size: 3.2, life: 0.35 });
+        for (let shard of [{ angOff: -0.1, dmg: 92 * v * empMult, rad: 16, spd: 920, primary: true }, { angOff: 0.1, dmg: 50 * v * empMult, rad: 13, spd: 890, primary: false }]) {
+          let ang = a + shard.angOff, sx = this.player.x + Math.cos(ang) * 18, sy = this.player.y + Math.sin(ang) * 18;
+          this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "tin_crystal_throw", isPrimaryCrystal: shard.primary, droppedFirstCrystal: true, x: sx, y: sy, vx: Math.cos(ang) * shard.spd, vy: Math.sin(ang) * shard.spd, radius: shard.rad, damage: shard.dmg, color: "#EF4444", angle: ang, distanceTraveled: 0, maxDistance: b, pierceLeft: 99, hitIds: /* @__PURE__ */ new Set(), hasHealedPlayer: false });
+          this.queueVfx("proj_vis", { kind: "tin_crystal_throw", x: sx, y: sy, vx: Math.cos(ang) * shard.spd, vy: Math.sin(ang) * shard.spd, radius: shard.rad, color: "#EF4444", angle: ang, maxDistance: b, pierceLeft: 99 });
+        }
+        this.spawnRedCrystals(this.player.x, this.player.y, 8, 55, 160), this.queueVfx("particles", { x: this.player.x, y: this.player.y, color: "#F43F5E", count: 10, minSpd: 55, maxSpd: 155, size: 3.4, life: 0.36 });
+        this.comboManager.record({ heroId: "tin", action: "c2", hitCount: 1, empowered: empMult > 1 });
       } else if (s === 2) {
         let b = this.findTargetForTinC3(a, g.range);
         if (!b) {
-          this.player.cooldowns[2] = 0, empMult > 1 && (this.player.tin_empowered = true), this.addFloatingText(this.player.x, this.player.y - 24, "KH\xD4NG C\xD3 M\u1EE4C TI\xCAU", "#94A3B8", 13);
+          this.player.cooldowns[2] = 0, empMult > 1 && (this.player.tin_empowered = true), this.addFloatingText(this.player.x, this.player.y - 24, "KH\u00D4NG C\u00D3 M\u1EE4C TI\xCAU", "#94A3B8", 13);
           return;
         }
-        this.player.tin_monochrome_realm_timer = 1.25, this.screenFlashWhite = 0.35, R.playRealmSlash(), this.addShake(18, 0.55), this.grantTinResonance(1, false);
+        this.player.tin_monochrome_realm_timer = 1.3, this.screenFlashWhite = 0.4, R.playRealmSlash(), this.addShake(16, 0.48), this.grantTinResonance(1, false);
         let x = this.player.x, C = this.player.y;
         for (let P = 0; P < 7; P++) {
           let N = P / 7;
-          this.afterimages.push({ x: x + (b.x - x) * N, y: C + (b.y - C) * N, facing: a, color: "#000000", alpha: 0.95, life: 0, maxLife: 0.6, radius: this.player.radius }), P % 2 === 0 && this.queueVfx("afterimage", { x: x + (b.x - x) * N, y: C + (b.y - C) * N, facing: a, color: "#000000", alpha: 0.95, maxLife: 0.6 });
+          this.afterimages.push({ x: x + (b.x - x) * N, y: C + (b.y - C) * N, facing: a, color: "#000000", alpha: 0.95, life: 0, maxLife: 0.65, radius: this.player.radius }), P % 2 === 0 && this.queueVfx("afterimage", { x: x + (b.x - x) * N, y: C + (b.y - C) * N, facing: a, color: "#000000", alpha: 0.95, maxLife: 0.65 });
         }
         let H = Math.atan2(b.y - C, b.x - x);
-        this.player.x = Math.max(40, Math.min(Se - 40, b.x - Math.cos(H) * (b.radius + 20))), this.player.y = Math.max(40, Math.min(Ce - 40, b.y - Math.sin(H) * (b.radius + 20))), this.player.facing = H, this.createBranchingLightning(x, C, b.x, b.y, "#F43F5E", 4.5), this.queueVfx("lightning", { x1: x, y1: C, x2: b.x, y2: b.y, color: "#F43F5E", width: 4.5 }), this.spawnRedCrystals(b.x, b.y, 18, 90, 260), this.spawnSpatialTear(b.x - 105, b.y - 105, b.x + 105, b.y + 105, "#F43F5E", 15), this.spawnSpatialTear(b.x + 105, b.y - 105, b.x - 105, b.y + 105, "#F43F5E", 15), this.queueVfx("tear", { x1: b.x - 105, y1: b.y - 105, x2: b.x + 105, y2: b.y + 105, color: "#F43F5E", width: 15 }), this.queueVfx("tear", { x1: b.x + 105, y1: b.y - 105, x2: b.x - 105, y2: b.y + 105, color: "#F43F5E", width: 15 }), this.spawnGroundCrack(b.x, b.y, H, 85, "#BE123C", "#FDA4AF"), this.queueVfx("crack", { x: b.x, y: b.y, angle: H, len: 85, color: "#BE123C", glowColor: "#FDA4AF" });
-        let D = 320 * v * empMult;
-        b.hp <= b.maxHp * 0.25 && (D += 110 * v, this.addFloatingText(b.x, b.y - 28, "K\u1EBET LI\u1EC4U +110 DMG", "#F43F5E", 18)), this.healPlayer(Math.round(this.player.maxHp * 0.08), "HEAL", "+8% HP (L\xC3NH \u0110\u1ECAA)"), this.damageEnemy(b, D, 0, 0, true) && (this.player.cooldowns[0] *= 0.5, this.player.cooldowns[1] *= 0.5, this.healPlayer(Math.round(this.player.maxHp * 0.15), "HEAL", "+15% MAX HP"), R.playLevelUp(), this.addFloatingText(this.player.x, this.player.y - 36, "GI\u1EA2M 50% C1/C2 & +15% HP!", "#F43F5E", 17));
+        this.player.x = Math.max(40, Math.min(Se - 40, b.x - Math.cos(H) * (b.radius + 20))), this.player.y = Math.max(40, Math.min(Ce - 40, b.y - Math.sin(H) * (b.radius + 20))), this.player.facing = H;
+        this.createBranchingLightning(x, C, b.x, b.y, "#F43F5E", 4.5), this.queueVfx("lightning", { x1: x, y1: C, x2: b.x, y2: b.y, color: "#F43F5E", width: 4.5 });
+        this.spawnRedCrystals(b.x, b.y, 20, 95, 270), this.spawnSpatialTear(b.x - 125, b.y - 125, b.x + 125, b.y + 125, "#F43F5E", 16), this.spawnSpatialTear(b.x + 125, b.y - 125, b.x - 125, b.y + 125, "#F43F5E", 16);
+        this.queueVfx("tear", { x1: b.x - 125, y1: b.y - 125, x2: b.x + 125, y2: b.y + 125, color: "#F43F5E", width: 16 }), this.queueVfx("tear", { x1: b.x + 125, y1: b.y - 125, x2: b.x - 125, y2: b.y + 125, color: "#F43F5E", width: 16 });
+        this.slashes.push({ x: b.x, y: b.y, angle: 0, radius: 145, spread: Math.PI * 2, color: "#F43F5E", life: 0, maxLife: 0.36, kind: "shockwave" }), this.queueVfx("slash", { x: b.x, y: b.y, angle: 0, radius: 145, spread: Math.PI * 2, color: "#F43F5E", maxLife: 0.36, kind: "shockwave" });
+        this.spawnGroundCrack(b.x, b.y, H, 100, "#BE123C", "#FDA4AF"), this.queueVfx("crack", { x: b.x, y: b.y, angle: H, len: 100, color: "#BE123C", glowColor: "#FDA4AF" });
+        let cx = Math.max(40, Math.min(Se - 40, b.x + Math.cos(H) * 52)), cy = Math.max(40, Math.min(Ce - 40, b.y + Math.sin(H) * 52));
+        this.tinCrystals.push({ id: this.nextEntityId++, x: cx, y: cy, radius: 44, life: 0, maxLife: 4.5, pulse: 0 }), this.queueVfx("tin_crystal_vis", { x: cx, y: cy, radius: 44, maxLife: 4.5 });
+        this.player.tin_afterSlashes = this.player.tin_afterSlashes || [];
+        let slashDmg = Math.round(45 * v);
+        for (let k = 1; k <= 3; k++) {
+          this.player.tin_afterSlashes.push({ kind: "domain", timer: k * 0.3, targetId: b.id, x: b.x, y: b.y, radius: 130, damage: slashDmg, ang: H + k * 0.9 });
+        }
+        let D = 215 * v * empMult, aoeDmg = Math.round(105 * v * empMult);
+        b.hp <= b.maxHp * 0.35 && (D += 80 * v, this.addFloatingText(b.x, b.y - 28, "K\u1EBET LI\u1EC4U +80 DMG", "#F43F5E", 18));
+        this.healPlayer(Math.round(this.player.maxHp * 0.05), "HEAL", "+5% HP (L\u00C3NH \u0110\u1ECAA)");
+        let killed = this.damageEnemy(b, D, 0, 0, true);
+        for (let other of [...this.enemies]) {
+          if (other !== b && other.hp > 0 && Math.hypot(other.x - b.x, other.y - b.y) <= 145 + other.radius) {
+            this.damageEnemy(other, aoeDmg, 0, 0, true) && (killed = true);
+          }
+        }
+        killed && (this.player.cooldowns[0] *= 0.7, this.player.cooldowns[1] *= 0.7, this.healPlayer(Math.round(this.player.maxHp * 0.06), "HEAL", "+6% MAX HP"), R.playLevelUp(), this.addFloatingText(this.player.x, this.player.y - 36, "\u26A1 HO\u00C0N 30% C1/C2 & +6% HP!", "#F43F5E", 17));
+        this.comboManager.record({ heroId: "tin", action: "c3", hitCount: 1, empowered: true, damageDealt: D });
       }
     } else if (this.currentHero.id === "kin") {
       if (s === 0) {
@@ -1230,40 +1308,52 @@ export class GameEngine {
     } else if (this.currentHero.id === "taidu") {
       let effAtk = this.getEffectiveDamage();
       if (s === 0) {
-        let dx = l - this.player.x, dy = m - this.player.y, dist = Math.hypot(dx, dy), maxR = g.range || 420;
+        let dx = l - this.player.x, dy = m - this.player.y, dist = Math.hypot(dx, dy), maxR = g.range || 400;
         let tx = dist > maxR ? this.player.x + dx / (dist || 1) * maxR : l, ty = dist > maxR ? this.player.y + dy / (dist || 1) * maxR : m;
         tx = Math.max(40, Math.min(Se - 40, tx)), ty = Math.max(40, Math.min(Ce - 40, ty));
-        if (this.taiduTurrets.length >= 2) this.taiduTurrets.shift();
-        let dmg = Math.round(32 + 0.44 * effAtk);
-        this.taiduTurrets.push({ id: this.nextEntityId++, x: tx, y: ty, angle: a, life: 0, maxLife: 8, fireTimer: 0.12, fireInterval: 0.68, range: 350, damage: dmg, muzzleTimer: 0, hasTarget: false, targetX: tx + Math.cos(a) * 60, targetY: ty + Math.sin(a) * 60 });
+        if (this.taiduTurrets.length >= TAI_DU_MAX_TURRETS) this.taiduTurrets.shift();
+        let dmg = Math.round(32 + 0.42 * effAtk);
+        this.taiduTurrets.push({ id: this.nextEntityId++, x: tx, y: ty, angle: a, life: 0, maxLife: 8, fireTimer: 0.1, fireInterval: 0.62, range: 380, damage: dmg, shotCount: 0, muzzleTimer: 0, hasTarget: false, targetX: tx + Math.cos(a) * 60, targetY: ty + Math.sin(a) * 60 });
         this.slashes.push({ x: tx, y: ty, angle: 0, radius: 52, spread: Math.PI * 2, color: "#38BDF8", accentColor: "#F97316", life: 0, maxLife: 0.28, kind: "taidu_hex_blast" });
         this.queueVfx("taidu_turret_vis", { x: tx, y: ty, angle: a, maxLife: 8 });
-        this.spawnParticles(tx, ty, "#38BDF8", 12, 40, 140, 2.8, 0.32);
+        this.spawnParticles(tx, ty, "#38BDF8", 14, 40, 150, 3, 0.34);
         R.playDroneSwitch(), R.playTurretShot();
-        this.addFloatingText(tx, ty - 28, "\u{1F52B} PH\xC1O T\u1EF0 \u0110\u1ED8NG!", "#38BDF8", 14);
+        this.addFloatingText(tx, ty - 28, "\u{1F52B} PH\xC1O SI\u00CAU T\u1EA2I!", "#38BDF8", 14);
         this.comboManager.record({ heroId: "taidu", action: "c1", hitCount: 1 });
       } else if (s === 1) {
         this.player.attackAnimTimer = 0.22, this.player.attackAnimAngle = a;
-        let dmg = Math.round(52 + 0.62 * effAtk), maxDist = g.range || 440;
+        this.player.taidu_droneOverdriveTimer = Math.max(this.player.taidu_droneOverdriveTimer || 0, TAI_DU_DRONE_OVERDRIVE_DURATION);
+        let dmg = Math.round(46 + 0.52 * effAtk), maxDist = g.range || 470;
         let cands = this.enemies.filter((e) => e.hp > 0 && Math.hypot(e.x - this.player.x, e.y - this.player.y) <= maxDist + 140).sort((ea, eb) => Math.hypot(ea.x - this.player.x, ea.y - this.player.y) - Math.hypot(eb.x - this.player.x, eb.y - this.player.y));
-        let offsets = [-0.28, 0, 0.28];
-        R.playMissileBarrage();
-        for (let i = 0; i < 3; i++) {
+        let offsets = [-0.42, -0.21, 0, 0.21, 0.42];
+        R.playMissileBarrage(), R.playDroneSwitch();
+        for (let i = 0; i < 5; i++) {
           let ang = a + offsets[i], sx = this.player.x + Math.cos(ang) * 24, sy = this.player.y + Math.sin(ang) * 24, tgt = cands[i % Math.max(1, cands.length)] || null;
-          this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "taidu_missile", targetId: tgt ? tgt.id : null, aoeRadius: 80, x: sx, y: sy, vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 12, damage: dmg, color: "#F97316", angle: ang, distanceTraveled: 0, maxDistance: maxDist, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
-          this.queueVfx("proj_vis", { kind: "taidu_missile", x: sx, y: sy, vx: Math.cos(ang) * 620, vy: Math.sin(ang) * 620, radius: 12, color: "#F97316", angle: ang, maxDistance: maxDist, pierceLeft: 1 });
+          this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "taidu_missile", targetId: tgt ? tgt.id : null, aoeRadius: 84, empDur: 3.0, stunDur: 0.5, x: sx, y: sy, vx: Math.cos(ang) * 660, vy: Math.sin(ang) * 660, radius: 12, damage: dmg, color: "#38BDF8", angle: ang, distanceTraveled: 0, maxDistance: maxDist, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+          this.queueVfx("proj_vis", { kind: "taidu_missile", x: sx, y: sy, vx: Math.cos(ang) * 660, vy: Math.sin(ang) * 660, radius: 12, color: "#38BDF8", angle: ang, maxDistance: maxDist, pierceLeft: 1 });
         }
-        this.spawnParticles(this.player.x + Math.cos(a) * 24, this.player.y + Math.sin(a) * 24, "#F97316", 10, 40, 130, 3, 0.3);
-        this.comboManager.record({ heroId: "taidu", action: "c2", hitCount: 1 });
+        this.spawnParticles(this.player.x + Math.cos(a) * 24, this.player.y + Math.sin(a) * 24, "#38BDF8", 12, 45, 145, 3, 0.32);
+        this.addFloatingText(this.player.x, this.player.y - 32, "\u26A1 NG\u0168 T\xCAN L\u1EEDA EMP \xB7 DRONE SI\u00CAU T\u1EA2I!", "#38BDF8", 15);
+        this.comboManager.record({ heroId: "taidu", action: "c2", hitCount: 1, empowered: true });
       } else if (s === 2) {
-        let maxR = g.range || 560, blastR = g.radius || 95, dmg = Math.round(74 + 0.78 * effAtk);
-        R.playMissileBarrage(), this.addShake(10, 0.35);
+        this.player.taidu_droneOverdriveTimer = Math.max(this.player.taidu_droneOverdriveTimer || 0, TAI_DU_DRONE_OVERDRIVE_DURATION);
+        let maxR = g.range || 580, blastR = g.radius || 105, dmg = Math.round(68 + 0.72 * effAtk);
+        R.playMissileBarrage(), R.playLaserRay(), this.addShake(13, 0.38);
+        let endX = this.player.x, endY = this.player.y;
         for (let i = 0; i < 7; i++) {
-          let d = 85 + (maxR - 85) * (i / 6), sx = Math.max(45, Math.min(Se - 45, this.player.x + Math.cos(a) * d)), sy = Math.max(45, Math.min(Ce - 45, this.player.y + Math.sin(a) * d)), delay = 0.14 + i * 0.11;
-          this.taiduCarpetStrikes.push({ id: this.nextEntityId++, x: sx, y: sy, radius: blastR, damage: dmg, timer: 0, delay, healRate: 0.08 });
+          let d = 80 + (maxR - 80) * (i / 6), sx = Math.max(45, Math.min(Se - 45, this.player.x + Math.cos(a) * d)), sy = Math.max(45, Math.min(Ce - 45, this.player.y + Math.sin(a) * d)), delay = 0.12 + i * 0.11;
+          endX = sx, endY = sy;
+          this.taiduCarpetStrikes.push({ id: this.nextEntityId++, x: sx, y: sy, radius: blastR, damage: dmg, timer: 0, delay, healRate: 0.06 });
           this.queueVfx("taidu_carpet_vis", { x: sx, y: sy, radius: blastR, delay });
         }
-        this.addFloatingText(this.player.x, this.player.y - 36, "\u{1F680} OANH T\u1EA0C TH\u1EA2M T\xCAN L\u1EEDA (7 \u0110\u1EE2T)!", "#F97316", 16);
+        let orbitalDmg = Math.round(135 + 1.25 * effAtk), orbitalDelay = 0.12 + 7 * 0.11 + 0.12;
+        this.taiduCarpetStrikes.push({ id: this.nextEntityId++, isOrbital: true, x: endX, y: endY, radius: 150, damage: orbitalDmg, plasmaDmg: Math.round(28 + 0.3 * effAtk), timer: 0, delay: orbitalDelay, healRate: 0.08 });
+        this.queueVfx("taidu_carpet_vis", { isOrbital: true, x: endX, y: endY, radius: 150, delay: orbitalDelay });
+        if (this.taiduTurrets.length >= TAI_DU_MAX_TURRETS) this.taiduTurrets.shift();
+        let tx = Math.max(40, Math.min(Se - 40, this.player.x + Math.cos(a) * 65)), ty = Math.max(40, Math.min(Ce - 40, this.player.y + Math.sin(a) * 65)), tDmg = Math.round(32 + 0.42 * effAtk);
+        this.taiduTurrets.push({ id: this.nextEntityId++, x: tx, y: ty, angle: a, life: 0, maxLife: 8, fireTimer: 0.1, fireInterval: 0.62, range: 380, damage: tDmg, shotCount: 0, muzzleTimer: 0, hasTarget: false, targetX: tx + Math.cos(a) * 60, targetY: ty + Math.sin(a) * 60 });
+        this.queueVfx("taidu_turret_vis", { x: tx, y: ty, angle: a, maxLife: 8 });
+        this.addFloatingText(this.player.x, this.player.y - 36, "\u{1F6F0}\uFE0F OANH T\u1EA0C V\u1EC6 TINH & DRONE SI\u00CAU T\u1EA2I!", "#38BDF8", 16);
         this.comboManager.record({ heroId: "taidu", action: "c3", hitCount: 1, empowered: true });
       }
     } else if (this.currentHero.id === "nguyen") {
@@ -1765,6 +1855,39 @@ export class GameEngine {
     if (this.currentHero.id === "tin") {
       this.player.tin_c1_recast_timer > 0 && (this.player.tin_c1_recast_timer = Math.max(0, this.player.tin_c1_recast_timer - a));
       this.player.tin_resonance_timer > 0 && (this.player.tin_resonance_timer = Math.max(0, this.player.tin_resonance_timer - a), this.player.tin_resonance_timer === 0 && (this.player.tin_resonance_stacks = 0));
+      if (this.player.tin_afterSlashes && this.player.tin_afterSlashes.length > 0) {
+        for (let i = this.player.tin_afterSlashes.length - 1; i >= 0; i--) {
+          let sl = this.player.tin_afterSlashes[i];
+          sl.timer -= a;
+          if (sl.timer <= 0) {
+            this.player.tin_afterSlashes.splice(i, 1);
+            if (sl.kind === "rift") {
+              R.playSlash();
+              this.spawnSpatialTear(sl.x1, sl.y1, sl.x2, sl.y2, "#FB7185", 16);
+              this.queueVfx("tear", { x1: sl.x1, y1: sl.y1, x2: sl.x2, y2: sl.y2, color: "#FB7185", width: 16 });
+              this.spawnRedCrystals((sl.x1 + sl.x2) * 0.5, (sl.y1 + sl.y2) * 0.5, 8, 60, 175);
+              for (let e of [...this.enemies]) {
+                if (e.hp > 0 && this.pointToSegmentDist(e.x, e.y, sl.x1, sl.y1, sl.x2, sl.y2) <= 44 + e.radius) {
+                  this.damageEnemy(e, sl.damage, 0, 0, true);
+                  this.isBossImmune(e) || (e.slowFactor = Math.max(e.slowFactor || 0, 0.2), e.slowTimer = Math.max(e.slowTimer || 0, 1.2));
+                }
+              }
+            } else if (sl.kind === "domain") {
+              let tgt = sl.targetId ? this.enemies.find((e) => e.id === sl.targetId && e.hp > 0) : null;
+              let cx = tgt ? tgt.x : sl.x, cy = tgt ? tgt.y : sl.y, ang = sl.ang || 0;
+              R.playRealmSlash();
+              let rSpan = 105;
+              this.spawnSpatialTear(cx - Math.cos(ang) * rSpan, cy - Math.sin(ang) * rSpan, cx + Math.cos(ang) * rSpan, cy + Math.sin(ang) * rSpan, "#F43F5E", 14);
+              this.queueVfx("tear", { x1: cx - Math.cos(ang) * rSpan, y1: cy - Math.sin(ang) * rSpan, x2: cx + Math.cos(ang) * rSpan, y2: cy + Math.sin(ang) * rSpan, color: "#F43F5E", width: 14 });
+              this.slashes.push({ x: cx, y: cy, angle: ang, radius: sl.radius || 160, spread: 1.9, crossed: true, color: "#FB7185", life: 0, maxLife: 0.24, kind: "slash" });
+              this.queueVfx("slash", { x: cx, y: cy, angle: ang, radius: sl.radius || 160, spread: 1.9, crossed: true, color: "#FB7185", maxLife: 0.24, kind: "slash" });
+              for (let e of [...this.enemies]) {
+                if (e.hp > 0 && Math.hypot(e.x - cx, e.y - cy) <= (sl.radius || 160) + e.radius) this.damageEnemy(e, sl.damage, 0, 0, true);
+              }
+            }
+          }
+        }
+      }
     }
     if (this.duccong_pads) for (let m of [1, 2]) {
       let pad = this.duccong_pads[m];
@@ -1891,13 +2014,14 @@ export class GameEngine {
       bm.life >= bm.maxLife && this.luanBeams.splice(i, 1);
     }
     if (this.currentHero.id === "taidu" && this.player.hp > 0) {
-      let dProf = getTaiDuDroneProfile(this.player.taidu_droneMode || "attack");
+      this.player.taidu_droneOverdriveTimer > 0 && (this.player.taidu_droneOverdriveTimer = Math.max(0, this.player.taidu_droneOverdriveTimer - a));
+      let drMode = this.player.taidu_droneMode || "attack", dProf = getTaiDuDroneProfile(drMode);
+      let overdrive = (this.player.taidu_droneOverdriveTimer || 0) > 0;
       let orbitDist = Number.isFinite(dProf.orbitDist) ? dProf.orbitDist : (dProf.orbitRadius ?? 56);
-      let scanRange = Number.isFinite(dProf.scanRange) ? dProf.scanRange : 390;
-      let dmgRatio = Number.isFinite(dProf.dmgRatio) ? dProf.dmgRatio : (dProf.damageScale ?? 0.5);
+      let scanRange = Number.isFinite(dProf.scanRange) ? dProf.scanRange : 430;
       let healPct = Number.isFinite(dProf.healPct) ? dProf.healPct : (dProf.healPctMaxHp ?? 0);
-      let drCol = dProf.color || "#38BDF8";
-      this.player.taidu_droneAngle = (this.player.taidu_droneAngle || 0) + a * (this.player.taidu_droneMode === "pursuit" ? 3.2 : 2.1);
+      let drCol = overdrive ? "#FACC15" : (dProf.color || "#38BDF8");
+      this.player.taidu_droneAngle = (this.player.taidu_droneAngle || 0) + a * ((drMode === "pursuit" ? 3.2 : 2.1) * (overdrive ? 1.55 : 1));
       let orbX = this.player.x + Math.cos(this.player.taidu_droneAngle) * orbitDist, orbY = this.player.y + Math.sin(this.player.taidu_droneAngle) * orbitDist;
       let prevDrX = Number.isFinite(this.player.taidu_droneX) ? this.player.taidu_droneX : orbX;
       let prevDrY = Number.isFinite(this.player.taidu_droneY) ? this.player.taidu_droneY : orbY;
@@ -1921,11 +2045,12 @@ export class GameEngine {
       }
       this.player.taidu_droneFireTimer = (this.player.taidu_droneFireTimer || 0) - a;
       if (drTarget && this.player.taidu_droneFireTimer <= 0) {
-        this.player.taidu_droneFireTimer = dProf.fireInterval;
+        let shot = computeTaiDuDroneShot({ mode: drMode, effectiveAtk: this.getEffectiveDamage(), overdriveActive: overdrive, targetHpRatio: drTarget.hp / Math.max(1, drTarget.maxHp) });
+        this.player.taidu_droneFireTimer = shot.fireInterval;
         this.player.taidu_droneMuzzleTimer = 0.11;
-        let ang = this.player.taidu_droneFacing, dmg = Math.round(this.getEffectiveDamage() * dmgRatio), spd = this.player.taidu_droneMode === "pursuit" ? 900 : 780;
-        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "turret_shot", x: drX + Math.cos(ang) * 14, y: drY + Math.sin(ang) * 14, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, radius: 7, damage: dmg, color: drCol, angle: ang, distanceTraveled: 0, maxDistance: scanRange + 80, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
-        this.queueVfx("proj_vis", { kind: "turret_shot", x: drX + Math.cos(ang) * 14, y: drY + Math.sin(ang) * 14, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, radius: 7, color: drCol, angle: ang, maxDistance: scanRange + 80, pierceLeft: 1 });
+        let ang = this.player.taidu_droneFacing, dmg = shot.damage, spd = drMode === "pursuit" ? 960 : 820, pKind = shot.isExecute ? "taidu_rail" : "turret_shot";
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: pKind, x: drX + Math.cos(ang) * 14, y: drY + Math.sin(ang) * 14, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, radius: shot.isExecute ? 10 : 7, damage: dmg, color: drCol, angle: ang, distanceTraveled: 0, maxDistance: scanRange + 95, pierceLeft: shot.pierceLeft, hitIds: /* @__PURE__ */ new Set() });
+        this.queueVfx("proj_vis", { kind: pKind, x: drX + Math.cos(ang) * 14, y: drY + Math.sin(ang) * 14, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, radius: shot.isExecute ? 10 : 7, color: drCol, angle: ang, maxDistance: scanRange + 95, pierceLeft: shot.pierceLeft });
         R.playTurretShot();
       }
       if (dProf.healInterval > 0 && healPct > 0) {
@@ -1948,10 +2073,17 @@ export class GameEngine {
           tr.angle = Math.atan2(tgt.y - tr.y, tgt.x - tr.x);
           tr.fireTimer -= a;
           if (tr.fireTimer <= 0) {
-            tr.fireTimer = tr.fireInterval, tr.muzzleTimer = 0.12;
-            let sx = tr.x + Math.cos(tr.angle) * 28, sy = tr.y + Math.sin(tr.angle) * 28;
-            this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "turret_shot", x: sx, y: sy, vx: Math.cos(tr.angle) * 840, vy: Math.sin(tr.angle) * 840, radius: 8, damage: tr.damage, color: "#38BDF8", angle: tr.angle, distanceTraveled: 0, maxDistance: tr.range + 60, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
-            this.queueVfx("proj_vis", { kind: "turret_shot", x: sx, y: sy, vx: Math.cos(tr.angle) * 840, vy: Math.sin(tr.angle) * 840, radius: 8, color: "#38BDF8", angle: tr.angle, maxDistance: tr.range + 60, pierceLeft: 1 });
+            tr.fireTimer = tr.fireInterval, tr.muzzleTimer = 0.14;
+            tr.shotCount = (tr.shotCount || 0) + 1;
+            let isRocket = tr.shotCount % 4 === 0, sx = tr.x + Math.cos(tr.angle) * 28, sy = tr.y + Math.sin(tr.angle) * 28;
+            if (isRocket) {
+              let rDmg = Math.round(tr.damage * 1.45);
+              this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "taidu_turret_rocket", aoeRadius: 64, x: sx, y: sy, vx: Math.cos(tr.angle) * 740, vy: Math.sin(tr.angle) * 740, radius: 10, damage: rDmg, color: "#F97316", angle: tr.angle, distanceTraveled: 0, maxDistance: tr.range + 75, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+              this.queueVfx("proj_vis", { kind: "taidu_turret_rocket", x: sx, y: sy, vx: Math.cos(tr.angle) * 740, vy: Math.sin(tr.angle) * 740, radius: 10, color: "#F97316", angle: tr.angle, maxDistance: tr.range + 75, pierceLeft: 1 });
+            } else {
+              this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "turret_shot", x: sx, y: sy, vx: Math.cos(tr.angle) * 880, vy: Math.sin(tr.angle) * 880, radius: 8, damage: tr.damage, color: "#38BDF8", angle: tr.angle, distanceTraveled: 0, maxDistance: tr.range + 65, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+              this.queueVfx("proj_vis", { kind: "turret_shot", x: sx, y: sy, vx: Math.cos(tr.angle) * 880, vy: Math.sin(tr.angle) * 880, radius: 8, color: "#38BDF8", angle: tr.angle, maxDistance: tr.range + 65, pierceLeft: 1 });
+            }
             R.playTurretShot();
           }
         }
@@ -1971,20 +2103,43 @@ export class GameEngine {
       let st = this.taiduCarpetStrikes[i];
       st.timer += a;
       if (st.timer >= st.delay) {
-        this.slashes.push({ x: st.x, y: st.y, angle: 0, radius: st.radius * 1.15, spread: Math.PI * 2, color: "#F97316", accentColor: "#FEF08A", life: 0, maxLife: 0.36, kind: "taidu_hex_blast" });
-        this.spawnFlameParticles(st.x, st.y, "red", 8, 40, 145);
-        this.spawnParticles(st.x, st.y, "#38BDF8", 6, 40, 130, 2.8, 0.32);
-        this.spawnGroundCrack(st.x, st.y, Math.random() * Math.PI * 2, st.radius * 0.65, "#EA580C", "#FEF08A");
-        R.playExplosion(), this.addShake(7, 0.16);
-        if (!st.visualOnly) {
-          let totalDealt = 0;
-          for (let e of [...this.enemies]) {
-            if (e.hp > 0 && Math.hypot(e.x - st.x, e.y - st.y) <= st.radius + e.radius) {
-              totalDealt += Math.min(e.hp, st.damage);
-              this.damageEnemy(e, st.damage, 0, 0, true);
+        if (st.isOrbital) {
+          this.slashes.push({ x: st.x, y: st.y, angle: 0, radius: st.radius * 1.15, spread: Math.PI * 2, color: "#38BDF8", accentColor: "#FACC15", life: 0, maxLife: 0.48, kind: "taidu_hex_blast" });
+          this.createCataclysmicExplosion(st.x, st.y, st.radius, "#38BDF8");
+          this.spawnGroundCrack(st.x, st.y, 0, st.radius * 0.72, "#0EA5E9", "#BAE6FD");
+          this.spawnGroundCrack(st.x, st.y, Math.PI * 0.5, st.radius * 0.72, "#0EA5E9", "#BAE6FD");
+          R.playOmegaCataclysm(), this.addShake(13, 0.32);
+          if (!st.visualOnly) {
+            let totalDealt = 0;
+            for (let e of [...this.enemies]) {
+              if (e.hp > 0 && Math.hypot(e.x - st.x, e.y - st.y) <= st.radius + e.radius) {
+                totalDealt += Math.min(e.hp, st.damage);
+                this.damageEnemy(e, st.damage, 0, 0, true);
+                this.isBossImmune(e) || (e.stunTimer = Math.max(e.stunTimer || 0, 0.8));
+                e.taidu_empTimer = Math.max(e.taidu_empTimer || 0, 3.0);
+              }
             }
+            totalDealt > 0 && this.healPlayer(Math.max(18, Math.round(totalDealt * (st.healRate || 0.08))), "HEAL");
+            let pDmg = st.plasmaDmg || Math.round(28 + 0.3 * this.getEffectiveDamage());
+            this.zones.push({ id: this.nextEntityId++, kind: "taidu_plasma_zone", x: st.x, y: st.y, radius: st.radius * 0.9, timer: 0, duration: 3.0, tickTimer: 0, tickInterval: 0.5, damagePerTick: pDmg, slowFactor: 0.25, rotation: 0 });
+            this.queueVfx("zone_vis", { kind: "taidu_plasma_zone", x: st.x, y: st.y, radius: st.radius * 0.9, duration: 3.0 });
           }
-          totalDealt > 0 && this.healPlayer(Math.max(14, Math.round(totalDealt * (st.healRate || 0.08))), "HEAL");
+        } else {
+          this.slashes.push({ x: st.x, y: st.y, angle: 0, radius: st.radius * 1.15, spread: Math.PI * 2, color: "#F97316", accentColor: "#FEF08A", life: 0, maxLife: 0.36, kind: "taidu_hex_blast" });
+          this.spawnFlameParticles(st.x, st.y, "red", 8, 40, 145);
+          this.spawnParticles(st.x, st.y, "#38BDF8", 6, 40, 130, 2.8, 0.32);
+          this.spawnGroundCrack(st.x, st.y, Math.random() * Math.PI * 2, st.radius * 0.65, "#EA580C", "#FEF08A");
+          R.playExplosion(), this.addShake(7, 0.16);
+          if (!st.visualOnly) {
+            let totalDealt = 0;
+            for (let e of [...this.enemies]) {
+              if (e.hp > 0 && Math.hypot(e.x - st.x, e.y - st.y) <= st.radius + e.radius) {
+                totalDealt += Math.min(e.hp, st.damage);
+                this.damageEnemy(e, st.damage, 0, 0, true);
+              }
+            }
+            totalDealt > 0 && this.healPlayer(Math.max(14, Math.round(totalDealt * (st.healRate || 0.1))), "HEAL");
+          }
         }
         this.taiduCarpetStrikes.splice(i, 1);
       }
@@ -2077,7 +2232,7 @@ export class GameEngine {
         for (let g of [...this.enemies]) if (!this.player.dashHitIds.has(g.id) && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= this.player.radius + g.radius + 20) {
           this.player.dashHitIds.add(g.id);
           let p = Math.atan2(this.player.dashVy, this.player.dashVx), h = this.player.dashDamage, hadMark = !!g.tin_hasMark;
-          this.player.dashKind === "tin_c1" && hadMark && (h += Math.round(68 * (this.getEffectiveDamage() / this.currentHero.stats.damage)), g.tin_hasMark = false), this.damageEnemy(g, h, this.player.dashKind === "dung_c1" ? Math.cos(p) * 32 : 0, this.player.dashKind === "dung_c1" ? Math.sin(p) * 32 : 0, true), this.player.dashKind === "dung_c1" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, 0.5)), this.player.dashKind === "tin_c1" && hadMark && !this.player.tin_c1_refunded_c2 && (this.player.tin_c1_refunded_c2 = true, this.player.cooldowns[1] = 0, this.grantTinResonance(1, false), this.addFloatingText(this.player.x, this.player.y - 34, "⚡ PHÁ ẤN HỒI C2!", "#FB7185", 15));
+          this.player.dashKind === "tin_c1" && hadMark && (h += Math.round(34 * (this.getEffectiveDamage() / this.currentHero.stats.damage)), g.tin_hasMark = false), this.damageEnemy(g, h, this.player.dashKind === "dung_c1" ? Math.cos(p) * 32 : 0, this.player.dashKind === "dung_c1" ? Math.sin(p) * 32 : 0, true), this.player.dashKind === "dung_c1" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, 0.5)), this.player.dashKind === "tin_c1" && hadMark && !this.player.tin_c1_refunded_c2 && (this.player.tin_c1_refunded_c2 = true, this.player.cooldowns[1] *= 0.55, this.grantTinResonance(1, false), this.addFloatingText(this.player.x, this.player.y - 34, "⚡ PHÁ ẤN -45% C2!", "#FB7185", 15));
         }
       }
       if (this.player.dashTimer <= 0) {
@@ -2118,10 +2273,19 @@ export class GameEngine {
     if (this.currentHero.id === "tin" && this.tinCrystals.length > 0) for (let m = this.tinCrystals.length - 1; m >= 0; m--) {
       let c = this.tinCrystals[m];
       c.life += a, c.pulse += a * 6;
-      let g = c.radius + this.player.radius + 32;
-      if (!c.visualOnly && this.player.dashActive && this.player.dashKind === "tin_c1" && Math.hypot(this.player.x - c.x, this.player.y - c.y) <= g) {
-        let crystalHeal = Math.max(160, Math.round(this.player.maxHp * 0.22));
-        this.player.cooldowns[0] = 0, this.player.cooldowns[1] = 0, this.player.tin_c1_charges = 0, this.grantTinResonance(1, true), this.healPlayer(crystalHeal, "HEAL", `+${crystalHeal} HP (TINH TH\u1EC2 \u0110\u1ECE)`) === 0 ? this.addFloatingText(c.x, c.y - 22, `+${crystalHeal} HP \xB7 H\u1ED2I C1 & C2!`, "#FB7185", 15) : this.addFloatingText(c.x, c.y - 36, "\u26A1 H\u1ED2I NGAY C1 & C2!", "#F43F5E", 15), this.spawnRedCrystals(c.x, c.y, 14, 70, 210), this.spawnSpatialTear(c.x - 40, c.y - 40, c.x + 40, c.y + 40, "#F43F5E", 10), this.queueVfx("tin_crystal_pop_vis", { x: c.x, y: c.y }), R.playLevelUp(), this.tinCrystals.splice(m, 1);
+      let dx = this.player.x - c.x, dy = this.player.y - c.y, dist = Math.hypot(dx, dy);
+      if (!c.visualOnly && dist > 8 && dist <= 115) {
+        c.x += dx / dist * 140 * a, c.y += dy / dist * 140 * a;
+      }
+      let isDashPick = this.player.dashActive && this.player.dashKind === "tin_c1" && dist <= c.radius + this.player.radius + 26;
+      let isFootPick = dist <= c.radius + this.player.radius + 8;
+      if (!c.visualOnly && (isDashPick || isFootPick)) {
+        let crystalHeal = Math.max(55, Math.round(this.player.maxHp * 0.06)), blastDmg = Math.round(42 * (this.getEffectiveDamage() / Math.max(1, this.currentHero.stats.damage)));
+        this.player.cooldowns[0] = 0, this.player.cooldowns[1] *= 0.7, this.player.tin_c1_charges = 0, this.grantTinResonance(1, true);
+        this.healPlayer(crystalHeal, "HEAL", `+${crystalHeal} HP (TINH TH\u1EC2 \u0110\u1ECE)`) === 0 ? this.addFloatingText(c.x, c.y - 22, `+${crystalHeal} HP \xB7 H\u1ED2I C1 & -30% C2!`, "#FB7185", 15) : this.addFloatingText(c.x, c.y - 36, "\u26A1 H\u1ED2I C1 & -30% C2!", "#F43F5E", 15);
+        this.slashes.push({ x: c.x, y: c.y, angle: 0, radius: 90, spread: Math.PI * 2, color: "#FB7185", life: 0, maxLife: 0.28, kind: "shockwave" }), this.queueVfx("slash", { x: c.x, y: c.y, angle: 0, radius: 90, spread: Math.PI * 2, color: "#FB7185", maxLife: 0.28, kind: "shockwave" });
+        for (let e of [...this.enemies]) if (e.hp > 0 && Math.hypot(e.x - c.x, e.y - c.y) <= 90 + e.radius) this.damageEnemy(e, blastDmg, 0, 0, true);
+        this.spawnRedCrystals(c.x, c.y, 14, 70, 210), this.spawnSpatialTear(c.x - 45, c.y - 45, c.x + 45, c.y + 45, "#F43F5E", 10), this.queueVfx("tin_crystal_pop_vis", { x: c.x, y: c.y }), R.playLevelUp(), this.tinCrystals.splice(m, 1);
       } else c.life >= c.maxLife && this.tinCrystals.splice(m, 1);
     }
     else if (this.tinCrystals.length > 0) for (let m = this.tinCrystals.length - 1; m >= 0; m--) this.tinCrystals[m].life += a, this.tinCrystals[m].pulse += a * 6, this.tinCrystals[m].life >= this.tinCrystals[m].maxLife && this.tinCrystals.splice(m, 1);
@@ -2326,15 +2490,44 @@ export class GameEngine {
                 }
               }
             }
-            if (l.kind === "taidu_missile") {
+            if (l.kind === "taidu_missile" || l.kind === "taidu_turret_rocket") {
               R.playExplosion();
-              let mr = l.aoeRadius || 84;
-              this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: "#F97316", accentColor: "#FEF08A", life: 0, maxLife: 0.32, kind: "taidu_hex_blast" }), this.queueVfx("slash", { x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: "#F97316", accentColor: "#FEF08A", maxLife: 0.32, kind: "taidu_hex_blast" }), this.spawnFlameParticles(l.x, l.y, "red", 8, 35, 115), this.spawnParticles(l.x, l.y, "#38BDF8", 6, 30, 110, 2.5, 0.28);
-              for (let f of [...this.enemies]) Math.hypot(f.x - l.x, f.y - l.y) <= mr + f.radius && this.damageEnemy(f, l.damage, 0, 0, true);
+              let mr = l.aoeRadius || (l.kind === "taidu_turret_rocket" ? 72 : 96);
+              this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: l.color || "#F97316", accentColor: "#FEF08A", life: 0, maxLife: 0.32, kind: "taidu_hex_blast" }), this.queueVfx("slash", { x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: l.color || "#F97316", accentColor: "#FEF08A", maxLife: 0.32, kind: "taidu_hex_blast" }), this.spawnFlameParticles(l.x, l.y, "red", 8, 35, 115), this.spawnParticles(l.x, l.y, "#38BDF8", 6, 30, 110, 2.5, 0.28);
+              for (let f of [...this.enemies]) {
+                if (Math.hypot(f.x - l.x, f.y - l.y) <= mr + f.radius) {
+                  this.damageEnemy(f, l.damage, 0, 0, true);
+                  if (l.empDur && f.hp > 0) {
+                    f.taidu_empTimer = Math.max(f.taidu_empTimer || 0, l.empDur);
+                    this.isBossImmune(f) || (f.kind === "boss" ? (f.slowFactor = Math.max(f.slowFactor || 0, 0.35), f.slowTimer = Math.max(f.slowTimer || 0, 1.5)) : f.stunTimer = Math.max(f.stunTimer || 0, l.stunDur || 0.65));
+                  }
+                }
+              }
               g = true;
               break;
             }
-            l.kind === "danh_kiem_khi" ? (this.damageEnemy(p, h, Math.cos(l.angle) * 14, Math.sin(l.angle) * 14, true), this.spawnFlameParticles(p.x, p.y, "red", 4, 30, 80)) : l.kind === "cosmic_pursuit" && this.currentHero.id === "duccong" ? (l.ccBonusDmg && (p.slowFactor > 0 || p.stunTimer > 0) && (h += l.ccBonusDmg), this.damageEnemy(p, h, 0, 0, true, 0, l)) : this.damageEnemy(p, h, 0, 0, l.kind !== "kin_arrow" && l.kind !== "longhoi_arrow" && l.kind !== "trung_orb" && l.kind !== "taidu_bolt" && l.kind !== "nguyen_bolt");
+            if (l.kind === "taidu_rail") {
+              this.damageEnemy(p, h, Math.cos(l.angle) * 8, Math.sin(l.angle) * 8, true);
+              if (l.empDur && p.hp > 0) {
+                p.taidu_empTimer = Math.max(p.taidu_empTimer || 0, l.empDur);
+                this.isBossImmune(p) || (p.slowFactor = Math.max(p.slowFactor || 0, 0.25), p.slowTimer = Math.max(p.slowTimer || 0, 1.0));
+              }
+              this.spawnParticles(p.x, p.y, "#38BDF8", 6, 35, 110, 2.5, 0.24);
+            } else if (l.kind === "tin_slash_wave") {
+              this.damageEnemy(p, h, Math.cos(l.angle) * 10, Math.sin(l.angle) * 10, true);
+              if (!this.isBossImmune(p) && p.hp > 0) {
+                p.tin_hits = (p.tin_hits || 0) + 1;
+                p.tin_hits >= 3 && !p.tin_hasMark && (p.tin_hasMark = true, this.addFloatingText(p.x, p.y - 20, "HUY\u1EBET \u1EA2NH \u1EA4N!", "#F43F5E", 14));
+              }
+              this.spawnRedCrystals(p.x, p.y, 4, 45, 130);
+            } else if (l.kind === "tin_crystal_throw") {
+              this.damageEnemy(p, h, 0, 0, true);
+              if (l.isPrimaryCrystal && !l.droppedFirstCrystal) {
+                l.droppedFirstCrystal = true;
+                let cx = Math.max(40, Math.min(Se - 40, p.x)), cy = Math.max(40, Math.min(Ce - 40, p.y));
+                this.tinCrystals.push({ id: this.nextEntityId++, x: cx, y: cy, radius: 44, life: 0, maxLife: 4.5, pulse: 0 }), this.queueVfx("tin_crystal_vis", { x: cx, y: cy, radius: 44, maxLife: 4.5 }), this.spawnRedCrystals(cx, cy, 8, 50, 145);
+              }
+            } else l.kind === "danh_kiem_khi" ? (this.damageEnemy(p, h, Math.cos(l.angle) * 14, Math.sin(l.angle) * 14, true), this.spawnFlameParticles(p.x, p.y, "red", 4, 30, 80)) : l.kind === "cosmic_pursuit" && this.currentHero.id === "duccong" ? (l.ccBonusDmg && (p.slowFactor > 0 || p.stunTimer > 0) && (h += l.ccBonusDmg), this.damageEnemy(p, h, 0, 0, true, 0, l)) : this.damageEnemy(p, h, 0, 0, l.kind !== "kin_arrow" && l.kind !== "longhoi_arrow" && l.kind !== "trung_orb" && l.kind !== "taidu_bolt" && l.kind !== "nguyen_bolt");
           }
           if (l.pierceLeft--, l.pierceLeft <= 0) {
             g = true;
@@ -2342,13 +2535,13 @@ export class GameEngine {
           }
         }
         if (!g && (l.distanceTraveled >= l.maxDistance || l.kind === "tin_crystal_throw" && (l.x <= 36 || l.x >= 1964 || l.y <= 36 || l.y >= 1364)) && (g = true), g) {
-          if (l.kind === "tin_crystal_throw" && !l.visualOnly) {
+          if (l.kind === "tin_crystal_throw" && l.isPrimaryCrystal && !l.visualOnly) {
             let p = Math.max(40, Math.min(Se - 40, l.x)), h = Math.max(40, Math.min(Ce - 40, l.y));
-            this.tinCrystals.push({ id: this.nextEntityId++, x: p, y: h, radius: 44, life: 0, maxLife: 3.75, pulse: 0 }), this.queueVfx("tin_crystal_vis", { x: p, y: h, radius: 44, maxLife: 3.75 }), this.spawnRedCrystals(p, h, 10, 50, 160), this.spawnGroundCrack(p, h, l.angle, 44, "#E11D48", "#FDA4AF"), this.queueVfx("crack", { x: p, y: h, angle: l.angle, len: 44, color: "#E11D48", glowColor: "#FDA4AF" }), R.playTone(520, 920, 0.14, "triangle", 0.22);
-          } else if (l.kind === "taidu_missile" && !l.visualOnly && l.hitIds.size === 0) {
+            this.tinCrystals.push({ id: this.nextEntityId++, x: p, y: h, radius: 44, life: 0, maxLife: 4.5, pulse: 0 }), this.queueVfx("tin_crystal_vis", { x: p, y: h, radius: 44, maxLife: 4.5 }), this.spawnRedCrystals(p, h, 10, 50, 160), this.spawnGroundCrack(p, h, l.angle, 44, "#E11D48", "#FDA4AF"), this.queueVfx("crack", { x: p, y: h, angle: l.angle, len: 44, color: "#E11D48", glowColor: "#FDA4AF" }), R.playTone(520, 920, 0.14, "triangle", 0.22);
+          } else if ((l.kind === "taidu_missile" || l.kind === "taidu_turret_rocket") && !l.visualOnly && l.hitIds.size === 0) {
             R.playExplosion();
             let mr = l.aoeRadius || 84;
-            this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: "#F97316", accentColor: "#FEF08A", life: 0, maxLife: 0.32, kind: "taidu_hex_blast" }), this.queueVfx("slash", { x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: "#F97316", accentColor: "#FEF08A", maxLife: 0.32, kind: "taidu_hex_blast" }), this.spawnFlameParticles(l.x, l.y, "red", 8, 35, 115);
+            this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: l.color || "#F97316", accentColor: "#FEF08A", life: 0, maxLife: 0.32, kind: "taidu_hex_blast" }), this.queueVfx("slash", { x: l.x, y: l.y, angle: 0, radius: mr, spread: Math.PI * 2, color: l.color || "#F97316", accentColor: "#FEF08A", maxLife: 0.32, kind: "taidu_hex_blast" }), this.spawnFlameParticles(l.x, l.y, "red", 8, 35, 115);
             for (let f of [...this.enemies]) Math.hypot(f.x - l.x, f.y - l.y) <= mr + f.radius && this.damageEnemy(f, l.damage, 0, 0, true);
           }
           this.projectiles.splice(a, 1);
@@ -2507,7 +2700,7 @@ export class GameEngine {
   updateEnemies(s) {
     for (let a of this.enemies) {
       if (a.hp <= 0) continue;
-      a.hitFlash > 0 && (a.hitFlash = Math.max(0, a.hitFlash - s)), a.attackCooldown > 0 && (a.attackCooldown = Math.max(0, a.attackCooldown - s)), a.immuneTextCd && a.immuneTextCd > 0 && (a.immuneTextCd = Math.max(0, a.immuneTextCd - s)), a.luan_warpCd && a.luan_warpCd > 0 && (a.luan_warpCd = Math.max(0, a.luan_warpCd - s));
+      a.hitFlash > 0 && (a.hitFlash = Math.max(0, a.hitFlash - s)), a.attackCooldown > 0 && (a.attackCooldown = Math.max(0, a.attackCooldown - s)), a.immuneTextCd && a.immuneTextCd > 0 && (a.immuneTextCd = Math.max(0, a.immuneTextCd - s)), a.luan_warpCd && a.luan_warpCd > 0 && (a.luan_warpCd = Math.max(0, a.luan_warpCd - s)), a.taidu_empTimer && a.taidu_empTimer > 0 && (a.taidu_empTimer = Math.max(0, a.taidu_empTimer - s));
       let l = this.isBossImmune(a);
       if (l && (a.stunTimer = 0, a.slowTimer = 0, a.slowFactor = 0, a.frozenTimer = 0, a.frostUltExposeTimer = 0, a.eohyenAuraSlow = 0, a.tin_hasMark = false, a.tin_hits = 0, a.longhoiBurnStacks = 0, a.longhoiBurnTimer = 0, a.longhoiBurnAmpTimer = 0), a.slowTimer > 0 && (a.slowTimer = Math.max(0, a.slowTimer - s), a.slowTimer === 0 && (a.slowFactor = 0)), a.gau_quakeTimer && a.gau_quakeTimer > 0 && (a.gau_quakeTimer = Math.max(0, a.gau_quakeTimer - s)), a.bao_markTimer && a.bao_markTimer > 0 && (a.bao_markTimer = Math.max(0, a.bao_markTimer - s), a.bao_markTimer === 0 && (a.bao_marks = 0)), (a.longhoiBurnStacks || 0) > 0 && (a.longhoiBurnTimer || 0) > 0) {
         a.longhoiBurnTimer = Math.max(0, a.longhoiBurnTimer - s);
@@ -3624,6 +3817,14 @@ export class GameEngine {
         let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
         v.addColorStop(0, "rgba(251, 113, 133, 0.38)"), v.addColorStop(0.55, "rgba(190, 18, 60, 0.26)"), v.addColorStop(1, "rgba(76, 5, 25, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = "#FB7185", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.strokeStyle = "#F43F5E", a.lineWidth = 1.8, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.7 + 0.08 * Math.sin(f * 8)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
         a.restore();
+      } else if (h.kind === "taidu_plasma_zone") {
+        let f = this.elapsedTime;
+        a.save(), a.translate(h.x, h.y);
+        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
+        v.addColorStop(0, "rgba(56, 189, 248, 0.36)"), v.addColorStop(0.5, "rgba(249, 115, 22, 0.24)"), v.addColorStop(1, "rgba(14, 165, 233, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
+        a.strokeStyle = "#38BDF8", a.lineWidth = 2.6, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
+        a.strokeStyle = "#FACC15", a.lineWidth = 1.8, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.68 + 0.08 * Math.sin(f * 10)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        a.restore();
       }
       a.restore();
     }
@@ -3675,6 +3876,7 @@ export class GameEngine {
         a.restore();
       }
       if (h.tin_hasMark) a.fillStyle = "#F43F5E", a.font = "700 13px sans-serif", a.textAlign = "center", a.fillText("\u{1FA78}", h.x, h.y - h.radius - 12);
+      else if (h.taidu_empTimer && h.taidu_empTimer > 0) a.fillStyle = "#38BDF8", a.font = '800 11px "JetBrains Mono", monospace', a.textAlign = "center", a.fillText("\u26A1EMP", h.x, h.y - h.radius - 13);
       else if (h.gau_quakeTimer && h.gau_quakeTimer > 0) a.fillStyle = "#FBBF24", a.font = '800 12px "JetBrains Mono", monospace', a.textAlign = "center", a.fillText("\u26A1 CH\u1EA4N", h.x, h.y - h.radius - 13);
       else if (h.bao_marks && h.bao_marks > 0) {
         let f = h.bao_marks, v = h.y - h.radius - 17, T = f >= 2 ? "#F43F5E" : "#E879F9", b = this.elapsedTime * 2.4;
@@ -3941,7 +4143,7 @@ export class GameEngine {
     if (hid === "taidu" && this.player.hp > 0) {
       let drX = Number.isFinite(this.player.taidu_droneX) ? this.player.taidu_droneX : vx - 42;
       let drY = Number.isFinite(this.player.taidu_droneY) ? this.player.taidu_droneY : vy - 30;
-      drawTaiDuDrone(s, drX, drY, this.player.taidu_droneMode || "attack", Number.isFinite(this.player.taidu_droneFacing) ? this.player.taidu_droneFacing : m, this.elapsedTime, (this.player.taidu_droneShieldAccum || 0) / 150, a, { playerX: vx, playerY: vy, targetX: this.player.taidu_droneTargetX, targetY: this.player.taidu_droneTargetY, muzzleTimer: this.player.taidu_droneMuzzleTimer || 0 });
+      drawTaiDuDrone(s, drX, drY, this.player.taidu_droneMode || "attack", Number.isFinite(this.player.taidu_droneFacing) ? this.player.taidu_droneFacing : m, this.elapsedTime, (this.player.taidu_droneShieldAccum || 0) / 160, a, { playerX: vx, playerY: vy, targetX: this.player.taidu_droneTargetX, targetY: this.player.taidu_droneTargetY, muzzleTimer: this.player.taidu_droneMuzzleTimer || 0, overdrive: this.player.taidu_droneOverdriveTimer || 0 });
     }
     if (hid === "gau" && this.player.gau_c2_guardTimer > 0) {
       s.save(), s.translate(vx, vy), s.fillStyle = "rgba(245, 158, 11, 0.2)", s.strokeStyle = "#FBBF24", s.lineWidth = 3, s.beginPath(), s.arc(0, 0, this.player.radius + 16, 0, Math.PI * 2), s.fill(), s.stroke();
@@ -4102,6 +4304,7 @@ export class GameEngine {
           danh_khaiSonTimer: rp.buffs?.danh_khaiSon ? 1 : 0,
           danh_dragonTimer: rp.buffs?.danh_dragon ? 1 : 0,
           taidu_droneMode: rp.buffs?.taidu_droneMode || "attack",
+          taidu_droneOverdriveTimer: rp.buffs?.taidu_droneOverdrive ? 1 : 0,
           taidu_barrelParity: rp.buffs?.taidu_barrelParity || 1,
           chargeState: rp.buffs?.danh_charge > 0 ? { active: true, elapsed: rp.buffs.danh_charge, maxDur: 1 } : { active: false }
         };
@@ -4114,7 +4317,7 @@ export class GameEngine {
         s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, drawY), s.rotate(rpState.attackAnimTimer > 0 ? rpState.attackAnimAngle : rpState.facing), drawHeroWeapon(s, heroObj.id, rpState, this.elapsedTime, a), s.restore();
         if (heroObj.id === "taidu") {
           let drMode = rp.buffs?.taidu_droneMode || "attack", prof = getTaiDuDroneProfile(drMode), drAng = this.elapsedTime * 2.2, drOrbit = prof.orbitDist ?? prof.orbitRadius ?? 56;
-          drawTaiDuDrone(s, vx + Math.cos(drAng) * drOrbit, drawY + Math.sin(drAng) * drOrbit, drMode, rpState.facing, this.elapsedTime, 0, a, { playerX: vx, playerY: drawY });
+          drawTaiDuDrone(s, vx + Math.cos(drAng) * drOrbit, drawY + Math.sin(drAng) * drOrbit, drMode, rpState.facing, this.elapsedTime, 0, a, { playerX: vx, playerY: drawY, overdrive: rp.buffs?.taidu_droneOverdrive ? 1 : 0 });
         }
         if (heroObj.id === "gau" && rp.buffs?.gau_c2_guard) {
           s.save(), s.translate(vx, drawY), s.fillStyle = "rgba(245, 158, 11, 0.18)", s.strokeStyle = "#FBBF24", s.lineWidth = 2.8, s.beginPath(), s.arc(0, 0, radius + 16, 0, Math.PI * 2), s.fill(), s.stroke();
@@ -4248,6 +4451,7 @@ export class GameEngine {
           luan_c3_angle: this.player.luan_c3Charge ? Math.round(this.player.luan_c3Charge.angle * 100) / 100 : 0,
           duccong_pads: this.currentHero.id === "duccong" && this.duccong_pads ? [1, 2].map((idx) => this.duccong_pads[idx] && (this.player.cooldowns[idx] || 0) > 0 ? { idx, x: Math.round(this.duccong_pads[idx].x), y: Math.round(this.duccong_pads[idx].y), radius: Math.round(this.duccong_pads[idx].radius || 46), ready: (this.duccong_pads[idx].teleportCd || 0) <= 0 } : null).filter(Boolean) : null,
           taidu_droneMode: this.player.taidu_droneMode || "attack",
+          taidu_droneOverdrive: (this.player.taidu_droneOverdriveTimer || 0) > 0,
           taidu_barrelParity: this.player.taidu_barrelParity || 1,
           nguyen_satellites: (this.player.nguyen_satellitesTimer || 0) > 0,
           nguyen_rescue: (this.player.nguyen_rescueFlashTimer || 0) > 0,
@@ -4609,10 +4813,10 @@ export class GameEngine {
       } else if (ev.type === "sky_dragon_vis") {
         this.skyDragons.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, radius: ev.radius || 160, timer: 0, duration: ev.duration || 0.45, damage: 0, burnDps: 0, empowered: Boolean(ev.empowered), impacted: false });
       } else if (ev.type === "taidu_turret_vis") {
-        if (this.taiduTurrets.length >= 2) this.taiduTurrets.shift();
-        this.taiduTurrets.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, angle: ev.angle || 0, life: 0, maxLife: ev.maxLife || 10, fireTimer: 0, fireInterval: 0.52, range: 360, damage: 0, muzzleTimer: 0, hasTarget: false });
+        if (this.taiduTurrets.length >= TAI_DU_MAX_TURRETS) this.taiduTurrets.shift();
+        this.taiduTurrets.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, angle: ev.angle || 0, life: 0, maxLife: ev.maxLife || 9, fireTimer: 0, fireInterval: 0.52, range: 410, damage: 0, muzzleTimer: 0, hasTarget: false });
       } else if (ev.type === "taidu_carpet_vis") {
-        this.taiduCarpetStrikes.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, radius: ev.radius || 95, damage: 0, timer: 0, delay: ev.delay || 0.25 });
+        this.taiduCarpetStrikes.push({ id: this.nextEntityId++, visualOnly: true, isOrbital: Boolean(ev.isOrbital), x: ev.x, y: ev.y, radius: ev.radius || 115, damage: 0, timer: 0, delay: ev.delay || 0.25 });
       } else if (ev.type === "nguyen_wave_vis") {
         this.nguyenSanctuaryWaves.push({ id: this.nextEntityId++, x: ev.x, y: ev.y, maxRadius: ev.maxRadius || 210, life: 0, maxLife: ev.maxLife || 0.48 });
       } else if (ev.type === "nguyen_field_vis") {
@@ -4724,17 +4928,19 @@ export class GameEngine {
       }
       activePads.length > 0 && (l = `\u{1F300} \xD4 D\u1ECACH: ${activePads.join(" & ")}`);
     } else if (this.currentHero.id === "tin") {
-      let parts = [`⚡ CỘNG HƯỞNG ${s.tin_resonance_stacks || 0}/4`];
-      s.tin_empowered && parts.push("QUÁ TẢI +25%");
-      s.tin_c1_recast_timer > 0 && (a[0] = "recast", parts.push(`LƯỚT C1 FREE (${s.tin_c1_recast_timer.toFixed(1)}s)`));
+      let parts = [`\u26A1 C\u1ED8NG H\u01AF\u1EDENG ${s.tin_resonance_stacks || 0}/4`];
+      s.tin_empowered && parts.push("QU\xC1 T\u1EA2I +15%");
+      s.tin_monochrome_realm_timer > 0 && parts.push(`L\xC3NH \u0110\u1ECAA ${s.tin_monochrome_realm_timer.toFixed(1)}s`);
+      s.tin_c1_recast_timer > 0 && (a[0] = "recast", parts.push(`L\u01AF\u1EDAT C1 FREE (${s.tin_c1_recast_timer.toFixed(1)}s)`));
       if (s.tin_empowered) {
         for (let i = 0; i < 3; i++) a[i] === "ready" && (a[i] = "empowered");
       }
-      l = parts.join(" · ");
+      l = parts.join(" \xB7 ");
     } else if (this.currentHero.id === "taidu") {
       let prof = getTaiDuDroneProfile(s.taidu_droneMode || "attack"), parts = [`\u{1F916} DRONE: ${prof.label.toUpperCase()}`];
-      this.taiduTurrets.length > 0 && parts.push(`PH\xC1O ${this.taiduTurrets.length}/2`);
-      s.taidu_droneMode === "guard" && parts.push(`H\u1EA4P TH\u1EE4 ${Math.round(s.taidu_droneShieldAccum || 0)}/140`);
+      s.taidu_droneOverdriveTimer > 0 && parts.push(`\u26A1 SI\u00CAU T\u1EA2I ${s.taidu_droneOverdriveTimer.toFixed(1)}s`);
+      this.taiduTurrets.length > 0 && parts.push(`PH\xC1O ${this.taiduTurrets.length}/${TAI_DU_MAX_TURRETS}`);
+      s.taidu_droneMode === "guard" && parts.push(`H\u1EA4P TH\u1EE4 ${Math.round(s.taidu_droneShieldAccum || 0)}/160`);
       l = parts.join(" \xB7 ");
     } else if (this.currentHero.id === "nguyen") {
       let parts = [`\u{1F6E1}\uFE0F KHI\xCAN \u1EA2O ${Math.round(s.shield || 0)}/${Math.round(s.maxHp || 1500)}`];
