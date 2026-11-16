@@ -930,9 +930,11 @@ export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
   dung: 'fighter',
   eohyen: 'fighter',
   danh: 'fighter',
+  dang: 'fighter',
   tin: 'assassin',
   bao: 'assassin',
   duy: 'assassin',
+  phong: 'assassin',
   kin: 'marksman',
   longhoi: 'marksman',
   taidu: 'marksman',
@@ -984,4 +986,59 @@ export function filterHeroesByRole<T extends { id: string }>(
   return heroes.filter((h) => getHeroRoleKey(h?.id) === roleFilter);
 }
 
+export const PHONG_MAX_ILLUSIONS = 4;
+export const PHONG_ILLUSION_DURATION = 5.5;
+export const PHONG_KILL_HEAL_RATIO = 0.08;
+export const PHONG_KILL_CD_REFUND = 1.2;
 
+export function computePhongMissingHpScale(targetHp: number, targetMaxHp: number): number {
+  const safeMax = Math.max(1, targetMaxHp || 1);
+  const safeHp = Math.max(0, Math.min(safeMax, targetHp ?? safeMax));
+  const missingRatio = (safeMax - safeHp) / safeMax;
+  return Number((1 + Math.min(1.2, missingRatio * 1.2)).toFixed(4));
+}
+
+export function computePhongC3SlashDamage({
+  baseDamage,
+  targetHp,
+  targetMaxHp,
+  isBoss = false,
+}: {
+  baseDamage: number;
+  targetHp: number;
+  targetMaxHp: number;
+  isBoss?: boolean;
+}): number {
+  const rawScale = computePhongMissingHpScale(targetHp, targetMaxHp);
+  const cappedScale = isBoss ? Math.min(1.85, rawScale) : rawScale;
+  return Math.max(1, Math.round(Math.max(0, baseDamage) * cappedScale));
+}
+
+export const DANG_RAGE_MAX = 100;
+export const DANG_ARMOR_DURATION = 3.2;
+export const DANG_ARMOR_DR = 0.42;
+export const DANG_C3_AS_BONUS = 0.5;
+export const DANG_C3_AS_DURATION = 5.0;
+
+export function computeDangRageGain({
+  baseGain,
+  currentHp,
+  maxHp,
+}: {
+  baseGain: number;
+  currentHp: number;
+  maxHp: number;
+}): number {
+  const safeMax = Math.max(1, maxHp || 1);
+  const hpRatio = Math.max(0, Math.min(1, (currentHp ?? safeMax) / safeMax));
+  const missingBoost = Math.min(1, Math.max(0, (1 - hpRatio) / 0.8)) * 1.2;
+  return Math.max(0, Math.round(Math.max(0, baseGain) * (1 + missingBoost) * 10) / 10);
+}
+
+export function computeDangC1WaveHeal(maxHp: number, enemiesHit: number): number {
+  const safeMax = Math.max(1, maxHp || 1);
+  const count = Math.max(0, enemiesHit || 0);
+  if (count <= 0) return 0;
+  const ratio = Math.min(0.14, 0.02 + count * 0.018);
+  return Math.max(1, Math.round(safeMax * ratio));
+}

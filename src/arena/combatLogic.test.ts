@@ -45,6 +45,19 @@ import {
   HERO_ROLE_ORDER,
   getHeroRoleKey,
   filterHeroesByRole,
+  PHONG_MAX_ILLUSIONS,
+  PHONG_ILLUSION_DURATION,
+  PHONG_KILL_HEAL_RATIO,
+  PHONG_KILL_CD_REFUND,
+  computePhongMissingHpScale,
+  computePhongC3SlashDamage,
+  DANG_RAGE_MAX,
+  DANG_ARMOR_DURATION,
+  DANG_ARMOR_DR,
+  DANG_C3_AS_BONUS,
+  DANG_C3_AS_DURATION,
+  computeDangRageGain,
+  computeDangC1WaveHeal,
 } from './combatLogic.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
@@ -529,14 +542,14 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (14 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (16 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 14, 'Must preserve all 13 heroes + add Duy');
+  assert.equal(Mi.length, 16, 'Must preserve all 14 existing heroes + add Phong & Dang');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 14);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy']) {
+  assert.equal(heroIds.size, 16);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
@@ -578,6 +591,28 @@ test('Upgraded Arena Hero roster (14 heroes) and 220-item catalog satisfy exact 
   assert.equal(duy.skills[2].aimType, 'CONE');
   assert.ok(HERO_SKILL_ICONS.duy?.atk && HERO_SKILL_ICONS.duy?.passive && HERO_SKILL_ICONS.duy?.c1 && HERO_SKILL_ICONS.duy?.c2 && HERO_SKILL_ICONS.duy?.c3);
   assert.ok(Ff.duy && Ff.duy.length >= 3);
+
+  const phong = Mi.find((h: any) => h.id === 'phong');
+  assert.ok(phong);
+  assert.equal(phong.stats.hp, 1000);
+  assert.equal(phong.stats.damage, 55);
+  assert.equal(phong.stats.ap, 35);
+  assert.equal(phong.skills[0].aimType, 'LINE');
+  assert.equal(phong.skills[1].aimType, 'CIRCLE_FREE');
+  assert.equal(phong.skills[2].aimType, 'CIRCLE_SELF');
+  assert.ok(HERO_SKILL_ICONS.phong?.atk && HERO_SKILL_ICONS.phong?.passive && HERO_SKILL_ICONS.phong?.c1 && HERO_SKILL_ICONS.phong?.c2 && HERO_SKILL_ICONS.phong?.c3);
+  assert.ok(Ff.phong && Ff.phong.length >= 3);
+
+  const dang = Mi.find((h: any) => h.id === 'dang');
+  assert.ok(dang);
+  assert.equal(dang.stats.hp, 1450);
+  assert.equal(dang.stats.damage, 50);
+  assert.equal(dang.stats.ap, 35);
+  assert.equal(dang.skills[0].aimType, 'LINE');
+  assert.equal(dang.skills[1].aimType, 'CIRCLE_SELF');
+  assert.equal(dang.skills[2].aimType, 'LINE');
+  assert.ok(HERO_SKILL_ICONS.dang?.atk && HERO_SKILL_ICONS.dang?.passive && HERO_SKILL_ICONS.dang?.c1 && HERO_SKILL_ICONS.dang?.c2 && HERO_SKILL_ICONS.dang?.c3);
+  assert.ok(Ff.dang && Ff.dang.length >= 3);
 
   assert.equal(zr.length, 220, 'Item catalog must contain 140 existing + 80 new = 220 items');
   const itemIds = new Set(zr.map((it: any) => it.id));
@@ -1366,9 +1401,9 @@ test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/ani
   }
 });
 
-test('MOBA hero role classification & filtering covers all 14 champions accurately', async () => {
+test('MOBA hero role classification & filtering covers all 16 champions accurately', async () => {
   const { Mi } = await import('./gameData.js');
-  assert.equal(Mi.length, 14);
+  assert.equal(Mi.length, 16);
   assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
 
   const allFiltered = filterHeroesByRole(Mi, 'all');
@@ -1393,7 +1428,7 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
   const prevWindow = (globalThis as any).window;
 
   const invokeAllSounds = () => {
-    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy'];
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang'];
     for (const id of heroIds) {
       R.lastCooldowns.clear();
       R.playHeroSelect(id);
@@ -1401,6 +1436,17 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
       R.playHeroSkillPreview(id, 'atk');
       R.playHeroSkillPreview(id, 'c3');
     }
+    R.lastCooldowns.clear();
+    R.playPhongDash();
+    R.playPhongIllusionSpawn();
+    R.playPhongSwap();
+    R.playPhongDeathFlurry();
+    R.playDangTigerPunch(false);
+    R.lastCooldowns.clear();
+    R.playDangTigerPunch(true);
+    R.playDangTigerWave();
+    R.playDangBlackArmor();
+    R.playDangTigerRoar();
 
     R.lastCooldowns.clear();
     R.playClick();
@@ -1883,6 +1929,332 @@ test('GameEngine non-host P2P client dead-reckons enemy/teammate movement and sm
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Phong and Dang pure combat helpers enforce missing-HP scaling, boss cap, Rage curve, and wave heal cap', () => {
+  assert.equal(PHONG_MAX_ILLUSIONS, 4);
+  assert.equal(PHONG_ILLUSION_DURATION, 5.5);
+  assert.equal(PHONG_KILL_HEAL_RATIO, 0.08);
+  assert.equal(PHONG_KILL_CD_REFUND, 1.2);
+
+  assert.equal(computePhongMissingHpScale(1000, 1000), 1);
+  assert.equal(computePhongMissingHpScale(500, 1000), 1.6);
+  assert.equal(computePhongMissingHpScale(0, 1000), 2.2);
+
+  const normalExec = computePhongC3SlashDamage({ baseDamage: 100, targetHp: 0, targetMaxHp: 1000, isBoss: false });
+  const bossExec = computePhongC3SlashDamage({ baseDamage: 100, targetHp: 0, targetMaxHp: 1000, isBoss: true });
+  assert.equal(normalExec, 220);
+  assert.equal(bossExec, 185);
+
+  assert.equal(DANG_RAGE_MAX, 100);
+  assert.equal(DANG_ARMOR_DURATION, 3.2);
+  assert.equal(DANG_ARMOR_DR, 0.42);
+  assert.equal(DANG_C3_AS_BONUS, 0.5);
+  assert.equal(DANG_C3_AS_DURATION, 5.0);
+
+  const fullHpRage = computeDangRageGain({ baseGain: 10, currentHp: 1450, maxHp: 1450 });
+  const lowHpRage = computeDangRageGain({ baseGain: 10, currentHp: 290, maxHp: 1450 });
+  assert.equal(fullHpRage, 10);
+  assert.equal(lowHpRage, 22);
+
+  assert.equal(computeDangC1WaveHeal(1450, 0), 0);
+  const heal1 = computeDangC1WaveHeal(1450, 1);
+  const heal3 = computeDangC1WaveHeal(1450, 3);
+  const healMany = computeDangC1WaveHeal(1450, 20);
+  assert.ok(heal1 > 0 && heal3 > heal1 && healMany <= Math.round(1450 * 0.14));
+});
+
+test('Phong (Sat Thu Anh Toc) illusions, kill heal/refund, C1 3-dash, C2 Hoan Anh, and C3 missing-HP slashes work in GameEngine', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { Mi } = await import('./gameData.js');
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ({
+        save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+        beginPath() {}, closePath() {}, arc() {}, ellipse() {}, rect() {},
+        moveTo() {}, lineTo() {}, quadraticCurveTo() {}, bezierCurveTo() {},
+        fill() {}, stroke() {}, fillRect() {}, strokeRect() {},
+        fillText() {}, strokeText() {}, setLineDash() {}, clip() {}, roundRect() {},
+        createLinearGradient: () => ({ addColorStop() {} }),
+        createRadialGradient: () => ({ addColorStop() {} }),
+        measureText: () => ({ width: 20 }),
+      }),
+    };
+
+    const engine = new GameEngine(mockCanvas);
+    const phongHero = Mi.find((h: any) => h.id === 'phong');
+    engine.startNewGame(phongHero);
+    const player = engine.player!;
+    player.hp = 600;
+    player.x = 1200;
+    player.y = 1200;
+
+    // Place a durable dummy enemy ahead for C1
+    const enemy1: any = {
+      id: 1, kind: 'minion', name: 'Dummy1', radius: 18,
+      x: 1320, y: 1200, hp: 3000, maxHp: 3000, speed: 60, damage: 10,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies.push(enemy1);
+
+    // Cast C1 Tam Anh Tram: creates 1 illusion + queues 2 remaining dashes (3 total)
+    engine.castSkill(0, 0, enemy1.x, enemy1.y);
+    assert.equal(engine.phongIllusions.length, 1, 'Casting C1 must spawn 1 shadow illusion');
+    assert.equal(engine.phongSkillQueue.length, 2, 'C1 must queue 2 follow-up dashes after initial dash');
+
+    // Advance engine so remaining 2 dashes execute (0.13s apart) and verify heal on 3rd guaranteed crit
+    const hpBefore3rd = player.hp;
+    for (let i = 0; i < 8; i++) engine.updatePhongAndDangSystems(0.05);
+    assert.equal(engine.phongSkillQueue.length, 0, 'All 3 C1 dashes should complete');
+    assert.ok(enemy1.hp < 2700, 'C1 3 dashes must damage enemy');
+    assert.ok(player.hp > hpBefore3rd, 'C1 3rd slash must heal Phong');
+
+    // Verify illusion cap of 4 and autonomous projectile firing
+    for (let i = 0; i < 5; i++) engine.spawnPhongIllusion(1200 + i * 25, 1200, 0);
+    assert.equal(engine.phongIllusions.length, PHONG_MAX_ILLUSIONS, 'Shadow illusions capped at 4');
+    engine.phongIllusions[0].fireTimer = 0.01;
+    engine.projectiles = [];
+    engine.updatePhongAndDangSystems(0.05);
+    assert.ok(
+      engine.projectiles.some((p: any) => p.kind === 'phong_illusion_bolt'),
+      'Illusions must autonomously fire phong_illusion_bolt'
+    );
+
+    // Cast C2 Hoan Anh: swaps to nearest illusion and explodes AoE + slow
+    engine.phongIllusions = [{
+      id: 99, x: 1550, y: 1200, facing: 0, life: 4, maxLife: 5.5, fireTimer: 0.5, scale: 1, ownerId: 'local',
+    }];
+    const enemyNearIllusion: any = {
+      id: 2, kind: 'minion', name: 'Dummy2', radius: 18,
+      x: 1580, y: 1200, hp: 2000, maxHp: 2000, speed: 60, damage: 10,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies.push(enemyNearIllusion);
+    engine.castSkill(1, 0, 1550, 1200);
+    assert.ok(Math.hypot(player.x - 1550, player.y - 1200) < 5, 'C2 Hoan Anh must teleport Phong to nearest illusion');
+    assert.ok(enemyNearIllusion.hp < 2000, 'C2 arrival must damage nearby enemy');
+    assert.ok(enemyNearIllusion.slowTimer > 0, 'C2 arrival must slow nearby enemy');
+
+    // Cast C3 Tu Than Giang Lam on a low-HP marked target & verify missing-HP scaling + execute heal + passive CD refund
+    player.hp = 500;
+    player.skillCooldowns = [4.0, 5.0, 0];
+    const weakTarget: any = {
+      id: 3, kind: 'minion', name: 'WeakTarget', radius: 18,
+      x: 1620, y: 1200, hp: 260, maxHp: 2000, speed: 60, damage: 10,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies.push(weakTarget);
+    engine.castSkill(2, 0, weakTarget.x, weakTarget.y);
+    assert.ok(weakTarget.phong_c3_marked > 0 || !engine.enemies.includes(weakTarget));
+    for (let i = 0; i < 12; i++) engine.updatePhongAndDangSystems(0.05);
+    assert.ok(!engine.enemies.includes(weakTarget), 'C3 flurry should execute weakened target');
+    assert.ok(player.hp > 650, 'Passive kill heal + C3 execute heal should substantially restore Phong HP');
+    assert.ok(player.skillCooldowns[0] < 4.0 && player.skillCooldowns[1] < 5.0, 'Passive kill must refund skill cooldowns');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Dang (Dau Si Ho Quyen) Rage Ho Quyen, C1 Bach Ho waves, C2 Hac Ho DR/counter/detonate, and C3 5-punch Tiger Head work in GameEngine', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { Mi } = await import('./gameData.js');
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ({
+        save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+        beginPath() {}, closePath() {}, arc() {}, ellipse() {}, rect() {},
+        moveTo() {}, lineTo() {}, quadraticCurveTo() {}, bezierCurveTo() {},
+        fill() {}, stroke() {}, fillRect() {}, strokeRect() {},
+        fillText() {}, strokeText() {}, setLineDash() {}, clip() {}, roundRect() {},
+        createLinearGradient: () => ({ addColorStop() {} }),
+        createRadialGradient: () => ({ addColorStop() {} }),
+        measureText: () => ({ width: 20 }),
+      }),
+    };
+
+    const engine = new GameEngine(mockCanvas);
+    const dangHero = Mi.find((h: any) => h.id === 'dang');
+    engine.startNewGame(dangHero);
+    const player = engine.player!;
+    player.x = 1200;
+    player.y = 1200;
+
+    // 1. Passive Rage builds to 100 and empowers next basic attack into Ho Quyen AoE + heal
+    player.hp = 900;
+    player.dang_rage = 100;
+    player.dang_rageReady = true;
+    const foeA: any = {
+      id: 11, kind: 'minion', name: 'FoeA', radius: 18,
+      x: 1255, y: 1200, hp: 3000, maxHp: 3000, speed: 60, damage: 100,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    const foeB: any = {
+      id: 12, kind: 'minion', name: 'FoeB', radius: 18,
+      x: 1270, y: 1235, hp: 3000, maxHp: 3000, speed: 60, damage: 100,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies.push(foeA, foeB);
+
+    engine.triggerBasicAttack(0);
+    assert.equal(player.dang_rage, 0, 'Ho Quyen consumes 100 Rage');
+    assert.equal(player.dang_rageReady, false);
+    assert.ok(foeA.hp < 3000 && foeB.hp < 3000, 'Ho Quyen hits multiple enemies in AoE');
+    assert.ok(player.hp > 900, 'Ho Quyen heals Dang');
+
+    // 2. C1 Bach Ho Pha Son spawns 3 tiger waves and heals per enemy hit
+    engine.projectiles = [];
+    engine.castSkill(0, 0, 1400, 1200);
+    const waves = engine.projectiles.filter((p: any) => p.kind === 'dang_tiger_wave');
+    assert.equal(waves.length, 3, 'C1 must fire 3 tiger wave projectiles');
+    const hpBeforeWaves = player.hp;
+    for (let i = 0; i < 6; i++) engine.updateProjectiles(0.05);
+    assert.ok(player.hp >= hpBeforeWaves, 'C1 wave hits heal Dang');
+
+    // 3. C2 Hac Ho Ho The reduces incoming damage, counters & heals, then recast detonates knockback explosion
+    player.hp = 1000;
+    player.dang_c2_timer = 0;
+    player.skillCooldowns[1] = 0;
+    engine.castSkill(1, 0, player.x, player.y);
+    assert.ok(player.dang_c2_timer > 3.0, 'C2 activates Hac Ho armor');
+    const hpBeforeHit = player.hp;
+    engine.damagePlayer(100, { x: foeA.x, y: foeA.y });
+    // With 42% DR (58 dmg) minus 2.5% MaxHP counter-heal (~36), net HP drop < 58
+    assert.ok(player.hp > hpBeforeHit - 58, 'C2 armor must reduce damage & trigger counter-heal');
+    assert.ok(foeA.hp < 2850, 'C2 counter must damage nearby attackers');
+
+    // Recast C2 after brief lock -> detonates & puts C2 on cooldown
+    player.dang_c2_recastLock = 0;
+    const foeXBeforeBoom = foeA.x;
+    assert.equal(engine.canActivateSkill(1), true, 'C2 recast must be allowed while armor is active');
+    engine.castSkill(1, 0, player.x, player.y);
+    assert.equal(player.dang_c2_timer, 0, 'Recast detonates and ends C2 armor');
+    assert.ok(player.skillCooldowns[1] > 0, 'Detonation puts C2 on cooldown');
+    assert.ok(foeA.x > foeXBeforeBoom, 'C2 explosion pushes enemies back');
+
+    // 4. C3 Ho Quyen Diet The 5-punch combo + giant tiger head + heal + +50% AS buff
+    player.hp = 900;
+    player.dang_c3_asTimer = 0;
+    const baseInterval = engine.getEffectiveAttackInterval();
+    engine.projectiles = [];
+    engine.castSkill(2, 0, 1400, 1200);
+    assert.equal(engine.dangFlurryQueue.length, 4, 'Punch 1 fires immediately and 4 more punches are queued');
+    for (let i = 0; i < 14; i++) engine.updatePhongAndDangSystems(0.05);
+    assert.equal(engine.dangFlurryQueue.length, 0);
+    assert.ok(
+      engine.projectiles.some((p: any) => p.kind === 'dang_tiger_head'),
+      '5th punch must summon giant dang_tiger_head projectile'
+    );
+    assert.ok(player.hp > 900, 'C3 finisher must heal Dang');
+    assert.ok(player.dang_c3_asTimer > 4.0, 'C3 finisher must grant attack speed buff');
+    assert.ok(engine.getEffectiveAttackInterval() < baseInterval, 'C3 AS buff must reduce attack interval');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Phong and Dang weaponRenderer routines draw cleanly with zero shadowBlur', async () => {
+  const {
+    drawHeroBody,
+    drawHeroWeapon,
+    drawPhongIllusion,
+    drawUpgradedProjectile,
+    drawUpgradedSlash,
+  } = await import('./weaponRenderer.js');
+
+  let maxShadowBlurUsed = 0;
+  const gradient = { addColorStop() {} };
+  const noop = () => {};
+  const ctx: any = {
+    save: noop, restore: noop, translate: noop, rotate: noop, scale: noop,
+    beginPath: noop, closePath: noop, arc: noop, ellipse: noop, rect: noop,
+    moveTo: noop, lineTo: noop, quadraticCurveTo: noop, bezierCurveTo: noop,
+    fill: noop, stroke: noop, fillRect: noop, strokeRect: noop,
+    fillText: noop, strokeText: noop, setLineDash: noop, clip: noop, roundRect: noop,
+    createLinearGradient: () => gradient,
+    createRadialGradient: () => gradient,
+    measureText: () => ({ width: 20 }),
+    fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1,
+    _shadowBlur: 0,
+    get shadowBlur() { return this._shadowBlur; },
+    set shadowBlur(v: number) {
+      this._shadowBlur = v;
+      if (v > maxShadowBlurUsed) maxShadowBlurUsed = v;
+    },
+    shadowColor: '#000', font: '12px sans-serif', textAlign: 'center', textBaseline: 'middle', lineCap: 'round', lineJoin: 'round',
+  };
+
+  for (const isMono of [false, true]) {
+    assert.doesNotThrow(() =>
+      drawHeroBody(ctx, 'phong', { x: 100, y: 100, facing: 0.4, animWalkPhase: 1.2, animAttackTimer: 0.2, animAttackDur: 0.35, phong_basicStep: 1 }, 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawHeroWeapon(ctx, 'phong', { x: 100, y: 100, facing: 0.4, animAttackTimer: 0.2, animAttackDur: 0.35, phong_basicStep: 1 }, 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawHeroBody(ctx, 'dang', { x: 100, y: 100, facing: -0.5, animWalkPhase: 2.1, animAttackTimer: 0.15, animAttackDur: 0.35, dang_rageReady: true, dang_c2_timer: 2.0, dang_c3_asTimer: 3.0, dang_basicStep: 2 }, 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawHeroWeapon(ctx, 'dang', { x: 100, y: 100, facing: -0.5, animAttackTimer: 0.15, animAttackDur: 0.35, dang_rageReady: true, dang_c2_timer: 2.0, dang_c3_asTimer: 3.0, dang_basicStep: 2 }, 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawPhongIllusion(ctx, { x: 200, y: 180, facing: 0.7, life: 3.2, maxLife: 5.5, scale: 1 }, 3.4, isMono)
+    );
+    for (const kind of ['phong_illusion_bolt', 'dang_tiger_wave', 'dang_tiger_head']) {
+      assert.doesNotThrow(() =>
+        drawUpgradedProjectile(ctx, { kind, x: 120, y: 120, angle: 0.3, radius: 22, color: '#22D3EE', distanceTraveled: 60 }, 3.4, isMono)
+      );
+    }
+    for (const sKind of ['phong_slash', 'phong_swap_burst', 'phong_c3_mark', 'dang_punch', 'dang_tiger_fist_aoe', 'dang_black_shield_boom']) {
+      assert.doesNotThrow(() =>
+        drawUpgradedSlash(ctx, { kind: sKind, x: 120, y: 120, angle: 0.2, radius: 130, spread: 1.8, dir: 1, color: '#22D3EE', life: 0.18, maxLife: 0.35 }, isMono)
+      );
+    }
+  }
+
+  assert.equal(maxShadowBlurUsed, 0, 'Phong and Dang renderers must never set non-zero ctx.shadowBlur');
+});
+
 
 
 

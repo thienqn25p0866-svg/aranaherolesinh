@@ -1884,6 +1884,134 @@ function drawDuyAssassinArms(ctx, p, elapsedTime, state, isMono) {
   ctx.restore();
 }
 
+function drawPhongEnergyBlades(ctx, p, elapsedTime, state, isMono) {
+  let ink = isMono ? "#000000" : "#082F49";
+  let azure = isMono ? "#94A3B8" : "#0EA5E9";
+  let cyan = isMono ? "#FFFFFF" : "#22D3EE";
+  let core = isMono ? "#FFFFFF" : "#E0F2FE";
+  let swing = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 1.15 * state.parity : 0;
+  let pulse = 0.78 + 0.22 * Math.sin(elapsedTime * 9);
+
+  for (let side of [-1, 1]) {
+    ctx.save();
+    let isLead = side === 1;
+    ctx.translate(isLead ? 7 : 4, side * 13);
+    ctx.rotate(side * 0.26 + (isLead ? -swing : swing * 0.65));
+
+    // Flowing cyan energy ribbon off hilt
+    ctx.strokeStyle = isMono ? "#E2E8F0" : `rgba(34, 211, 238, ${0.42 * pulse})`;
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-2, 0);
+    ctx.quadraticCurveTo(-11, side * 5 + Math.sin(elapsedTime * 11 + side) * 2.4, -18, side * 3);
+    ctx.stroke();
+
+    // Sleek plasma katana energy blade
+    ctx.fillStyle = azure;
+    ctx.strokeStyle = cyan;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, -2.5);
+    ctx.lineTo(24 + state.skillAlpha * 5, -0.6);
+    ctx.lineTo(28 + state.skillAlpha * 5, 0.8);
+    ctx.lineTo(18, 3.0);
+    ctx.lineTo(0, 2.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Glowing white-cyan plasma edge
+    ctx.strokeStyle = core;
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.moveTo(4, -0.3);
+    ctx.lineTo(25 + state.skillAlpha * 4, 0.4);
+    ctx.stroke();
+
+    // Hilt + cyan guard gem
+    ctx.fillStyle = ink;
+    ctx.strokeStyle = cyan;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.roundRect(-5, -3.5, 6, 7, 2);
+    ctx.fill();
+    ctx.stroke();
+    drawHandGrip(ctx, -1, 0, "#0284C7", "#67E8F9", 3.4, isMono);
+    ctx.restore();
+  }
+}
+
+function drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono) {
+  let black = isMono ? "#000000" : "#09090B";
+  let charcoal = isMono ? "#262626" : "#27272A";
+  let white = "#F8FAFC";
+  let rageReady = Boolean(p?.dang_rageReady);
+  let c2Active = (p?.dang_c2_timer || 0) > 0;
+  let c3Active = (p?.dang_c3_asTimer || 0) > 0;
+  let stepDir = (p?.dang_basicStep || 0) % 2 === 0 ? 1 : -1;
+  let punchThrust = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 10 : 0;
+
+  for (let side of [-1, 1]) {
+    ctx.save();
+    let activeArm = side === stepDir ? punchThrust : punchThrust * 0.25;
+    ctx.translate(9 + activeArm, side * 14);
+    ctx.rotate(side * 0.14);
+
+    // Outer white/black contrasting Tiger Qi aura around fist
+    if (rageReady || c2Active || c3Active || state.skillAlpha > 0) {
+      let auraR = 12 + Math.sin(elapsedTime * 14) * 2;
+      let grad = ctx.createRadialGradient(3, 0, 2, 3, 0, auraR);
+      grad.addColorStop(0, isMono ? "rgba(255,255,255,0.65)" : side < 0 ? "rgba(248,250,252,0.72)" : "rgba(24,24,27,0.78)");
+      grad.addColorStop(0.65, isMono ? "rgba(0,0,0,0.3)" : side < 0 ? "rgba(148,163,184,0.35)" : "rgba(248,250,252,0.35)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(3, 0, auraR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Left fist white-accented / Right fist obsidian-accented (yin-yang tiger theme)
+    let isWhiteSide = side < 0;
+    ctx.fillStyle = isMono ? black : isWhiteSide ? white : charcoal;
+    ctx.strokeStyle = isMono ? white : isWhiteSide ? black : white;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.roundRect(-4, -5.8, 12, 11.6, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Tiger stripe knuckle markings
+    ctx.strokeStyle = isMono ? white : isWhiteSide ? black : white;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, -3.5);
+    ctx.lineTo(3, -1.8);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(3.5, 0);
+    ctx.moveTo(0, 3.5);
+    ctx.lineTo(3, 1.8);
+    ctx.stroke();
+
+    // Sharp Tiger-claw energy prongs ahead of gauntlet
+    ctx.fillStyle = rageReady ? "#FACC15" : isWhiteSide ? white : "#E4E4E7";
+    ctx.strokeStyle = black;
+    ctx.lineWidth = 1.0;
+    for (let c = -1; c <= 1; c++) {
+      ctx.beginPath();
+      ctx.moveTo(8, c * 3.2 - 1.0);
+      ctx.lineTo(13.5 + (rageReady ? 3 : 0), c * 3.4);
+      ctx.lineTo(8, c * 3.2 + 1.0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
+
 export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
   let atkDur = Math.max(0.06, p.weaponAttackDuration || 0.22);
   let hasAtk = p.attackAnimTimer > 0;
@@ -1918,7 +2046,9 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
     luan: 1.24,
     taidu: 1.28,
     nguyen: 1.26,
-    duy: 1.28
+    duy: 1.28,
+    phong: 1.30,
+    dang: 1.26
   };
   let sc = scaleMap[heroId] || 1.26;
   ctx.save();
@@ -1966,6 +2096,12 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       break;
     case "duy":
       drawDuyAssassinArms(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "phong":
+      drawPhongEnergyBlades(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "dang":
+      drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono);
       break;
     default:
       break;
@@ -2979,6 +3115,135 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     return;
   }
 
+  if (h.kind === "phong_illusion_bolt") {
+    let ang = Math.atan2(h.vy || 0, h.vx || 1);
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#22D3EE";
+    ctx.strokeStyle = isMono ? "#000000" : "#E0F2FE";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-7, -4.5);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-7, 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  if (h.kind === "dang_tiger_wave") {
+    let ang = Math.atan2(h.vy || 0, h.vx || 1);
+    let r = h.radius || 26;
+    ctx.save();
+    ctx.rotate(ang);
+    // Outer black shadow wave
+    ctx.strokeStyle = "#09090B";
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(-8, 0, r * 1.12, -0.95, 0.95);
+    ctx.stroke();
+    // Bright white tiger-qi edge
+    ctx.strokeStyle = "#F8FAFC";
+    ctx.lineWidth = 4.6;
+    ctx.beginPath();
+    ctx.arc(-6, 0, r * 1.12, -0.9, 0.9);
+    ctx.stroke();
+    // Triple tiger claw streaks inside wave
+    for (let s = -1; s <= 1; s++) {
+      ctx.strokeStyle = s === 0 ? "#F8FAFC" : "#18181B";
+      ctx.lineWidth = s === 0 ? 3.2 : 2.4;
+      ctx.beginPath();
+      ctx.moveTo(-14, s * 10);
+      ctx.lineTo(r * 0.72, s * 6);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (h.kind === "dang_tiger_head") {
+    let ang = Math.atan2(h.vy || 0, h.vx || 1);
+    let r = h.radius || 42;
+    let pulse = 0.94 + 0.08 * Math.sin(elapsedTime * 18);
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.scale(pulse, pulse);
+
+    // Trailing black-white yin-yang mane aura
+    let aura = ctx.createRadialGradient(-8, 0, 8, -4, 0, r * 1.38);
+    aura.addColorStop(0, isMono ? "rgba(255,255,255,0.7)" : "rgba(248, 250, 252, 0.65)");
+    aura.addColorStop(0.55, isMono ? "rgba(0,0,0,0.4)" : "rgba(24, 24, 27, 0.7)");
+    aura.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(-4, 0, r * 1.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Roaring Giant Tiger Head silhouette facing +X
+    ctx.fillStyle = isMono ? "#111111" : "#18181B";
+    ctx.strokeStyle = "#F8FAFC";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(r * 1.05, 0);
+    ctx.lineTo(r * 0.45, -r * 0.72);
+    ctx.lineTo(-r * 0.25, -r * 0.92); // Left ear peak
+    ctx.lineTo(-r * 0.45, -r * 0.48);
+    ctx.lineTo(-r * 0.95, -r * 0.22);
+    ctx.lineTo(-r * 0.95, r * 0.22);
+    ctx.lineTo(-r * 0.45, r * 0.48);
+    ctx.lineTo(-r * 0.25, r * 0.92); // Right ear peak
+    ctx.lineTo(r * 0.45, r * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Bold white tiger crown + cheek markings
+    ctx.fillStyle = "#F8FAFC";
+    ctx.beginPath();
+    ctx.moveTo(r * 0.78, 0);
+    ctx.lineTo(r * 0.22, -r * 0.36);
+    ctx.lineTo(-r * 0.32, -r * 0.22);
+    ctx.lineTo(-r * 0.08, 0);
+    ctx.lineTo(-r * 0.32, r * 0.22);
+    ctx.lineTo(r * 0.22, r * 0.36);
+    ctx.closePath();
+    ctx.fill();
+
+    // Forehead black 王-tiger stripes
+    ctx.strokeStyle = "#09090B";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.06, -r * 0.22);
+    ctx.lineTo(-r * 0.06, r * 0.22);
+    ctx.moveTo(r * 0.14, -r * 0.16);
+    ctx.lineTo(-r * 0.2, -r * 0.16);
+    ctx.moveTo(r * 0.14, r * 0.16);
+    ctx.lineTo(-r * 0.2, r * 0.16);
+    ctx.stroke();
+
+    // Fierce glowing eyes + white fangs
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FACC15";
+      ctx.beginPath();
+      ctx.ellipse(r * 0.26, s * r * 0.32, 6, 3.2, s * -0.35, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.moveTo(r * 0.65, s * r * 0.26);
+      ctx.lineTo(r * 1.1, s * r * 0.15);
+      ctx.lineTo(r * 0.65, s * r * 0.08);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
   ctx.beginPath();
   ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#000000" : h.color;
@@ -3127,6 +3392,124 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.scale(1, step === 3 ? 0.88 : 0.72);
     drawTaperedArc(ctx, f * 18, 0, h.radius, -h.spread / 2, h.spread / 2, (step === 3 ? 14 : 10) * alpha + 2, h.color, "#FFFFFF", isMono);
     drawTaperedArc(ctx, f * 22, 0, h.radius * 0.8, -h.spread * 0.42, h.spread * 0.42, 5.5 * alpha + 1, "#FEF08A", "#FFFFFF", isMono);
+    return;
+  }
+
+  if (h.kind === "phong_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let dir = h.dir || 1;
+    let startA = (-h.spread / 2) * dir;
+    let sweepEnd = (-h.spread / 2 + h.spread * Math.min(1, f * 1.9 + 0.3)) * dir;
+    drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, (h.isCrit ? 14 : 10) * alpha + 2, h.isCrit ? "#FACC15" : "#0EA5E9", "#67E8F9", isMono);
+    drawTaperedArc(ctx, 0, 0, h.radius * 0.76, startA * 0.85, sweepEnd * 0.9, 5.5 * alpha + 1, "#22D3EE", "#FFFFFF", isMono);
+    if (h.crossed) {
+      drawTaperedArc(ctx, 0, 0, h.radius * 0.88, h.spread * 0.5, -h.spread * 0.5, 7 * alpha + 1.5, "#38BDF8", "#FFFFFF", isMono);
+    }
+    drawFourPointStar(ctx, Math.cos(sweepEnd) * h.radius, Math.sin(sweepEnd) * h.radius, (h.isCrit ? 10 : 7) * alpha, 2.2 * alpha, "#E0F2FE", "#0EA5E9");
+    return;
+  }
+
+  if (h.kind === "phong_swap_burst") {
+    let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.7));
+    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.25, h.x, h.y, r);
+    grad.addColorStop(0, "rgba(34, 211, 238, 0)");
+    grad.addColorStop(0.7, isMono ? "rgba(255,255,255,0.28)" : `rgba(14, 165, 233, ${0.35 * alpha})`);
+    grad.addColorStop(1, "rgba(34, 211, 238, 0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
+    ctx.lineWidth = 6 * alpha + 1.5;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#E0F2FE";
+    ctx.lineWidth = 2.4 * alpha;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "phong_c3_mark") {
+    let r = (h.radius || 52) * (0.65 + 0.35 * Math.sin(f * Math.PI));
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
+    ctx.lineWidth = 3 * alpha + 1;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#000000" : "#F43F5E";
+    ctx.lineWidth = 4.2 * alpha + 1;
+    ctx.beginPath();
+    ctx.moveTo(h.x - r * 0.9, h.y - r * 0.9);
+    ctx.lineTo(h.x + r * 0.9, h.y + r * 0.9);
+    ctx.moveTo(h.x - r * 0.9, h.y + r * 0.9);
+    ctx.lineTo(h.x + r * 0.9, h.y - r * 0.9);
+    ctx.stroke();
+    drawFourPointStar(ctx, h.x, h.y, 12 * alpha, 3 * alpha, "#E0F2FE", "#0EA5E9");
+    return;
+  }
+
+  if (h.kind === "dang_punch") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let reach = 24 + f * (h.radius * 0.78);
+    ctx.strokeStyle = "#09090B";
+    ctx.lineWidth = 7.5 * alpha + 1.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(10, -8);
+    ctx.lineTo(reach, -6);
+    ctx.moveTo(10, 8);
+    ctx.lineTo(reach, 6);
+    ctx.stroke();
+    ctx.strokeStyle = "#F8FAFC";
+    ctx.lineWidth = 4.5 * alpha + 1;
+    ctx.beginPath();
+    ctx.moveTo(12, 0);
+    ctx.lineTo(reach + 14, 0);
+    ctx.stroke();
+    drawTaperedArc(ctx, reach - 2, 0, 20, -1.1, 1.1, 8.5 * alpha + 2, "#18181B", "#F8FAFC", isMono);
+    return;
+  }
+
+  if (h.kind === "dang_tiger_fist_aoe" || h.kind === "dang_black_shield_boom") {
+    let isShield = h.kind === "dang_black_shield_boom";
+    let r = h.radius * (0.2 + 0.8 * Math.pow(f, 0.68));
+    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.25, h.x, h.y, r);
+    grad.addColorStop(0, "rgba(248, 250, 252, 0)");
+    grad.addColorStop(0.68, isMono ? "rgba(0,0,0,0.3)" : `rgba(24, 24, 27, ${0.42 * alpha})`);
+    grad.addColorStop(1, "rgba(248, 250, 252, 0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#09090B";
+    ctx.lineWidth = (isShield ? 9 : 11) * alpha + 2;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#F8FAFC";
+    ctx.lineWidth = 4.5 * alpha + 1;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r * 0.82, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Tiger claw slash arcs inside the impact zone
+    for (let i = -1; i <= 1; i++) {
+      let off = i * r * 0.24;
+      ctx.strokeStyle = i === 0 ? "#F8FAFC" : "#18181B";
+      ctx.lineWidth = (i === 0 ? 4.2 : 3.2) * alpha;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(h.x - r * 0.55, h.y + off - r * 0.22);
+      ctx.lineTo(h.x + r * 0.55, h.y + off + r * 0.22);
+      ctx.stroke();
+    }
     return;
   }
 
@@ -4203,6 +4586,47 @@ export function drawHeroBody(ctx, opts) {
       ctx.fill();
       ctx.stroke();
     }
+  } else if (heroId === "phong") {
+    // Phong — Cyan-blue flowing ninja shadow-scarf + sharp azure shoulder blade fins
+    ctx.fillStyle = isMono ? "#111111" : "#075985";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.44, -5);
+    ctx.quadraticCurveTo(-radius * 1.25, -14 + sway * 5, -radius * 1.72, -5 + sway * 6);
+    ctx.lineTo(-radius * 1.32, 0 + sway * 4);
+    ctx.lineTo(-radius * 1.62, 8 + sway * 5);
+    ctx.quadraticCurveTo(-radius * 1.05, 10, -radius * 0.44, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#222222" : "#0369A1";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(2, s * radius * 0.72);
+      ctx.lineTo(-12, s * radius * 1.28);
+      ctx.lineTo(-2, s * radius * 0.96);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else if (heroId === "dang") {
+    // Đăng — Stark Black & White Tiger-Fist pauldrons with tiger stripes
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#222222" : s < 0 ? "#F8FAFC" : "#18181B";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : s < 0 ? "#18181B" : "#F8FAFC";
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(6, s * radius * 0.68);
+      ctx.lineTo(-3, s * radius * 1.24);
+      ctx.lineTo(-11, s * radius * 1.02);
+      ctx.lineTo(-6, s * radius * 0.68);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   // 1. Clean circular hero body with rich 3D sphere shading
@@ -4578,6 +5002,61 @@ export function drawHeroBody(ctx, opts) {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.16, 0, Math.PI * 2);
     ctx.fill();
+  } else if (heroId === "phong") {
+    // Phong — Deep azure stealth cowl + glowing cyan phantom diamond core
+    ctx.fillStyle = isMono ? "#111111" : "#082F49";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.44, 0);
+    ctx.lineTo(-radius * 0.08, -radius * 0.46);
+    ctx.lineTo(-radius * 0.48, 0);
+    ctx.lineTo(-radius * 0.08, radius * 0.46);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, 6.0, 2.2, "#E0F2FE", isMono ? "#000000" : "#0EA5E9");
+  } else if (heroId === "dang") {
+    // Đăng — Split Yin-Yang Black & White chest armor with tiger stripes
+    ctx.fillStyle = "#09090B";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.72, 0, Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#F8FAFC";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.72, Math.PI, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Contrasting tiger stripes across split armor
+    ctx.strokeStyle = "#09090B";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.36, -radius * 0.42);
+    ctx.lineTo(-radius * 0.14, -radius * 0.18);
+    ctx.moveTo(0, -radius * 0.48);
+    ctx.lineTo(radius * 0.22, -radius * 0.2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#F8FAFC";
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.36, radius * 0.42);
+    ctx.lineTo(-radius * 0.14, radius * 0.18);
+    ctx.moveTo(0, radius * 0.48);
+    ctx.lineTo(radius * 0.22, radius * 0.2);
+    ctx.stroke();
+
+    // Small Yin-Yang dot core
+    ctx.fillStyle = "#09090B";
+    ctx.beginPath();
+    ctx.arc(0, -radius * 0.2, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#F8FAFC";
+    ctx.beginPath();
+    ctx.arc(0, radius * 0.2, 2.4, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.38, 0, Math.PI * 2);
@@ -4598,7 +5077,7 @@ export function drawHeroBody(ctx, opts) {
     ctx.arc(radius * 0.58, -radius * 0.22, 2.0, 0, Math.PI * 2);
     ctx.arc(radius * 0.58, radius * 0.22, 2.0, 0, Math.PI * 2);
     ctx.fill();
-  } else if (heroId === "tin" || heroId === "bao" || heroId === "dung" || heroId === "danh" || heroId === "gau") {
+  } else if (heroId === "tin" || heroId === "bao" || heroId === "dung" || heroId === "danh" || heroId === "gau" || heroId === "phong" || heroId === "dang") {
     // Fierce angled MOBA warrior / assassin visor eyes
     let eyeCol = isMono
       ? "#FFFFFF"
@@ -4608,8 +5087,12 @@ export function drawHeroBody(ctx, opts) {
       ? "#F5D0FE"
       : heroId === "dung"
       ? isUlt ? "#FEF08A" : "#E0F2FE"
+      : heroId === "phong"
+      ? "#67E8F9"
       : heroId === "danh"
       ? "#FEF08A"
+      : heroId === "dang"
+      ? isUlt ? "#FACC15" : "#FFFFFF"
       : "#FDE68A";
     for (let s of [-1, 1]) {
       ctx.fillStyle = darkInk;
@@ -6622,6 +7105,70 @@ export function drawDuyDecoy(ctx, decoy, elapsedTime, isMono) {
   ctx.fillStyle = dmgNum > 0 ? "#FDE047" : "#5EEAD4";
   ctx.fillText(label, 0, -radius - 15);
 
+  ctx.restore();
+}
+
+export function drawPhongIllusion(ctx, illusion, elapsedTime, isMono) {
+  if (!illusion) return;
+  let { x, y, facing = 0, radius = 20, life = 0, maxLife = 5.5, attackAnim = 0 } = illusion;
+  let remain = Math.max(0, maxLife - life);
+  let fade = clamp(remain / 0.65, 0.2, 0.86);
+  let pulse = 0.72 + 0.28 * Math.sin(elapsedTime * 11);
+
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.translate(x, y);
+
+  // Cyan afterimage ring underneath
+  ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(34, 211, 238, ${0.55 * pulse})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius + 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Translucent cyan shadow body + twin spectral energy blades
+  ctx.rotate(facing);
+  let glow = ctx.createRadialGradient(0, 0, 2, 0, 0, radius * 1.15);
+  glow.addColorStop(0, isMono ? "rgba(255,255,255,0.65)" : "rgba(103, 232, 249, 0.72)");
+  glow.addColorStop(0.6, isMono ? "rgba(0,0,0,0.45)" : "rgba(14, 165, 233, 0.52)");
+  glow.addColorStop(1, "rgba(14, 165, 233, 0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 1.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = isMono ? "#0F172A" : "rgba(14, 165, 233, 0.72)";
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.85, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Spectral twin blades
+  let swing = attackAnim > 0 ? Math.sin(attackAnim * 12) * 0.6 : 0;
+  for (let side of [-1, 1]) {
+    ctx.save();
+    ctx.translate(4, side * 11);
+    ctx.rotate(side * 0.28 + side * swing);
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#67E8F9";
+    ctx.beginPath();
+    ctx.moveTo(0, -1.8);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(0, 1.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Cyan visor eyes
+  ctx.fillStyle = "#E0F2FE";
+  ctx.beginPath();
+  ctx.arc(radius * 0.48, -radius * 0.2, 2.2, 0, Math.PI * 2);
+  ctx.arc(radius * 0.48, radius * 0.2, 2.2, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 

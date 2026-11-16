@@ -506,7 +506,7 @@ export function MobaLobbyMenu({
       </main>
 
       <footer className="relative z-10 text-center text-xs text-slate-500 pt-2">
-        14 Tướng Huyền Thoại · 220 Trang Bị 6 Cấp · 27 Màn Sinh Tồn · 9 Đại Trùm Độc Bản
+        16 Tướng Huyền Thoại · 220 Trang Bị 6 Cấp · 27 Màn Sinh Tồn · 9 Đại Trùm Độc Bản
       </footer>
     </div>
   );

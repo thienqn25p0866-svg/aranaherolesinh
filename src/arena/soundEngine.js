@@ -305,6 +305,21 @@ class SoundEngine {
         filter.connect(gain);
         gain.connect(this.masterBgmGain);
         src.start(time, 0, 0.05);
+      } else if (kind === "crash" && this.noiseBuffer) {
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(4800, time);
+        filter.Q.setValueAtTime(0.7, time);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.linearRampToValueAtTime(0.09, time + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.65);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterBgmGain);
+        src.start(time, 0, 0.68);
       }
     } catch {
       // Ignore
@@ -327,110 +342,177 @@ class SoundEngine {
     while (this.nextNoteTime < this.ctx.currentTime + lookahead) {
       this.triggerBgmStep(this.stepIndex, this.nextNoteTime, sixteenth);
       this.nextNoteTime += sixteenth;
-      this.stepIndex = (this.stepIndex + 1) % 32;
+      this.stepIndex = (this.stepIndex + 1) % 64;
     }
   }
 
   triggerBgmStep(step, t, stepDur) {
     if (this.musicMode === "menu") {
-      // Grand MOBA Hall theme in D Dorian (warm fifth pads, frame pulse, harp arpeggio & crystalline chime)
-      const bassProg = [38, 38, 38, 38, 36, 36, 36, 36, 34, 34, 34, 34, 33, 33, 33, 33];
-      const arpNotes = [62, 69, 74, 72, 69, 65, 67, 69, 60, 67, 72, 70, 69, 64, 65, 69];
-      const highChime = [86, 0, 81, 0, 84, 0, 79, 0, 82, 0, 79, 0, 81, 0, 76, 0];
+      // Glorious Royal Overture in D Dorian -> triumphant Picardy lift (4-bar 64-step orchestral phrasing)
+      // Bar 1: Dm9 | Bar 2: Cmaj7 | Bar 3: Bbmaj7 | Bar 4: C6 -> A7sus4 -> Dmaj uplift
+      const bar = Math.floor(step / 16);
+      const local = step % 16;
+      const chordRoots = [38, 36, 34, 33]; // D2, C2, Bb1, A1
+      const chordThirds = [53, 52, 50, 52]; // F3, E3, D3, E3 (bar4 sus/maj shimmer)
+      const chordFifths = [57, 55, 53, 57]; // A3, G3, F3, A3
+      const chordSevenths = [60, 59, 57, 61]; // C4, B3, A3, C#4 (glorious dominant pull back to Dm)
 
-      if (step === 0 || step === 16) this.playMusicDrum("timpani", t);
+      // Soaring French Horn + String Fanfare Melody across 64 steps (2-step resolution)
+      const fanfareMelody = [
+        62, 0, 69, 0, 74, 0, 72, 74,   // Bar 1: D4 -> A4 -> D5 -> C5-D5
+        72, 0, 67, 0, 71, 0, 72, 0,    // Bar 2: C5 -> G4 -> B4 -> C5
+        70, 0, 65, 0, 69, 0, 70, 72,   // Bar 3: Bb4 -> F4 -> A4 -> Bb4-C5
+        69, 0, 73, 0, 76, 0, 81, 0,    // Bar 4: A4 -> C#5 -> E5 -> A5 soaring resolution
+      ];
+      // Golden Harp & Celesta shimmering arpeggio
+      const harpArp = [
+        62, 69, 74, 76, 74, 69, 65, 69,
+        60, 67, 72, 74, 72, 67, 64, 67,
+        58, 65, 70, 74, 70, 65, 62, 65,
+        57, 64, 69, 73, 76, 73, 69, 64,
+      ];
+
+      if (local === 0) {
+        this.playMusicDrum("timpani", t);
+        if (bar === 0 || bar === 2) this.playMusicDrum("crash", t);
+        const root = chordRoots[bar];
+        const third = chordThirds[bar];
+        const fifth = chordFifths[bar];
+        const sev = chordSevenths[bar];
+        // Rich orchestral low brass & stereo warm string ensemble pad
+        this.playMusicNote(this.midiToFreq(root), t, stepDur * 15.2, "triangle", 0.16, 480, 0);
+        this.playMusicNote(this.midiToFreq(root + 12), t, stepDur * 14.8, "sawtooth", 0.048, 760, -0.28);
+        this.playMusicNote(this.midiToFreq(fifth), t, stepDur * 14.8, "sawtooth", 0.042, 920, 0.28);
+        this.playMusicNote(this.midiToFreq(third), t, stepDur * 14.5, "sine", 0.072, 1150, -0.18);
+        this.playMusicNote(this.midiToFreq(sev), t, stepDur * 14.0, "triangle", 0.046, 1380, 0.22);
+      }
+      if (local === 8) {
+        this.playMusicDrum("timpani", t);
+        // Subtle mid-bar horn swell
+        this.playMusicNote(this.midiToFreq(chordFifths[bar] + 12), t, stepDur * 7.2, "triangle", 0.055, 1100, 0.16);
+      }
       if (step % 8 === 4) this.playMusicDrum("hat", t);
 
       if (step % 2 === 0) {
-        const idx = (step >> 1) % 16;
-        if (step % 8 === 0) {
-          this.playMusicNote(this.midiToFreq(bassProg[idx]), t, stepDur * 7.8, "triangle", 0.16, 460, 0);
-          this.playMusicNote(this.midiToFreq(bassProg[idx] + 12), t, stepDur * 7.5, "sawtooth", 0.045, 720, -0.2);
-          this.playMusicNote(this.midiToFreq(bassProg[idx] + 19), t, stepDur * 7.5, "sine", 0.085, 980, 0.2);
-        }
+        const idx = (step >> 1) % 32;
         this.playMusicNote(
-          this.midiToFreq(arpNotes[idx]),
+          this.midiToFreq(harpArp[idx]),
           t,
-          stepDur * 2.4,
+          stepDur * 2.5,
           "triangle",
-          0.085,
-          2400,
-          (idx % 2 === 0 ? -0.28 : 0.28)
+          0.068,
+          2500,
+          idx % 2 === 0 ? -0.34 : 0.34
         );
-        if (highChime[idx] > 0 && idx % 4 === 0) {
-          this.playMusicNote(this.midiToFreq(highChime[idx]), t, stepDur * 3.8, "sine", 0.045, 3400, 0.22);
+        const mel = fanfareMelody[idx];
+        if (mel > 0) {
+          this.playMusicNote(this.midiToFreq(mel), t, stepDur * 3.4, "sawtooth", 0.062, 1650, -0.1);
+          this.playMusicNote(this.midiToFreq(mel), t, stepDur * 3.6, "triangle", 0.082, 2400, 0.12);
+          if (idx >= 24) {
+            // Octave glory layer on the final cadence bar
+            this.playMusicNote(this.midiToFreq(mel + 12), t, stepDur * 3.2, "sine", 0.04, 3400, 0);
+          }
         }
       }
       return;
     }
 
     if (this.musicMode === "battle") {
-      // Driving heroic MOBA combat theme in D minor
+      // Glorious Heroic Combat Anthem in D Minor -> F -> Bb -> C -> A7 (64-step heroic progression)
+      const bar = Math.floor(step / 16);
+      const local = step % 16;
       const bassSeq = [
-        38, 0, 38, 0, 38, 0, 41, 0,
-        36, 0, 36, 0, 36, 0, 39, 0,
-        34, 0, 34, 0, 34, 0, 38, 0,
-        33, 0, 33, 0, 36, 0, 40, 0,
+        // Bar 1: Dm heroic march
+        38, 0, 38, 0, 38, 0, 41, 0, 38, 0, 45, 0, 43, 0, 41, 0,
+        // Bar 2: F -> C noble lift
+        41, 0, 41, 0, 41, 0, 45, 0, 36, 0, 36, 0, 40, 0, 43, 0,
+        // Bar 3: Bb -> Gm soaring battle cry
+        34, 0, 34, 0, 38, 0, 41, 0, 43, 0, 43, 0, 46, 0, 43, 0,
+        // Bar 4: C -> A/C# grand turnaround
+        36, 0, 36, 0, 43, 0, 48, 0, 45, 0, 45, 0, 49, 0, 52, 0,
       ];
       const leadSeq = [
-        62, 0, 65, 69, 0, 67, 65, 0,
-        64, 0, 67, 72, 0, 70, 69, 0,
-        62, 0, 65, 70, 0, 69, 67, 0,
-        64, 65, 69, 0, 72, 0, 70, 69,
+        // Bar 1: Glorious Brass Call
+        62, 0, 65, 69, 0, 74, 72, 0, 69, 0, 67, 69, 0, 65, 64, 0,
+        // Bar 2: Triumphant Answer
+        65, 0, 69, 72, 0, 77, 76, 0, 72, 0, 67, 72, 0, 74, 72, 0,
+        // Bar 3: Soaring Climax
+        70, 0, 74, 77, 0, 74, 70, 0, 67, 0, 70, 74, 0, 79, 77, 0,
+        // Bar 4: Heroic Ascension
+        76, 0, 72, 74, 76, 0, 79, 0, 73, 0, 76, 81, 0, 79, 76, 0,
       ];
+      const harmonyThirds = [57, 60, 58, 61]; // Bar pad harmony center
+      const chordPadRoots = [50, 53, 46, 48];
+
       if (step % 4 === 0) this.playMusicDrum("kick", t);
       if (step % 8 === 4) this.playMusicDrum("snare", t);
       if (step % 2 === 1) this.playMusicDrum("hat", t);
+      if (local === 0) {
+        this.playMusicDrum("timpani", t);
+        if (bar === 0 || bar === 2) this.playMusicDrum("crash", t);
+      }
 
       const bass = bassSeq[step];
       if (bass > 0) {
-        this.playMusicNote(this.midiToFreq(bass), t, stepDur * 1.8, "sawtooth", 0.12, 640);
+        this.playMusicNote(this.midiToFreq(bass), t, stepDur * 1.9, "sawtooth", 0.115, 680, 0);
+        this.playMusicNote(this.midiToFreq(bass), t, stepDur * 2.0, "triangle", 0.08, 420, 0);
       }
       const lead = leadSeq[step];
       if (lead > 0) {
-        this.playMusicNote(this.midiToFreq(lead), t, stepDur * 1.7, "triangle", 0.1, 2600, -0.15);
-        this.playMusicNote(this.midiToFreq(lead + 12), t, stepDur * 1.2, "sine", 0.035, 3200, 0.2);
+        // Double brass/string heroic lead + high harmony shimmer
+        this.playMusicNote(this.midiToFreq(lead), t, stepDur * 1.9, "triangle", 0.095, 2700, -0.18);
+        this.playMusicNote(this.midiToFreq(lead), t, stepDur * 1.7, "sawtooth", 0.048, 1750, 0.18);
+        this.playMusicNote(this.midiToFreq(lead + 12), t, stepDur * 1.3, "sine", 0.032, 3400, 0.24);
       }
       if (step % 8 === 0) {
-        const root = bass || 38;
-        this.playMusicNote(this.midiToFreq(root + 12), t, stepDur * 5, "sine", 0.07, 1200);
-        this.playMusicNote(this.midiToFreq(root + 19), t, stepDur * 5, "sine", 0.055, 1400);
+        const padRoot = chordPadRoots[bar];
+        const padThird = harmonyThirds[bar];
+        this.playMusicNote(this.midiToFreq(padRoot), t, stepDur * 7.2, "sawtooth", 0.045, 950, -0.32);
+        this.playMusicNote(this.midiToFreq(padRoot + 7), t, stepDur * 7.2, "sine", 0.068, 1300, 0.32);
+        this.playMusicNote(this.midiToFreq(padThird), t, stepDur * 6.8, "triangle", 0.042, 1450, 0);
       }
       return;
     }
 
     if (this.musicMode === "boss") {
-      // Intense dramatic Boss theme in C# Phrygian / Harmonic Minor
+      // Majestic Cataclysmic Boss Symphony in C# Harmonic Minor (64 steps)
+      const bar = Math.floor(step / 16);
+      const local = step % 16;
       const bassSeq = [
-        37, 37, 0, 37, 37, 0, 38, 0,
-        37, 37, 0, 37, 40, 0, 38, 0,
-        35, 35, 0, 35, 37, 0, 38, 0,
-        40, 0, 38, 0, 37, 0, 36, 0,
+        37, 37, 0, 37, 37, 0, 38, 0, 37, 37, 0, 37, 40, 0, 38, 0,
+        35, 35, 0, 35, 37, 0, 38, 0, 40, 0, 38, 0, 37, 0, 36, 0,
+        37, 37, 0, 44, 37, 0, 45, 0, 44, 44, 0, 40, 38, 0, 37, 0,
+        33, 33, 0, 37, 35, 0, 39, 0, 44, 0, 48, 0, 49, 0, 44, 0,
       ];
       const leadSeq = [
-        61, 0, 62, 65, 68, 0, 65, 62,
-        61, 0, 64, 68, 73, 0, 72, 68,
-        62, 0, 65, 69, 74, 0, 73, 69,
-        68, 65, 64, 62, 61, 0, 60, 0,
+        61, 0, 62, 65, 68, 0, 65, 62, 61, 0, 64, 68, 73, 0, 72, 68,
+        62, 0, 65, 69, 74, 0, 73, 69, 68, 65, 64, 62, 61, 0, 60, 0,
+        61, 0, 68, 73, 72, 0, 68, 65, 69, 0, 73, 76, 80, 0, 77, 73,
+        72, 0, 68, 69, 73, 0, 76, 0, 80, 0, 84, 0, 85, 0, 80, 0,
       ];
+      const bossPads = [49, 50, 49, 44]; // C#3, D3, C#3, G#2
+
       if (step % 4 === 0 || step % 16 === 6 || step % 16 === 14) this.playMusicDrum("kick", t);
       if (step % 8 === 4) this.playMusicDrum("snare", t);
       if (step % 16 === 0) this.playMusicDrum("timpani", t);
+      if (local === 0 && (bar === 0 || bar === 2)) this.playMusicDrum("crash", t);
       this.playMusicDrum("hat", t);
 
       const bass = bassSeq[step];
       if (bass > 0) {
-        this.playMusicNote(this.midiToFreq(bass), t, stepDur * 1.4, "sawtooth", 0.145, 760);
+        this.playMusicNote(this.midiToFreq(bass), t, stepDur * 1.45, "sawtooth", 0.135, 780, 0);
       }
       const lead = leadSeq[step];
       if (lead > 0) {
-        this.playMusicNote(this.midiToFreq(lead), t, stepDur * 1.5, "sawtooth", 0.085, 2200, 0.14);
-        this.playMusicNote(this.midiToFreq(lead - 12), t, stepDur * 1.5, "triangle", 0.06, 1300, -0.14);
+        this.playMusicNote(this.midiToFreq(lead), t, stepDur * 1.6, "sawtooth", 0.075, 2250, 0.16);
+        this.playMusicNote(this.midiToFreq(lead - 12), t, stepDur * 1.6, "triangle", 0.062, 1300, -0.16);
+        this.playMusicNote(this.midiToFreq(lead + 7), t, stepDur * 1.3, "sine", 0.03, 2800, 0.25);
       }
       if (step % 8 === 0) {
-        const chordRoot = step < 16 ? 49 : step < 24 ? 50 : 48;
-        this.playMusicNote(this.midiToFreq(chordRoot), t, stepDur * 6.5, "sawtooth", 0.052, 880);
-        this.playMusicNote(this.midiToFreq(chordRoot + 7), t, stepDur * 6.5, "sawtooth", 0.046, 980);
+        const chordRoot = bossPads[bar];
+        this.playMusicNote(this.midiToFreq(chordRoot), t, stepDur * 7.2, "sawtooth", 0.05, 880, -0.25);
+        this.playMusicNote(this.midiToFreq(chordRoot + 7), t, stepDur * 7.2, "sawtooth", 0.044, 1020, 0.25);
+        this.playMusicNote(this.midiToFreq(chordRoot + 12), t, stepDur * 6.8, "triangle", 0.04, 1280, 0);
       }
     }
   }
@@ -802,6 +884,14 @@ class SoundEngine {
       case "nguyen":
         this.playChord([440, 554.37, 659.25, 880], 0.28, { type: "triangle", vol: 0.09, stagger: 0.03, sendAmbiance: true });
         break;
+      case "phong":
+        this.playPhongDash();
+        this.playChord([587.33, 739.99, 880, 1174.66], 0.22, { type: "sine", vol: 0.08, stagger: 0.025, sendAmbiance: true });
+        break;
+      case "dang":
+        this.playDangTigerPunch(1);
+        this.playDangTigerRoar();
+        break;
       default:
         this.playChord([440, 659.25], 0.18, { type: "triangle", vol: 0.1, sendAmbiance: true });
     }
@@ -815,10 +905,11 @@ class SoundEngine {
     if (skillKey === "atk") {
       if (["kin", "longhoi"].includes(heroId)) this.playBow();
       else if (["trung", "duccong", "luan"].includes(heroId)) this.playOrb();
-      else if (["tin", "bao"].includes(heroId)) this.playDaggerSlash(1);
+      else if (["tin", "bao", "phong"].includes(heroId)) this.playDaggerSlash(1);
       else if (heroId === "duy") this.playShurikenThrow();
       else if (heroId === "dung") this.playSpear();
       else if (heroId === "gau") this.playHeavyPunch(1);
+      else if (heroId === "dang") this.playDangTigerPunch(1);
       else if (heroId === "danh") this.playHeavySword(1);
       else if (heroId === "taidu") this.playTurretShot();
       else if (heroId === "nguyen") this.playHolyLight();
@@ -837,6 +928,8 @@ class SoundEngine {
       else if (heroId === "luan") this.playLaserRay();
       else if (heroId === "taidu") this.playMissileBarrage();
       else if (heroId === "nguyen") this.playSanctuaryWave();
+      else if (heroId === "phong") this.playPhongDeathFlurry();
+      else if (heroId === "dang") this.playDangTigerRoar();
       else this.playShurikenThrow();
       return;
     }
@@ -1525,6 +1618,63 @@ class SoundEngine {
   playDuyHealOrb() {
     if (this.canThrottle("duyHealOrb", 95)) return;
     this.playChord([587.33, 880, 1174.66], 0.18, { type: "sine", vol: 0.11, stagger: 0.03, sendAmbiance: true });
+  }
+
+  playPhongDash() {
+    if (this.canThrottle("phongDash", 55)) return;
+    this.playLayerTone({ startFreq: 1320, endFreq: 380, duration: 0.13, type: "sine", vol: 0.18, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.14, filterType: "highpass", freqStart: 3800, freqEnd: 1200, gainPeak: 0.18, sendAmbiance: true });
+  }
+
+  playPhongIllusionSpawn() {
+    if (this.canThrottle("phongIllusion", 80)) return;
+    this.playChord([659.25, 987.77, 1318.51], 0.2, { type: "sine", vol: 0.095, stagger: 0.025, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.14, filterType: "bandpass", freqStart: 2200, freqEnd: 800, q: 2.0, gainPeak: 0.12 });
+  }
+
+  playPhongSwap() {
+    if (this.canThrottle("phongSwap", 90)) return;
+    this.playSubPunch(195, 70, 0.18, 0.2);
+    this.playLayerTone({ startFreq: 980, endFreq: 1960, duration: 0.14, type: "triangle", vol: 0.16, sendAmbiance: true });
+    this.playChord([523.25, 783.99, 1046.5], 0.22, { type: "sine", vol: 0.09, delay: 0.04, stagger: 0.02 });
+  }
+
+  playPhongDeathFlurry() {
+    if (this.canThrottle("phongFlurry", 110)) return;
+    this.playSubPunch(170, 46, 0.26, 0.28);
+    this.playMetallicClang(1480, 0.22, 0.15);
+    this.playChord([440, 659.25, 880, 1318.51], 0.34, { type: "triangle", vol: 0.11, stagger: 0.03, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.28, filterType: "highpass", freqStart: 3200, freqEnd: 900, gainPeak: 0.22 });
+  }
+
+  playDangTigerPunch(step = 1) {
+    if (this.canThrottle("dangPunch", 50)) return;
+    const base = 130 + (step % 3) * 18;
+    this.playSubPunch(base + 55, 42, 0.16, 0.26);
+    this.playLayerTone({ startFreq: 260 + step * 30, endFreq: 75, duration: 0.14, type: "sawtooth", vol: 0.16, filterFreq: 1400 });
+    this.playFilteredNoise({ duration: 0.12, filterType: "lowpass", freqStart: 1600, freqEnd: 260, gainPeak: 0.2 });
+  }
+
+  playDangTigerWave() {
+    if (this.canThrottle("dangWave", 80)) return;
+    this.playSubPunch(160, 48, 0.2, 0.26);
+    this.playLayerTone({ startFreq: 380, endFreq: 110, duration: 0.22, type: "sawtooth", vol: 0.2, filterFreq: 1900, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.2, filterType: "bandpass", freqStart: 1500, freqEnd: 420, q: 1.4, gainPeak: 0.24 });
+  }
+
+  playDangBlackArmor() {
+    if (this.canThrottle("dangArmor", 100)) return;
+    this.playSubPunch(140, 52, 0.22, 0.22);
+    this.playChord([293.66, 440, 587.33], 0.3, { type: "triangle", vol: 0.12, stagger: 0.03, sendAmbiance: true });
+    this.playMetallicClang(420, 0.18, 0.1);
+  }
+
+  playDangTigerRoar() {
+    if (this.canThrottle("dangRoar", 120)) return;
+    this.playSubPunch(145, 34, 0.38, 0.34);
+    this.playLayerTone({ startFreq: 210, endFreq: 58, duration: 0.42, type: "sawtooth", vol: 0.26, filterFreq: 1350, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 315, endFreq: 86, duration: 0.36, type: "triangle", vol: 0.18, delay: 0.03, filterFreq: 1600 });
+    this.playFilteredNoise({ duration: 0.36, filterType: "lowpass", freqStart: 1900, freqEnd: 220, q: 1.1, gainPeak: 0.32, sendAmbiance: true });
   }
 }
 
