@@ -1118,7 +1118,7 @@ function ny() {
     } catch {
       return "";
     }
-  }), [mpJoinCode, setMpJoinCode] = (0, ie.useState)(""), [mpBusy, setMpBusy] = (0, ie.useState)(false), [mpError, setMpError] = (0, ie.useState)(""), [mpCopied, setMpCopied] = (0, ie.useState)(false), [mpMenuOpen, setMpMenuOpen] = (0, ie.useState)(false), [mpMatchResult, setMpMatchResult] = (0, ie.useState)(null), [p2pInviteCode, setP2pInviteCode] = (0, ie.useState)(""), [p2pAnswerCode, setP2pAnswerCode] = (0, ie.useState)(""), [p2pIncomingOffer, setP2pIncomingOffer] = (0, ie.useState)(""), [p2pIncomingAnswer, setP2pIncomingAnswer] = (0, ie.useState)(""), [p2pBusy, setP2pBusy] = (0, ie.useState)(false), [customServerUrl, setCustomServerUrl] = (0, ie.useState)(() => mpClient.getCustomServerUrl()), [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, buffsText: "", resourceText: "", droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0], padTeleportCds: [0, 0, 0], skillStates: ["ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null }), [mt, S] = (0, ie.useState)(null), selectedHeroRef = (0, ie.useRef)(p), mpBusyTimerRef = (0, ie.useRef)(null), G = (0, ie.useCallback)((w) => {
+  }), [mpJoinCode, setMpJoinCode] = (0, ie.useState)(""), [mpBusy, setMpBusy] = (0, ie.useState)(false), [mpError, setMpError] = (0, ie.useState)(""), [mpCopied, setMpCopied] = (0, ie.useState)(false), [mpMenuOpen, setMpMenuOpen] = (0, ie.useState)(false), [mpMatchResult, setMpMatchResult] = (0, ie.useState)(null), [p2pInviteCode, setP2pInviteCode] = (0, ie.useState)(""), [p2pManualOfferCode, setP2pManualOfferCode] = (0, ie.useState)(""), [p2pHasServerSignal, setP2pHasServerSignal] = (0, ie.useState)(false), [p2pAnswerCode, setP2pAnswerCode] = (0, ie.useState)(""), [p2pAutoPaired, setP2pAutoPaired] = (0, ie.useState)(false), [p2pIncomingOffer, setP2pIncomingOffer] = (0, ie.useState)(""), [p2pIncomingAnswer, setP2pIncomingAnswer] = (0, ie.useState)(""), [p2pBusy, setP2pBusy] = (0, ie.useState)(false), [customServerUrl, setCustomServerUrl] = (0, ie.useState)(() => mpClient.getCustomServerUrl()), [lanUrls, setLanUrls] = (0, ie.useState)([]), [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, buffsText: "", resourceText: "", droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0], padTeleportCds: [0, 0, 0], skillStates: ["ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null }), [mt, S] = (0, ie.useState)(null), selectedHeroRef = (0, ie.useRef)(p), mpBusyTimerRef = (0, ie.useRef)(null), G = (0, ie.useCallback)((w) => {
     S(w), setTimeout(() => {
       S((j) => j === w ? null : j);
     }, 2400);
@@ -1224,8 +1224,12 @@ function ny() {
           G(`Đã vào phòng ${msg.room.roomId}! Hãy chọn tướng & bấm Sẵn Sàng.`);
         }
       } else if (msg.type === "P2P_INVITE_READY") {
-        msg.inviteCode && setP2pInviteCode(msg.inviteCode);
-      } else if (msg.type === "ROOM_UPDATE" || msg.type === "PLAYER_DOWNED" || msg.type === "WAVE_COMPLETED") {
+        if (msg.inviteCode) setP2pInviteCode(msg.inviteCode);
+        if (typeof msg.manualOfferCode === "string") setP2pManualOfferCode(msg.manualOfferCode);
+        if (typeof msg.hasServerSignaling === "boolean") setP2pHasServerSignal(msg.hasServerSignaling);
+      } else if (msg.type === "P2P_AUTO_PAIRED") {
+        G("Đồng đội đã tự động ghép đôi P2P vào phòng!");
+      } else if (msg.type === "ROOM_UPDATE" || msg.type === "PLAYER_DOWNED" || msg.type === "PLAYER_REVIVED" || msg.type === "WAVE_COMPLETED") {
         msg.room && setMpRoom(msg.room);
         if (
           msg.type === "ROOM_UPDATE" &&
@@ -1375,6 +1379,22 @@ function ny() {
       window.visualViewport?.removeEventListener("scroll", syncViewport);
     };
   }, []);
+  (0, ie.useEffect)(() => {
+    if (!mpLobbyOpen || typeof window === "undefined" || !/^https?:$/i.test(window.location.protocol)) return;
+    let active = true;
+    const base = mpClient.getHttpBaseResult().baseUrl || "";
+    fetch(`${base}/api/lan-info`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && Array.isArray(data?.lanUrls)) {
+          setLanUrls(data.lanUrls);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [mpLobbyOpen]);
   let toggleFullscreen = (0, ie.useCallback)(async () => {
     R.playClick();
     let activatePseudoFs = (nextVal) => {
@@ -1459,16 +1479,19 @@ function ny() {
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
+    setP2pAutoPaired(false);
     setMpBusy(true);
     mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", p.id).then((res) => {
       setMpBusy(false);
       if (res?.mode === "p2p") {
-        setP2pInviteCode(res.inviteCode || "");
+        setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
+        setP2pManualOfferCode(res.manualOfferCode || "");
+        setP2pHasServerSignal(Boolean(res.hasServerSignaling));
         setP2pIncomingAnswer("");
         if (res.inviteError) {
           G(`\u0110\xE3 t\u1EA1o ph\xF2ng P2P! (${res.inviteError})`);
         } else {
-          G("\u0110\xE3 t\u1EA1o ph\xF2ng P2P tr\u1EF1c ti\u1EBFp! B\u1EA5m B\u1EAFt \u0110\u1EA7u Tr\u1EADn \u0111\u1EC3 ch\u01A1i ho\u1EB7c sao ch\xE9p M\xE3 M\u1EDDi g\u1EEDi b\u1EA1n b\xE8.");
+          G(`\u0110\xE3 t\u1EA1o ph\xF2ng P2P m\xE3 ${res.inviteCode || res.room?.roomId}! G\u1EEDi m\xE3 6 s\u1ED1 cho b\u1EA1n b\xE8.`);
         }
       }
     }).catch((err) => {
@@ -1478,19 +1501,22 @@ function ny() {
   }, handleJoinRoom = () => {
     let classified = classifyJoinCode(mpJoinCode);
     if (classified.kind === "empty") {
-      setMpError("Vui l\xF2ng nh\u1EADp m\xE3 6 s\u1ED1 ho\u1EB7c m\xE3 m\u1EDDi P2P (AH1...).");
+      setMpError("Vui l\xF2ng nh\u1EADp m\xE3 ph\xF2ng 6 s\u1ED1 ho\u1EB7c m\xE3 th\u1EE7 c\u00F4ng (AH1...).");
       return;
     }
     R.playClick();
     setMpError("");
     if (classified.kind === "p2p_signal") {
       setP2pAnswerCode("");
+      setP2pAutoPaired(false);
       setP2pBusy(true);
       mpClient.joinP2PWithOffer(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", p.id).then((res) => {
         setP2pBusy(false);
         setP2pIncomingOffer(classified.normalized);
         setP2pAnswerCode(res?.answerCode || "");
-        G(isSixDigitCode(res?.answerCode) ? "\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i 6 s\u1ED1! H\xE3y g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng." : "\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i! H\xE3y sao ch\xE9p g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng.");
+        const autoPaired = Boolean(res?.autoPairedViaServer || res?.autoPairedViaLocal || res?.autoPairedViaMqtt);
+        setP2pAutoPaired(autoPaired);
+        G(autoPaired ? "\u0110ang t\u1EF1 \u0111\u1ED9ng gh\xE9p \u0111\xF4i v\xE0o ph\xF2ng..." : "\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i! H\xE3y sao ch\xE9p g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng.");
       }).catch((err) => {
         setP2pBusy(false);
         setMpError(err?.message || "Kh\xF4ng th\u1EC3 x\u1EED l\xFD M\xE3 M\u1EDDi P2P.");
@@ -1503,7 +1529,9 @@ function ny() {
       if (res?.mode === "p2p") {
         setP2pIncomingOffer(classified.normalized);
         setP2pAnswerCode(res.answerCode || "");
-        G(isSixDigitCode(res.answerCode) ? "\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i 6 s\u1ED1! H\xE3y g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng." : "\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i! H\xE3y sao ch\xE9p g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng.");
+        const autoPaired = Boolean(res?.autoPairedViaServer || res?.autoPairedViaLocal || res?.autoPairedViaMqtt);
+        setP2pAutoPaired(autoPaired);
+        G(autoPaired ? "\u0110ang t\u1EF1 \u0111\u1ED9ng gh\xE9p \u0111\xF4i v\xE0o ph\xF2ng 6 s\u1ED1..." : "\u0110\xE3 t\u1EA1o M\xE3 Ph\u1EA3n H\u1ED3i! H\xE3y g\u1EEDi l\u1EA1i cho Ch\u1EE7 ph\xF2ng.");
       }
     }).catch((err) => {
       setMpBusy(false);
@@ -1553,12 +1581,15 @@ function ny() {
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
+    setP2pAutoPaired(false);
     setP2pBusy(true);
     try {
       const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", p.id);
-      setP2pInviteCode(res.inviteCode || "");
+      setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
+      setP2pManualOfferCode(res.manualOfferCode || "");
+      setP2pHasServerSignal(Boolean(res.hasServerSignaling));
       setP2pIncomingAnswer("");
-      G("Đã mở phòng P2P! Sao chép Mã Mời gửi bạn bè.");
+      G(`Đã mở phòng P2P mã ${res.inviteCode || res.room?.roomId}! Chia sẻ mã 6 số cho bạn bè.`);
     } catch (err) {
       setMpError(err?.message || "Không thể khởi tạo phòng P2P.");
     } finally {
@@ -1571,10 +1602,12 @@ function ny() {
     try {
       const res = await mpClient.createP2PInviteOffer();
       setP2pInviteCode(res.code || "");
+      setP2pManualOfferCode(res.rawCode || "");
+      setP2pHasServerSignal(Boolean(res.hasServerSignaling));
       setP2pIncomingAnswer("");
-      G("Đã tạo Mã Mời P2P mới!");
+      G("Đã làm mới phiên kết nối P2P!");
     } catch (err) {
-      setMpError(err?.message || "Không thể tạo mã mời mới.");
+      setMpError(err?.message || "Không thể làm mới mã mời.");
     } finally {
       setP2pBusy(false);
     }
@@ -1595,11 +1628,14 @@ function ny() {
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
+    setP2pAutoPaired(false);
     setP2pBusy(true);
     try {
       const res = await mpClient.joinP2PWithOffer(p2pIncomingOffer, mpName.trim() || "Chiến Binh", p.id);
       setP2pAnswerCode(res.answerCode || "");
-      G("Đã tạo Mã Phản Hồi! Hãy sao chép gửi lại cho Chủ phòng.");
+      const autoPaired = Boolean(res?.autoPairedViaServer || res?.autoPairedViaLocal || res?.autoPairedViaMqtt);
+      setP2pAutoPaired(autoPaired);
+      G(autoPaired ? "Đang tự động ghép đôi vào phòng 6 số..." : "Đã tạo Mã Phản Hồi! Hãy sao chép gửi lại cho Chủ phòng.");
     } catch (err) {
       setMpError(err?.message || "Không thể xử lý Mã Mời P2P.");
     } finally {
@@ -1610,7 +1646,8 @@ function ny() {
     mpClient.setCustomServerUrl(customServerUrl);
     handleRetryMpConnect();
   }, handleCopyRoomId = () => {
-    const codeToCopy = mpRoom?.roomId?.startsWith("P2-") && p2pInviteCode ? p2pInviteCode : mpRoom?.roomId;
+    const isP2P = Boolean(mpRoom?.isP2P);
+    const codeToCopy = isP2P && isSixDigitCode(p2pInviteCode) ? p2pInviteCode : mpRoom?.roomId;
     if (!codeToCopy) return;
     R.playClick();
     let copyDone = () => {
@@ -1656,7 +1693,10 @@ function ny() {
     setMpMatchResult(null);
     setMpMenuOpen(false);
     setP2pInviteCode("");
+    setP2pManualOfferCode("");
+    setP2pHasServerSignal(false);
     setP2pAnswerCode("");
+    setP2pAutoPaired(false);
     setP2pIncomingOffer("");
     setP2pIncomingAnswer("");
   };
@@ -1801,9 +1841,18 @@ function ny() {
             let j = await w.text();
             if (/^\s*<!doctype\s+html/i.test(j) && !/<script\b[^>]*src=["'][^"']*(@vite\/client|\/src\/main\.tsx)/i.test(j) && j.length > 1e5) {
               const liveOrigin = typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol) ? window.location.origin : "";
-              if (liveOrigin && !isPrivateOrDevOrigin(liveOrigin) && !j.includes("window.__ARENA_API_URL__")) {
-                const injected = `<script>window.__ARENA_API_URL__=${JSON.stringify(liveOrigin)};<\/script>`;
-                j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
+              if (liveOrigin) {
+                const isLanWiFi = /^https?:\/\/(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|[a-zA-Z0-9-]+\.local)(?::\d+)?$/i.test(liveOrigin);
+                if (!isPrivateOrDevOrigin(liveOrigin) && !j.includes("window.__ARENA_API_URL__")) {
+                  const injected = `<script>window.__ARENA_API_URL__=${JSON.stringify(liveOrigin)};<\/script>`;
+                  j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
+                } else if (isLanWiFi && !j.includes("window.__ARENA_LAN_URL__")) {
+                  const injected = `<script>window.__ARENA_LAN_URL__=${JSON.stringify(liveOrigin)};<\/script>`;
+                  j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
+                } else if (Array.isArray(lanUrls) && lanUrls[0] && !j.includes("window.__ARENA_LAN_URL__")) {
+                  const injected = `<script>window.__ARENA_LAN_URL__=${JSON.stringify(lanUrls[0])};<\/script>`;
+                  j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
+                }
               }
               let ee = new Blob([j], { type: "text/html;charset=utf-8" }), he = URL.createObjectURL(ee), le = document.createElement("a");
               le.style.display = "none", le.href = he, le.download = "arena_hero_11_8.html", le.rel = "noopener", document.body.appendChild(le), le.click(), document.body.removeChild(le), setTimeout(() => URL.revokeObjectURL(he), 6e4), G("Đã tải xuống Arena Hero 11.8 HTML thành công! File hỗ trợ P2P Trực Tiếp để chơi Co-op cùng bạn bè.");
@@ -1949,7 +1998,7 @@ function ny() {
     R.playClick(), ye(true);
   }, children: "K\u1EF9 N\u0103ng" }), (0, u.jsx)("button", { className: "btn-secondary hud-menu-btn text-[11px] px-2.5 py-1 border-amber-500/40 text-amber-200", onClick: () => {
     R.playClick(), je(p.id), N(true);
-  }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110ang theo d\xF5i \u0111\u1ED3ng \u0111\u1ED9i, s\u1EBD h\u1ED3i sinh khi qua m\xE0n m\u1EDBi!" }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", children: [[0, 1, 2].map((w) => {
+  }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", children: [[0, 1, 2].map((w) => {
     let j = p.skills[w], ee = re.cooldowns[w], he = j.cooldown, le = re.skillStates[w], padCd = re.padTeleportCds?.[w] || 0, isPadWaiting = p.id === "duccong" && w > 0 && padCd > 0, X = isPadWaiting || ee > 0 && le !== "recast" && le !== "charging", displayCd = isPadWaiting ? padCd : ee, displayMax = isPadWaiting ? 1.5 : he, we = X ? "state-cooldown" : le === "empowered" ? "state-empowered state-ready" : le === "recast" ? "state-recast state-ready" : le === "charging" ? "state-charging state-ready" : "state-ready";
     return (0, u.jsxs)("button", { className: `btn-skill c${w + 1} ${we}`, onPointerDown: (rt) => Be(w, rt), onPointerMove: ta, onPointerUp: Ha, onPointerCancel: Ha, onLostPointerCapture: Ha, title: j.name[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: j.key, size: isPortraitHud ? (w === 2 ? 60 : 56) : 72, roundedClass: "rounded-full", className: "pointer-events-none", alt: j.name[c] }), X && (0, u.jsx)("div", { className: "cooldown-overlay", style: { height: `${Math.min(100, displayCd / Math.max(0.1, displayMax) * 100)}%` } }), X && (0, u.jsx)("span", { className: `absolute inset-0 z-10 flex items-center justify-center font-mono-numbers ${isPortraitHud ? "text-xs" : "text-sm"} font-black text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] tabular-nums pointer-events-none`, children: displayCd.toFixed(1) }), (0, u.jsx)("span", { className: `absolute bottom-0.5 inset-x-0 text-center z-10 font-mono-numbers ${isPortraitHud ? "text-[10px]" : "text-[11px]"} font-black text-amber-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] pointer-events-none`, children: p.id === "duccong" && le === "recast" ? "D\u1ECACH" : p.id === "luan" && w === 1 && le === "recast" ? "\u0110\xD3NG" : le === "recast" ? "T\xC1I" : j.label })] }, w);
   }), p.id === "taidu" && (0, u.jsxs)("button", { className: "btn-drone-mode", style: { borderColor: re.droneColor || "#38BDF8" }, onPointerDown: (w) => {
@@ -2068,7 +2117,7 @@ function ny() {
     R.playClick();
     setMpError("");
     mpClient.startMatch();
-  }, onLeaveRoom: handleLeaveRoom, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pAnswerCode, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
+  }, onLeaveRoom: handleLeaveRoom, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pManualOfferCode, p2pHasServerSignal, p2pAnswerCode, p2pAutoPaired, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, lanUrls, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
     R.playClick();
     setMpLobbyOpen(false);
   } }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });

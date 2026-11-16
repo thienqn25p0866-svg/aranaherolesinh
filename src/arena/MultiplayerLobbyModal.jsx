@@ -25,7 +25,10 @@ export function MultiplayerLobbyModal({
   onRetryConnect,
   envInfo,
   p2pInviteCode,
+  p2pManualOfferCode,
+  p2pHasServerSignal,
   p2pAnswerCode,
+  p2pAutoPaired,
   p2pIncomingOffer,
   p2pIncomingAnswer,
   p2pBusy,
@@ -39,7 +42,9 @@ export function MultiplayerLobbyModal({
   onChangeP2PIncomingAnswer,
   onJoinP2POffer,
   onCopyText,
+  lanUrls = [],
 }) {
+  const [showManualP2P, setShowManualP2P] = React.useState(false);
   const isVi = lang === "vi";
   const members = room?.members || [];
   const myMember = members.find((m) => m.id === playerId) || null;
@@ -47,8 +52,8 @@ export function MultiplayerLobbyModal({
   const notReadyMembers = members.filter((m) => !m.isHost && (m.joinedRoom === false || !m.ready));
   const canHostStart = isHost && members.length >= 1 && notReadyMembers.length === 0;
   const powerPct = Math.round((room?.powerMultiplier || 1) * 100);
-  const isP2PRoom = Boolean(room?.roomId?.startsWith("P2-"));
-  const displayShareCode = isP2PRoom && p2pInviteCode ? p2pInviteCode : room?.roomId;
+  const isP2PRoom = Boolean(room?.isP2P);
+  const displayShareCode = room?.roomId || p2pInviteCode || "";
 
   return (
     <div
@@ -164,33 +169,74 @@ export function MultiplayerLobbyModal({
 
               {p2pAnswerCode && (
                 <div className="rounded-2xl bg-sky-950/80 border-2 border-sky-400/80 p-3.5 space-y-2 shadow-lg shadow-sky-950/60">
-                  <div className="text-xs font-moba font-extrabold text-sky-200">
-                    ✓{" "}
-                    {isVi
-                      ? "Đã tạo Mã Phản Hồi! Hãy sao chép gửi lại cho Chủ Phòng:"
-                      : "Reply Code Ready! Copy and send back to Host:"}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={p2pAnswerCode}
-                      className="flex-1 min-w-0 rounded-lg bg-[#030710] border border-sky-500/50 px-3 py-2 text-center font-mono-numbers text-base sm:text-lg font-black tracking-[0.2em] text-sky-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onCopyText?.(p2pAnswerCode, isVi ? "Đã sao chép Mã Phản Hồi!" : "Reply Code copied!")}
-                      className="min-h-[38px] px-3.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-moba text-xs font-black shrink-0"
-                    >
-                      📋 {isVi ? "SAO CHÉP" : "COPY"}
-                    </button>
-                  </div>
-                  <div className="text-[11px] text-amber-200 leading-relaxed">
-                    ⏳{" "}
-                    {isVi
-                      ? "Đang chờ Chủ phòng nhập mã & bấm 'GHÉP ĐÔI'. Ngay khi ghép thành công, màn hình bạn sẽ TỰ ĐỘNG vào phòng để chọn tướng!"
-                      : "Waiting for Host to click Connect Peer — your screen will automatically enter the room!"}
-                  </div>
+                  {p2pAutoPaired ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="text-xs font-moba font-extrabold text-sky-200">
+                          ⏳ {isVi ? "Đang tự động ghép đôi vào phòng 6 số..." : "Auto-pairing into 6-digit room..."}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowManualP2P((v) => !v)}
+                          className="text-[11px] font-moba font-bold text-cyan-300 underline"
+                        >
+                          {showManualP2P ? (isVi ? "Ẩn mã thủ công" : "Hide manual code") : (isVi ? "Sao chép mã thủ công" : "Show manual code")}
+                        </button>
+                      </div>
+                      <div className="text-[11px] text-amber-200 leading-relaxed">
+                        {isVi
+                          ? "Hệ thống đã gửi phản hồi cho Chủ phòng. Chờ vài giây sẽ TỰ ĐỘNG vào phòng chọn tướng!"
+                          : "Response sent automatically to Host. You will enter the room shortly!"}
+                      </div>
+                      {showManualP2P && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="text"
+                            readOnly
+                            value={p2pAnswerCode}
+                            className="flex-1 min-w-0 rounded-lg bg-[#030710] border border-sky-500/50 px-3 py-1.5 text-center font-mono-numbers text-xs font-bold text-sky-100"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => onCopyText?.(p2pAnswerCode, isVi ? "Đã sao chép Mã Phản Hồi!" : "Reply Code copied!")}
+                            className="min-h-[34px] px-3 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-moba text-[11px] font-black shrink-0"
+                          >
+                            📋 {isVi ? "SAO CHÉP" : "COPY"}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xs font-moba font-extrabold text-sky-200">
+                        ✓{" "}
+                        {isVi
+                          ? "Đã tạo Mã Phản Hồi Offline! Sao chép gửi lại cho Chủ Phòng:"
+                          : "Offline Reply Code Ready! Copy and send back to Host:"}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={p2pAnswerCode}
+                          className="flex-1 min-w-0 rounded-lg bg-[#030710] border border-sky-500/50 px-3 py-2 text-center font-mono-numbers text-xs font-bold text-sky-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onCopyText?.(p2pAnswerCode, isVi ? "Đã sao chép Mã Phản Hồi!" : "Reply Code copied!")}
+                          className="min-h-[38px] px-3.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-950 font-moba text-xs font-black shrink-0"
+                        >
+                          📋 {isVi ? "SAO CHÉP" : "COPY"}
+                        </button>
+                      </div>
+                      <div className="text-[11px] text-amber-200 leading-relaxed">
+                        ⏳{" "}
+                        {isVi
+                          ? "Ngay khi Chủ phòng dán mã & bấm 'GHÉP ĐÔI', màn hình bạn sẽ TỰ ĐỘNG vào phòng!"
+                          : "Once Host pastes & clicks Connect Peer, you will automatically enter the room!"}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -436,55 +482,109 @@ export function MultiplayerLobbyModal({
                 <div className="rounded-xl bg-emerald-950/35 border border-emerald-500/50 p-3 space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs font-moba font-bold text-emerald-300">
-                      🔗 {isVi ? "MÃ CHIA SẺ PHÒNG P2P (GỬI BẠN BÈ)" : "P2P SHARE CODE (SEND TO FRIEND)"}
+                      🔗{" "}
+                      {p2pHasServerSignal
+                        ? isVi
+                          ? "P2P MÃ 6 SỐ TỰ ĐỘNG GHÉP ĐÔI (GỬI MÃ CHO BẠN BÈ)"
+                          : "6-DIGIT AUTO-PAIR P2P (SEND CODE TO FRIENDS)"
+                        : isVi
+                        ? "P2P MÃ 6 SỐ CÙNG TRÌNH DUYỆT / GHÉP THỦ CÔNG OFFLINE"
+                        : "P2P 6-DIGIT ROOM"}
                     </div>
-                    <button
-                      type="button"
-                      disabled={p2pBusy}
-                      onClick={onCreateP2PInvite}
-                      className="min-h-[30px] px-2.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/50 text-[11px] font-moba font-bold text-emerald-200"
-                    >
-                      🔄 {isVi ? "Tạo mã mới" : "New Invite Code"}
-                    </button>
-                  </div>
-                  {p2pInviteCode ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={p2pInviteCode}
-                        className="flex-1 min-w-0 rounded-lg bg-[#050A16] border border-emerald-500/40 px-3 py-1.5 text-center text-sm sm:text-base font-black tracking-[0.2em] font-mono-numbers text-emerald-200"
-                      />
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => onCopyText?.(p2pInviteCode, isVi ? "Đã sao chép Mã Chia Sẻ!" : "Share Code copied!")}
-                        className="min-h-[34px] px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-moba text-[11px] font-black shrink-0"
+                        onClick={() => setShowManualP2P((v) => !v)}
+                        className="min-h-[30px] px-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-600 text-[11px] font-moba font-bold text-slate-200"
                       >
-                        📋 {isVi ? "SAO CHÉP MÃ" : "COPY CODE"}
+                        🔧 {showManualP2P ? (isVi ? "Ẩn thủ công" : "Hide Manual") : (isVi ? "Chế độ thủ công" : "Manual Fallback")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={p2pBusy}
+                        onClick={onCreateP2PInvite}
+                        className="min-h-[30px] px-2.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/50 text-[11px] font-moba font-bold text-emerald-200"
+                      >
+                        🔄 {isVi ? "Làm mới" : "Refresh"}
                       </button>
                     </div>
-                  ) : (
-                    <div className="rounded-lg bg-[#050A16] border border-emerald-500/30 px-2.5 py-2 text-[11px] text-emerald-200/85">
-                      ⏳ {isVi ? "Đang tạo Mã Chia Sẻ 6 số — hoặc bấm 'Tạo mã mới'." : "Generating 6-digit Share Code..."}
-                    </div>
-                  )}
+                  </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={p2pIncomingAnswer || ""}
-                      onChange={(e) => onChangeP2PIncomingAnswer?.(e.target.value)}
-                      placeholder={isVi ? "Nhập Mã Phản Hồi 6 số bạn bè gửi lại (hoặc AH1...)..." : "Enter friend's 6-digit Reply Code (or AH1...)..."}
-                      className="flex-1 min-w-0 rounded-lg bg-[#050A16] border border-cyan-500/45 focus:border-cyan-300 px-2.5 py-1.5 text-xs font-mono-numbers text-cyan-100 outline-none"
-                    />
+                    <div className="flex-1 min-w-0 rounded-lg bg-[#050A16] border border-emerald-500/40 px-3 py-1.5 text-center text-lg sm:text-xl font-black tracking-[0.28em] font-mono-numbers text-emerald-200">
+                      {displayShareCode}
+                    </div>
                     <button
                       type="button"
-                      disabled={p2pBusy || !(p2pIncomingAnswer || "").trim()}
-                      onClick={onAcceptP2PAnswer}
-                      className="min-h-[34px] px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-moba text-[11px] font-black shrink-0 disabled:opacity-50"
+                      onClick={() => onCopyText?.(displayShareCode, isVi ? "Đã sao chép mã 6 số!" : "6-digit code copied!")}
+                      className="min-h-[38px] px-3.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-moba text-xs font-black shrink-0"
                     >
-                      ✓ {isVi ? "GHÉP ĐÔI" : "CONNECT PEER"}
+                      📋 {isVi ? "SAO CHÉP 6 SỐ" : "COPY 6-DIGIT"}
                     </button>
                   </div>
+                  {Array.isArray(lanUrls) && lanUrls.length > 0 && (
+                    <div className="rounded-lg bg-[#050A16]/90 border border-cyan-500/35 px-2.5 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-cyan-300 font-bold">📶 {isVi ? "Link cùng WiFi:" : "Same-WiFi URL:"}</span>{" "}
+                        <span className="font-mono-numbers text-slate-200 break-all">{lanUrls[0]}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onCopyText?.(lanUrls[0], isVi ? "Đã sao chép link WiFi!" : "WiFi link copied!")}
+                        className="min-h-[28px] px-2.5 rounded-md bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/50 text-[11px] font-moba font-bold text-cyan-200 shrink-0"
+                      >
+                        📋 {isVi ? "Copy Link WiFi" : "Copy WiFi URL"}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="text-[11px] text-emerald-200/90 leading-relaxed">
+                    {p2pHasServerSignal
+                      ? isVi
+                        ? "✓ Bạn bè chỉ cần nhập đúng 6 số ở trên rồi bấm Tham Gia — hệ thống sẽ tự động ghép đôi không cần sao chép mã dài!"
+                        : "✓ Friends just enter this 6-digit code to auto-pair — no long strings needed!"
+                      : isVi
+                      ? "💡 Mở cùng link WiFi/Web trên máy bạn bè để tự động ghép bằng 6 số, hoặc bấm 'Chế độ thủ công' nếu dùng 2 file HTML offline khác mạng."
+                      : "💡 Use the same WiFi/Web URL for 6-digit auto-pair, or open Manual Fallback when offline across devices."}
+                  </div>
+
+                  {showManualP2P && (
+                    <div className="pt-2 border-t border-emerald-500/30 space-y-2">
+                      {p2pManualOfferCode && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={p2pManualOfferCode}
+                            className="flex-1 min-w-0 rounded-lg bg-[#040812] border border-slate-700 px-2.5 py-1.5 text-[11px] font-mono-numbers text-slate-300"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => onCopyText?.(p2pManualOfferCode, isVi ? "Đã sao chép Mã Mời Offline!" : "Manual Offer copied!")}
+                            className="min-h-[32px] px-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-moba text-[11px] font-bold shrink-0"
+                          >
+                            📋 {isVi ? "Copy AH1..." : "Copy AH1..."}
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={p2pIncomingAnswer || ""}
+                          onChange={(e) => onChangeP2PIncomingAnswer?.(e.target.value)}
+                          placeholder={isVi ? "Dán Mã Phản Hồi (nếu ghép thủ công)..." : "Paste Reply Code (manual fallback)..."}
+                          className="flex-1 min-w-0 rounded-lg bg-[#050A16] border border-cyan-500/45 focus:border-cyan-300 px-2.5 py-1.5 text-xs font-mono-numbers text-cyan-100 outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={p2pBusy || !(p2pIncomingAnswer || "").trim()}
+                          onClick={onAcceptP2PAnswer}
+                          className="min-h-[34px] px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-moba text-[11px] font-black shrink-0 disabled:opacity-50"
+                        >
+                          ✓ {isVi ? "GHÉP ĐÔI" : "CONNECT PEER"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

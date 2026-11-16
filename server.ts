@@ -2,6 +2,7 @@ import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
@@ -121,15 +122,30 @@ interface P2PSignalRecord {
   createdAt: number;
 }
 
+interface P2PAnswerEntry {
+  id: string;
+  payload: string;
+  createdAt: number;
+}
+
 const rooms = new Map<string, Room>();
 const sessions = new Map<string, ClientSession>();
 const wsToPlayerId = new Map<WebSocket, string>();
 const p2pSignals = new Map<string, P2PSignalRecord>();
+const p2pAnswersByOffer = new Map<string, P2PAnswerEntry[]>();
 
 function cleanupExpiredP2PSignals(now = Date.now()) {
   for (const [code, rec] of p2pSignals.entries()) {
     if (now - rec.createdAt > P2P_SIGNAL_TTL_MS) {
       p2pSignals.delete(code);
+    }
+  }
+  for (const [offerCode, list] of p2pAnswersByOffer.entries()) {
+    const fresh = list.filter((item) => now - item.createdAt <= P2P_SIGNAL_TTL_MS);
+    if (fresh.length === 0) {
+      p2pAnswersByOffer.delete(offerCode);
+    } else if (fresh.length !== list.length) {
+      p2pAnswersByOffer.set(offerCode, fresh);
     }
   }
   while (p2pSignals.size > MAX_P2P_SIGNALS) {
@@ -144,7 +160,7 @@ function generateSixDigitCode(): string {
     const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
     if (!rooms.has(code) && !p2pSignals.has(code)) return code;
   }
-  return String(crypto.randomInt(100000, 1000000));
+  return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 }
 
 function generateRoomId(): string {
@@ -683,6 +699,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
         room,
         {
           type: "ENEMIES_SPAWNED",
+          wave: room.wave,
           enemies: added,
           waveSpawned: room.waveSpawned,
           waveTotal: room.waveTotal,
@@ -766,16 +783,42 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
   if (msg.type === "WORLD_SNAPSHOT") {
     if (room.hostId !== playerId) return;
+    if (typeof msg.wave === "number" && msg.wave !== room.wave) return;
     if (typeof msg.waveSpawned === "number") {
       room.waveSpawned = Math.max(room.waveSpawned, msg.waveSpawned);
     }
 
     const syncedEnemies: Array<Record<string, unknown>> = [];
+    const seenIds = new Set<number>();
     if (Array.isArray(msg.enemies)) {
       for (const e of msg.enemies) {
         if (!e || typeof e.id !== "number") continue;
-        const serverEnemy = room.enemies.get(e.id);
-        if (!serverEnemy || serverEnemy.hp <= 0) continue;
+        seenIds.add(e.id);
+        let serverEnemy = room.enemies.get(e.id);
+        if (!serverEnemy) {
+          const snapHp = Math.round(Number(e.hp) || 0);
+          if (snapHp <= 0) continue;
+          serverEnemy = {
+            id: e.id,
+            kind: String(e.kind || "minion"),
+            bossWave: e.bossWave ? Number(e.bossWave) : undefined,
+            name: String(e.name || "Quái"),
+            x: Number(e.x) || 1000,
+            y: Number(e.y) || 700,
+            radius: Number(e.radius) || 18,
+            hp: Math.max(1, snapHp),
+            maxHp: Math.max(1, Math.round(Number(e.maxHp) || snapHp || 100)),
+            damage: Math.max(1, Math.round(Number(e.damage) || 20)),
+            speed: Number(e.speed) || 110,
+            xpValue: Math.max(1, Math.round(Number(e.xpValue) || 24)),
+            color: String(e.color || "#22C55E"),
+            accentColor: e.accentColor ? String(e.accentColor) : undefined,
+            facing: Number(e.facing) || 0,
+            phase: Number(e.phase) || 1,
+          };
+          room.enemies.set(serverEnemy.id, serverEnemy);
+        }
+        if (serverEnemy.hp <= 0) continue;
         serverEnemy.x = Number(e.x) || serverEnemy.x;
         serverEnemy.y = Number(e.y) || serverEnemy.y;
         serverEnemy.facing = Number(e.facing) || 0;
@@ -790,6 +833,15 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
         syncedEnemies.push({
           id: serverEnemy.id,
+          kind: serverEnemy.kind,
+          bossWave: serverEnemy.bossWave,
+          name: serverEnemy.name,
+          radius: serverEnemy.radius,
+          color: serverEnemy.color,
+          accentColor: serverEnemy.accentColor,
+          speed: serverEnemy.speed,
+          damage: serverEnemy.damage,
+          xpValue: serverEnemy.xpValue,
           x: Math.round(serverEnemy.x * 10) / 10,
           y: Math.round(serverEnemy.y * 10) / 10,
           facing: Math.round(serverEnemy.facing * 100) / 100,
@@ -807,6 +859,14 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
       }
     }
 
+    if (msg.fullList === true) {
+      for (const existingId of room.enemies.keys()) {
+        if (!seenIds.has(existingId)) {
+          room.enemies.delete(existingId);
+        }
+      }
+    }
+
     broadcastRoom(
       room,
       {
@@ -815,6 +875,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
         waveTotal: room.waveTotal,
         waveSpawned: room.waveSpawned,
         waveKilled: room.waveKilled,
+        fullList: Boolean(msg.fullList),
         enemies: syncedEnemies,
         bossWarnings: Array.isArray(msg.bossWarnings) ? msg.bossWarnings : [],
         bossBeams: Array.isArray(msg.bossBeams) ? msg.bossBeams : [],
@@ -903,10 +964,54 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
         type: "REMOTE_VFX",
         playerId,
         heroId: player.heroId,
-        events: msg.events.slice(0, 24),
+        events: msg.events.slice(0, 48),
       },
       playerId
     );
+    return;
+  }
+
+  if (msg.type === "ALLY_SUPPORT") {
+    if (!player.alive) return;
+    broadcastRoom(
+      room,
+      {
+        type: "ALLY_SUPPORT",
+        fromPlayerId: playerId,
+        fromName: player.name,
+        x: Number(msg.x) || player.x,
+        y: Number(msg.y) || player.y,
+        radius: Math.max(40, Math.min(600, Number(msg.radius) || 220)),
+        heal: Math.max(0, Math.min(50000, Math.round(Number(msg.heal) || 0))),
+        shield: Math.max(0, Math.min(50000, Math.round(Number(msg.shield) || 0))),
+        label: typeof msg.label === "string" ? msg.label.slice(0, 40) : "",
+        color: typeof msg.color === "string" ? msg.color.slice(0, 20) : "#10B981",
+      },
+      playerId
+    );
+    return;
+  }
+
+  if (msg.type === "REVIVE_PLAYER") {
+    if (!player.alive) return;
+    const targetId = typeof msg.targetPlayerId === "string" ? msg.targetPlayerId : "";
+    const target = room.players.get(targetId);
+    if (!target || target.alive) return;
+    target.alive = true;
+    target.hp = Math.max(1, Math.round((target.maxHp || 900) * 0.45));
+    target.shield = Math.max(target.shield || 0, Math.round((target.maxHp || 900) * 0.2));
+    broadcastRoom(room, {
+      type: "PLAYER_REVIVED",
+      targetPlayerId: target.id,
+      targetName: target.name,
+      byPlayerId: player.id,
+      byName: player.name,
+      hp: target.hp,
+      shield: target.shield,
+      x: target.x,
+      y: target.y,
+      room: serializeRoom(room),
+    });
     return;
   }
 
@@ -971,6 +1076,25 @@ async function createApp() {
     res.json({ ok: true, rooms: rooms.size, sessions: sessions.size });
   });
 
+  app.get("/api/lan-info", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const lanUrls: string[] = [];
+    try {
+      const ifaces = os.networkInterfaces();
+      for (const ifaceList of Object.values(ifaces)) {
+        if (!ifaceList) continue;
+        for (const iface of ifaceList) {
+          if (iface && iface.family === "IPv4" && !iface.internal && iface.address) {
+            const url = `http://${iface.address}:${PORT}`;
+            if (!lanUrls.includes(url)) lanUrls.push(url);
+          }
+        }
+      }
+    } catch {
+    }
+    res.json({ ok: true, port: PORT, lanUrls });
+  });
+
   app.get("/api/rooms/:roomId", (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     const code = String(req.params.roomId || "").trim().toUpperCase();
@@ -988,6 +1112,7 @@ async function createApp() {
     const kind = req.body?.kind === "answer" ? "answer" : req.body?.kind === "offer" ? "offer" : "";
     const payload = typeof req.body?.payload === "string" ? req.body.payload.trim() : "";
     const forCode = typeof req.body?.forCode === "string" ? req.body.forCode.trim() : undefined;
+    const rawDesired = typeof req.body?.desiredCode === "string" ? req.body.desiredCode.trim() : "";
 
     if (!kind) {
       res.status(400).json({ ok: false, message: "Loại tín hiệu P2P không hợp lệ." });
@@ -998,14 +1123,35 @@ async function createApp() {
       return;
     }
 
-    const code = generateSixDigitCode();
+    let code = "";
+    if (kind === "offer" && /^\d{6}$/.test(rawDesired) && !rooms.has(rawDesired) && !p2pSignals.has(rawDesired)) {
+      code = rawDesired;
+    } else {
+      code = generateSixDigitCode();
+    }
+
+    const now = Date.now();
     p2pSignals.set(code, {
       code,
       kind,
       payload,
       forCode,
-      createdAt: Date.now(),
+      createdAt: now,
     });
+
+    if (kind === "answer" && forCode && /^\d{6}$/.test(forCode)) {
+      const list = p2pAnswersByOffer.get(forCode) || [];
+      if (!list.some((item) => item.payload === payload)) {
+        list.push({
+          id: `${now}_${Math.random().toString(36).slice(2, 7)}`,
+          payload,
+          createdAt: now,
+        });
+        if (list.length > 16) list.shift();
+        p2pAnswersByOffer.set(forCode, list);
+      }
+    }
+
     res.json({
       ok: true,
       code,
@@ -1034,6 +1180,21 @@ async function createApp() {
       payload: rec.payload,
       forCode: rec.forCode || null,
     });
+  });
+
+  app.get("/api/p2p/signal/:code/answers", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    cleanupExpiredP2PSignals();
+    const code = String(req.params.code || "").trim();
+    if (!/^\d{6}$/.test(code)) {
+      res.status(400).json({ ok: false, answers: [] });
+      return;
+    }
+    const list = p2pAnswersByOffer.get(code) || [];
+    if (list.length > 0) {
+      p2pAnswersByOffer.delete(code);
+    }
+    res.json({ ok: true, answers: list });
   });
 
   app.post("/api/coop/connect", (_req, res) => {

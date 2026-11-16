@@ -23,6 +23,8 @@ const CRITICAL_HTTP_TYPES = new Set([
   "WAVE_META",
   "SPAWN_ENEMIES",
   "DAMAGE_ENEMY",
+  "ALLY_SUPPORT",
+  "REVIVE_PLAYER",
 ]);
 
 class MultiplayerClient {
@@ -37,6 +39,15 @@ class MultiplayerClient {
     this.httpPollAbort = null;
     this.p2pHost = null;
     this.p2pPeer = null;
+    this.p2pAnswerPollTimer = null;
+    this.p2pChannel = null;
+    this.p2pLatestRawOffer = "";
+    this.p2pServerShortCode = "";
+    this.p2pHandledAnswers = new Set();
+    this.p2pMqttWs = null;
+    this.p2pMqttPingTimer = null;
+    this.p2pMqttBrokerIdx = 0;
+    this.p2pMqttRoomCode = "";
     this.playerId = null;
     this.room = null;
     this.connected = false;
@@ -89,11 +100,23 @@ class MultiplayerClient {
     const rawWs = typeof window.__ARENA_WS_URL__ === "string" ? window.__ARENA_WS_URL__.trim() : "";
     const rawApi = typeof window.__ARENA_API_URL__ === "string" ? window.__ARENA_API_URL__.trim() : "";
     const candidate = rawWs || rawApi;
-    if (!candidate) return "";
-    if (isLocalFileProtocol(protocol) && isPrivateOrDevOrigin(candidate)) {
-      return "";
+    if (candidate) {
+      if (isLocalFileProtocol(protocol) && isPrivateOrDevOrigin(candidate)) {
+        // Blocked for private/dev preview origins on standalone file/content protocols
+      } else {
+        return candidate;
+      }
     }
-    return candidate;
+    if (isLocalFileProtocol(protocol)) {
+      const rawLan = typeof window.__ARENA_LAN_URL__ === "string" ? window.__ARENA_LAN_URL__.trim() : "";
+      if (
+        rawLan &&
+        /^https?:\/\/(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|[a-zA-Z0-9-]+\.local)(?::\d+)?$/i.test(rawLan)
+      ) {
+        return rawLan;
+      }
+    }
+    return "";
   }
 
   _getEffectiveOverrideUrl() {
@@ -189,21 +212,21 @@ class MultiplayerClient {
     }
   }
 
-  async _postP2PSignal(kind, payload, forCode) {
+  async _postP2PSignal(kind, payload, forCode, desiredCode) {
     if (!payload) return null;
     if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
     const httpRes = this.getHttpBaseResult();
     if (!httpRes.ok || !httpRes.baseUrl) return null;
 
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timer = controller ? setTimeout(() => controller.abort(), 3500) : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 4500) : null;
     try {
       const res = await fetch(`${httpRes.baseUrl}/api/p2p/signal`, {
         method: "POST",
         credentials: this._isCrossOriginUrl(httpRes.baseUrl) ? "omit" : "same-origin",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify({ kind, payload, forCode }),
+        body: JSON.stringify({ kind, payload, forCode, desiredCode }),
         signal: controller ? controller.signal : undefined,
       });
       if (!res || !res.ok) return null;
@@ -613,6 +636,38 @@ class MultiplayerClient {
   }
 
   _stopP2P() {
+    if (this.p2pAnswerPollTimer) {
+      clearInterval(this.p2pAnswerPollTimer);
+      this.p2pAnswerPollTimer = null;
+    }
+    if (this.p2pMqttPingTimer) {
+      clearInterval(this.p2pMqttPingTimer);
+      this.p2pMqttPingTimer = null;
+    }
+    if (this.p2pMqttWs) {
+      try {
+        if (this.p2pMqttWs.readyState === WebSocket.OPEN) {
+          if (isSixDigitCode(this.p2pMqttRoomCode)) {
+            this.p2pMqttWs.send(this._mqttEncodePublish(this._mqttOfferTopic(this.p2pMqttRoomCode), "", true));
+          }
+          this.p2pMqttWs.send(Uint8Array.of(0xe0, 0x00));
+        }
+      } catch {
+      }
+      this._cleanupSocket(this.p2pMqttWs);
+      this.p2pMqttWs = null;
+    }
+    this.p2pMqttRoomCode = "";
+    if (this.p2pChannel) {
+      try {
+        this.p2pChannel.close();
+      } catch {
+      }
+      this.p2pChannel = null;
+    }
+    this.p2pLatestRawOffer = "";
+    this.p2pServerShortCode = "";
+    this.p2pHandledAnswers.clear();
     if (this.p2pHost) {
       this.p2pHost.destroy();
       this.p2pHost = null;
@@ -621,6 +676,507 @@ class MultiplayerClient {
       this.p2pPeer.destroy();
       this.p2pPeer = null;
     }
+  }
+
+  _mqttBrokers() {
+    return [
+      "wss://broker.emqx.io:8084/mqtt",
+      "wss://broker.hivemq.com:8884/mqtt",
+    ];
+  }
+
+  _mqttOfferTopic(code) {
+    return `arenahero118/p2p/v1/offer/${code}`;
+  }
+
+  _mqttAnswerTopic(code) {
+    return `arenahero118/p2p/v1/answer/${code}`;
+  }
+
+  _utf8Encode(str) {
+    if (typeof TextEncoder !== "undefined") {
+      return new TextEncoder().encode(String(str || ""));
+    }
+    const raw = unescape(encodeURIComponent(String(str || "")));
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  _utf8Decode(bytes) {
+    if (typeof TextDecoder !== "undefined") {
+      return new TextDecoder().decode(bytes);
+    }
+    let out = "";
+    for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
+    try {
+      return decodeURIComponent(escape(out));
+    } catch {
+      return out;
+    }
+  }
+
+  _mqttEncodeStr(str) {
+    const b = this._utf8Encode(str);
+    const out = new Uint8Array(2 + b.length);
+    out[0] = (b.length >> 8) & 0xff;
+    out[1] = b.length & 0xff;
+    out.set(b, 2);
+    return out;
+  }
+
+  _mqttBuildPacket(firstByte, bodyParts) {
+    let remLen = 0;
+    for (const p of bodyParts) remLen += p.length;
+    const lenBytes = [];
+    let x = remLen;
+    do {
+      let digit = x % 128;
+      x = Math.floor(x / 128);
+      if (x > 0) digit |= 0x80;
+      lenBytes.push(digit);
+    } while (x > 0);
+    const out = new Uint8Array(1 + lenBytes.length + remLen);
+    out[0] = firstByte;
+    let offset = 1;
+    for (const lb of lenBytes) out[offset++] = lb;
+    for (const p of bodyParts) {
+      out.set(p, offset);
+      offset += p.length;
+    }
+    return out;
+  }
+
+  _mqttEncodeConnect(clientId) {
+    const proto = new Uint8Array([0x00, 0x04, 0x4d, 0x51, 0x54, 0x54, 0x04, 0x02, 0x00, 0x1e]);
+    return this._mqttBuildPacket(0x10, [proto, this._mqttEncodeStr(clientId)]);
+  }
+
+  _mqttEncodeSubscribe(packetId, topic) {
+    const pid = new Uint8Array([(packetId >> 8) & 0xff, packetId & 0xff]);
+    const qos = new Uint8Array([0x00]);
+    return this._mqttBuildPacket(0x82, [pid, this._mqttEncodeStr(topic), qos]);
+  }
+
+  _mqttEncodePublish(topic, payload, retain = false) {
+    return this._mqttBuildPacket(retain ? 0x31 : 0x30, [
+      this._mqttEncodeStr(topic),
+      this._utf8Encode(payload),
+    ]);
+  }
+
+  _mqttConcatBytes(a, b) {
+    if (!a || a.length === 0) return b;
+    const out = new Uint8Array(a.length + b.length);
+    out.set(a, 0);
+    out.set(b, a.length);
+    return out;
+  }
+
+  _mqttParsePackets(buf) {
+    const packets = [];
+    let offset = 0;
+    while (offset < buf.length) {
+      const b0 = buf[offset];
+      const pktType = (b0 >> 4) & 0x0f;
+      const flags = b0 & 0x0f;
+      let multiplier = 1;
+      let remLen = 0;
+      let pos = offset + 1;
+      let lenDone = false;
+      while (pos < buf.length && pos - offset <= 4) {
+        const enc = buf[pos++];
+        remLen += (enc & 0x7f) * multiplier;
+        multiplier *= 128;
+        if ((enc & 0x80) === 0) {
+          lenDone = true;
+          break;
+        }
+      }
+      if (!lenDone || pos + remLen > buf.length) break;
+      const body = buf.subarray(pos, pos + remLen);
+      offset = pos + remLen;
+      if (pktType === 2) {
+        packets.push({ type: 2, rc: body.length >= 2 ? body[1] : 0 });
+      } else if (pktType === 3 && body.length >= 2) {
+        const tLen = (body[0] << 8) | body[1];
+        if (2 + tLen <= body.length) {
+          const topic = this._utf8Decode(body.subarray(2, 2 + tLen));
+          let pStart = 2 + tLen;
+          if (((flags >> 1) & 0x03) > 0) pStart += 2;
+          const payload = pStart <= body.length ? this._utf8Decode(body.subarray(pStart)) : "";
+          packets.push({ type: 3, topic, payload });
+        }
+      } else {
+        packets.push({ type: pktType });
+      }
+    }
+    return { packets, rest: buf.subarray(offset) };
+  }
+
+  _openMqttSocket(url, timeoutMs = 2800) {
+    return new Promise((resolve, reject) => {
+      if (typeof WebSocket === "undefined" || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+        reject(new Error("WebSocket offline"));
+        return;
+      }
+      let ws;
+      try {
+        ws = new WebSocket(url, "mqtt");
+        ws.binaryType = "arraybuffer";
+      } catch (err) {
+        reject(err || new Error("MQTT WebSocket failed"));
+        return;
+      }
+
+      let settled = false;
+      const state = { ws, buffer: new Uint8Array(0), onPackets: null };
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          this._cleanupSocket(ws);
+          reject(new Error("MQTT timeout"));
+        }
+      }, timeoutMs);
+
+      ws.onopen = () => {
+        try {
+          const cid = `ah_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+          ws.send(this._mqttEncodeConnect(cid));
+        } catch (err) {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            this._cleanupSocket(ws);
+            reject(err);
+          }
+        }
+      };
+
+      ws.onmessage = (ev) => {
+        const chunk = ev.data instanceof ArrayBuffer ? new Uint8Array(ev.data) : null;
+        if (!chunk) return;
+        state.buffer = this._mqttConcatBytes(state.buffer, chunk);
+        const parsed = this._mqttParsePackets(state.buffer);
+        state.buffer = parsed.rest;
+        if (!settled) {
+          const connack = parsed.packets.find((p) => p.type === 2);
+          if (connack) {
+            settled = true;
+            clearTimeout(timer);
+            if (connack.rc !== 0) {
+              this._cleanupSocket(ws);
+              reject(new Error(`MQTT CONNACK ${connack.rc}`));
+              return;
+            }
+            resolve(state);
+          }
+        }
+        if (parsed.packets.length > 0 && state.onPackets) {
+          state.onPackets(parsed.packets);
+        }
+      };
+
+      ws.onerror = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          this._cleanupSocket(ws);
+          reject(new Error("MQTT error"));
+        }
+      };
+
+      ws.onclose = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(new Error("MQTT closed"));
+        }
+      };
+    });
+  }
+
+  async _openMqttConnection() {
+    if (typeof WebSocket === "undefined" || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      return null;
+    }
+    const brokers = this._mqttBrokers();
+    for (let i = 0; i < brokers.length; i++) {
+      const idx = (this.p2pMqttBrokerIdx + i) % brokers.length;
+      try {
+        const conn = await this._openMqttSocket(brokers[idx], 2600);
+        this.p2pMqttBrokerIdx = idx;
+        return conn;
+      } catch {
+      }
+    }
+    return null;
+  }
+
+  async _startMqttSignalingHost(roomCode, offerPayload) {
+    if (!isSixDigitCode(roomCode) || !offerPayload) return false;
+    if (this.p2pMqttPingTimer) {
+      clearInterval(this.p2pMqttPingTimer);
+      this.p2pMqttPingTimer = null;
+    }
+    if (this.p2pMqttWs) {
+      this._cleanupSocket(this.p2pMqttWs);
+      this.p2pMqttWs = null;
+    }
+
+    const conn = await this._openMqttConnection();
+    if (!conn || this.transportMode !== "p2p_host" || !this.p2pHost) {
+      if (conn) this._cleanupSocket(conn.ws);
+      return false;
+    }
+
+    this.p2pMqttWs = conn.ws;
+    this.p2pMqttRoomCode = roomCode;
+    const answerTopic = this._mqttAnswerTopic(roomCode);
+    const offerTopic = this._mqttOfferTopic(roomCode);
+
+    conn.onPackets = (packets) => {
+      for (const pkt of packets) {
+        if (pkt.type === 3 && pkt.topic === answerTopic && pkt.payload) {
+          if (pkt.payload.startsWith("AH1") || pkt.payload.startsWith("{")) {
+            this._handleIncomingP2PAnswer(pkt.payload).catch(() => {});
+          }
+        }
+      }
+    };
+
+    try {
+      conn.ws.send(this._mqttEncodeSubscribe(1, answerTopic));
+      conn.ws.send(this._mqttEncodePublish(offerTopic, offerPayload, true));
+    } catch {
+      this._cleanupSocket(conn.ws);
+      if (this.p2pMqttWs === conn.ws) this.p2pMqttWs = null;
+      return false;
+    }
+
+    this.p2pMqttPingTimer = setInterval(() => {
+      if (this.p2pMqttWs && this.p2pMqttWs.readyState === WebSocket.OPEN) {
+        try {
+          this.p2pMqttWs.send(Uint8Array.of(0xc0, 0x00));
+        } catch {
+        }
+      }
+    }, 20000);
+
+    return true;
+  }
+
+  async _publishMqttOffer(roomCode, offerPayload) {
+    if (!isSixDigitCode(roomCode) || !offerPayload) return false;
+    if (this.p2pMqttWs && this.p2pMqttWs.readyState === WebSocket.OPEN && this.p2pMqttRoomCode === roomCode) {
+      try {
+        this.p2pMqttWs.send(this._mqttEncodePublish(this._mqttOfferTopic(roomCode), offerPayload, true));
+        return true;
+      } catch {
+      }
+    }
+    return await this._startMqttSignalingHost(roomCode, offerPayload);
+  }
+
+  async _lookupMqttOffer(code, timeoutMs = 3600) {
+    const clean = String(code || "").trim().replace(/\s+/g, "");
+    if (!isSixDigitCode(clean)) return null;
+    const conn = await this._openMqttConnection();
+    if (!conn) return null;
+
+    const offerTopic = this._mqttOfferTopic(clean);
+    return await new Promise((resolve) => {
+      let done = false;
+      const finish = (val) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        try {
+          if (conn.ws.readyState === WebSocket.OPEN) {
+            conn.ws.send(Uint8Array.of(0xe0, 0x00));
+          }
+        } catch {
+        }
+        this._cleanupSocket(conn.ws);
+        resolve(val);
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      conn.onPackets = (packets) => {
+        for (const pkt of packets) {
+          if (pkt.type === 3 && pkt.topic === offerTopic && pkt.payload) {
+            const val = pkt.payload.trim();
+            if (val.startsWith("AH1") || val.startsWith("{")) {
+              finish({ ok: true, code: clean, kind: "offer", payload: val, mqttSignaling: true });
+              return;
+            }
+          }
+        }
+      };
+      try {
+        conn.ws.send(this._mqttEncodeSubscribe(1, offerTopic));
+      } catch {
+        finish(null);
+      }
+    });
+  }
+
+  async _publishMqttAnswer(code, answerPayload) {
+    const clean = String(code || "").trim().replace(/\s+/g, "");
+    if (!isSixDigitCode(clean) || !answerPayload) return false;
+    const conn = await this._openMqttConnection();
+    if (!conn) return false;
+    try {
+      conn.ws.send(this._mqttEncodePublish(this._mqttAnswerTopic(clean), answerPayload, false));
+      await new Promise((r) => setTimeout(r, 90));
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.send(Uint8Array.of(0xe0, 0x00));
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      this._cleanupSocket(conn.ws);
+    }
+  }
+
+  _ensureP2PBroadcastChannel() {
+    if (typeof BroadcastChannel === "undefined") return null;
+    if (!this.p2pChannel) {
+      try {
+        this.p2pChannel = new BroadcastChannel("arena_hero_p2p_v1");
+        this.p2pChannel.onmessage = (ev) => {
+          const msg = ev?.data;
+          if (!msg || typeof msg !== "object") return;
+          if (this.transportMode === "p2p_host" && this.p2pHost) {
+            const roomCode = this.p2pServerShortCode || this.p2pHost.room?.id;
+            if (msg.kind === "P2P_OFFER_QUERY" && msg.code === roomCode && this.p2pLatestRawOffer) {
+              try {
+                this.p2pChannel.postMessage({
+                  kind: "P2P_OFFER_DATA",
+                  code: roomCode,
+                  payload: this.p2pLatestRawOffer,
+                });
+              } catch {
+              }
+            } else if (
+              msg.kind === "P2P_ANSWER_DATA" &&
+              (msg.forCode === roomCode || msg.forCode === this.p2pHost.room?.id) &&
+              typeof msg.payload === "string"
+            ) {
+              this._handleIncomingP2PAnswer(msg.payload).catch(() => {});
+            }
+          }
+        };
+      } catch {
+        this.p2pChannel = null;
+      }
+    }
+    return this.p2pChannel;
+  }
+
+  _lookupLocalOfferViaChannel(code, timeoutMs = 450) {
+    return new Promise((resolve) => {
+      if (typeof BroadcastChannel === "undefined" || !isSixDigitCode(code)) {
+        resolve(null);
+        return;
+      }
+      let ch = null;
+      let done = false;
+      const finish = (val) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        if (ch) {
+          try {
+            ch.close();
+          } catch {
+          }
+        }
+        resolve(val);
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      try {
+        ch = new BroadcastChannel("arena_hero_p2p_v1");
+        ch.onmessage = (ev) => {
+          const msg = ev?.data;
+          if (msg?.kind === "P2P_OFFER_DATA" && msg.code === code && typeof msg.payload === "string") {
+            finish({ ok: true, code, kind: "offer", payload: msg.payload, localChannel: true });
+          }
+        };
+        ch.postMessage({ kind: "P2P_OFFER_QUERY", code });
+      } catch {
+        finish(null);
+      }
+    });
+  }
+
+  async _handleIncomingP2PAnswer(answerPayload) {
+    if (!answerPayload || !this.p2pHost || this.transportMode !== "p2p_host") return null;
+    if (this.p2pHandledAnswers.has(answerPayload)) return null;
+    this.p2pHandledAnswers.add(answerPayload);
+    const res = await this.p2pHost.acceptJoinAnswer(answerPayload);
+    const roomCode = this.p2pServerShortCode || this.p2pHost.room.id;
+    this.emit({ type: "P2P_AUTO_PAIRED", roomId: roomCode, peerId: res?.peerId });
+
+    // Prepare a fresh standby offer on the same 6-digit room code if slots remain
+    if (this.p2pHost && this.p2pHost.room.players.size < 4) {
+      try {
+        const nextInvite = await this.p2pHost.createInviteOffer();
+        const nextRaw = nextInvite?.code || "";
+        if (nextRaw) {
+          this.p2pLatestRawOffer = nextRaw;
+          const [refreshed, mqttOk] = await Promise.all([
+            this._postP2PSignal("offer", nextRaw, undefined, roomCode),
+            this._publishMqttOffer(roomCode, nextRaw),
+          ]);
+          if (refreshed) this.p2pServerShortCode = refreshed;
+          this.emit({
+            type: "P2P_INVITE_READY",
+            inviteCode: this.p2pServerShortCode || roomCode,
+            manualOfferCode: nextRaw,
+            hasServerSignaling: Boolean(this.p2pServerShortCode || mqttOk),
+            inviteError: "",
+          });
+        }
+      } catch {
+      }
+    }
+    return res;
+  }
+
+  _startP2PAnswerPollLoop(roomCode) {
+    if (this.p2pAnswerPollTimer) {
+      clearInterval(this.p2pAnswerPollTimer);
+      this.p2pAnswerPollTimer = null;
+    }
+    if (!isSixDigitCode(roomCode)) return;
+    let inFlight = false;
+    this.p2pAnswerPollTimer = setInterval(async () => {
+      if (inFlight || this.transportMode !== "p2p_host" || !this.p2pHost) return;
+      if (this.p2pHost.room.players.size >= 4) return;
+      const httpRes = this.getHttpBaseResult();
+      if (!httpRes.ok || !httpRes.baseUrl) return;
+      inFlight = true;
+      try {
+        const res = await fetch(`${httpRes.baseUrl}/api/p2p/signal/${encodeURIComponent(roomCode)}/answers`, {
+          method: "GET",
+          credentials: this._isCrossOriginUrl(httpRes.baseUrl) ? "omit" : "same-origin",
+          cache: "no-store",
+        });
+        if (!res || !res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (data?.ok && Array.isArray(data.answers)) {
+          for (const item of data.answers) {
+            if (item?.payload) {
+              await this._handleIncomingP2PAnswer(item.payload).catch(() => {});
+            }
+          }
+        }
+      } catch {
+      } finally {
+        inFlight = false;
+      }
+    }, 900);
   }
 
   async startP2PHost(playerName, heroId) {
@@ -642,32 +1198,76 @@ class MultiplayerClient {
     this.p2pHost = host;
     this.connected = true;
     host.start();
-    let inviteCode = "";
+    this._ensureP2PBroadcastChannel();
+
+    const desiredSixDigit = host.room.id;
+    let inviteCode = desiredSixDigit;
+    let manualOfferCode = "";
+    let hasServerSignaling = false;
     let inviteError = "";
     try {
       const invite = await host.createInviteOffer();
       const rawCode = invite?.code || "";
-      const shortCode = rawCode ? await this._postP2PSignal("offer", rawCode) : null;
-      inviteCode = shortCode || rawCode;
+      manualOfferCode = rawCode;
+      this.p2pLatestRawOffer = rawCode;
+      const [shortCode, mqttOk] = rawCode
+        ? await Promise.all([
+            this._postP2PSignal("offer", rawCode, undefined, desiredSixDigit),
+            this._startMqttSignalingHost(desiredSixDigit, rawCode),
+          ])
+        : [null, false];
+      if (shortCode) {
+        hasServerSignaling = true;
+        this.p2pServerShortCode = shortCode;
+        inviteCode = shortCode;
+        this._startP2PAnswerPollLoop(shortCode);
+        if (shortCode !== desiredSixDigit && rawCode) {
+          await this._startMqttSignalingHost(shortCode, rawCode);
+        }
+      } else {
+        if (mqttOk) hasServerSignaling = true;
+        this._startP2PAnswerPollLoop(desiredSixDigit);
+      }
     } catch (err) {
       inviteError = err?.message || "Chưa tạo được mã mời P2P tự động.";
     }
     this.emit({ type: "WS_OPEN", transport: "p2p_host" });
-    this.emit({ type: "P2P_INVITE_READY", inviteCode, inviteError });
-    return { mode: "p2p", room: this.room, inviteCode, inviteError };
+    this.emit({
+      type: "P2P_INVITE_READY",
+      inviteCode,
+      manualOfferCode,
+      hasServerSignaling,
+      inviteError,
+    });
+    return { mode: "p2p", room: this.room, inviteCode, manualOfferCode, hasServerSignaling, inviteError };
   }
 
   async createP2PInviteOffer() {
     if (!this.p2pHost || this.transportMode !== "p2p_host") {
       throw new Error("Bạn chưa tạo phòng P2P.");
     }
+    const desiredSixDigit = this.p2pServerShortCode || this.p2pHost.room.id;
     const raw = await this.p2pHost.createInviteOffer();
     const rawCode = raw?.code || "";
-    const shortCode = rawCode ? await this._postP2PSignal("offer", rawCode) : null;
+    if (rawCode) this.p2pLatestRawOffer = rawCode;
+    const [shortCode, mqttOk] = rawCode
+      ? await Promise.all([
+          this._postP2PSignal("offer", rawCode, undefined, desiredSixDigit),
+          this._publishMqttOffer(desiredSixDigit, rawCode),
+        ])
+      : [null, false];
+    if (shortCode) {
+      this.p2pServerShortCode = shortCode;
+      this._startP2PAnswerPollLoop(shortCode);
+      if (shortCode !== desiredSixDigit && rawCode) {
+        await this._publishMqttOffer(shortCode, rawCode);
+      }
+    }
     return {
       ...raw,
       rawCode,
-      code: shortCode || rawCode,
+      code: shortCode || desiredSixDigit,
+      hasServerSignaling: Boolean(shortCode || mqttOk),
     };
   }
 
@@ -694,8 +1294,18 @@ class MultiplayerClient {
     const cleanInput = String(offerInput || "").trim().replace(/\s+/g, "");
     let resolvedOffer = cleanInput;
     let usedShortOfferCode;
+    let usedMqtt = false;
     if (isSixDigitCode(cleanInput)) {
-      const fetched = opts?.preFetched || (await this._fetchP2PSignal(cleanInput));
+      let fetched = opts?.preFetched || (await this._fetchP2PSignal(cleanInput, { optional: true }));
+      if (!fetched) {
+        fetched = await this._lookupLocalOfferViaChannel(cleanInput);
+      }
+      if (!fetched) {
+        fetched = await this._lookupMqttOffer(cleanInput, 3600);
+      }
+      if (!fetched) {
+        throw new Error(`Không tìm thấy phòng 6 số ${cleanInput} hoặc mã đã hết hạn.`);
+      }
       if (fetched.kind === "answer") {
         throw new Error("Mã 6 số này là Mã Phản Hồi P2P, không phải Mã Chia Sẻ phòng!");
       }
@@ -704,6 +1314,7 @@ class MultiplayerClient {
       }
       resolvedOffer = fetched.payload;
       usedShortOfferCode = cleanInput;
+      usedMqtt = Boolean(fetched.mqttSignaling);
     }
 
     this.stopHeartbeat();
@@ -739,8 +1350,32 @@ class MultiplayerClient {
     const shortAnswer = rawAnswer
       ? await this._postP2PSignal("answer", rawAnswer, usedShortOfferCode)
       : null;
+
+    let mqttAnswerSent = false;
+    if (rawAnswer && usedShortOfferCode && (!shortAnswer || usedMqtt)) {
+      mqttAnswerSent = await this._publishMqttAnswer(usedShortOfferCode, rawAnswer);
+    }
+
+    let sentLocalChannel = false;
+    if (rawAnswer && usedShortOfferCode && typeof BroadcastChannel !== "undefined") {
+      try {
+        const ch = new BroadcastChannel("arena_hero_p2p_v1");
+        ch.postMessage({ kind: "P2P_ANSWER_DATA", forCode: usedShortOfferCode, payload: rawAnswer });
+        ch.close();
+        sentLocalChannel = true;
+      } catch {
+      }
+    }
+
     const answerCode = shortAnswer || rawAnswer;
-    return { answerCode, rawAnswerCode: rawAnswer };
+    return {
+      answerCode,
+      rawAnswerCode: rawAnswer,
+      usedShortOfferCode,
+      autoPairedViaMqtt: Boolean(mqttAnswerSent && usedShortOfferCode),
+      autoPairedViaServer: Boolean((shortAnswer || mqttAnswerSent) && usedShortOfferCode),
+      autoPairedViaLocal: sentLocalChannel,
+    };
   }
 
   isConnected() {
@@ -858,19 +1493,21 @@ class MultiplayerClient {
       return { mode: "p2p", ...p2pRes };
     }
 
-    const protocol = typeof window !== "undefined" ? window.location?.protocol || "http:" : "http:";
-    const hasCustomServer = Boolean(this._getEffectiveOverrideUrl());
-    if (isLocalFileProtocol(protocol) && !hasCustomServer) {
-      throw new Error(
-        "Bạn đang mở file HTML tải về máy (không có máy chủ web). Để vào phòng bạn bè từ file này, hãy dán Mã Mời P2P (AH1...) hoặc nhập Link máy chủ."
-      );
+    if (isSixDigitCode(classified.normalized)) {
+      const localChannelOffer = !this.getHttpBaseResult().ok
+        ? await this._lookupLocalOfferViaChannel(classified.normalized)
+        : null;
+      if (localChannelOffer && localChannelOffer.payload) {
+        const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: localChannelOffer });
+        return { mode: "p2p", ...p2pRes };
+      }
     }
 
     if (isSixDigitCode(classified.normalized) && this.getHttpBaseResult().ok) {
       const p2pSignal = await this._fetchP2PSignal(classified.normalized, { optional: true });
       if (p2pSignal) {
         if (p2pSignal.kind === "answer") {
-          throw new Error("Mã 6 số này là Mã Phản Hồi P2P. Chỉ Chủ phòng mới dán mã này ở ô Ghép Đôi trong phòng P2P!");
+          throw new Error("Mã 6 số này là Mã Phản Hồi P2P. Chỉ Chủ phòng mới dán mã này khi ghép thủ công!");
         }
         if (p2pSignal.kind === "offer" && p2pSignal.payload) {
           const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: p2pSignal });
@@ -879,13 +1516,35 @@ class MultiplayerClient {
       }
     }
 
+    const protocol = typeof window !== "undefined" ? window.location?.protocol || "http:" : "http:";
+    const hasCustomServer = Boolean(this._getEffectiveOverrideUrl());
+    if (isLocalFileProtocol(protocol) && !hasCustomServer) {
+      if (isSixDigitCode(classified.normalized)) {
+        const mqttOffer = await this._lookupMqttOffer(classified.normalized, 3800);
+        if (mqttOffer && mqttOffer.payload) {
+          const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: mqttOffer });
+          return { mode: "p2p", ...p2pRes };
+        }
+      }
+      throw new Error(
+        "Không tìm thấy phòng 6 số này qua mạng. Hãy kiểm tra lại mã 6 số, mở cùng link WiFi/Server hoặc dán Mã Thủ Công (AH1...) ở chế độ Offline."
+      );
+    }
+
     try {
       await this._ensureSend({ type: "JOIN_ROOM", roomId: classified.normalized, playerName, heroId });
       return { mode: "server", room: this.room };
     } catch (err) {
+      if (isSixDigitCode(classified.normalized)) {
+        const mqttOffer = await this._lookupMqttOffer(classified.normalized, 3600);
+        if (mqttOffer && mqttOffer.payload) {
+          const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: mqttOffer });
+          return { mode: "p2p", ...p2pRes };
+        }
+      }
       throw new Error(
         err?.message ||
-          "Không thể kết nối máy chủ Co-op để tìm mã 6 số. Nếu chơi qua file HTML tải về máy, hãy dán Mã Mời P2P (AH1...) từ Chủ phòng."
+          "Không thể tìm thấy phòng mã 6 số. Nếu chơi qua file HTML offline, hãy mở mục Chế độ thủ công (AH1...)."
       );
     }
   }

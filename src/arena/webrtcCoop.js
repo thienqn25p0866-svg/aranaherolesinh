@@ -129,6 +129,15 @@ function sanitizeName(raw, fallbackIndex = 1) {
   return cleaned || `Chiến Binh ${fallbackIndex}`;
 }
 
+function generateRandomSixDigitCode() {
+  if (typeof globalThis !== "undefined" && globalThis.crypto?.getRandomValues) {
+    const arr = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(arr);
+    return String(arr[0] % 1000000).padStart(6, "0");
+  }
+  return String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
+}
+
 export class P2PRoomHost {
   constructor({ hostName, heroId, onLocalEvent, onPeersChanged }) {
     this.hostId = `p2p_${Math.random().toString(36).slice(2, 10)}`;
@@ -139,9 +148,10 @@ export class P2PRoomHost {
     this.syncRetryTimer = null;
 
     const pos = getSpawnPosition(0);
-    const codeSuffix = String(Math.floor(100000 + Math.random() * 900000));
+    const codeSuffix = generateRandomSixDigitCode();
     this.room = {
-      id: `P2-${codeSuffix}`,
+      id: codeSuffix,
+      isP2P: true,
       status: "LOBBY",
       hostId: this.hostId,
       players: new Map([
@@ -231,6 +241,7 @@ export class P2PRoomHost {
     const displayCount = this.room.status === "PLAYING" ? this.room.matchPlayerCount : Math.max(1, members.length);
     return {
       roomId: this.room.id,
+      isP2P: true,
       status: this.room.status,
       hostId: this.room.hostId,
       maxPlayers: MAX_PLAYERS,
@@ -269,9 +280,19 @@ export class P2PRoomHost {
   }
 
   broadcastRoom(data, excludePlayerId) {
+    // Send to remote peers FIRST so synchronous local host reactions (e.g. WAVE_STARTED -> SPAWN_ENEMIES)
+    // cannot overtake the outer broadcast packet on peer data channels.
+    let sendHost = false;
     for (const pid of this.room.players.keys()) {
       if (excludePlayerId && pid === excludePlayerId) continue;
+      if (pid === this.hostId) {
+        sendHost = true;
+        continue;
+      }
       this.sendToPlayer(pid, data);
+    }
+    if (sendHost) {
+      this.sendToPlayer(this.hostId, data);
     }
   }
 
@@ -302,6 +323,7 @@ export class P2PRoomHost {
     if (this.room.enemies.size > 0) {
       this.sendToPlayer(targetId, {
         type: "ENEMIES_SPAWNED",
+        wave: this.room.wave,
         enemies: Array.from(this.room.enemies.values()),
         waveSpawned: this.room.waveSpawned,
         waveTotal: this.room.waveTotal,
@@ -825,6 +847,7 @@ export class P2PRoomHost {
         this.broadcastRoom(
           {
             type: "ENEMIES_SPAWNED",
+            wave: this.room.wave,
             enemies: added,
             waveSpawned: this.room.waveSpawned,
             waveTotal: this.room.waveTotal,
@@ -906,15 +929,41 @@ export class P2PRoomHost {
 
     if (msg.type === "WORLD_SNAPSHOT") {
       if (playerId !== this.hostId) return;
+      if (typeof msg.wave === "number" && msg.wave !== this.room.wave) return;
       if (typeof msg.waveSpawned === "number") {
         this.room.waveSpawned = Math.max(this.room.waveSpawned, msg.waveSpawned);
       }
       const syncedEnemies = [];
+      const seenIds = new Set();
       if (Array.isArray(msg.enemies)) {
         for (const e of msg.enemies) {
           if (!e || typeof e.id !== "number") continue;
-          const serverEnemy = this.room.enemies.get(e.id);
-          if (!serverEnemy || serverEnemy.hp <= 0) continue;
+          seenIds.add(e.id);
+          let serverEnemy = this.room.enemies.get(e.id);
+          if (!serverEnemy) {
+            const snapHp = Math.round(Number(e.hp) || 0);
+            if (snapHp <= 0) continue;
+            serverEnemy = {
+              id: e.id,
+              kind: String(e.kind || "minion"),
+              bossWave: e.bossWave ? Number(e.bossWave) : undefined,
+              name: String(e.name || "Quái"),
+              x: Number(e.x) || 1000,
+              y: Number(e.y) || 700,
+              radius: Number(e.radius) || 18,
+              hp: Math.max(1, snapHp),
+              maxHp: Math.max(1, Math.round(Number(e.maxHp) || snapHp || 100)),
+              damage: Math.max(1, Math.round(Number(e.damage) || 20)),
+              speed: Number(e.speed) || 110,
+              xpValue: Math.max(1, Math.round(Number(e.xpValue) || 24)),
+              color: String(e.color || "#22C55E"),
+              accentColor: e.accentColor ? String(e.accentColor) : undefined,
+              facing: Number(e.facing) || 0,
+              phase: Number(e.phase) || 1,
+            };
+            this.room.enemies.set(serverEnemy.id, serverEnemy);
+          }
+          if (serverEnemy.hp <= 0) continue;
           serverEnemy.x = Number(e.x) || serverEnemy.x;
           serverEnemy.y = Number(e.y) || serverEnemy.y;
           serverEnemy.facing = Number(e.facing) || 0;
@@ -929,6 +978,15 @@ export class P2PRoomHost {
 
           syncedEnemies.push({
             id: serverEnemy.id,
+            kind: serverEnemy.kind,
+            bossWave: serverEnemy.bossWave,
+            name: serverEnemy.name,
+            radius: serverEnemy.radius,
+            color: serverEnemy.color,
+            accentColor: serverEnemy.accentColor,
+            speed: serverEnemy.speed,
+            damage: serverEnemy.damage,
+            xpValue: serverEnemy.xpValue,
             x: Math.round(serverEnemy.x * 10) / 10,
             y: Math.round(serverEnemy.y * 10) / 10,
             facing: Math.round(serverEnemy.facing * 100) / 100,
@@ -946,6 +1004,14 @@ export class P2PRoomHost {
         }
       }
 
+      if (msg.fullList === true) {
+        for (const existingId of this.room.enemies.keys()) {
+          if (!seenIds.has(existingId)) {
+            this.room.enemies.delete(existingId);
+          }
+        }
+      }
+
       this.broadcastRoom(
         {
           type: "WORLD_SYNC",
@@ -953,6 +1019,7 @@ export class P2PRoomHost {
           waveTotal: this.room.waveTotal,
           waveSpawned: this.room.waveSpawned,
           waveKilled: this.room.waveKilled,
+          fullList: Boolean(msg.fullList),
           enemies: syncedEnemies,
           bossWarnings: Array.isArray(msg.bossWarnings) ? msg.bossWarnings : [],
           bossBeams: Array.isArray(msg.bossBeams) ? msg.bossBeams : [],
@@ -1042,10 +1109,53 @@ export class P2PRoomHost {
           type: "REMOTE_VFX",
           playerId,
           heroId: player.heroId,
-          events: msg.events.slice(0, 24),
+          events: msg.events.slice(0, 48),
         },
         playerId
       );
+      return;
+    }
+
+    if (msg.type === "ALLY_SUPPORT") {
+      if (!player.alive) return;
+      this.broadcastRoom(
+        {
+          type: "ALLY_SUPPORT",
+          fromPlayerId: playerId,
+          fromName: player.name,
+          x: Number(msg.x) || player.x,
+          y: Number(msg.y) || player.y,
+          radius: Math.max(40, Math.min(600, Number(msg.radius) || 220)),
+          heal: Math.max(0, Math.min(50000, Math.round(Number(msg.heal) || 0))),
+          shield: Math.max(0, Math.min(50000, Math.round(Number(msg.shield) || 0))),
+          label: typeof msg.label === "string" ? msg.label.slice(0, 40) : "",
+          color: typeof msg.color === "string" ? msg.color.slice(0, 20) : "#10B981",
+        },
+        playerId
+      );
+      return;
+    }
+
+    if (msg.type === "REVIVE_PLAYER") {
+      if (!player.alive) return;
+      const targetId = typeof msg.targetPlayerId === "string" ? msg.targetPlayerId : "";
+      const target = this.room.players.get(targetId);
+      if (!target || target.alive) return;
+      target.alive = true;
+      target.hp = Math.max(1, Math.round((target.maxHp || 900) * 0.45));
+      target.shield = Math.max(target.shield || 0, Math.round((target.maxHp || 900) * 0.2));
+      this.broadcastRoom({
+        type: "PLAYER_REVIVED",
+        targetPlayerId: target.id,
+        targetName: target.name,
+        byPlayerId: player.id,
+        byName: player.name,
+        hp: target.hp,
+        shield: target.shield,
+        x: target.x,
+        y: target.y,
+        room: this.serializeRoom(),
+      });
       return;
     }
 

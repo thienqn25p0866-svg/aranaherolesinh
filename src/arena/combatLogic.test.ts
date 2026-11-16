@@ -278,11 +278,14 @@ test('isPrivateOrDevOrigin and classifyJoinCode handle downloaded HTML origins a
       __ARENA_API_URL__: 'https://ais-dev-blocked.asia-east1.run.app',
     };
     const { mpClient } = await import('./multiplayerClient.js');
-    assert.equal(mpClient.getCustomServerUrl(), '');
-    const res = await mpClient.createRoom('MobileHero', 'tin');
-    assert.equal(res.mode, 'p2p');
-    assert.ok(res.room?.roomId?.startsWith('P2-'));
-    mpClient.leaveRoom();
+    try {
+      assert.equal(mpClient.getCustomServerUrl(), '');
+      const res = await mpClient.createRoom('MobileHero', 'tin');
+      assert.equal(res.mode, 'p2p');
+      assert.match(res.room?.roomId || '', /^\d{6}$/);
+    } finally {
+      mpClient.disconnect();
+    }
   } finally {
     (globalThis as any).window = prevWindow;
   }
@@ -795,4 +798,215 @@ test('Joystick drag radius scales ergonomically between compact portrait (116px)
   assert.equal(computeJoystickDragRadius(80), 28);
   assert.equal(computeJoystickDragRadius(0), 42);
 });
+
+test('P2PRoomHost generates uniform 6-digit room IDs and GameEngine syncs Boss, revive, support, and teammate VFX', async () => {
+  const { P2PRoomHost } = await import('./webrtcCoop.js');
+  for (let i = 0; i < 6; i++) {
+    const h = new P2PRoomHost({
+      hostName: `Host${i}`,
+      heroId: 'tin',
+      onLocalEvent: () => {},
+      onPeersChanged: () => {},
+    });
+    h.start();
+    const serialized = h.serializeRoom();
+    assert.match(serialized.roomId, /^\d{6}$/, `Expected 6-digit roomId, got ${serialized.roomId}`);
+    h.destroy();
+  }
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const createMockCtx = () => {
+    const gradient = { addColorStop() {} };
+    const noop = () => {};
+    return {
+      save: noop,
+      restore: noop,
+      translate: noop,
+      rotate: noop,
+      scale: noop,
+      beginPath: noop,
+      closePath: noop,
+      arc: noop,
+      ellipse: noop,
+      rect: noop,
+      moveTo: noop,
+      lineTo: noop,
+      quadraticCurveTo: noop,
+      bezierCurveTo: noop,
+      fill: noop,
+      stroke: noop,
+      fillRect: noop,
+      strokeRect: noop,
+      fillText: noop,
+      strokeText: noop,
+      setLineDash: noop,
+      createLinearGradient: () => gradient,
+      createRadialGradient: () => gradient,
+      measureText: () => ({ width: 20 }),
+      fillStyle: '#000',
+      strokeStyle: '#000',
+      lineWidth: 1,
+      globalAlpha: 1,
+      shadowBlur: 0,
+      shadowColor: '#000',
+      font: '12px sans-serif',
+      textAlign: 'center',
+      textBaseline: 'middle',
+      lineCap: 'round',
+      lineJoin: 'round',
+    };
+  };
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    (globalThis as any).localStorage = {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { mpClient } = await import('./multiplayerClient.js');
+    const { Mi } = await import('./gameData.js');
+
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => createMockCtx(),
+    };
+
+    const engine = new GameEngine(mockCanvas);
+    mpClient.playerId = 'peer_p2';
+    mpClient.room = {
+      roomId: '482915',
+      hostId: 'host_p1',
+      playerCount: 2,
+      powerMultiplier: 1.5,
+      members: [
+        { id: 'host_p1', name: 'HostHero', heroId: 'eohyen', slot: 0, isHost: true },
+        { id: 'peer_p2', name: 'PeerHero', heroId: 'tin', slot: 1, isHost: false },
+      ],
+    };
+
+    try {
+      // 1) Pre-match sync buffering before startCoopMatch() activates multiplayer
+      engine.handleMultiplayerMessage({
+        type: 'WORLD_SYNC',
+        wave: 3,
+        waveTotal: 11,
+        waveSpawned: 11,
+        waveKilled: 10,
+        fullList: true,
+        enemies: [
+          {
+            id: 901,
+            kind: 'boss',
+            bossWave: 3,
+            name: 'Hộ Vệ Cổ Thụ',
+            x: 1600,
+            y: 1200,
+            facing: 0.4,
+            hp: 4200,
+            maxHp: 5000,
+            phase: 2,
+            // Deliberately omit radius to verify fallback + drawBossEntity guard
+          },
+        ],
+      });
+      assert.equal(engine.multiplayer.pendingSyncMessages.length, 1);
+
+      const tinHero = Mi.find((h: any) => h.id === 'tin');
+      engine.startCoopMatch(tinHero, mpClient.room, {
+        host_p1: { x: 1400, y: 1400 },
+        peer_p2: { x: 1500, y: 1400 },
+      });
+
+      assert.equal(engine.wave, 3, 'Buffered WORLD_SYNC must catch non-host up to wave 3');
+      const syncedBoss = engine.enemies.find((e: any) => e.id === 901);
+      assert.ok(syncedBoss, 'Non-host must see the Boss replayed from buffered WORLD_SYNC');
+      assert.equal(syncedBoss.kind, 'boss');
+      assert.equal(syncedBoss.radius, 46);
+      assert.doesNotThrow(() => engine.drawBossEntity({ ...syncedBoss, radius: 0 }));
+
+      // 2) fullList=true WORLD_SYNC prunes stale enemies that died/despawned on host
+      engine.enemies.push({ id: 9999, kind: 'minion', x: 100, y: 100, radius: 18, hp: 50, maxHp: 50 });
+      engine.handleMultiplayerMessage({
+        type: 'WORLD_SYNC',
+        wave: 3,
+        fullList: true,
+        enemies: [
+          { id: 901, kind: 'boss', bossWave: 3, x: 1620, y: 1210, facing: 0.5, hp: 3800, maxHp: 5000, radius: 46, phase: 2 },
+        ],
+      });
+      assert.equal(engine.enemies.some((e: any) => e.id === 9999), false, 'Stale enemy should be pruned when fullList is true');
+      assert.equal(engine.enemies.length, 1);
+
+      // 3) Remote VFX creates visual-only crystals/pillars and detonates remote Luan portals safely
+      engine.applyRemoteVfx('tin', [
+        { type: 'tin_crystal_vis', x: 1520, y: 1410, radius: 44 },
+        { type: 'eohyen_pillar_vis', ownerId: 'host_p1', x: 1540, y: 1420, size: 18 },
+        { type: 'luan_portal_vis', x: 1560, y: 1430 },
+      ]);
+      assert.equal(engine.tinCrystals.length, 1);
+      assert.equal(engine.tinCrystals[0].visualOnly, true);
+      assert.equal(engine.icePillars.length, 1);
+      assert.equal(engine.icePillars[0].visualOnly, true);
+      assert.equal(engine.luanPortals.length, 1);
+      assert.equal(engine.luanPortals[0].visualOnly, true);
+
+      engine.applyRemoteVfx('luan', [{ type: 'luan_portal_detonate_vis' }]);
+      assert.equal(engine.luanPortals.length, 0);
+
+      // 4) ALLY_SUPPORT and PLAYER_REVIVED restore teammate HP/shield
+      engine.player.hp = 400;
+      engine.handleMultiplayerMessage({
+        type: 'ALLY_SUPPORT',
+        byPlayerId: 'host_p1',
+        x: 1510,
+        y: 1410,
+        radius: 260,
+        heal: 200,
+        shield: 120,
+        label: '+200 HP',
+      });
+      assert.ok(engine.player.hp > 400);
+      assert.ok(engine.player.shield > 0);
+
+      engine.multiplayer.localDowned = true;
+      engine.player.hp = 0;
+      engine.handleMultiplayerMessage({
+        type: 'PLAYER_REVIVED',
+        targetPlayerId: 'peer_p2',
+        reviverName: 'HostHero',
+        hpRatio: 0.45,
+      });
+      assert.equal(engine.multiplayer.localDowned, false);
+      assert.ok(engine.player.hp >= Math.round(engine.player.maxHp * 0.45) - 1);
+
+      engine.stopCoopMode();
+    } finally {
+      mpClient.disconnect();
+      mpClient.room = null;
+      mpClient.playerId = null;
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
 
