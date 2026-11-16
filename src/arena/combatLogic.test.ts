@@ -969,11 +969,12 @@ test('P2PRoomHost generates uniform 6-digit room IDs and GameEngine syncs Boss, 
       engine.applyRemoteVfx('luan', [{ type: 'luan_portal_detonate_vis' }]);
       assert.equal(engine.luanPortals.length, 0);
 
-      // 4) ALLY_SUPPORT and PLAYER_REVIVED restore teammate HP/shield
+      // 4) ALLY_SUPPORT (both fromPlayerId and byPlayerId) and PLAYER_REVIVED restore teammate HP/shield
+      if (!engine.player) throw new Error('Expected engine.player to be initialized');
       engine.player.hp = 400;
       engine.handleMultiplayerMessage({
         type: 'ALLY_SUPPORT',
-        byPlayerId: 'host_p1',
+        fromPlayerId: 'host_p1',
         x: 1510,
         y: 1410,
         radius: 260,
@@ -983,6 +984,24 @@ test('P2PRoomHost generates uniform 6-digit room IDs and GameEngine syncs Boss, 
       });
       assert.ok(engine.player.hp > 400);
       assert.ok(engine.player.shield > 0);
+
+      // 5) Out-of-order WAVE_STARTED for the current wave must NOT wipe an already-synced Boss on Peer
+      engine.handleMultiplayerMessage({ type: 'WAVE_STARTED', wave: 3 });
+      assert.equal(engine.enemies.some((e: any) => e.id === 901 && e.kind === 'boss'), true);
+
+      // 6) Boss hazard/callout VFX events sync cleanly and deduplicate hazard IDs
+      engine.applyRemoteVfx('eohyen', [
+        { type: 'boss_callout', x: 1620, y: 1150, text: 'TEST BOSS SKILL', color: '#EF4444', size: 16 },
+        { type: 'boss_warn', id: 701, x: 1500, y: 1400, radius: 90, duration: 0.9, damage: 120, kind: 'meteor', color: '#EF4444' },
+        { type: 'boss_warn', id: 701, x: 1500, y: 1400, radius: 90, duration: 0.9, damage: 120, kind: 'meteor', color: '#EF4444' },
+        { type: 'boss_beam', id: 702, x1: 1400, y1: 1400, x2: 1700, y2: 1400, width: 42, duration: 0.8, damage: 140 },
+        { type: 'boss_ring', id: 703, x: 1620, y: 1210, maxRadius: 340, speed: 420, damage: 110 },
+        { type: 'particles', x: 1520, y: 1410, color: '#FBBF24', count: 6 },
+        { type: 'explosion', x: 1520, y: 1410, maxRadius: 80, color: '#F97316' },
+      ]);
+      assert.equal(engine.bossWarnings.length, 1);
+      assert.equal(engine.bossBeams.length, 1);
+      assert.equal(engine.bossShockRings.length, 1);
 
       engine.multiplayer.localDowned = true;
       engine.player.hp = 0;

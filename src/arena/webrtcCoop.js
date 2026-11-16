@@ -4,6 +4,8 @@ const MAX_PLAYERS = 4;
 const RTC_ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:stun.cloudflare.com:3478" },
 ];
 
 function bytesToBase64Url(bytes) {
@@ -69,7 +71,7 @@ export async function decodeSignalPayload(rawText) {
   throw new Error("Mã kết nối P2P không hợp lệ. Hãy sao chép nguyên vẹn mã bắt đầu bằng AH1...");
 }
 
-function waitForIceComplete(pc, timeoutMs = 1500) {
+function waitForIceComplete(pc, timeoutMs = 2200) {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
   return new Promise((resolve) => {
     let done = false;
@@ -95,10 +97,10 @@ function waitForIceComplete(pc, timeoutMs = 1500) {
       const isRelayOrSrflx = ev.candidate.type === "srflx" || ev.candidate.type === "relay" || /\btyp (srflx|relay)\b/.test(candStr);
       if (isRelayOrSrflx) {
         if (softTimer) clearTimeout(softTimer);
-        softTimer = setTimeout(finish, 180);
+        softTimer = setTimeout(finish, 150);
       } else if (!softTimer) {
-        // Give STUN up to 700ms after the first host candidate so mobile/cross-network peers get srflx
-        softTimer = setTimeout(finish, 700);
+        // Give STUN up to 650ms after the first host candidate so mobile/WiFi peers get srflx/LAN candidates
+        softTimer = setTimeout(finish, 650);
       }
     };
     const timer = setTimeout(finish, timeoutMs);
@@ -1109,7 +1111,7 @@ export class P2PRoomHost {
           type: "REMOTE_VFX",
           playerId,
           heroId: player.heroId,
-          events: msg.events.slice(0, 48),
+          events: msg.events.slice(0, 120),
         },
         playerId
       );

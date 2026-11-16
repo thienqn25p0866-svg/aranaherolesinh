@@ -173,20 +173,20 @@ export function MultiplayerLobbyModal({
                     <>
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="text-xs font-moba font-extrabold text-sky-200">
-                          ⏳ {isVi ? "Đang tự động ghép đôi vào phòng 6 số..." : "Auto-pairing into 6-digit room..."}
+                          ⏳ {isVi ? "Đang tự động ghép đôi bằng mã 6 số..." : "Auto-pairing with 6-digit code..."}
                         </div>
                         <button
                           type="button"
                           onClick={() => setShowManualP2P((v) => !v)}
                           className="text-[11px] font-moba font-bold text-cyan-300 underline"
                         >
-                          {showManualP2P ? (isVi ? "Ẩn mã thủ công" : "Hide manual code") : (isVi ? "Sao chép mã thủ công" : "Show manual code")}
+                          {showManualP2P ? (isVi ? "Ẩn mã thủ công" : "Hide manual") : (isVi ? "Mã thủ công (nếu kẹt)" : "Manual code")}
                         </button>
                       </div>
                       <div className="text-[11px] text-amber-200 leading-relaxed">
                         {isVi
-                          ? "Hệ thống đã gửi phản hồi cho Chủ phòng. Chờ vài giây sẽ TỰ ĐỘNG vào phòng chọn tướng!"
-                          : "Response sent automatically to Host. You will enter the room shortly!"}
+                          ? "Đã tìm thấy phòng của Chủ phòng và gửi tín hiệu kết nối. Chờ 1–3 giây sẽ tự động vào phòng!"
+                          : "Found Host room and sent handshake. Entering lobby shortly!"}
                       </div>
                       {showManualP2P && (
                         <div className="flex items-center gap-2 pt-1">
@@ -211,8 +211,8 @@ export function MultiplayerLobbyModal({
                       <div className="text-xs font-moba font-extrabold text-sky-200">
                         ✓{" "}
                         {isVi
-                          ? "Đã tạo Mã Phản Hồi Offline! Sao chép gửi lại cho Chủ Phòng:"
-                          : "Offline Reply Code Ready! Copy and send back to Host:"}
+                          ? "Chế độ Offline hoàn toàn: Gửi Mã Phản Hồi dưới đây lại cho Chủ Phòng:"
+                          : "Offline Manual Mode: Copy & send Reply Code back to Host:"}
                       </div>
                       <div className="flex items-center gap-2">
                         <input
@@ -229,48 +229,58 @@ export function MultiplayerLobbyModal({
                           📋 {isVi ? "SAO CHÉP" : "COPY"}
                         </button>
                       </div>
-                      <div className="text-[11px] text-amber-200 leading-relaxed">
-                        ⏳{" "}
-                        {isVi
-                          ? "Ngay khi Chủ phòng dán mã & bấm 'GHÉP ĐÔI', màn hình bạn sẽ TỰ ĐỘNG vào phòng!"
-                          : "Once Host pastes & clicks Connect Peer, you will automatically enter the room!"}
-                      </div>
                     </>
                   )}
                 </div>
               )}
 
-              {/* Two Options: CREATE ROOM & JOIN ROOM */}
+              {/* Two Options: CREATE ROOM & JOIN ROOM (6-Digit Unified) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* CREATE ROOM */}
                 <div className="rounded-2xl bg-gradient-to-br from-[#10203F] to-[#081022] border border-[#C89B3C]/55 p-4 flex flex-col justify-between gap-3">
                   <div>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-400/40 text-[11px] font-moba font-bold text-amber-300">
-                      👑 {isVi ? "LỰA CHỌN 1" : "OPTION 1"}
+                      👑 {isVi ? "LỰA CHỌN 1 · MÃ 6 SỐ NGẪU NHIÊN" : "OPTION 1 · 6-DIGIT ROOM"}
                     </div>
                     <h3 className="font-moba text-lg font-black text-white mt-2">
-                      {isVi ? "TẠO PHÒNG MỚI" : "CREATE ROOM"}
+                      {isVi ? "TẠO PHÒNG CO-OP" : "CREATE CO-OP ROOM"}
                     </h3>
                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                       {isVi
-                        ? "Tạo phòng ngay lập tức với mã 6 chữ số ngẫu nhiên (hoặc mã P2P Trực Tiếp nếu mở từ file HTML offline)."
-                        : "Creates a room immediately with a random 6-digit code (or Direct P2P when offline)."}
+                        ? "Sinh mã 6 số ngẫu nhiên. Hai máy dùng chung WiFi, khác mạng hay mở từ file .html đều ghép chỉ bằng 6 số này."
+                        : "Generates a random 6-digit code. Works across same WiFi, remote Internet, or downloaded HTML files."}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onCreateRoom}
-                    className="w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-sm font-black tracking-wide disabled:opacity-60"
-                  >
-                    {busy
-                      ? isVi
-                        ? "ĐANG TẠO PHÒNG..."
-                        : "CREATING ROOM..."
-                      : isVi
-                      ? "➕ TẠO PHÒNG NGAY"
-                      : "➕ CREATE ROOM"}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled={busy || p2pBusy}
+                      onClick={onCreateRoom}
+                      className="w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-sm font-black tracking-wide disabled:opacity-60"
+                    >
+                      {busy
+                        ? isVi
+                          ? "ĐANG TẠO PHÒNG..."
+                          : "CREATING ROOM..."
+                        : isVi
+                        ? "➕ TẠO PHÒNG 6 SỐ NGAY"
+                        : "➕ CREATE 6-DIGIT ROOM"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={p2pBusy || busy}
+                      onClick={onStartP2PHost}
+                      className="w-full min-h-[36px] rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/50 text-emerald-200 font-moba text-xs font-extrabold tracking-wide disabled:opacity-60"
+                    >
+                      {p2pBusy
+                        ? isVi
+                          ? "ĐANG KHỞI TẠO P2P 6 SỐ..."
+                          : "STARTING P2P..."
+                        : isVi
+                        ? "⚡ TẠO PHÒNG P2P TRỰC TIẾP (6 SỐ)"
+                        : "⚡ CREATE DIRECT P2P (6-DIGIT)"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* JOIN ROOM */}
@@ -283,36 +293,37 @@ export function MultiplayerLobbyModal({
                 >
                   <div>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-400/40 text-[11px] font-moba font-bold text-cyan-300">
-                      🔎 {isVi ? "LỰA CHỌN 2" : "OPTION 2"}
+                      🔎 {isVi ? "LỰA CHỌN 2 · NHẬP ĐÚNG 6 SỐ" : "OPTION 2 · ENTER 6 DIGITS"}
                     </div>
                     <h3 className="font-moba text-lg font-black text-white mt-2">
-                      {isVi ? "VÀO PHÒNG BẰNG MÃ" : "JOIN ROOM BY CODE"}
+                      {isVi ? "VÀO PHÒNG BẰNG MÃ 6 SỐ" : "JOIN BY 6-DIGIT CODE"}
                     </h3>
                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                       {isVi
-                        ? "Nhập mã chia sẻ 6 số (VD: 482915) từ Chủ phòng hoặc dán mã AH1... nếu chơi offline."
-                        : "Enter a 6-digit room/share code (e.g. 482915) or paste AH1... when offline."}
+                        ? "Nhập mã 6 chữ số từ Chủ phòng (tự động nhận cả phòng Server & phòng P2P qua WiFi/Internet)."
+                        : "Enter the 6-digit code from Host (auto-detects Server & Direct P2P rooms)."}
                     </p>
                     <input
                       type="text"
+                      inputMode="numeric"
                       value={joinCode}
                       onChange={(e) => {
                         const raw = e.target.value;
                         onChangeJoinCode(/^ah1/i.test(raw.trim()) ? raw : raw.toUpperCase());
                       }}
-                      placeholder={isVi ? "VD: 482915" : "e.g. 482915"}
-                      className="mt-2.5 w-full rounded-xl bg-[#050A16] border border-cyan-500/50 focus:border-cyan-300 px-3 py-2.5 text-center font-mono-numbers text-sm sm:text-base font-black tracking-wider text-cyan-200 outline-none"
+                      placeholder={isVi ? "Nhập 6 số · VD: 482915" : "e.g. 482915"}
+                      className="mt-2.5 w-full rounded-xl bg-[#050A16] border border-cyan-500/50 focus:border-cyan-300 px-3 py-2.5 text-center font-mono-numbers text-base sm:text-lg font-black tracking-[0.22em] text-cyan-200 outline-none"
                     />
                   </div>
                   <button
                     type="submit"
-                    disabled={busy || !joinCode.trim()}
+                    disabled={busy || p2pBusy || !joinCode.trim()}
                     className="w-full min-h-[44px] rounded-xl bg-gradient-to-r from-cyan-500 to-sky-600 hover:brightness-110 text-slate-950 font-moba text-sm font-black tracking-wide disabled:opacity-50"
                   >
-                    {busy
+                    {busy || p2pBusy
                       ? isVi
-                        ? "ĐANG TÌM PHÒNG..."
-                        : "JOINING..."
+                        ? "ĐANG TÌM PHÒNG 6 SỐ..."
+                        : "FINDING ROOM..."
                       : isVi
                       ? "🚪 THAM GIA PHÒNG"
                       : "🚪 JOIN ROOM"}
@@ -320,95 +331,65 @@ export function MultiplayerLobbyModal({
                 </form>
               </div>
 
-              {/* Direct P2P Section (Works even on file:// / content:// without a central server) */}
-              <div className="rounded-2xl bg-gradient-to-br from-[#0D1E34] to-[#081020] border border-emerald-500/55 p-4 space-y-3">
+              {/* Collapsed Offline/Manual Fallback */}
+              <div className="rounded-xl bg-[#081122] border border-slate-700/70 px-3.5 py-2.5 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/45 text-[11px] font-moba font-bold text-emerald-300">
-                      🔗 {isVi ? "P2P TRỰC TIẾP · CHƠI TỪ FILE HTML" : "DIRECT P2P · NO SERVER NEEDED"}
-                    </div>
-                    <h3 className="font-moba text-base font-black text-white mt-1.5">
-                      {isVi
-                        ? "KẾT NỐI TRỰC TIẾP VỚI BẠN BÈ (WEBRTC)"
-                        : "DIRECT PEER-TO-PEER CO-OP"}
-                    </h3>
-                    <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
-                      {isVi
-                        ? "Dùng được ngay cả khi bạn và bạn bè đang mở file .html tải về máy hoặc máy chủ web bị chặn."
-                        : "Works even from downloaded HTML files (content:// / file://) when no central server is reachable."}
-                    </p>
-                  </div>
+                  <span className="text-[11px] text-slate-300">
+                    📶{" "}
+                    {isVi
+                      ? "Hai máy chỉ cần nhập mã 6 số ở trên. Chỉ mở mục bên cạnh nếu mất Internet hoàn toàn:"
+                      : "6-digit codes work automatically over WiFi/Internet. Expand only for offline manual pairing:"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualP2P((v) => !v)}
+                    className="min-h-[28px] px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[11px] font-moba font-bold text-slate-200 shrink-0"
+                  >
+                    🔧 {showManualP2P ? (isVi ? "Ẩn nâng cao" : "Hide Advanced") : (isVi ? "Nâng cao / Offline" : "Advanced / Offline")}
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-[#060D1C] border border-emerald-500/35 p-3 flex flex-col justify-between gap-2.5">
-                    <div className="text-xs text-slate-300 leading-relaxed">
-                      <strong className="text-emerald-300">1. {isVi ? "Làm Chủ Phòng:" : "Host a P2P Room:"}</strong>{" "}
-                      {isVi
-                        ? "Tạo phòng và lấy Mã Mời gửi qua Zalo/Messenger cho bạn bè."
-                        : "Create a P2P room and send the Invite Code to your friend."}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={p2pBusy}
-                      onClick={onStartP2PHost}
-                      className="w-full min-h-[42px] rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-60"
-                    >
-                      {p2pBusy
-                        ? isVi
-                          ? "ĐANG KHỞI TẠO P2P..."
-                          : "STARTING P2P..."
-                        : isVi
-                        ? "⚡ TẠO PHÒNG P2P NGAY"
-                        : "⚡ CREATE P2P ROOM"}
-                    </button>
-                  </div>
-
-                  <div className="rounded-xl bg-[#060D1C] border border-sky-500/35 p-3 space-y-2">
-                    <div className="text-xs text-slate-300">
-                      <strong className="text-sky-300">2. {isVi ? "Vào Phòng Bạn Bè:" : "Join Friend's P2P Room:"}</strong>{" "}
-                      {isVi ? "Nhập Mã Chia Sẻ 6 số (hoặc mã AH1...) nhận từ chủ phòng:" : "Enter 6-digit Share Code (or AH1...) from host:"}
-                    </div>
+                {showManualP2P && (
+                  <div className="pt-2 border-t border-slate-800/80 space-y-2">
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={p2pIncomingOffer || ""}
                         onChange={(e) => onChangeP2PIncomingOffer?.(e.target.value)}
-                        placeholder={isVi ? "VD: 482915 hoặc mã AH1..." : "e.g. 482915 or AH1..."}
-                        className="flex-1 min-w-0 rounded-lg bg-[#040812] border border-sky-500/45 focus:border-sky-300 px-2.5 py-2 text-xs font-mono-numbers text-sky-200 outline-none"
+                        placeholder={isVi ? "Dán mã AH1... (khi mất mạng hoàn toàn)" : "Paste AH1... (offline only)"}
+                        className="flex-1 min-w-0 rounded-lg bg-[#040812] border border-sky-500/45 focus:border-sky-300 px-2.5 py-1.5 text-xs font-mono-numbers text-sky-200 outline-none"
                       />
                       <button
                         type="button"
                         disabled={p2pBusy || !(p2pIncomingOffer || "").trim()}
                         onClick={onJoinP2POffer}
-                        className="min-h-[38px] px-3 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-moba text-xs font-black shrink-0 disabled:opacity-50"
+                        className="min-h-[34px] px-3 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-moba text-xs font-black shrink-0 disabled:opacity-50"
                       >
-                        {isVi ? "TẠO MÃ ĐÁP" : "JOIN"}
+                        {isVi ? "GHÉP THỦ CÔNG" : "MANUAL JOIN"}
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {(envInfo?.isFileProtocol || error) && onApplyCustomServerUrl && (
-                  <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] text-slate-400">
-                      {isVi ? "Hoặc dán link web máy chủ (https://...):" : "Or custom server URL:"}
-                    </span>
-                    <input
-                      type="url"
-                      value={customServerUrl || ""}
-                      onChange={(e) => onChangeCustomServerUrl?.(e.target.value)}
-                      placeholder="https://..."
-                      className="flex-1 min-w-[180px] rounded-lg bg-[#050A16] border border-slate-700 focus:border-amber-400 px-2.5 py-1.5 text-xs text-slate-100 outline-none"
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={onApplyCustomServerUrl}
-                      className="min-h-[32px] px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[11px] font-moba font-bold text-amber-300"
-                    >
-                      {isVi ? "KẾT NỐI LINK" : "CONNECT"}
-                    </button>
+                    {onApplyCustomServerUrl && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] text-slate-400">
+                          {isVi ? "Link máy chủ WiFi (tuỳ chọn):" : "Custom server URL:"}
+                        </span>
+                        <input
+                          type="url"
+                          value={customServerUrl || ""}
+                          onChange={(e) => onChangeCustomServerUrl?.(e.target.value)}
+                          placeholder="https://..."
+                          className="flex-1 min-w-[160px] rounded-lg bg-[#050A16] border border-slate-700 focus:border-amber-400 px-2.5 py-1.5 text-xs text-slate-100 outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={onApplyCustomServerUrl}
+                          className="min-h-[30px] px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[11px] font-moba font-bold text-amber-300"
+                        >
+                          {isVi ? "KẾT NỐI" : "CONNECT"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -44,10 +44,10 @@ class MultiplayerClient {
     this.p2pLatestRawOffer = "";
     this.p2pServerShortCode = "";
     this.p2pHandledAnswers = new Set();
-    this.p2pMqttWs = null;
+    this.p2pMqttSockets = [];
     this.p2pMqttPingTimer = null;
-    this.p2pMqttBrokerIdx = 0;
     this.p2pMqttRoomCode = "";
+    this.p2pMqttPendingCleanup = new Set();
     this.playerId = null;
     this.room = null;
     this.connected = false;
@@ -644,18 +644,20 @@ class MultiplayerClient {
       clearInterval(this.p2pMqttPingTimer);
       this.p2pMqttPingTimer = null;
     }
-    if (this.p2pMqttWs) {
-      try {
-        if (this.p2pMqttWs.readyState === WebSocket.OPEN) {
-          if (isSixDigitCode(this.p2pMqttRoomCode)) {
-            this.p2pMqttWs.send(this._mqttEncodePublish(this._mqttOfferTopic(this.p2pMqttRoomCode), "", true));
+    if (Array.isArray(this.p2pMqttSockets) && this.p2pMqttSockets.length > 0) {
+      for (const ws of this.p2pMqttSockets) {
+        try {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            if (isSixDigitCode(this.p2pMqttRoomCode)) {
+              ws.send(this._mqttEncodePublish(this._mqttOfferTopic(this.p2pMqttRoomCode), "", true));
+            }
+            ws.send(Uint8Array.of(0xe0, 0x00));
           }
-          this.p2pMqttWs.send(Uint8Array.of(0xe0, 0x00));
+        } catch {
         }
-      } catch {
+        this._cleanupSocket(ws);
       }
-      this._cleanupSocket(this.p2pMqttWs);
-      this.p2pMqttWs = null;
+      this.p2pMqttSockets = [];
     }
     this.p2pMqttRoomCode = "";
     if (this.p2pChannel) {
@@ -681,6 +683,7 @@ class MultiplayerClient {
   _mqttBrokers() {
     return [
       "wss://broker.emqx.io:8084/mqtt",
+      "wss://test.mosquitto.org:8081/mqtt",
       "wss://broker.hivemq.com:8884/mqtt",
     ];
   }
@@ -896,21 +899,21 @@ class MultiplayerClient {
     });
   }
 
-  async _openMqttConnection() {
+  async _openAllMqttConnections(timeoutMs = 5500) {
     if (typeof WebSocket === "undefined" || (typeof navigator !== "undefined" && navigator.onLine === false)) {
-      return null;
+      return [];
     }
     const brokers = this._mqttBrokers();
-    for (let i = 0; i < brokers.length; i++) {
-      const idx = (this.p2pMqttBrokerIdx + i) % brokers.length;
-      try {
-        const conn = await this._openMqttSocket(brokers[idx], 2600);
-        this.p2pMqttBrokerIdx = idx;
-        return conn;
-      } catch {
+    const settled = await Promise.allSettled(
+      brokers.map((url) => this._openMqttSocket(url, timeoutMs))
+    );
+    const openConns = [];
+    for (const res of settled) {
+      if (res.status === "fulfilled" && res.value) {
+        openConns.push(res.value);
       }
     }
-    return null;
+    return openConns;
   }
 
   async _startMqttSignalingHost(roomCode, offerPayload) {
@@ -919,46 +922,55 @@ class MultiplayerClient {
       clearInterval(this.p2pMqttPingTimer);
       this.p2pMqttPingTimer = null;
     }
-    if (this.p2pMqttWs) {
-      this._cleanupSocket(this.p2pMqttWs);
-      this.p2pMqttWs = null;
+    if (Array.isArray(this.p2pMqttSockets) && this.p2pMqttSockets.length > 0) {
+      for (const oldWs of this.p2pMqttSockets) {
+        this._cleanupSocket(oldWs);
+      }
+      this.p2pMqttSockets = [];
     }
 
-    const conn = await this._openMqttConnection();
-    if (!conn || this.transportMode !== "p2p_host" || !this.p2pHost) {
-      if (conn) this._cleanupSocket(conn.ws);
+    const conns = await this._openAllMqttConnections(6000);
+    if (conns.length === 0 || this.transportMode !== "p2p_host" || !this.p2pHost) {
+      for (const conn of conns) this._cleanupSocket(conn.ws);
       return false;
     }
 
-    this.p2pMqttWs = conn.ws;
     this.p2pMqttRoomCode = roomCode;
     const answerTopic = this._mqttAnswerTopic(roomCode);
     const offerTopic = this._mqttOfferTopic(roomCode);
+    const activeSockets = [];
 
-    conn.onPackets = (packets) => {
-      for (const pkt of packets) {
-        if (pkt.type === 3 && pkt.topic === answerTopic && pkt.payload) {
-          if (pkt.payload.startsWith("AH1") || pkt.payload.startsWith("{")) {
-            this._handleIncomingP2PAnswer(pkt.payload).catch(() => {});
+    for (const conn of conns) {
+      conn.onPackets = (packets) => {
+        for (const pkt of packets) {
+          if (pkt.type === 3 && pkt.topic === answerTopic && pkt.payload) {
+            if (pkt.payload.startsWith("AH1") || pkt.payload.startsWith("{")) {
+              this._handleIncomingP2PAnswer(pkt.payload).catch(() => {});
+            }
           }
         }
+      };
+      try {
+        conn.ws.send(this._mqttEncodeSubscribe(1, answerTopic));
+        conn.ws.send(this._mqttEncodePublish(offerTopic, offerPayload, true));
+        activeSockets.push(conn.ws);
+      } catch {
+        this._cleanupSocket(conn.ws);
       }
-    };
+    }
 
-    try {
-      conn.ws.send(this._mqttEncodeSubscribe(1, answerTopic));
-      conn.ws.send(this._mqttEncodePublish(offerTopic, offerPayload, true));
-    } catch {
-      this._cleanupSocket(conn.ws);
-      if (this.p2pMqttWs === conn.ws) this.p2pMqttWs = null;
+    if (activeSockets.length === 0) {
       return false;
     }
 
+    this.p2pMqttSockets = activeSockets;
     this.p2pMqttPingTimer = setInterval(() => {
-      if (this.p2pMqttWs && this.p2pMqttWs.readyState === WebSocket.OPEN) {
-        try {
-          this.p2pMqttWs.send(Uint8Array.of(0xc0, 0x00));
-        } catch {
+      for (const ws of this.p2pMqttSockets) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          try {
+            ws.send(Uint8Array.of(0xc0, 0x00));
+          } catch {
+          }
         }
       }
     }, 20000);
@@ -968,75 +980,114 @@ class MultiplayerClient {
 
   async _publishMqttOffer(roomCode, offerPayload) {
     if (!isSixDigitCode(roomCode) || !offerPayload) return false;
-    if (this.p2pMqttWs && this.p2pMqttWs.readyState === WebSocket.OPEN && this.p2pMqttRoomCode === roomCode) {
-      try {
-        this.p2pMqttWs.send(this._mqttEncodePublish(this._mqttOfferTopic(roomCode), offerPayload, true));
-        return true;
-      } catch {
+    const openSockets = (this.p2pMqttSockets || []).filter((ws) => ws && ws.readyState === WebSocket.OPEN);
+    if (openSockets.length > 0 && this.p2pMqttRoomCode === roomCode) {
+      let sentAny = false;
+      const offerTopic = this._mqttOfferTopic(roomCode);
+      for (const ws of openSockets) {
+        try {
+          ws.send(this._mqttEncodePublish(offerTopic, offerPayload, true));
+          sentAny = true;
+        } catch {
+        }
       }
+      if (sentAny) return true;
     }
     return await this._startMqttSignalingHost(roomCode, offerPayload);
   }
 
-  async _lookupMqttOffer(code, timeoutMs = 3600) {
+  async _lookupMqttOffer(code, timeoutMs = 5500) {
     const clean = String(code || "").trim().replace(/\s+/g, "");
     if (!isSixDigitCode(clean)) return null;
-    const conn = await this._openMqttConnection();
-    if (!conn) return null;
+    if (typeof WebSocket === "undefined" || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      return null;
+    }
 
     const offerTopic = this._mqttOfferTopic(clean);
+    const brokers = this._mqttBrokers();
+
     return await new Promise((resolve) => {
       let done = false;
+      const openedSockets = [];
+      let pendingBrokers = brokers.length;
+
       const finish = (val) => {
         if (done) return;
         done = true;
         clearTimeout(timer);
-        try {
-          if (conn.ws.readyState === WebSocket.OPEN) {
-            conn.ws.send(Uint8Array.of(0xe0, 0x00));
+        for (const ws of openedSockets) {
+          try {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(Uint8Array.of(0xe0, 0x00));
+            }
+          } catch {
           }
-        } catch {
+          this._cleanupSocket(ws);
         }
-        this._cleanupSocket(conn.ws);
         resolve(val);
       };
+
       const timer = setTimeout(() => finish(null), timeoutMs);
-      conn.onPackets = (packets) => {
-        for (const pkt of packets) {
-          if (pkt.type === 3 && pkt.topic === offerTopic && pkt.payload) {
-            const val = pkt.payload.trim();
-            if (val.startsWith("AH1") || val.startsWith("{")) {
-              finish({ ok: true, code: clean, kind: "offer", payload: val, mqttSignaling: true });
+
+      brokers.forEach((url) => {
+        this._openMqttSocket(url, Math.min(timeoutMs, 5200))
+          .then((conn) => {
+            if (done) {
+              this._cleanupSocket(conn.ws);
               return;
             }
-          }
-        }
-      };
-      try {
-        conn.ws.send(this._mqttEncodeSubscribe(1, offerTopic));
-      } catch {
-        finish(null);
-      }
+            openedSockets.push(conn.ws);
+            conn.onPackets = (packets) => {
+              for (const pkt of packets) {
+                if (pkt.type === 3 && pkt.topic === offerTopic && pkt.payload) {
+                  const val = pkt.payload.trim();
+                  if (val.startsWith("AH1") || val.startsWith("{")) {
+                    finish({ ok: true, code: clean, kind: "offer", payload: val, mqttSignaling: true });
+                    return;
+                  }
+                }
+              }
+            };
+            try {
+              conn.ws.send(this._mqttEncodeSubscribe(1, offerTopic));
+            } catch {
+              pendingBrokers--;
+              if (pendingBrokers <= 0 && openedSockets.length === 0) finish(null);
+            }
+          })
+          .catch(() => {
+            pendingBrokers--;
+            if (pendingBrokers <= 0 && openedSockets.length === 0) finish(null);
+          });
+      });
     });
   }
 
   async _publishMqttAnswer(code, answerPayload) {
     const clean = String(code || "").trim().replace(/\s+/g, "");
     if (!isSixDigitCode(clean) || !answerPayload) return false;
-    const conn = await this._openMqttConnection();
-    if (!conn) return false;
-    try {
-      conn.ws.send(this._mqttEncodePublish(this._mqttAnswerTopic(clean), answerPayload, false));
-      await new Promise((r) => setTimeout(r, 90));
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(Uint8Array.of(0xe0, 0x00));
+    const conns = await this._openAllMqttConnections(5500);
+    if (conns.length === 0) return false;
+    let sentCount = 0;
+    const answerTopic = this._mqttAnswerTopic(clean);
+    for (const conn of conns) {
+      try {
+        conn.ws.send(this._mqttEncodePublish(answerTopic, answerPayload, false));
+        sentCount++;
+      } catch {
       }
-      return true;
-    } catch {
-      return false;
-    } finally {
+    }
+    await new Promise((r) => setTimeout(r, 140));
+    for (const conn of conns) {
+      try {
+        if (conn.ws.readyState === WebSocket.OPEN) {
+          conn.ws.send(Uint8Array.of(0xe0, 0x00));
+        }
+      } catch {
+      }
       this._cleanupSocket(conn.ws);
     }
+    return sentCount > 0;
   }
 
   _ensureP2PBroadcastChannel() {
@@ -1301,7 +1352,7 @@ class MultiplayerClient {
         fetched = await this._lookupLocalOfferViaChannel(cleanInput);
       }
       if (!fetched) {
-        fetched = await this._lookupMqttOffer(cleanInput, 3600);
+        fetched = await this._lookupMqttOffer(cleanInput, 5500);
       }
       if (!fetched) {
         throw new Error(`Không tìm thấy phòng 6 số ${cleanInput} hoặc mã đã hết hạn.`);
@@ -1494,17 +1545,27 @@ class MultiplayerClient {
     }
 
     if (isSixDigitCode(classified.normalized)) {
-      const localChannelOffer = !this.getHttpBaseResult().ok
-        ? await this._lookupLocalOfferViaChannel(classified.normalized)
-        : null;
+      const localChannelOffer = await this._lookupLocalOfferViaChannel(classified.normalized, 220);
       if (localChannelOffer && localChannelOffer.payload) {
         const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: localChannelOffer });
         return { mode: "p2p", ...p2pRes };
       }
     }
 
-    if (isSixDigitCode(classified.normalized) && this.getHttpBaseResult().ok) {
-      const p2pSignal = await this._fetchP2PSignal(classified.normalized, { optional: true });
+    const httpBase = this.getHttpBaseResult();
+    if (isSixDigitCode(classified.normalized) && httpBase.ok) {
+      const [roomCheckRes, p2pSignal] = await Promise.all([
+        fetch(`${httpBase.baseUrl}/api/rooms/${encodeURIComponent(classified.normalized)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        this._fetchP2PSignal(classified.normalized, { optional: true }),
+      ]);
+
+      if (roomCheckRes?.exists) {
+        await this._ensureSend({ type: "JOIN_ROOM", roomId: classified.normalized, playerName, heroId });
+        return { mode: "server", room: this.room };
+      }
+
       if (p2pSignal) {
         if (p2pSignal.kind === "answer") {
           throw new Error("Mã 6 số này là Mã Phản Hồi P2P. Chỉ Chủ phòng mới dán mã này khi ghép thủ công!");
@@ -1516,18 +1577,19 @@ class MultiplayerClient {
       }
     }
 
+    if (isSixDigitCode(classified.normalized)) {
+      const mqttOffer = await this._lookupMqttOffer(classified.normalized, 5500);
+      if (mqttOffer && mqttOffer.payload) {
+        const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: mqttOffer });
+        return { mode: "p2p", ...p2pRes };
+      }
+    }
+
     const protocol = typeof window !== "undefined" ? window.location?.protocol || "http:" : "http:";
     const hasCustomServer = Boolean(this._getEffectiveOverrideUrl());
     if (isLocalFileProtocol(protocol) && !hasCustomServer) {
-      if (isSixDigitCode(classified.normalized)) {
-        const mqttOffer = await this._lookupMqttOffer(classified.normalized, 3800);
-        if (mqttOffer && mqttOffer.payload) {
-          const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: mqttOffer });
-          return { mode: "p2p", ...p2pRes };
-        }
-      }
       throw new Error(
-        "Không tìm thấy phòng 6 số này qua mạng. Hãy kiểm tra lại mã 6 số, mở cùng link WiFi/Server hoặc dán Mã Thủ Công (AH1...) ở chế độ Offline."
+        "Không tìm thấy phòng 6 số này qua mạng. Hãy kiểm tra lại mã 6 số, mở cùng link WiFi/Server hoặc mở mục Ghép thủ công (AH1...) khi mất Internet."
       );
     }
 
@@ -1535,16 +1597,9 @@ class MultiplayerClient {
       await this._ensureSend({ type: "JOIN_ROOM", roomId: classified.normalized, playerName, heroId });
       return { mode: "server", room: this.room };
     } catch (err) {
-      if (isSixDigitCode(classified.normalized)) {
-        const mqttOffer = await this._lookupMqttOffer(classified.normalized, 3600);
-        if (mqttOffer && mqttOffer.payload) {
-          const p2pRes = await this.joinP2PWithOffer(classified.normalized, playerName, heroId, { preFetched: mqttOffer });
-          return { mode: "p2p", ...p2pRes };
-        }
-      }
       throw new Error(
         err?.message ||
-          "Không thể tìm thấy phòng mã 6 số. Nếu chơi qua file HTML offline, hãy mở mục Chế độ thủ công (AH1...)."
+          "Không thể tìm thấy phòng mã 6 số. Hãy kiểm tra lại mã phòng từ Chủ phòng."
       );
     }
   }

@@ -256,9 +256,25 @@ function sendToPlayer(playerId: string, data: unknown) {
   }
 
   session.queue.push(data);
-  if (session.queue.length > 220) {
-    const dropIdx = session.queue.findIndex((item: any) => item?.type === "WORLD_SYNC" || item?.type === "PLAYER_STATE");
-    session.queue.splice(dropIdx >= 0 ? dropIdx : 0, 1);
+  if (session.queue.length > 260) {
+    const dropIdx = session.queue.findIndex(
+      (item: any) => item?.type === "WORLD_SYNC" || item?.type === "PLAYER_STATE"
+    );
+    if (dropIdx >= 0) {
+      session.queue.splice(dropIdx, 1);
+    } else {
+      const nonCriticalIdx = session.queue.findIndex(
+        (item: any) =>
+          !["ENEMIES_SPAWNED", "WAVE_STARTED", "WAVE_META_SYNC", "PLAYER_VFX", "REMOTE_VFX", "ALLY_SUPPORT", "MATCH_OVER"].includes(
+            item?.type
+          )
+      );
+      if (nonCriticalIdx >= 0) {
+        session.queue.splice(nonCriticalIdx, 1);
+      } else {
+        session.queue.shift();
+      }
+    }
   }
   if (session.waiter) {
     const resolveWaiter = session.waiter;
@@ -964,7 +980,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
         type: "REMOTE_VFX",
         playerId,
         heroId: player.heroId,
-        events: msg.events.slice(0, 48),
+        events: msg.events.slice(0, 120),
       },
       playerId
     );
