@@ -1,10 +1,10 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
-import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura } from "./weaponRenderer";
-import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera } from "./combatLogic";
+import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb } from "./weaponRenderer";
+import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: Se / 2, y: Ce / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced" }, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: Se / 2, y: Ce / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced" }, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
       let l = (a - this.lastTime) / 1e3, m = Number.isFinite(l) && l > 0 ? Math.min(l, 0.05) : 0;
       this.lastTime = a;
       try {
@@ -81,12 +81,12 @@ export class GameEngine {
       let p = g.stats || {};
       p.atk && (l.atk += p.atk), p.matk && (l.matk += p.matk), p.hp && (l.hp += p.hp), p.hpRegen && (l.hpRegen += p.hpRegen), p.ms && (l.ms += p.ms), p.as && (l.as += p.as), p.crit && (l.crit += p.crit), p.critExtraDmg && (l.critExtraDmg += p.critExtraDmg), p.cdr && (l.cdr += p.cdr), p.lifesteal && (l.lifesteal += p.lifesteal), p.reflect && (l.reflect += p.reflect), p.dmgRed && (l.dmgRed += p.dmgRed), p.lightningChance && (l.lightningChance = p.lightningChance, l.lightningDmg = p.lightningDmg || 35), p.frostThornsChance && (l.frostThornsChance = p.frostThornsChance), p.killHeal && (l.killHeal += p.killHeal), p.autoShield20 && (l.autoShield20 = Math.max(l.autoShield20, p.autoShield20)), p.dashAttackSpeed && (l.dashAttackSpeed = Math.max(l.dashAttackSpeed, p.dashAttackSpeed)), p.skillBurstChance && (l.skillBurstChance = p.skillBurstChance, l.skillBurstDmg = p.skillBurstDmg || 40), p.autoShield30 && (l.autoShield30 = Math.max(l.autoShield30, p.autoShield30)), p.bossDmgBonus && (l.bossDmgBonus += p.bossDmgBonus), p.hitProcCount && (l.hitProcCount = p.hitProcCount, l.hitProcDmg = Math.max(l.hitProcDmg, p.hitProcDmg || 0)), p.healAmp && (l.healAmp += p.healAmp), p.bossSkillExtraDmg && (l.bossSkillExtraDmg += p.bossSkillExtraDmg), p.autoShield25 && (l.autoShield25 = Math.max(l.autoShield25, p.autoShield25)), p.frostSlowDur && (l.frostSlowDur = Math.max(l.frostSlowDur, p.frostSlowDur)), p.aoeAmp && (l.aoeAmp += p.aoeAmp), p.autoHeal20 && (l.autoHeal20 = Math.max(l.autoHeal20, p.autoHeal20), p.autoHeal20Cd && (l.autoHeal20Cd = p.autoHeal20Cd)), p.waveStartShield && (l.waveStartShield += p.waveStartShield), p.skillMoveSpeedBonus && (l.skillMoveSpeedBonus = Math.max(l.skillMoveSpeedBonus, p.skillMoveSpeedBonus));
     }
-    return l.cdr = Math.min(0.45, l.cdr), l.ms = Math.min(0.5, l.ms), l.lifesteal = Math.min(0.25, l.lifesteal), l.dmgRed = Math.min(0.35, l.dmgRed), s === "kin" ? (l.as = Math.min(0.85, l.as), l.crit = Math.min(0.92, l.crit * 1.65 + 0.35), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 2)) : s === "longhoi" ? (l.as = Math.min(0.45, l.as), l.crit = Math.min(0.55, l.crit + 0.08)) : s === "taidu" ? (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.56, l.crit + 0.12)) : s === "tin" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.45, l.crit + 0.08)) : s === "nguyen" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.4, l.crit + 0.08)) : (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.5, l.crit)), l;
+    return l.cdr = Math.min(0.45, l.cdr), l.ms = Math.min(0.5, l.ms), l.lifesteal = Math.min(0.25, l.lifesteal), l.dmgRed = Math.min(0.35, l.dmgRed), s === "kin" ? (l.as = Math.min(0.85, l.as), l.crit = Math.min(0.92, l.crit * 1.65 + 0.35), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 2)) : s === "longhoi" ? (l.as = Math.min(0.45, l.as), l.crit = Math.min(0.55, l.crit + 0.08)) : s === "taidu" ? (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.56, l.crit + 0.12)) : s === "tin" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.45, l.crit + 0.08)) : s === "nguyen" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.4, l.crit + 0.08)) : s === "duy" ? (l.as = Math.min(0.65, l.as), l.crit = Math.min(0.65, l.crit + 0.16), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 0.45)) : (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.5, l.crit)), l;
   }
   initPlayer() {
     let s = this.getHeroGearStats(this.currentHero.id), a = this.currentHero.stats.hp + s.hp;
     this.duccong_pads = [null, null, null];
-    this.player = { x: Se / 2, y: Ce / 2, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, berserkTimer: 0, berserkHealPerHit: 22, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: Se / 2 - 42, taidu_droneY: Ce / 2 - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: Se / 2, targetY: Ce / 2 }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
+    this.player = { x: Se / 2, y: Ce / 2, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, berserkTimer: 0, berserkHealPerHit: 22, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: Se / 2 - 42, taidu_droneY: Ce / 2 - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: Se / 2, targetY: Ce / 2 }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
   }
   computeHeroStats() {
     if (!this.currentHero) return;
@@ -110,7 +110,7 @@ export class GameEngine {
   getEffectiveMoveSpeed() {
     if (this.player.stunTimer > 0 || this.player.rootTimer > 0) return 0;
     let s = 1 + this.getHeroGearStats(this.currentHero.id).ms, tdSpeed = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(this.player.taidu_droneMode || "attack").pursuitSpeedBonus || 0 : 0;
-    return this.player.berserkTimer > 0 && (s += 0.15), this.player.longhoi_msBuffTimer > 0 && (s += 0.12), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (s += 0.12), this.currentHero.id === "bao" && this.player.bao_stealthTimer > 0 && (s += 0.25), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (s += 0.2), this.currentHero.id === "danh" && this.player.chargeState.active && (s *= 0.55), this.player.slowTimer > 0 && (s *= Math.max(0.35, 1 - this.player.slowFactor)), (this.currentHero.stats.speed + tdSpeed) * 2.15 * s;
+    return this.player.berserkTimer > 0 && (s += 0.15), this.player.longhoi_msBuffTimer > 0 && (s += 0.12), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (s += 0.12), this.currentHero.id === "bao" && this.player.bao_stealthTimer > 0 && (s += 0.25), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (s += 0.2), this.currentHero.id === "danh" && this.player.chargeState.active && (s *= 0.55), this.currentHero.id === "duy" && (this.player.duy_idleTime || 0) >= DUY_QUIET_REGEN_DELAY && (s += 0.18), this.player.slowTimer > 0 && (s *= Math.max(0.35, 1 - this.player.slowFactor)), (this.currentHero.stats.speed + tdSpeed) * 2.15 * s;
   }
   isBossImmune(s) {
     return false;
@@ -624,6 +624,188 @@ export class GameEngine {
     this.addFloatingText(this.player.x, this.player.y - 34, `\u{1F916} DRONE: ${prof.label.toUpperCase()}`, col, 15);
     this.onToast && this.onToast(`Ch\u1EBF \u0111\u1ED9 Drone: ${prof.label}`);
   }
+  applyDuyMark(target, stacks = 1) {
+    if (!target || target.hp <= 0) return false;
+    if (this.isBossImmune(target)) {
+      target.duy_marks = 0, target.duy_markTimer = 0;
+      this.notifyBossImmune(target, "MI\u1EC4N NHI\u1EC4M HUY\u1EBET \u1EA4N");
+      return false;
+    }
+    target.duy_marks = Math.min(3, (target.duy_marks || 0) + stacks);
+    target.duy_markTimer = 6;
+    if (target.duy_marks >= 3) {
+      target.duy_marks = 0, target.duy_markTimer = 0;
+      R.playDeathSeal();
+      let sealDmg = Math.round(45 + 0.75 * this.getEffectiveDamage());
+      this.slashes.push({ x: target.x, y: target.y, angle: 0, radius: 75, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.34, kind: "duy_heal_lotus" });
+      this.queueVfx("slash", { x: target.x, y: target.y, angle: 0, radius: 75, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.34, kind: "duy_heal_lotus" });
+      this.spawnParticles(target.x, target.y, "#34D399", 10, 55, 175, 3.2, 0.35);
+      this.spawnRedCrystals(target.x, target.y, 6, 55, 165);
+      this.addFloatingText(target.x, target.y - target.radius - 22, `\u{1FA78} HUY\u1EBET \u1EA4N +${sealDmg}!`, "#2DD4BF", 15);
+      this.damageEnemy(target, sealDmg, 0, 0, true);
+      for (let spl of [...this.enemies]) {
+        if (spl !== target && spl.hp > 0 && Math.hypot(spl.x - target.x, spl.y - target.y) <= 75 + spl.radius) {
+          this.damageEnemy(spl, Math.round(sealDmg * 0.55), 0, 0, true);
+        }
+      }
+      let orbHeal = Math.max(24, Math.round(this.player.maxHp * 0.035));
+      this.spawnDuyHealOrb(target.x, target.y, orbHeal, 2);
+      this.comboManager.record({ heroId: "duy", action: "passive_proc", hitCount: 1, empowered: true, damageDealt: sealDmg });
+      return true;
+    }
+    return false;
+  }
+  spawnDuyHealOrb(x, y, healAmt, count = 1) {
+    for (let i = 0; i < count; i++) {
+      let ang = Math.random() * Math.PI * 2, spd = 130 + Math.random() * 80;
+      let vx = Math.cos(ang) * spd, vy = Math.sin(ang) * spd;
+      this.duyHealOrbs.push({ id: this.nextEntityId++, x, y, vx, vy, radius: 7, healAmt, life: 0, maxLife: 4.5, visualOnly: false });
+      this.queueVfx("duy_heal_orb_vis", { x, y, vx, vy });
+    }
+  }
+  damageDuyDecoy(decoy, dmg, attacker = null) {
+    if (!decoy || decoy.visualOnly || decoy.life >= decoy.maxLife) return;
+    let amt = Math.max(1, Math.round(dmg || 0));
+    decoy.absorbedDamage = (decoy.absorbedDamage || 0) + amt;
+    decoy.hitFlash = 0.14;
+    this.spawnParticles(decoy.x, decoy.y, "#FDE047", 5, 35, 120, 2.6, 0.25);
+    if ((decoy.textCd || 0) <= 0) {
+      decoy.textCd = 0.28;
+      this.addFloatingText(decoy.x, decoy.y - decoy.radius - 26, `\u{1F6E1}\uFE0F H\u1EA4P TH\u1EE4 +${amt}`, "#5EEAD4", 13);
+    }
+  }
+  detonateDuyDecoy(decoy) {
+    if (!decoy || decoy.detonated) return;
+    decoy.detonated = true;
+    let blastR = decoy.blastRadius || DUY_DECOY_BLAST_RADIUS;
+    let rawDmg = computeDuyDecoyBlastDamage(decoy.absorbedDamage, decoy.passiveMult || 1, decoy.effAtk || this.getEffectiveDamage());
+    R.playDecoyDetonate();
+    this.addShake(14, 0.36);
+    this.createCataclysmicExplosion(decoy.x, decoy.y, blastR * 0.82, "#14B8A6");
+    this.slashes.push({ x: decoy.x, y: decoy.y, angle: 0, radius: blastR, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.44, kind: "duy_decoy_boom" });
+    this.queueVfx("slash", { x: decoy.x, y: decoy.y, angle: 0, radius: blastR, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.44, kind: "duy_decoy_boom" });
+    this.slashes.push({ x: decoy.x, y: decoy.y, angle: 0, radius: blastR * 0.65, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.36, kind: "duy_heal_lotus" });
+    this.queueVfx("slash", { x: decoy.x, y: decoy.y, angle: 0, radius: blastR * 0.65, spread: Math.PI * 2, color: "#34D399", maxLife: 0.36, kind: "duy_heal_lotus" });
+    this.queueVfx("duy_decoy_pop_vis", { x: decoy.x, y: decoy.y, radius: blastR });
+    let hitCnt = 0;
+    for (let e of [...this.enemies]) {
+      if (e.hp > 0 && Math.hypot(e.x - decoy.x, e.y - decoy.y) <= blastR + e.radius) {
+        hitCnt++;
+        let ang = Math.atan2(e.y - decoy.y, e.x - decoy.x);
+        this.damageEnemy(e, rawDmg, Math.cos(ang) * 28, Math.sin(ang) * 28, true);
+      }
+    }
+    let baseHeal = Math.max(45, Math.round(this.player.maxHp * 0.08));
+    this.healPlayer(baseHeal, "HEAL", `+${baseHeal} HP (N\u1ED4 H\xCCNH N\u1ED8M)`);
+    if (hitCnt > 0) {
+      this.spawnDuyHealOrb(decoy.x, decoy.y, Math.max(20, Math.round(this.player.maxHp * 0.03)), Math.min(4, hitCnt));
+    }
+    this.addFloatingText(decoy.x, decoy.y - decoy.radius - 28, `\u{1F4A5} XUNG K\xCDCH TH\u1EBE TH\xC2N ${rawDmg}!`, "#5EEAD4", 17);
+    this.comboManager.record({ heroId: "duy", action: "c1_detonate", hitCount: hitCnt, empowered: decoy.absorbedDamage > 0, damageDealt: rawDmg * Math.max(1, hitCnt) });
+  }
+  updateDuySystems(a) {
+    for (let i = this.duyDecoys.length - 1; i >= 0; i--) {
+      let d = this.duyDecoys[i];
+      d.life += a;
+      d.hitFlash > 0 && (d.hitFlash = Math.max(0, d.hitFlash - a));
+      d.textCd > 0 && (d.textCd = Math.max(0, d.textCd - a));
+      if (d.life >= d.maxLife) {
+        if (!d.visualOnly) this.detonateDuyDecoy(d);
+        this.duyDecoys.splice(i, 1);
+      }
+    }
+    for (let i = this.duyHealOrbs.length - 1; i >= 0; i--) {
+      let orb = this.duyHealOrbs[i];
+      orb.life += a;
+      if (!orb.visualOnly && orb.life >= 0.14) {
+        let dx = this.player.x - orb.x, dy = this.player.y - orb.y, dist = Math.hypot(dx, dy) || 1;
+        let spd = 560 + orb.life * 280;
+        orb.vx = dx / dist * spd, orb.vy = dy / dist * spd;
+      } else {
+        orb.vx *= 0.94, orb.vy *= 0.94;
+      }
+      orb.x += orb.vx * a, orb.y += orb.vy * a;
+      if (!orb.visualOnly && orb.life >= 0.14 && Math.hypot(this.player.x - orb.x, this.player.y - orb.y) <= this.player.radius + orb.radius + 10) {
+        this.healPlayer(orb.healAmt, "HEAL", `+${orb.healAmt} HP (TINH HOA)`);
+        R.playDuyHealOrb();
+        this.spawnParticles(this.player.x, this.player.y, "#34D399", 5, 25, 95, 2.6, 0.28);
+        this.duyHealOrbs.splice(i, 1);
+        continue;
+      }
+      if (orb.life >= (orb.visualOnly ? 0.75 : orb.maxLife)) {
+        this.duyHealOrbs.splice(i, 1);
+      }
+    }
+    if (this.currentHero.id !== "duy" || this.player.hp <= 0 || (this.multiplayer.active && this.multiplayer.localDowned)) return;
+    if (this.duyC2Queues.length > 0 || this.duyC3Barrages.length > 0) {
+      this.player.duy_idleTime = 0;
+      this.player.duy_quietHealTimer = 0;
+    } else {
+      this.player.duy_idleTime = (this.player.duy_idleTime || 0) + a;
+    }
+    this.player.duy_healTextCd > 0 && (this.player.duy_healTextCd = Math.max(0, this.player.duy_healTextCd - a));
+    if ((this.player.duy_idleTime || 0) >= DUY_QUIET_REGEN_DELAY) {
+      this.player.duy_quietHealTimer = (this.player.duy_quietHealTimer || 0) + a;
+      Math.random() < 0.16 && this.spawnParticles(this.player.x + (Math.random() - 0.5) * 26, this.player.y + (Math.random() - 0.5) * 26, "#34D399", 1, 14, 42, 2.3, 0.35);
+      if (this.player.duy_quietHealTimer >= 1.0) {
+        this.player.duy_quietHealTimer -= 1.0;
+        let qHeal = Math.max(12, Math.round(this.player.maxHp * 0.025));
+        this.healPlayer(qHeal, "REGEN_QUIET");
+        this.addFloatingText(this.player.x, this.player.y - 24, `+${qHeal} HP (T\u0128NH S\xC1T)`, "#34D399", 12);
+      }
+    }
+    for (let i = this.duyC2Queues.length - 1; i >= 0; i--) {
+      let q = this.duyC2Queues[i];
+      q.timer -= a;
+      while (q.timer <= 0 && q.remaining > 0) {
+        q.timer += q.interval;
+        q.remaining--;
+        let jitter = q.total > 1 ? ((q.thrownCount % 3) - 1) * 0.045 : 0;
+        let ang = q.angle + jitter;
+        let sx = this.player.x + Math.cos(ang) * 20, sy = this.player.y + Math.sin(ang) * 20;
+        let vx = Math.cos(ang) * 880, vy = Math.sin(ang) * 880;
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_shuriken", x: sx, y: sy, vx, vy, radius: 11, damage: q.dmg, color: "#14B8A6", angle: ang, distanceTraveled: 0, maxDistance: q.range + 90, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+        this.queueVfx("proj_vis", { kind: "duy_shuriken", x: sx, y: sy, vx, vy, radius: 11, color: "#14B8A6", angle: ang, maxDistance: q.range + 90, pierceLeft: 1 });
+        q.thrownCount % 2 === 0 && R.playShurikenThrow();
+        q.thrownCount++;
+      }
+      if (q.remaining <= 0) {
+        if (this.player.stunTimer <= 0 && this.player.rootTimer <= 0 && !this.player.dashActive) {
+          R.playDash();
+          this.player.dashActive = true, this.player.dashKind = "duy_c2", this.player.dashTimer = 0.18;
+          this.player.dashDamage = q.dashDmg, this.player.dashHitIds = /* @__PURE__ */ new Set();
+          let spd = 250 / 0.18;
+          this.player.dashVx = Math.cos(q.angle) * spd, this.player.dashVy = Math.sin(q.angle) * spd, this.player.facing = q.angle;
+          this.slashes.push({ x: this.player.x, y: this.player.y, angle: q.angle, radius: 135, spread: 1.5, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.28, kind: "duy_dash_cut" });
+          this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: q.angle, radius: 135, spread: 1.5, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.28, kind: "duy_dash_cut" });
+        }
+        this.duyC2Queues.splice(i, 1);
+      }
+    }
+    for (let i = this.duyC3Barrages.length - 1; i >= 0; i--) {
+      let b = this.duyC3Barrages[i];
+      b.timer -= a;
+      let shots = 0;
+      while (b.timer <= 0 && b.remaining > 0 && shots < 6) {
+        b.timer += b.interval;
+        b.remaining--;
+        shots++;
+        let idx = b.total - b.remaining - 1;
+        let lane = ((idx % 7) - 3) / 3;
+        let ang = b.angle + lane * 0.5 + (Math.random() - 0.5) * 0.12;
+        let sx = this.player.x + Math.cos(ang) * 22, sy = this.player.y + Math.sin(ang) * 22;
+        let vx = Math.cos(ang) * 920, vy = Math.sin(ang) * 920;
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_c3_shuriken", x: sx, y: sy, vx, vy, radius: 10, damage: b.dmgPerHit, color: "#14B8A6", angle: ang, distanceTraveled: 0, maxDistance: b.range, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+        if (idx % 2 === 0 || b.total <= 45) {
+          this.queueVfx("proj_vis", { kind: "duy_c3_shuriken", x: sx, y: sy, vx, vy, radius: 10, color: "#14B8A6", angle: ang, maxDistance: b.range, pierceLeft: 1 });
+        }
+        idx % 3 === 0 && R.playShurikenThrow();
+      }
+      if (b.remaining <= 0) {
+        this.duyC3Barrages.splice(i, 1);
+      }
+    }
+  }
   triggerBasicAttack() {
     if (this.gameState !== "PLAYING" || this.waitingReward || this.waveCleared || this.player.stunTimer > 0 || this.player.attackTimer > 0 || this.multiplayer.active && this.multiplayer.localDowned) return;
     let s = this.currentHero.stats.range, a = this.findNearestEnemy(s + 24), l = this.player.facing;
@@ -813,6 +995,14 @@ export class GameEngine {
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "nguyen_bolt", x: sx, y: sy, vx: Math.cos(l) * 580, vy: Math.sin(l) * 580, radius: 9, damage: boltDmg, color: "#34D399", angle: l, distanceTraveled: 0, maxDistance: s + 65, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "nguyen_bolt", x: sx, y: sy, vx: Math.cos(l) * 580, vy: Math.sin(l) * 580, radius: 9, color: "#34D399", angle: l, maxDistance: s + 65, pierceLeft: 1 });
       this.comboManager.record({ heroId: "nguyen", action: "basic", hitCount: Math.max(1, hitCnt), damageDealt: waveDmg + boltDmg });
+    } else if (this.currentHero.id === "duy") {
+      this.player.duy_idleTime = 0, this.player.duy_quietHealTimer = 0;
+      R.playShurikenThrow();
+      let sx = this.player.x + Math.cos(l) * 20, sy = this.player.y + Math.sin(l) * 20, vx = Math.cos(l) * 860, vy = Math.sin(l) * 860;
+      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_atk_shuriken", x: sx, y: sy, vx, vy, radius: 11, damage: m, color: "#14B8A6", angle: l, distanceTraveled: 0, maxDistance: s + 85, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+      this.queueVfx("proj_vis", { kind: "duy_atk_shuriken", x: sx, y: sy, vx, vy, radius: 11, color: "#14B8A6", angle: l, maxDistance: s + 85, pierceLeft: 1 });
+      this.spawnParticles(sx, sy, "#2DD4BF", 4, 30, 95, 2.2, 0.22);
+      this.comboManager.record({ heroId: "duy", action: "basic", hitCount: 1, damageDealt: m });
     }
   }
   getDefaultAimForSkill(s) {
@@ -1412,6 +1602,35 @@ export class GameEngine {
         this.addFloatingText(this.player.x, this.player.y - 40, `\u2728 \u0110\u1EA0I TH\xC1NH \u0110\u1ECAA SINH M\u1EC6NH (+${shieldAmt} KHI\xCAN)!`, "#FEF08A", 17);
         this.comboManager.record({ heroId: "nguyen", action: "c3", hitCount: Math.max(1, hitCnt), empowered: true, damageDealt: dmg * Math.max(1, hitCnt) });
       }
+    } else if (this.currentHero.id === "duy") {
+      let duyMult = computeDuyPassiveMultiplier(this.player.duy_idleTime || 0), effAtk = this.getEffectiveDamage();
+      this.player.duy_idleTime = 0, this.player.duy_quietHealTimer = 0;
+      if (s === 0) {
+        let maxR = g.range || 560, dx = l - this.player.x, dy = m - this.player.y, dist = Math.hypot(dx, dy);
+        let tx = dist > maxR ? this.player.x + dx / dist * maxR : l, ty = dist > maxR ? this.player.y + dy / dist * maxR : m;
+        tx = Math.max(40, Math.min(Se - 40, tx)), ty = Math.max(40, Math.min(Ce - 40, ty));
+        let decoy = { id: this.nextEntityId++, x: tx, y: ty, radius: 30, blastRadius: DUY_DECOY_BLAST_RADIUS, life: 0, maxLife: DUY_DECOY_DURATION, absorbedDamage: 0, hitFlash: 0, textCd: 0, passiveMult: duyMult, effAtk, visualOnly: false };
+        this.duyDecoys.push(decoy);
+        R.playDecoySummon();
+        this.spawnParticles(tx, ty, "#14B8A6", 12, 40, 140, 3, 0.35);
+        this.slashes.push({ x: tx, y: ty, angle: 0, radius: 68, spread: Math.PI * 2, color: "#14B8A6", life: 0, maxLife: 0.28, kind: "shockwave" });
+        this.queueVfx("duy_decoy_vis", { x: tx, y: ty, radius: 30, blastRadius: DUY_DECOY_BLAST_RADIUS, maxLife: DUY_DECOY_DURATION, passiveMult: duyMult });
+        this.addFloatingText(tx, ty - 42, duyMult > 1.1 ? `\u{1FA86} TH\u1EBE TH\xC2N (${Math.round(duyMult * 100)}%)!` : "\u{1FA86} H\xCCNH N\u1ED8M TH\u1EBE TH\xC2N!", "#5EEAD4", 15);
+        this.comboManager.record({ heroId: "duy", action: "c1", hitCount: 1, empowered: duyMult >= 2.5 });
+      } else if (s === 1) {
+        let bonusAtk = Math.max(0, effAtk - this.currentHero.stats.damage), count = computeDuyC2ShurikenCount(bonusAtk);
+        let shurikenDmg = Math.round((58 + 0.72 * effAtk) * duyMult), dashDmg = Math.round((75 + 0.9 * effAtk) * duyMult);
+        this.duyC2Queues.push({ angle: a, remaining: count, total: count, thrownCount: 0, interval: Math.max(0.035, Math.min(0.065, 0.32 / Math.max(1, count))), timer: 0, range: g.range || 340, dmg: shurikenDmg, dashDmg });
+        R.playShurikenThrow();
+        this.addFloatingText(this.player.x, this.player.y - 32, `\u{1F300} ${count} PHI TI\xCAU (${Math.round(duyMult * 100)}%)!`, "#14B8A6", 15);
+        this.comboManager.record({ heroId: "duy", action: "c2", hitCount: count, empowered: duyMult >= 2.5, damageDealt: shurikenDmg * count + dashDmg });
+      } else if (s === 2) {
+        let total = computeDuyC3ShurikenCount(effAtk), dmgPerHit = computeDuyC3ShurikenDamage(effAtk, duyMult), duration = 0.85;
+        this.duyC3Barrages.push({ angle: a, remaining: total, total, interval: duration / Math.max(1, total), timer: 0, range: g.range || 520, dmgPerHit });
+        R.playWhirlwind(), R.playShurikenThrow(), this.addShake(8, 0.25);
+        this.addFloatingText(this.player.x, this.player.y - 38, `\u{1F32A}\uFE0F B\xC3O ${total} PHI TI\xCAU (${Math.round(duyMult * 100)}%)!`, "#F43F5E", 17);
+        this.comboManager.record({ heroId: "duy", action: "c3", hitCount: total, empowered: duyMult >= 2.5, damageDealt: dmgPerHit * total });
+      }
     }
   }
   carveLuanRift(x1, y1, x2, y2, ap, width = 10) {
@@ -1608,25 +1827,21 @@ export class GameEngine {
   }
   getNearestAlivePlayer(x, y) {
     let best = { id: mpClient.playerId || "local", x: this.player.x, y: this.player.y, radius: this.player.radius, facing: this.player.facing, hp: this.player.hp, alive: !this.multiplayer.localDowned && this.player.hp > 0, isLocal: true };
-    if (!this.multiplayer.active) return best;
-    let candidates = [];
-    if (best.alive) candidates.push(best);
-    for (let rp of this.multiplayer.remotePlayers.values()) {
-      if (rp && rp.alive && rp.hp > 0) {
-        candidates.push({ id: rp.id, x: rp.x, y: rp.y, radius: 22, facing: rp.facing || 0, hp: rp.hp, alive: true, isLocal: false });
+    let playerCandidates = [];
+    if (best.alive) playerCandidates.push(best);
+    if (this.multiplayer.active) {
+      for (let rp of this.multiplayer.remotePlayers.values()) {
+        if (rp && rp.alive && rp.hp > 0) {
+          playerCandidates.push({ id: rp.id, x: rp.x, y: rp.y, radius: 22, facing: rp.facing || 0, hp: rp.hp, alive: true, isLocal: false });
+        }
       }
     }
-    if (candidates.length === 0) return best;
-    let minD = Infinity;
-    let chosen = candidates[0];
-    for (let c of candidates) {
-      let d = Math.hypot(c.x - x, c.y - y);
-      if (d < minD) {
-        minD = d;
-        chosen = c;
-      }
+    let picked = selectMonsterTargetWithDecoy(playerCandidates, this.duyDecoys || [], x, y);
+    if (picked?.kind === "decoy") {
+      let d = picked.decoy;
+      return { id: "duy_decoy_" + d.id, x: d.x, y: d.y, radius: d.radius || 30, facing: 0, hp: 999999, alive: true, isLocal: false, isDecoy: true, decoyRef: d };
     }
-    return chosen;
+    return picked?.kind === "player" ? picked.player : best;
   }
   startCoopMatch(hero, roomData, spawns = {}) {
     if (hero) {
@@ -1742,6 +1957,10 @@ export class GameEngine {
     this.taiduCarpetStrikes = [];
     this.nguyenSanctuaryFields = [];
     this.nguyenSanctuaryWaves = [];
+    this.duyDecoys = [];
+    this.duyHealOrbs = [];
+    this.duyC2Queues = [];
+    this.duyC3Barrages = [];
     this.waveCleared = false;
     this.waitingReward = false;
     this.camera = { x: this.player.x, y: this.player.y };
@@ -1838,7 +2057,7 @@ export class GameEngine {
   }
   startNewGame(s) {
     this.stopCoopMode();
-    s && (this.currentHero = s, this.selectedHeroId = s.id), this.playerCoins = 100, this.inventory = [], this.heroGear = um(), this.duccong_pads = [null, null, null], this.saveGame(), this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.syncMusicState(), this.onStateChange && this.onStateChange();
+    s && (this.currentHero = s, this.selectedHeroId = s.id), this.playerCoins = 100, this.inventory = [], this.heroGear = um(), this.duccong_pads = [null, null, null], this.saveGame(), this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.syncMusicState(), this.onStateChange && this.onStateChange();
   }
   update(s) {
     if (this.gameState !== "PLAYING") return;
@@ -2207,6 +2426,7 @@ export class GameEngine {
       wv.life += a;
       wv.life >= wv.maxLife && this.nguyenSanctuaryWaves.splice(i, 1);
     }
+    this.updateDuySystems(a);
     if (this.player.tin_monochrome_realm_timer > 0 && (this.player.tin_monochrome_realm_timer = Math.max(0, this.player.tin_monochrome_realm_timer - a)), this.player.eohyen_heal_cd > 0 && (this.player.eohyen_heal_cd = Math.max(0, this.player.eohyen_heal_cd - a)), this.currentHero.id === "longhoi" && (this.player.longhoi_sustain_sec_timer += a, this.player.longhoi_sustain_sec_timer >= 1 && (this.player.longhoi_sustain_sec_timer = 0, this.player.longhoi_sustain_pool = 0)), this.currentHero.id === "duccong" && this.player.hp > 0 && (this.player.duccong_regen_timer -= a, this.player.duccong_regen_timer <= 0)) {
       this.player.duccong_regen_timer = 5;
       let m = Math.round(this.player.maxHp * 0.03);
@@ -2228,11 +2448,11 @@ export class GameEngine {
     if (this.player.dashActive) {
       this.player.dashTimer -= a, this.player.dashKind === "gau_c3_leap" && (this.player.gau_leapElapsed = (this.player.gau_leapElapsed || 0) + a);
       let m = this.player.dashVx * a, c = this.player.dashVy * a;
-      if (this.player.x += m, this.player.y += c, (this.player.dashKind === "bao_c1" || Math.random() < 0.75) && (this.afterimages.push({ x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.currentHero.color, alpha: this.player.dashKind === "bao_c1" ? 0.55 : 0.65, life: 0, maxLife: 0.34, radius: this.player.radius }), this.multiplayer.active && Math.random() < 0.5 && this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.player.dashKind === "fox_dash" ? "#F97316" : this.currentHero.color, alpha: 0.6, maxLife: 0.32 })), this.player.dashKind === "fox_dash" ? this.spawnFlameParticles(this.player.x, this.player.y, "red", 3, 20, 60) : this.player.dashKind === "dung_c1" ? this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 2, 20, 80, 2, 0.2) : this.player.dashKind === "bao_c1" && Math.random() < 0.55 && this.spawnSmokePuff(this.player.x, this.player.y, 9, "rgba(192, 132, 252, 0.38)"), this.player.dashKind === "dung_c1" || this.player.dashKind === "tin_c1") {
+      if (this.player.x += m, this.player.y += c, (this.player.dashKind === "bao_c1" || Math.random() < 0.75) && (this.afterimages.push({ x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.currentHero.color, alpha: this.player.dashKind === "bao_c1" ? 0.55 : 0.65, life: 0, maxLife: 0.34, radius: this.player.radius }), this.multiplayer.active && Math.random() < 0.5 && this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.player.dashKind === "fox_dash" ? "#F97316" : this.currentHero.color, alpha: 0.6, maxLife: 0.32 })), this.player.dashKind === "fox_dash" ? this.spawnFlameParticles(this.player.x, this.player.y, "red", 3, 20, 60) : this.player.dashKind === "dung_c1" ? this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 2, 20, 80, 2, 0.2) : this.player.dashKind === "duy_c2" ? this.spawnParticles(this.player.x, this.player.y, "#14B8A6", 3, 20, 90, 2.4, 0.22) : this.player.dashKind === "bao_c1" && Math.random() < 0.55 && this.spawnSmokePuff(this.player.x, this.player.y, 9, "rgba(192, 132, 252, 0.38)"), this.player.dashKind === "dung_c1" || this.player.dashKind === "tin_c1" || this.player.dashKind === "duy_c2") {
         for (let g of [...this.enemies]) if (!this.player.dashHitIds.has(g.id) && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= this.player.radius + g.radius + 20) {
           this.player.dashHitIds.add(g.id);
           let p = Math.atan2(this.player.dashVy, this.player.dashVx), h = this.player.dashDamage, hadMark = !!g.tin_hasMark;
-          this.player.dashKind === "tin_c1" && hadMark && (h += Math.round(34 * (this.getEffectiveDamage() / this.currentHero.stats.damage)), g.tin_hasMark = false), this.damageEnemy(g, h, this.player.dashKind === "dung_c1" ? Math.cos(p) * 32 : 0, this.player.dashKind === "dung_c1" ? Math.sin(p) * 32 : 0, true), this.player.dashKind === "dung_c1" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, 0.5)), this.player.dashKind === "tin_c1" && hadMark && !this.player.tin_c1_refunded_c2 && (this.player.tin_c1_refunded_c2 = true, this.player.cooldowns[1] *= 0.55, this.grantTinResonance(1, false), this.addFloatingText(this.player.x, this.player.y - 34, "⚡ PHÁ ẤN -45% C2!", "#FB7185", 15));
+          this.player.dashKind === "tin_c1" && hadMark && (h += Math.round(34 * (this.getEffectiveDamage() / this.currentHero.stats.damage)), g.tin_hasMark = false), this.damageEnemy(g, h, this.player.dashKind === "dung_c1" ? Math.cos(p) * 32 : this.player.dashKind === "duy_c2" ? Math.cos(p) * 20 : 0, this.player.dashKind === "dung_c1" ? Math.sin(p) * 32 : this.player.dashKind === "duy_c2" ? Math.sin(p) * 20 : 0, true), this.player.dashKind === "dung_c1" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, 0.5)), this.player.dashKind === "duy_c2" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, DUY_C2_STUN_DUR), this.spawnDuyHealOrb(g.x, g.y, Math.max(18, Math.round(this.player.maxHp * 0.025)), 1)), this.player.dashKind === "tin_c1" && hadMark && !this.player.tin_c1_refunded_c2 && (this.player.tin_c1_refunded_c2 = true, this.player.cooldowns[1] *= 0.55, this.grantTinResonance(1, false), this.addFloatingText(this.player.x, this.player.y - 34, "⚡ PHÁ ẤN -45% C2!", "#FB7185", 15));
         }
       }
       if (this.player.dashTimer <= 0) {
@@ -2527,6 +2747,17 @@ export class GameEngine {
                 let cx = Math.max(40, Math.min(Se - 40, p.x)), cy = Math.max(40, Math.min(Ce - 40, p.y));
                 this.tinCrystals.push({ id: this.nextEntityId++, x: cx, y: cy, radius: 44, life: 0, maxLife: 4.5, pulse: 0 }), this.queueVfx("tin_crystal_vis", { x: cx, y: cy, radius: 44, maxLife: 4.5 }), this.spawnRedCrystals(cx, cy, 8, 50, 145);
               }
+            } else if (l.kind === "duy_atk_shuriken" || l.kind === "duy_shuriken") {
+              this.damageEnemy(p, h, Math.cos(l.angle) * 6, Math.sin(l.angle) * 6, l.kind === "duy_shuriken");
+              p.hp > 0 && this.applyDuyMark(p, 1);
+              this.spawnParticles(p.x, p.y, "#2DD4BF", 4, 30, 100, 2.4, 0.22);
+            } else if (l.kind === "duy_c3_shuriken") {
+              this.damageEnemy(p, h, Math.cos(l.angle) * 5, Math.sin(l.angle) * 5, true);
+              let showText = (this.player.duy_healTextCd || 0) <= 0;
+              showText && (this.player.duy_healTextCd = 0.24);
+              this.healPlayer(DUY_C3_HEAL_PER_HIT, showText ? "HEAL" : "SILENT_VAMP", showText ? `+${DUY_C3_HEAL_PER_HIT} HP (B\xC3O TI\xCAU)` : undefined);
+              showText && (this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 44, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.24, kind: "duy_heal_lotus" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 44, spread: Math.PI * 2, color: "#34D399", maxLife: 0.24, kind: "duy_heal_lotus" }));
+              this.spawnParticles(p.x, p.y, "#F43F5E", 4, 35, 115, 2.5, 0.22);
             } else l.kind === "danh_kiem_khi" ? (this.damageEnemy(p, h, Math.cos(l.angle) * 14, Math.sin(l.angle) * 14, true), this.spawnFlameParticles(p.x, p.y, "red", 4, 30, 80)) : l.kind === "cosmic_pursuit" && this.currentHero.id === "duccong" ? (l.ccBonusDmg && (p.slowFactor > 0 || p.stunTimer > 0) && (h += l.ccBonusDmg), this.damageEnemy(p, h, 0, 0, true, 0, l)) : this.damageEnemy(p, h, 0, 0, l.kind !== "kin_arrow" && l.kind !== "longhoi_arrow" && l.kind !== "trung_orb" && l.kind !== "taidu_bolt" && l.kind !== "nguyen_bolt");
           }
           if (l.pierceLeft--, l.pierceLeft <= 0) {
@@ -2553,6 +2784,13 @@ export class GameEngine {
           let T = h + f;
           l.vx = Math.cos(T) * g, l.vy = Math.sin(T) * g, l.angle = T;
         }
+        let hitDecoy = (this.duyDecoys || []).find((d) => !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.x, d.y - l.y) <= l.radius + (d.radius || 30));
+        if (hitDecoy) {
+          this.damageDuyDecoy(hitDecoy, l.damage);
+          l.kind !== "enemy_orb" && (this.spawnParticles(l.x, l.y, l.color, 8, 40, 130, 3, 0.3), this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: 40, spread: Math.PI * 2, color: l.color, life: 0, maxLife: 0.22, kind: "shockwave" }));
+          this.projectiles.splice(a, 1);
+          continue;
+        }
         if (Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius) {
           this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 1.2, l.ccFactor || 0.45, l.x, l.y), l.kind !== "enemy_orb" && (this.spawnParticles(l.x, l.y, l.color, 10, 45, 160, 3.5, 0.35), this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: 48, spread: Math.PI * 2, color: l.color, life: 0, maxLife: 0.24, kind: "shockwave" })), this.projectiles.splice(a, 1);
           continue;
@@ -2573,7 +2811,7 @@ export class GameEngine {
         }
       }
       if (l.kind === "blizzard_vortex") {
-        let m = this.player.x - l.x, c = this.player.y - l.y, g = Math.hypot(m, c) || 1;
+        let vt = this.getNearestAlivePlayer(l.x, l.y), m = vt.x - l.x, c = vt.y - l.y, g = Math.hypot(m, c) || 1;
         g > 14 && (l.x += m / g * 44 * s, l.y += c / g * 44 * s);
       }
       if (!l.visualOnly && l.kind === "trung_thunder_zone") {
@@ -2592,6 +2830,9 @@ export class GameEngine {
           if (this.isCoopHost() && !l.visualOnly) {
             for (let m of this.enemies) if (m.kind === "boss" && m.hp > 0 && m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + Math.round(l.damagePerTick * 1.5));
           }
+        }
+        if ((l.kind === "blizzard_vortex" || l.kind === "acid_pool" || l.kind === "blood_sanctuary") && this.duyDecoys.length > 0) {
+          for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.x, d.y - l.y) <= l.radius + (d.radius || 30) && this.damageDuyDecoy(d, l.damagePerTick);
         }
         if (!l.visualOnly && l.kind !== "blizzard_vortex" && l.kind !== "acid_pool" && l.kind !== "blood_sanctuary") {
           for (let m of [...this.enemies]) Math.hypot(m.x - l.x, m.y - l.y) <= l.radius + m.radius && (l.slowFactor && (this.isBossImmune(m) ? this.notifyBossImmune(m, "MI\u1EC4N NHI\u1EC4M L\xC0M CH\u1EACM") : (m.slowFactor = Math.max(m.slowFactor, l.slowFactor), m.slowTimer = Math.max(m.slowTimer, 0.7))), l.kind === "fox_king_rain" ? (l.hitCountMap = l.hitCountMap || {}, l.hitCountMap[m.id] = (l.hitCountMap[m.id] || 0) + 1, l.hitCountMap[m.id] <= (l.maxTicksPerTarget || 6) && this.damageEnemy(m, l.damagePerTick, 0, 0, true)) : this.damageEnemy(m, l.damagePerTick, 0, 0, true));
@@ -2667,7 +2908,9 @@ export class GameEngine {
           this.createCataclysmicExplosion(l.x, l.y, l.radius, m), this.slashes.push({ x: l.x, y: l.y, angle: 0, radius: l.radius * 1.25, spread: Math.PI * 2, color: m, life: 0, maxLife: 0.35, kind: "shockwave" });
           for (let c = 0; c < 3; c++) this.spawnGroundCrack(l.x, l.y, Math.PI * 2 / 3 * c + Math.random() * 0.6, l.radius * 0.85, m, "#FEF08A");
         }
-        Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius * 0.75 && (this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 0.85, l.ccFactor || 0.5, l.x, l.y)), this.bossWarnings.splice(a, 1);
+        Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius * 0.75 && (this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 0.85, l.ccFactor || 0.5, l.x, l.y));
+        for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.x, d.y - l.y) <= l.radius + (d.radius || 30) * 0.75 && this.damageDuyDecoy(d, l.damage);
+        this.bossWarnings.splice(a, 1);
       }
     }
   }
@@ -2684,6 +2927,11 @@ export class GameEngine {
         }
         let p = m * m + c * c || 1, h = Math.max(0, Math.min(1, ((this.player.x - l.x1) * m + (this.player.y - l.y1) * c) / p)), f = l.x1 + h * m, v = l.y1 + h * c;
         Math.hypot(this.player.x - f, this.player.y - v) <= l.width * 0.52 + this.player.radius * 0.8 && (this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 0.85, l.ccFactor || 0.5, f, v));
+        for (let d of this.duyDecoys) {
+          if (d.visualOnly || d.life >= d.maxLife) continue;
+          let dh = Math.max(0, Math.min(1, ((d.x - l.x1) * m + (d.y - l.y1) * c) / p)), df = l.x1 + dh * m, dv = l.y1 + dh * c;
+          Math.hypot(d.x - df, d.y - dv) <= l.width * 0.52 + (d.radius || 30) * 0.8 && this.damageDuyDecoy(d, l.damage);
+        }
       }
     }
   }
@@ -2694,6 +2942,14 @@ export class GameEngine {
         let m = Math.hypot(this.player.x - l.x, this.player.y - l.y);
         Math.abs(m - l.currentRadius) <= l.ringWidth + this.player.radius * 0.7 && (l.hitPlayer = true, this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 1.4, l.ccFactor || 0.5, l.x, l.y));
       }
+      if (this.duyDecoys.length > 0) {
+        l.hitDecoyIds = l.hitDecoyIds || /* @__PURE__ */ new Set();
+        for (let d of this.duyDecoys) {
+          if (d.visualOnly || d.life >= d.maxLife || l.hitDecoyIds.has(d.id)) continue;
+          let dm = Math.hypot(d.x - l.x, d.y - l.y);
+          Math.abs(dm - l.currentRadius) <= l.ringWidth + (d.radius || 30) * 0.7 && (l.hitDecoyIds.add(d.id), this.damageDuyDecoy(d, l.damage));
+        }
+      }
       l.currentRadius >= l.maxRadius && this.bossShockRings.splice(a, 1);
     }
   }
@@ -2702,7 +2958,7 @@ export class GameEngine {
       if (a.hp <= 0) continue;
       a.hitFlash > 0 && (a.hitFlash = Math.max(0, a.hitFlash - s)), a.attackCooldown > 0 && (a.attackCooldown = Math.max(0, a.attackCooldown - s)), a.immuneTextCd && a.immuneTextCd > 0 && (a.immuneTextCd = Math.max(0, a.immuneTextCd - s)), a.luan_warpCd && a.luan_warpCd > 0 && (a.luan_warpCd = Math.max(0, a.luan_warpCd - s)), a.taidu_empTimer && a.taidu_empTimer > 0 && (a.taidu_empTimer = Math.max(0, a.taidu_empTimer - s));
       let l = this.isBossImmune(a);
-      if (l && (a.stunTimer = 0, a.slowTimer = 0, a.slowFactor = 0, a.frozenTimer = 0, a.frostUltExposeTimer = 0, a.eohyenAuraSlow = 0, a.tin_hasMark = false, a.tin_hits = 0, a.longhoiBurnStacks = 0, a.longhoiBurnTimer = 0, a.longhoiBurnAmpTimer = 0), a.slowTimer > 0 && (a.slowTimer = Math.max(0, a.slowTimer - s), a.slowTimer === 0 && (a.slowFactor = 0)), a.gau_quakeTimer && a.gau_quakeTimer > 0 && (a.gau_quakeTimer = Math.max(0, a.gau_quakeTimer - s)), a.bao_markTimer && a.bao_markTimer > 0 && (a.bao_markTimer = Math.max(0, a.bao_markTimer - s), a.bao_markTimer === 0 && (a.bao_marks = 0)), (a.longhoiBurnStacks || 0) > 0 && (a.longhoiBurnTimer || 0) > 0) {
+      if (l && (a.stunTimer = 0, a.slowTimer = 0, a.slowFactor = 0, a.frozenTimer = 0, a.frostUltExposeTimer = 0, a.eohyenAuraSlow = 0, a.tin_hasMark = false, a.tin_hits = 0, a.duy_marks = 0, a.duy_markTimer = 0, a.longhoiBurnStacks = 0, a.longhoiBurnTimer = 0, a.longhoiBurnAmpTimer = 0), a.slowTimer > 0 && (a.slowTimer = Math.max(0, a.slowTimer - s), a.slowTimer === 0 && (a.slowFactor = 0)), a.gau_quakeTimer && a.gau_quakeTimer > 0 && (a.gau_quakeTimer = Math.max(0, a.gau_quakeTimer - s)), a.bao_markTimer && a.bao_markTimer > 0 && (a.bao_markTimer = Math.max(0, a.bao_markTimer - s), a.bao_markTimer === 0 && (a.bao_marks = 0)), a.duy_markTimer && a.duy_markTimer > 0 && (a.duy_markTimer = Math.max(0, a.duy_markTimer - s), a.duy_markTimer === 0 && (a.duy_marks = 0)), (a.longhoiBurnStacks || 0) > 0 && (a.longhoiBurnTimer || 0) > 0) {
         a.longhoiBurnTimer = Math.max(0, a.longhoiBurnTimer - s);
         a.longhoiBurnAmpTimer > 0 && (a.longhoiBurnAmpTimer = Math.max(0, a.longhoiBurnAmpTimer - s));
         a.longhoiBurnTick = (a.longhoiBurnTick || 0) + s;
@@ -2805,6 +3061,7 @@ export class GameEngine {
                 this.damagePlayer(blastDmg, a);
                 this.applyPlayerCC("knockback", 0, 50, a.x, a.y);
               }
+              for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - a.x, d.y - a.y) <= blastR + (d.radius || 30) && this.damageDuyDecoy(d, blastDmg, a);
               if (this.multiplayer.active) {
                 mpClient.send({ type: "DAMAGE_ENEMY", enemyId: a.id, dmg: a.hp + 999, knockX: 0, knockY: 0, isCrit: false });
               } else {
@@ -2824,10 +3081,11 @@ export class GameEngine {
             a.y = Math.max(a.radius + 18, Math.min(Ce - a.radius - 18, target.y + (c / g) * (target.radius + 22)));
             R.playAmbushSlash();
             if (target.isLocal) this.damagePlayer(Math.round(a.damage * 1.15), a);
+            else if (target.isDecoy && target.decoyRef) this.damageDuyDecoy(target.decoyRef, Math.round(a.damage * 1.15), a);
             a.attackCooldown = 1.0;
           } else {
             g > a.radius + target.radius - 4 && (a.x += m / g * f * s, a.y += c / g * f * s);
-            target.isLocal ? g <= a.radius + this.player.radius + 8 && a.attackCooldown <= 0 && (a.attackCooldown = 0.85, this.damagePlayer(a.damage, a)) : g <= a.radius + target.radius + 8 && a.attackCooldown <= 0 && (a.attackCooldown = 0.85);
+            target.isLocal ? g <= a.radius + this.player.radius + 8 && a.attackCooldown <= 0 && (a.attackCooldown = 0.85, this.damagePlayer(a.damage, a)) : g <= a.radius + target.radius + 8 && a.attackCooldown <= 0 && (a.attackCooldown = 0.85, target.isDecoy && target.decoyRef && this.damageDuyDecoy(target.decoyRef, a.damage, a));
           }
         } else if (a.kind === "void_acolyte") {
           g > 265 && (a.x += m / g * f * s, a.y += c / g * f * s);
@@ -2851,7 +3109,7 @@ export class GameEngine {
               a.kind === "shield_knight" && this.applyPlayerCC("knockback", 0, 34, a.x, a.y);
             }
           } else {
-            g <= a.radius + target.radius + 8 && a.attackCooldown <= 0 && (a.attackCooldown = a.kind === "boss" ? 1.15 : 0.95);
+            g <= a.radius + target.radius + 8 && a.attackCooldown <= 0 && (a.attackCooldown = a.kind === "boss" ? 1.15 : a.kind === "shield_knight" ? 1.25 : 0.95, target.isDecoy && target.decoyRef && this.damageDuyDecoy(target.decoyRef, a.damage, a));
           }
         }
         if (a.kind === "boss") {
@@ -2872,10 +3130,16 @@ export class GameEngine {
                 this.createCataclysmicExplosion(a.x + Math.cos(H) * 110, a.y + Math.sin(H) * 110, 95, "#10B981"), this.queueVfx("boss_cone_slam", { x: a.x, y: a.y, angle: H, dmg: Math.round(a.damage * 1.25), ccDur: ccD });
                 let D = Math.hypot(this.player.x - a.x, this.player.y - a.y), P = Math.atan2(this.player.y - a.y, this.player.x - a.x), N = Math.abs(Math.atan2(Math.sin(P - H), Math.cos(P - H)));
                 D <= 300 && N <= 0.68 && (this.damagePlayer(Math.round(a.damage * 1.25)), this.applyPlayerCC("stun", ccD, 0, a.x, a.y), this.applyPlayerCC("knockback", 0, 55, a.x, a.y));
+                for (let d of this.duyDecoys) {
+                  if (d.visualOnly || d.life >= d.maxLife) continue;
+                  let dd = Math.hypot(d.x - a.x, d.y - a.y), dp = Math.atan2(d.y - a.y, d.x - a.x), dn = Math.abs(Math.atan2(Math.sin(dp - H), Math.cos(dp - H)));
+                  dd <= 300 + (d.radius || 30) && dn <= 0.68 && this.damageDuyDecoy(d, Math.round(a.damage * 1.25), a);
+                }
               } else if (C === 1) {
                 this.addFloatingText(a.x, a.y - a.radius - 18, "\u{1FAA8} L\u0102N \u0110\xC1 CU\u1ED2NG N\u1ED8!", "#F59E0B", 16), R.playRockRoll(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 18, text: "\u{1FAA8} L\u0102N \u0110\xC1 CU\u1ED2NG N\u1ED8!", color: "#F59E0B", size: 16, sound: "rockRoll" });
                 let D = a.x + Math.cos(H) * 250, P = a.y + Math.sin(H) * 250;
                 this.spawnGroundCrack(a.x, a.y, H, 250, "#78716C", "#F59E0B"), this.queueVfx("crack", { x: a.x, y: a.y, angle: H, len: 250, color: "#78716C", glowColor: "#F59E0B" }), a.x = Math.max(a.radius + 20, Math.min(Se - a.radius - 20, D)), a.y = Math.max(a.radius + 20, Math.min(Ce - a.radius - 20, P)), this.addShake(16, 0.45), this.createCataclysmicExplosion(a.x, a.y, 110, "#10B981"), this.summonBossShockRing(a.x, a.y, 260, 420, Math.round(a.damage * 0.95), "#10B981", "#F59E0B", "slow", ccD, 0.45), this.queueVfx("boss_roll_slam", { x: a.x, y: a.y, radius: a.radius, dmg: Math.round(a.damage * 1.2) }), Math.hypot(this.player.x - a.x, this.player.y - a.y) <= a.radius + this.player.radius + 35 && (this.damagePlayer(Math.round(a.damage * 1.2)), this.applyPlayerCC("knockback", 0, 75, a.x, a.y));
+                for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - a.x, d.y - a.y) <= a.radius + (d.radius || 30) + 35 && this.damageDuyDecoy(d, Math.round(a.damage * 1.2), a);
               } else {
                 this.addFloatingText(a.x, a.y - a.radius - 18, "\u26F0\uFE0F M\u01AFA \u0110\xC1 TINH TH\u1EC2!", "#34D399", 16), R.playRockRoll(), R.playBossWarn(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 18, text: "\u26F0\uFE0F M\u01AFA \u0110\xC1 TINH TH\u1EC2!", color: "#34D399", size: 16, sound: "bossWarn" });
                 for (let D = 0; D < 5; D++) {
@@ -3149,7 +3413,16 @@ export class GameEngine {
           c = true;
           break;
         }
-      } else !l.visualOnly && Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius && (this.damagePlayer(l.damage), c = true);
+      } else if (!l.visualOnly) {
+        Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius && (this.damagePlayer(l.damage), c = true);
+        if (!c) {
+          for (let d of this.duyDecoys) if (!d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.x, d.y - l.y) <= l.radius + (d.radius || 30)) {
+            this.damageDuyDecoy(d, l.damage);
+            c = true;
+            break;
+          }
+        }
+      }
       if (c || l.distanceTraveled >= l.maxDistance) {
         if (this.createCataclysmicExplosion(l.x, l.y, 90, l.color), l.isFromPlayer && !l.visualOnly) for (let g of [...this.enemies]) Math.hypot(g.x - l.x, g.y - l.y) <= 85 + g.radius && this.damageEnemy(g, l.damage, 0, 0, true);
         this.rocketProjectiles.splice(a, 1);
@@ -3163,8 +3436,11 @@ export class GameEngine {
         this.createCataclysmicExplosion(l.targetX, l.targetY, l.radius, l.color || "#F97316"), this.slashes.push({ x: l.targetX, y: l.targetY, angle: 0, radius: l.radius * 1.15, spread: Math.PI * 2, color: l.color || "#F97316", life: 0, maxLife: 0.4, kind: "shockwave" });
         for (let c = 0; c < 4; c++) this.spawnGroundCrack(l.targetX, l.targetY, Math.PI / 2 * c + 0.35, l.radius * 0.75, l.color || "#EA580C", "#FEF08A");
         if (!l.visualOnly) {
-          if (l.fromPlayer === false) Math.hypot(this.player.x - l.targetX, this.player.y - l.targetY) <= l.radius + this.player.radius * 0.7 && (this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 0.75, 80, l.targetX, l.targetY)), this.lavaPools.push({ id: this.nextEntityId++, visualOnly: true, x: l.targetX, y: l.targetY, radius: l.radius * 0.65, timer: 0, duration: 2.6, tickTimer: 0, tickInterval: 0.5, damagePerTick: 22 });
-          else for (let c of [...this.enemies]) {
+          if (l.fromPlayer === false) {
+            Math.hypot(this.player.x - l.targetX, this.player.y - l.targetY) <= l.radius + this.player.radius * 0.7 && (this.damagePlayer(l.damage), l.ccType && this.applyPlayerCC(l.ccType, l.ccDur || 0.75, 80, l.targetX, l.targetY));
+            for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.targetX, d.y - l.targetY) <= l.radius + (d.radius || 30) * 0.7 && this.damageDuyDecoy(d, l.damage);
+            this.lavaPools.push({ id: this.nextEntityId++, visualOnly: true, x: l.targetX, y: l.targetY, radius: l.radius * 0.65, timer: 0, duration: 2.6, tickTimer: 0, tickInterval: 0.5, damagePerTick: 22 });
+          } else for (let c of [...this.enemies]) {
             let g = Math.hypot(c.x - l.targetX, c.y - l.targetY);
             if (g <= l.radius + c.radius) {
               let p = l.damage;
@@ -3233,7 +3509,17 @@ export class GameEngine {
           let p = (l.isGalaxy ? 135 : 105) * (1 - g / (l.radius + 115));
           this.player.x += m / g * p * s, this.player.y += c / g * p * s;
         }
-        l.tickTimer >= l.tickInterval && (l.tickTimer -= l.tickInterval, Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius && (this.damagePlayer(l.damagePerTick), this.applyPlayerCC("slow", l.ccDur ? Math.min(2.6, Math.max(0.8, l.ccDur * 0.65)) : 0.9, 0.45, l.x, l.y))), l.timer >= l.duration && (this.createCataclysmicExplosion(l.x, l.y, l.radius * 1.15, "#7C3AED"), Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius && (this.damagePlayer(l.finalBurstDmg), this.applyPlayerCC("stun", l.ccDur || 1.6, 0, l.x, l.y)), this.galaxyVortices.splice(a, 1));
+        if (l.tickTimer >= l.tickInterval) {
+          l.tickTimer -= l.tickInterval;
+          Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius && (this.damagePlayer(l.damagePerTick), this.applyPlayerCC("slow", l.ccDur ? Math.min(2.6, Math.max(0.8, l.ccDur * 0.65)) : 0.9, 0.45, l.x, l.y));
+          for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.x, d.y - l.y) <= l.radius + (d.radius || 30) && this.damageDuyDecoy(d, l.damagePerTick);
+        }
+        if (l.timer >= l.duration) {
+          this.createCataclysmicExplosion(l.x, l.y, l.radius * 1.15, "#7C3AED");
+          Math.hypot(this.player.x - l.x, this.player.y - l.y) <= l.radius + this.player.radius && (this.damagePlayer(l.finalBurstDmg), this.applyPlayerCC("stun", l.ccDur || 1.6, 0, l.x, l.y));
+          for (let d of this.duyDecoys) !d.visualOnly && d.life < d.maxLife && Math.hypot(d.x - l.x, d.y - l.y) <= l.radius + (d.radius || 30) && this.damageDuyDecoy(d, l.finalBurstDmg);
+          this.galaxyVortices.splice(a, 1);
+        }
       }
     }
     for (let a = this.cataclysmicExplosions.length - 1; a >= 0; a--) {
@@ -3609,9 +3895,21 @@ export class GameEngine {
     }
     for (let h of this.groundCracks) drawGroundCrack(a, h, this.elapsedTime, c);
     for (let h of this.lavaPools) {
-      a.save(), a.globalAlpha = Math.min(1, (h.duration - h.timer) / 0.5);
-      let f = a.createRadialGradient(h.x, h.y, 10, h.x, h.y, h.radius);
-      f.addColorStop(0, "#FEF08A"), f.addColorStop(0.3, "#F97316"), f.addColorStop(0.7, "#DC2626"), f.addColorStop(1, "rgba(69, 26, 3, 0)"), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = f, a.fill(), a.strokeStyle = "#EA580C", a.lineWidth = 3, a.stroke(), a.restore();
+      let fade = Math.min(1, (h.duration - h.timer) / 0.5);
+      let pulse = 0.88 + 0.12 * Math.sin(this.elapsedTime * 7 + h.x * 0.05);
+      a.save(), a.globalAlpha = fade, a.translate(h.x, h.y);
+      let f = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
+      f.addColorStop(0, "#FEF08A"), f.addColorStop(0.32, "#F97316"), f.addColorStop(0.72, "#DC2626"), f.addColorStop(1, "rgba(69, 26, 3, 0)");
+      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = f, a.fill();
+      a.strokeStyle = "#EA580C", a.lineWidth = 2.8, a.stroke();
+      a.strokeStyle = "rgba(254, 240, 138, 0.55)", a.lineWidth = 1.8, a.setLineDash([10, 8]);
+      a.beginPath(), a.arc(0, 0, h.radius * 0.65 * pulse, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      for (let bi = 0; bi < 4; bi++) {
+        let ba = this.elapsedTime * 1.4 + (Math.PI / 2) * bi + h.y * 0.03;
+        let br = h.radius * (0.3 + 0.38 * ((this.elapsedTime * 0.6 + bi * 0.25) % 1));
+        a.fillStyle = "#FEF08A", a.beginPath(), a.arc(Math.cos(ba) * br, Math.sin(ba) * br, 3.2, 0, Math.PI * 2), a.fill();
+      }
+      a.restore();
     }
     for (let h of this.icePillars) {
       a.save();
@@ -3684,9 +3982,45 @@ export class GameEngine {
       let f = Math.min(1, (h.maxLife - h.life) / 1.2), v = Math.sin(h.pulse) * 4, T = h.radius + Math.sin(h.pulse * 1.5) * 4;
       a.save(), a.globalAlpha = f, a.translate(h.x, h.y);
       let b = a.createRadialGradient(0, 0, 6, 0, 0, T);
-      b.addColorStop(0, c ? "rgba(0,0,0,0.28)" : "rgba(244, 63, 94, 0.38)"), b.addColorStop(0.7, c ? "rgba(0,0,0,0.12)" : "rgba(225, 29, 72, 0.16)"), b.addColorStop(1, "rgba(244, 63, 94, 0)"), a.fillStyle = b, a.beginPath(), a.arc(0, 0, T, 0, Math.PI * 2), a.fill(), a.strokeStyle = c ? "#000000" : "rgba(251, 113, 133, 0.85)", a.lineWidth = 2, a.setLineDash([7, 5]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.fillStyle = "rgba(0, 0, 0, 0.5)", a.beginPath(), a.ellipse(0, 8, 12, 5, 0, 0, Math.PI * 2), a.fill(), a.translate(0, v - 4), a.fillStyle = c ? "#000000" : "#E11D48", a.beginPath(), a.moveTo(0, -24), a.lineTo(12, -4), a.lineTo(7, 10), a.lineTo(0, 14), a.lineTo(-7, 10), a.lineTo(-12, -4), a.closePath(), a.fill(), a.fillStyle = c ? "#444444" : "#FB7185", a.beginPath(), a.moveTo(0, -24), a.lineTo(12, -4), a.lineTo(0, 14), a.closePath(), a.fill(), a.strokeStyle = "#FFE4E6", a.lineWidth = 1.8, a.beginPath(), a.moveTo(0, -24), a.lineTo(12, -4), a.lineTo(7, 10), a.lineTo(0, 14), a.lineTo(-7, 10), a.lineTo(-12, -4), a.closePath(), a.stroke(), a.beginPath(), a.moveTo(0, -20), a.lineTo(0, 10), a.strokeStyle = "#FFFFFF", a.lineWidth = 1.5, a.stroke(), a.restore();
+      b.addColorStop(0, c ? "rgba(0,0,0,0.28)" : "rgba(244, 63, 94, 0.42)"), b.addColorStop(0.7, c ? "rgba(0,0,0,0.12)" : "rgba(225, 29, 72, 0.18)"), b.addColorStop(1, "rgba(244, 63, 94, 0)"), a.fillStyle = b, a.beginPath(), a.arc(0, 0, T, 0, Math.PI * 2), a.fill();
+      a.save(), a.rotate(this.elapsedTime * 1.6), a.strokeStyle = c ? "#000000" : "rgba(251, 113, 133, 0.85)", a.lineWidth = 2, a.setLineDash([7, 5]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      a.strokeStyle = c ? "#444444" : "rgba(254, 205, 211, 0.45)", a.lineWidth = 1.4, a.beginPath();
+      for (let hi = 0; hi < 6; hi++) {
+        let ha = (Math.PI / 3) * hi, hx = Math.cos(ha) * h.radius * 0.68, hy = Math.sin(ha) * h.radius * 0.68;
+        hi === 0 ? a.moveTo(hx, hy) : a.lineTo(hx, hy);
+      }
+      a.closePath(), a.stroke(), a.restore();
+      for (let si = 0; si < 3; si++) {
+        let sa = -this.elapsedTime * 2.8 + (Math.PI * 2 / 3) * si;
+        a.fillStyle = c ? "#FFFFFF" : "#FDA4AF", a.beginPath(), a.arc(Math.cos(sa) * 26, Math.sin(sa) * 14 - 4, 2.6, 0, Math.PI * 2), a.fill();
+      }
+      a.fillStyle = "rgba(0, 0, 0, 0.5)", a.beginPath(), a.ellipse(0, 8, 12, 5, 0, 0, Math.PI * 2), a.fill(), a.translate(0, v - 4);
+      a.fillStyle = c ? "#000000" : "#E11D48", a.beginPath(), a.moveTo(0, -24), a.lineTo(12, -4), a.lineTo(7, 10), a.lineTo(0, 14), a.lineTo(-7, 10), a.lineTo(-12, -4), a.closePath(), a.fill();
+      a.fillStyle = c ? "#444444" : "#FB7185", a.beginPath(), a.moveTo(0, -24), a.lineTo(12, -4), a.lineTo(0, 14), a.closePath(), a.fill();
+      a.strokeStyle = "#FFE4E6", a.lineWidth = 1.8, a.beginPath(), a.moveTo(0, -24), a.lineTo(12, -4), a.lineTo(7, 10), a.lineTo(0, 14), a.lineTo(-7, 10), a.lineTo(-12, -4), a.closePath(), a.stroke();
+      a.beginPath(), a.moveTo(0, -20), a.lineTo(0, 10), a.strokeStyle = "#FFFFFF", a.lineWidth = 1.6, a.stroke(), a.restore();
     }
-    for (let h of this.frostBarrages) a.save(), a.globalAlpha = Math.min(1, (h.duration - h.timer) / 0.5), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = "rgba(56, 189, 248, 0.22)", a.fill(), a.strokeStyle = "#38BDF8", a.lineWidth = 2.5, a.setLineDash([8, 6]), a.stroke(), a.restore();
+    for (let h of this.frostBarrages) {
+      let alpha = Math.min(1, (h.duration - h.timer) / 0.5), et = this.elapsedTime;
+      a.save(), a.globalAlpha = alpha, a.translate(h.x, h.y);
+      let fg = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
+      fg.addColorStop(0, "rgba(224, 242, 254, 0.34)"), fg.addColorStop(0.55, "rgba(56, 189, 248, 0.24)"), fg.addColorStop(1, "rgba(14, 165, 233, 0)");
+      a.fillStyle = fg, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
+      a.save(), a.rotate(et * 2.4), a.strokeStyle = "#38BDF8", a.lineWidth = 2.6, a.setLineDash([10, 7]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      a.strokeStyle = "rgba(186, 230, 253, 0.65)", a.lineWidth = 1.6;
+      for (let si = 0; si < 6; si++) {
+        let sa = (Math.PI / 3) * si;
+        a.beginPath(), a.moveTo(0, 0), a.lineTo(Math.cos(sa) * h.radius * 0.72, Math.sin(sa) * h.radius * 0.72), a.stroke();
+      }
+      a.restore();
+      let step = Math.floor(et * 18);
+      for (let ii = 0; ii < 10; ii++) {
+        let ix = Math.sin(step + ii * 31) * 0.78 * h.radius, iy = Math.cos(step * 1.3 + ii * 19) * 0.78 * h.radius;
+        a.strokeStyle = "#E0F2FE", a.lineWidth = 2.6, a.beginPath(), a.moveTo(ix - 10, iy - 34), a.lineTo(ix, iy), a.stroke();
+        a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(ix, iy, 3, 0, Math.PI * 2), a.fill();
+      }
+      a.restore();
+    }
     this.tapRipple && (a.save(), a.beginPath(), a.arc(this.tapRipple.x, this.tapRipple.y, this.tapRipple.radius, 0, Math.PI * 2), a.strokeStyle = `rgba(52, 211, 153, ${Math.max(0, this.tapRipple.alpha)})`, a.lineWidth = 2.5, a.stroke(), a.restore(), this.tapRipple.radius += 2.2, this.tapRipple.alpha -= 0.04, this.tapRipple.alpha <= 0 && (this.tapRipple = null));
     for (let h of this.deadCorpses) {
       let f = Math.min(1, h.timer / 0.2), v = Math.max(0, 1 - h.timer / h.maxLife);
@@ -3708,14 +4042,16 @@ export class GameEngine {
     for (let h of this.galaxyVortices) {
       a.save(), a.translate(h.x, h.y), a.rotate(h.rotation);
       let f = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-      f.addColorStop(0, "rgba(15, 23, 42, 0.95)"), f.addColorStop(0.3, h.isGalaxy ? "rgba(192, 132, 252, 0.35)" : "rgba(147, 51, 234, 0.35)"), f.addColorStop(0.7, h.isGalaxy ? "rgba(56, 189, 248, 0.25)" : "rgba(88, 28, 135, 0.25)"), f.addColorStop(1, "rgba(15, 23, 42, 0)"), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = f, a.fill();
-      let v = h.isGalaxy ? 4 : 2;
-      for (let T = 0; T < v; T++) a.save(), a.rotate(Math.PI * 2 / v * T), a.beginPath(), a.moveTo(0, 0), a.bezierCurveTo(h.radius * 0.4, h.radius * 0.3, h.radius * 0.7, -h.radius * 0.2, h.radius * 0.95, h.radius * 0.1), a.strokeStyle = T % 2 == 0 ? "#E9D5FF" : "#38BDF8", a.lineWidth = h.isGalaxy ? 3.5 : 2.5, a.stroke(), a.restore();
+      f.addColorStop(0, "rgba(15, 23, 42, 0.96)"), f.addColorStop(0.28, h.isGalaxy ? "rgba(192, 132, 252, 0.42)" : "rgba(147, 51, 234, 0.38)"), f.addColorStop(0.68, h.isGalaxy ? "rgba(56, 189, 248, 0.28)" : "rgba(88, 28, 135, 0.25)"), f.addColorStop(1, "rgba(15, 23, 42, 0)"), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = f, a.fill();
+      a.strokeStyle = h.isGalaxy ? "rgba(244, 114, 182, 0.65)" : "rgba(192, 132, 252, 0.55)", a.lineWidth = 2.2, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.92, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      let v = h.isGalaxy ? 5 : 3;
+      for (let T = 0; T < v; T++) a.save(), a.rotate(Math.PI * 2 / v * T), a.beginPath(), a.moveTo(0, 0), a.bezierCurveTo(h.radius * 0.4, h.radius * 0.3, h.radius * 0.7, -h.radius * 0.2, h.radius * 0.95, h.radius * 0.1), a.strokeStyle = T % 2 == 0 ? "#E9D5FF" : "#38BDF8", a.lineWidth = h.isGalaxy ? 3.5 : 2.6, a.stroke(), a.restore();
       for (let T of h.stars) {
         let b = h.radius * T.distRatio, x = T.angle + h.rotation * 0.6, C = Math.cos(x) * b, H = Math.sin(x) * b;
         a.beginPath(), a.arc(C, H, T.size, 0, Math.PI * 2), a.fillStyle = T.color, a.fill();
       }
-      a.beginPath(), a.arc(0, 0, 20, 0, Math.PI * 2), a.fillStyle = "#030712", a.fill(), a.strokeStyle = h.isGalaxy ? "#F472B6" : "#C084FC", a.lineWidth = 2.5, a.stroke(), a.restore();
+      a.beginPath(), a.arc(0, 0, 21, 0, Math.PI * 2), a.fillStyle = "#030712", a.fill(), a.strokeStyle = h.isGalaxy ? "#F472B6" : "#C084FC", a.lineWidth = 2.8, a.stroke();
+      a.beginPath(), a.arc(0, 0, 26, 0.3, 2.3), a.strokeStyle = "#67E8F9", a.lineWidth = 1.6, a.stroke(), a.restore();
     }
     for (let h of this.zones) {
       if (a.save(), a.globalAlpha = Math.min(1, (h.duration - h.timer) / 0.5), h.kind === "arrow_rain") {
@@ -3747,15 +4083,22 @@ export class GameEngine {
         C.addColorStop(0, "#FFFFFF"), C.addColorStop(0.5, "#6EE7B7"), C.addColorStop(1, "rgba(52, 211, 153, 0)"), a.fillStyle = C, a.beginPath(), a.arc(0, 0, x, 0, Math.PI * 2), a.fill(), a.restore();
       } else if (h.kind === "fox_king_rain") {
         let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = "rgba(249, 115, 22, 0.22)", a.fill(), a.strokeStyle = "#FB923C", a.lineWidth = 3, a.stroke();
+        a.save(), a.translate(h.x, h.y);
+        let fg = a.createRadialGradient(0, 0, 12, 0, 0, h.radius);
+        fg.addColorStop(0, "rgba(254, 240, 138, 0.38)"), fg.addColorStop(0.55, "rgba(249, 115, 22, 0.26)"), fg.addColorStop(1, "rgba(194, 65, 12, 0)");
+        a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = fg, a.fill(), a.strokeStyle = "#FB923C", a.lineWidth = 3, a.stroke();
+        a.save(), a.rotate(f * 2.2), a.strokeStyle = "rgba(254, 240, 138, 0.6)", a.lineWidth = 1.8, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.72, 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.restore();
         for (let T = 0; T < 9; T++) {
-          let b = f * 3.5 + Math.PI * 2 / 9 * T, x = h.radius * (0.5 + 0.4 * Math.sin(f * 2 + T));
-          a.fillStyle = T % 2 == 0 ? "#F97316" : "#EF4444", a.beginPath(), a.arc(Math.cos(b) * x, Math.sin(b) * x, 8, 0, Math.PI * 2), a.fill();
+          let b = f * 3.5 + Math.PI * 2 / 9 * T, x = h.radius * (0.48 + 0.36 * Math.sin(f * 2 + T));
+          let fx = Math.cos(b) * x, fy = Math.sin(b) * x;
+          a.strokeStyle = "rgba(251, 146, 60, 0.65)", a.lineWidth = 3, a.beginPath(), a.moveTo(Math.cos(b - 0.3) * x, Math.sin(b - 0.3) * x), a.lineTo(fx, fy), a.stroke();
+          a.fillStyle = T % 2 == 0 ? "#F97316" : "#FEF08A", a.beginPath(), a.arc(fx, fy, 6.5, 0, Math.PI * 2), a.fill();
         }
         let v = Math.floor(f * 22);
-        for (let T = 0; T < 14; T++) {
+        for (let T = 0; T < 16; T++) {
           let b = Math.sin(v + T * 37) * 0.85 * h.radius, x = Math.cos(v * 1.5 + T * 23) * 0.85 * h.radius;
-          a.strokeStyle = "#FDE68A", a.lineWidth = 2.5, a.beginPath(), a.moveTo(b + 12, x - 32), a.lineTo(b, x), a.stroke();
+          a.strokeStyle = "#FDE68A", a.lineWidth = 2.6, a.beginPath(), a.moveTo(b + 12, x - 34), a.lineTo(b, x), a.stroke();
+          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(b, x, 3, 0, Math.PI * 2), a.fill();
         }
         a.restore();
       } else if (h.kind === "blizzard_vortex") {
@@ -3780,26 +4123,41 @@ export class GameEngine {
         let f = this.elapsedTime;
         a.save(), a.translate(h.x, h.y);
         let v = a.createRadialGradient(0, 0, 12, 0, 0, h.radius);
-        v.addColorStop(0, "rgba(251, 191, 36, 0.34)"), v.addColorStop(0.6, "rgba(217, 119, 6, 0.22)"), v.addColorStop(1, "rgba(180, 83, 9, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = "rgba(251, 191, 36, 0.72)", a.lineWidth = 2.5, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.85 + 0.1 * Math.sin(f * 8)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.restore();
+        v.addColorStop(0, "rgba(254, 240, 138, 0.38)"), v.addColorStop(0.55, "rgba(217, 119, 6, 0.25)"), v.addColorStop(1, "rgba(180, 83, 9, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
+        a.strokeStyle = "rgba(251, 191, 36, 0.8)", a.lineWidth = 2.6, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.85 + 0.1 * Math.sin(f * 8)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        for (let ci = 0; ci < 6; ci++) {
+          let ca = (Math.PI / 3) * ci + h.x * 0.02;
+          a.strokeStyle = "rgba(254, 240, 138, 0.68)", a.lineWidth = 2, a.beginPath(), a.moveTo(Math.cos(ca) * 14, Math.sin(ca) * 14), a.lineTo(Math.cos(ca + 0.14) * h.radius * 0.48, Math.sin(ca + 0.14) * h.radius * 0.48), a.lineTo(Math.cos(ca - 0.06) * h.radius * 0.84, Math.sin(ca - 0.06) * h.radius * 0.84), a.stroke();
+        }
+        a.restore();
       } else if (h.kind === "danh_dragon_fire") {
         let f = this.elapsedTime;
         a.save(), a.translate(h.x, h.y);
         let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        v.addColorStop(0, "rgba(254, 240, 138, 0.45)"), v.addColorStop(0.45, "rgba(239, 68, 68, 0.32)"), v.addColorStop(1, "rgba(153, 27, 27, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = "#F59E0B", a.lineWidth = 2.6, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        for (let T = 0; T < 6; T++) {
-          let b = f * 3.2 + Math.PI * 2 / 6 * T, x = h.radius * (0.35 + 0.45 * ((f * 0.7 + T * 0.2) % 1));
-          a.fillStyle = T % 2 == 0 ? "#FEF08A" : "#FB923C", a.beginPath(), a.arc(Math.cos(b) * x, Math.sin(b) * x, 4, 0, Math.PI * 2), a.fill();
+        v.addColorStop(0, "rgba(254, 240, 138, 0.48)"), v.addColorStop(0.45, "rgba(239, 68, 68, 0.34)"), v.addColorStop(1, "rgba(153, 27, 27, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = "#F59E0B", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
+        a.save(), a.rotate(-f * 2.4), a.strokeStyle = "rgba(254, 240, 138, 0.55)", a.lineWidth = 1.6, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.7, 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.restore();
+        for (let T = 0; T < 8; T++) {
+          let b = f * 3.4 + Math.PI * 2 / 8 * T, x = h.radius * (0.3 + 0.52 * ((f * 0.7 + T * 0.18) % 1));
+          a.fillStyle = T % 2 == 0 ? "#FEF08A" : "#FB923C", a.beginPath(), a.arc(Math.cos(b) * x, Math.sin(b) * x, 4.2, 0, Math.PI * 2), a.fill();
         }
         a.restore();
       } else if (h.kind === "trung_thunder_zone") {
         let f = this.elapsedTime;
         a.save(), a.translate(h.x, h.y);
         let v = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-        v.addColorStop(0, "rgba(254, 240, 138, 0.32)"), v.addColorStop(0.55, "rgba(129, 140, 248, 0.25)"), v.addColorStop(1, "rgba(79, 70, 229, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = "#818CF8", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.strokeStyle = "#FDE047", a.lineWidth = 2, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.72 + 0.08 * Math.sin(f * 10)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        for (let T = 0; T < 5; T++) {
-          let b = f * 4.5 + Math.PI * 2 / 5 * T, x = h.radius * 0.78;
-          a.strokeStyle = "#FEF08A", a.lineWidth = 1.8, a.beginPath(), a.moveTo(0, 0), a.lineTo(Math.cos(b + 0.2) * x * 0.5, Math.sin(b + 0.2) * x * 0.5), a.lineTo(Math.cos(b) * x, Math.sin(b) * x), a.stroke();
+        v.addColorStop(0, "rgba(254, 240, 138, 0.36)"), v.addColorStop(0.55, "rgba(129, 140, 248, 0.28)"), v.addColorStop(1, "rgba(79, 70, 229, 0)"), a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = "#818CF8", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
+        a.save(), a.rotate(f * 2.2), a.strokeStyle = "#FDE047", a.lineWidth = 2, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.72 + 0.08 * Math.sin(f * 10)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        a.strokeStyle = "rgba(199, 210, 254, 0.55)", a.lineWidth = 1.5, a.beginPath();
+        for (let hi = 0; hi < 6; hi++) {
+          let ha = (Math.PI / 3) * hi, hx = Math.cos(ha) * h.radius * 0.56, hy = Math.sin(ha) * h.radius * 0.56;
+          hi === 0 ? a.moveTo(hx, hy) : a.lineTo(hx, hy);
         }
+        a.closePath(), a.stroke(), a.restore();
+        for (let T = 0; T < 5; T++) {
+          let b = f * 4.5 + Math.PI * 2 / 5 * T, x = h.radius * 0.82;
+          a.strokeStyle = "#FEF08A", a.lineWidth = 2, a.beginPath(), a.moveTo(0, 0), a.lineTo(Math.cos(b + 0.22) * x * 0.5, Math.sin(b + 0.22) * x * 0.5), a.lineTo(Math.cos(b) * x, Math.sin(b) * x), a.stroke();
+        }
+        a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(0, 0, 7 + Math.sin(f * 14) * 2, 0, Math.PI * 2), a.fill();
         a.restore();
       } else if (h.kind === "acid_pool") {
         let f = this.elapsedTime;
@@ -3834,7 +4192,21 @@ export class GameEngine {
       let pad = this.duccong_pads[m];
       if (!pad) continue;
       let ready = pad.teleportCd <= 0, pulse = 1 + 0.1 * Math.sin(this.elapsedTime * 7);
-      a.save(), a.translate(pad.x, pad.y), a.beginPath(), a.arc(0, 0, pad.radius * pulse, 0, Math.PI * 2), a.fillStyle = ready ? "rgba(168, 85, 247, 0.25)" : "rgba(148, 163, 184, 0.14)", a.fill(), a.strokeStyle = ready ? "#E879F9" : "#94A3B8", a.lineWidth = 2.6, a.setLineDash([7, 5]), a.stroke(), a.setLineDash([]), a.beginPath(), a.arc(0, 0, 12, 0, Math.PI * 2), a.fillStyle = ready ? "#C084FC" : "#64748B", a.fill(), a.font = '800 10px "JetBrains Mono", monospace', a.textAlign = "center", a.fillStyle = "#F5D0FE", a.fillText(ready ? `D\u1ECACH C${m + 1}` : `${pad.teleportCd.toFixed(1)}s`, 0, -pad.radius - 6), a.restore();
+      a.save(), a.translate(pad.x, pad.y);
+      a.beginPath(), a.arc(0, 0, pad.radius * pulse, 0, Math.PI * 2), a.fillStyle = ready ? "rgba(168, 85, 247, 0.26)" : "rgba(148, 163, 184, 0.14)", a.fill();
+      a.save(), a.rotate(this.elapsedTime * (ready ? 2.4 : 0.6));
+      a.strokeStyle = ready ? "#E879F9" : "#94A3B8", a.lineWidth = 2.6, a.setLineDash([7, 5]), a.beginPath(), a.arc(0, 0, pad.radius * pulse, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      if (ready) {
+        a.strokeStyle = "rgba(56, 189, 248, 0.65)", a.lineWidth = 1.6, a.beginPath();
+        for (let ri = 0; ri < 4; ri++) {
+          let ra = (Math.PI / 2) * ri, rx = Math.cos(ra) * pad.radius * 0.7, ry = Math.sin(ra) * pad.radius * 0.7;
+          ri === 0 ? a.moveTo(rx, ry) : a.lineTo(rx, ry);
+        }
+        a.closePath(), a.stroke();
+      }
+      a.restore();
+      a.beginPath(), a.arc(0, 0, 12, 0, Math.PI * 2), a.fillStyle = ready ? "#090418" : "#475569", a.fill(), a.strokeStyle = ready ? "#67E8F9" : "#94A3B8", a.lineWidth = 2, a.stroke();
+      a.font = '800 10px "JetBrains Mono", monospace', a.textAlign = "center", a.fillStyle = "#F5D0FE", a.fillText(ready ? `D\u1ECACH C${m + 1}` : `${pad.teleportCd.toFixed(1)}s`, 0, -pad.radius - 6), a.restore();
     }
     for (let h of this.bossWarnings) {
       let f = Math.min(1, h.timer / h.duration), v = 0.5 + 0.4 * Math.sin(h.timer * 20), T = h.color || "#EF4444";
@@ -3890,6 +4262,17 @@ export class GameEngine {
         }
         a.restore();
       } else (h.longhoiBurnStacks || 0) > 0 && (a.fillStyle = (h.longhoiBurnAmpTimer || 0) > 0 ? "#FDE047" : "#FB923C", a.font = '800 11px "JetBrains Mono", monospace', a.textAlign = "center", a.fillText(`🔥x${h.longhoiBurnStacks}`, h.x, h.y - h.radius - 12));
+      if (h.duy_marks && h.duy_marks > 0) {
+        let dm = h.duy_marks, dy = h.y - h.radius - 18, dc = dm >= 2 ? "#F43F5E" : "#14B8A6";
+        a.save(), a.translate(h.x, dy);
+        for (let di = 0; di < 3; di++) {
+          let ox = (di - 1) * 9;
+          a.beginPath(), a.arc(ox, 0, di < dm ? 3.5 : 2.5, 0, Math.PI * 2);
+          a.fillStyle = di < dm ? dc : "rgba(15, 23, 42, 0.7)";
+          a.fill(), a.strokeStyle = "#FDE68A", a.lineWidth = 1.1, a.stroke();
+        }
+        a.restore();
+      }
       if (h.hp < h.maxHp && h.kind !== "boss") {
         let f = Math.max(28, h.radius * 1.6);
         a.fillStyle = "rgba(15, 23, 42, 0.8)", a.fillRect(h.x - f / 2, h.y - h.radius - 8, f, 4), a.fillStyle = "#EF4444", a.fillRect(h.x - f / 2, h.y - h.radius - 8, f * (h.hp / h.maxHp), 4);
@@ -3898,16 +4281,21 @@ export class GameEngine {
     for (let h of this.shadowClones) {
       if (h.delay > 0) continue;
       let f = Math.min(1, h.life / 0.1), v = Math.max(0, 1 - Math.max(0, h.life - (h.maxLife - 0.16)) / 0.16), T = f * v;
-      a.save(), a.globalAlpha = T * 0.88, a.translate(h.x, h.y), a.rotate(h.facing), a.scale(0.85 + f * 0.15, 0.85 + f * 0.15);
-      a.beginPath(), a.arc(0, 0, 22, 0, Math.PI * 2), a.strokeStyle = "rgba(232, 121, 249, 0.45)", a.lineWidth = 2, a.stroke();
-      a.beginPath(), a.arc(0, 0, 18.5, 0, Math.PI * 2), a.fillStyle = "#4C1D95", a.fill(), a.strokeStyle = "#E879F9", a.lineWidth = 2.5, a.stroke();
+      a.save(), a.globalAlpha = T * 0.9, a.translate(h.x, h.y), a.rotate(h.facing), a.scale(0.85 + f * 0.15, 0.85 + f * 0.15);
+      // Flowing phantom cloak behind Bao's shadow clone
+      let wv = Math.sin(this.elapsedTime * 14 + (h.cloneIdx || 0)) * 5;
+      a.fillStyle = "rgba(88, 28, 135, 0.72)", a.strokeStyle = "#E879F9", a.lineWidth = 1.6;
+      a.beginPath(), a.moveTo(-4, -18), a.quadraticCurveTo(-24, -16 + wv, -34, -4 + wv * 0.5), a.lineTo(-28, 0), a.lineTo(-34, 4 - wv * 0.5), a.quadraticCurveTo(-24, 16 - wv, -4, 18), a.closePath(), a.fill(), a.stroke();
+      a.beginPath(), a.arc(0, 0, 23, 0, Math.PI * 2), a.strokeStyle = "rgba(232, 121, 249, 0.5)", a.lineWidth = 2, a.stroke();
+      a.beginPath(), a.arc(0, 0, 18.5, 0, Math.PI * 2), a.fillStyle = "#3B0764", a.fill(), a.strokeStyle = "#E879F9", a.lineWidth = 2.5, a.stroke();
       a.beginPath(), a.arc(0, 0, 8, 0, Math.PI * 2), a.fillStyle = "#A855F7", a.fill();
-      a.beginPath(), a.arc(12, 0, 3.2, 0, Math.PI * 2), a.fillStyle = "#FFFFFF", a.fill();
+      a.fillStyle = "#F5D0FE", a.beginPath(), a.ellipse(11, -5, 3, 1.8, -0.25, 0, Math.PI * 2), a.ellipse(11, 5, 3, 1.8, 0.25, 0, Math.PI * 2), a.fill();
       let b = h.struck ? 0.55 : h.timer > 0 ? 0.28 : 0;
       for (let x of [-1, 1]) a.save(), a.translate(10, x * 15), a.rotate(x * (0.38 + b)), drawBaoDagger(a, x, true, h.struck ? 0.65 : 0.25, 0, c), a.restore();
       a.restore();
     }
     for (let h of this.taiduTurrets) drawTaiDuTurret(a, h, this.elapsedTime, c);
+    for (let h of this.duyDecoys) drawDuyDecoy(a, h, this.elapsedTime, c);
     this.multiplayer.active && this.drawRemotePlayers();
     this.drawPlayer();
     for (let h of this.dragonWaves) {
@@ -3968,6 +4356,7 @@ export class GameEngine {
     }
     for (let h of this.luanBeams) drawLuanBeam(a, h, c);
     for (let h of this.nguyenSanctuaryWaves) drawNguyenSanctuaryWave(a, h, c);
+    for (let h of this.duyHealOrbs) drawDuyHealOrb(a, h, this.elapsedTime, c);
     if (this.currentHero.id === "luan" && this.player.luan_c3Charge) {
       let ch = this.player.luan_c3Charge, prog = Math.min(1, 1 - ch.timer / Math.max(0.05, ch.maxTimer)), bLen = this.currentHero.skills[2]?.range || 520;
       let ex = this.player.x + Math.cos(ch.angle) * bLen, ey = this.player.y + Math.sin(ch.angle) * bLen;
@@ -4078,9 +4467,12 @@ export class GameEngine {
     }
     if (s.beginPath(), s.ellipse(this.player.x, this.player.y + this.player.radius * 0.72, this.player.radius * 1.15 * shadowScale, this.player.radius * 0.52 * shadowScale, 0, 0, Math.PI * 2), s.fillStyle = "rgba(0, 0, 0, 0.55)", s.fill(), s.beginPath(), s.arc(vx, vy, (this.player.radius + 6) * l, 0, Math.PI * 2), s.strokeStyle = hid === "gau" && this.player.gau_cuongHungTimer > 0 ? "#F97316" : ringStroke, s.lineWidth = 2.5, s.stroke(), hid === "trung" && this.player.trung_orbs && this.player.trung_orbs.active) {
       s.save();
+      s.strokeStyle = "rgba(129, 140, 248, 0.35)", s.lineWidth = 2, s.setLineDash([8, 6]), s.beginPath(), s.arc(this.player.x, this.player.y, this.player.trung_orbs.radius, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
       for (let f = 0; f < this.player.trung_orbs.count; f++) {
         let v = this.player.trung_orbs.rot + Math.PI * 2 / this.player.trung_orbs.count * f, T = this.player.x + Math.cos(v) * this.player.trung_orbs.radius, b = this.player.y + Math.sin(v) * this.player.trung_orbs.radius;
-        s.beginPath(), s.arc(T, b, 12, 0, Math.PI * 2), s.fillStyle = "#818CF8", s.fill(), s.strokeStyle = "#E0E7FF", s.lineWidth = 2.5, s.stroke(), s.beginPath(), s.arc(T, b, 5, 0, Math.PI * 2), s.fillStyle = "#FFFFFF", s.fill();
+        let tx = this.player.x + Math.cos(v - 0.35) * this.player.trung_orbs.radius, ty = this.player.y + Math.sin(v - 0.35) * this.player.trung_orbs.radius;
+        s.strokeStyle = "rgba(199, 210, 254, 0.55)", s.lineWidth = 5, s.lineCap = "round", s.beginPath(), s.moveTo(tx, ty), s.lineTo(T, b), s.stroke();
+        s.beginPath(), s.arc(T, b, 12, 0, Math.PI * 2), s.fillStyle = "#6366F1", s.fill(), s.strokeStyle = "#E0E7FF", s.lineWidth = 2.5, s.stroke(), s.beginPath(), s.arc(T, b, 5, 0, Math.PI * 2), s.fillStyle = "#FEF08A", s.fill();
       }
       s.restore();
     }
@@ -4107,16 +4499,38 @@ export class GameEngine {
     }
     if (hid === "dung" && this.player.dung_c3_buff_timer > 0) {
       s.save(), s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 3.5), s.strokeStyle = "#FDE047", s.lineWidth = 2.8, s.setLineDash([10, 6]), s.beginPath(), s.arc(0, 0, this.player.radius + 16, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+      s.strokeStyle = "rgba(56, 189, 248, 0.55)", s.lineWidth = 1.5, s.beginPath();
+      for (let hi = 0; hi < 4; hi++) {
+        let ha = (Math.PI / 2) * hi, hx = Math.cos(ha) * (this.player.radius + 12), hy = Math.sin(ha) * (this.player.radius + 12);
+        hi === 0 ? s.moveTo(hx, hy) : s.lineTo(hx, hy);
+      }
+      s.closePath(), s.stroke();
       for (let f = 0; f < 4; f++) {
         let v = Math.PI / 2 * f;
-        s.fillStyle = "#38BDF8", s.beginPath(), s.arc(Math.cos(v) * (this.player.radius + 16), Math.sin(v) * (this.player.radius + 16), 3.5, 0, Math.PI * 2), s.fill();
+        s.fillStyle = "#38BDF8", s.beginPath(), s.arc(Math.cos(v) * (this.player.radius + 16), Math.sin(v) * (this.player.radius + 16), 3.6, 0, Math.PI * 2), s.fill();
       }
       s.restore();
     }
     if (hid === "eohyen") {
       s.save();
       let f = s.createRadialGradient(this.player.x, this.player.y, 40, this.player.x, this.player.y, 260);
-      f.addColorStop(0, "rgba(56, 189, 248, 0.10)"), f.addColorStop(0.65, "rgba(186, 230, 253, 0.05)"), f.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = f, s.beginPath(), s.arc(this.player.x, this.player.y, 260, 0, Math.PI * 2), s.fill(), s.restore();
+      f.addColorStop(0, "rgba(56, 189, 248, 0.11)"), f.addColorStop(0.65, "rgba(186, 230, 253, 0.06)"), f.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = f, s.beginPath(), s.arc(this.player.x, this.player.y, 260, 0, Math.PI * 2), s.fill();
+      s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 1.1);
+      s.strokeStyle = "rgba(125, 211, 252, 0.25)", s.lineWidth = 1.6, s.setLineDash([12, 10]), s.beginPath(), s.arc(0, 0, 56, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+      s.restore();
+    }
+    if (hid === "duy") {
+      let idleT = this.player.duy_idleTime || 0, ratio = Math.min(1, idleT / DUY_PASSIVE_RAMP_SEC), quiet = idleT >= DUY_QUIET_REGEN_DELAY;
+      if (ratio > 0.03) {
+        s.save(), s.translate(vx, vy);
+        s.strokeStyle = ratio >= 1 ? "#F43F5E" : "#14B8A6", s.lineWidth = ratio >= 1 ? 3.6 : 2.6;
+        s.beginPath(), s.arc(0, 0, this.player.radius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio), s.stroke();
+        if (quiet) {
+          s.strokeStyle = "rgba(52, 211, 153, 0.45)", s.lineWidth = 2, s.setLineDash([7, 5]);
+          s.beginPath(), s.arc(0, 0, this.player.radius + 17 + Math.sin(this.elapsedTime * 6) * 2, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+        }
+        s.restore();
+      }
     }
     if (this.player.shield > 0) {
       if (hid === "nguyen") {
@@ -4252,7 +4666,8 @@ export class GameEngine {
       if (!downed && heroObj.id === "eohyen") {
         s.save();
         let fg = s.createRadialGradient(vx, drawY, 40, vx, drawY, 260);
-        fg.addColorStop(0, "rgba(56, 189, 248, 0.09)"), fg.addColorStop(0.65, "rgba(186, 230, 253, 0.04)"), fg.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = fg, s.beginPath(), s.arc(vx, drawY, 260, 0, Math.PI * 2), s.fill(), s.restore();
+        fg.addColorStop(0, "rgba(56, 189, 248, 0.1)"), fg.addColorStop(0.65, "rgba(186, 230, 253, 0.05)"), fg.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = fg, s.beginPath(), s.arc(vx, drawY, 260, 0, Math.PI * 2), s.fill();
+        s.translate(vx, drawY), s.rotate(this.elapsedTime * 1.1), s.strokeStyle = "rgba(125, 211, 252, 0.24)", s.lineWidth = 1.5, s.setLineDash([12, 10]), s.beginPath(), s.arc(0, 0, 56, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
       }
       if (!downed && rp.buffs?.dung_berserk) {
         s.save(), s.translate(vx, drawY), s.rotate(-this.elapsedTime * 4), s.strokeStyle = "#F97316", s.lineWidth = 2.4, s.setLineDash([8, 6]), s.beginPath(), s.arc(0, 0, radius + 12, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
@@ -4262,14 +4677,28 @@ export class GameEngine {
       }
       if (!downed && heroObj.id === "trung" && rp.buffs?.trung_orbs) {
         s.save();
+        s.strokeStyle = "rgba(129, 140, 248, 0.35)", s.lineWidth = 1.8, s.setLineDash([8, 6]), s.beginPath(), s.arc(vx, drawY, 76, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
         for (let oi = 0; oi < 6; oi++) {
           let oAng = this.elapsedTime * (Math.PI * 2 / 0.75) + Math.PI * 2 / 6 * oi, ox = vx + Math.cos(oAng) * 76, oy = drawY + Math.sin(oAng) * 76;
-          s.beginPath(), s.arc(ox, oy, 11, 0, Math.PI * 2), s.fillStyle = "#818CF8", s.fill(), s.strokeStyle = "#E0E7FF", s.lineWidth = 2.2, s.stroke(), s.beginPath(), s.arc(ox, oy, 4.5, 0, Math.PI * 2), s.fillStyle = "#FFFFFF", s.fill();
+          let tx = vx + Math.cos(oAng - 0.35) * 76, ty = drawY + Math.sin(oAng - 0.35) * 76;
+          s.strokeStyle = "rgba(199, 210, 254, 0.55)", s.lineWidth = 4.5, s.lineCap = "round", s.beginPath(), s.moveTo(tx, ty), s.lineTo(ox, oy), s.stroke();
+          s.beginPath(), s.arc(ox, oy, 11, 0, Math.PI * 2), s.fillStyle = "#6366F1", s.fill(), s.strokeStyle = "#E0E7FF", s.lineWidth = 2.2, s.stroke(), s.beginPath(), s.arc(ox, oy, 4.5, 0, Math.PI * 2), s.fillStyle = "#FEF08A", s.fill();
         }
         s.restore();
       }
       if (!downed && heroObj.id === "gau" && rp.buffs?.gau_cuong) {
         s.save(), s.translate(vx, drawY), s.rotate(this.elapsedTime * 3.2), s.strokeStyle = "#FB923C", s.lineWidth = 2.8, s.setLineDash([12, 8]), s.beginPath(), s.arc(0, 0, radius + 15 + Math.sin(this.elapsedTime * 12) * 2.5, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+      }
+      if (!downed && heroObj.id === "duy" && (rp.buffs?.duy_idleRatio || 0) > 0.03) {
+        let dr = Math.min(1, rp.buffs.duy_idleRatio);
+        s.save(), s.translate(vx, drawY);
+        s.strokeStyle = dr >= 1 ? "#F43F5E" : "#14B8A6", s.lineWidth = dr >= 1 ? 3.4 : 2.4;
+        s.beginPath(), s.arc(0, 0, radius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * dr), s.stroke();
+        if (rp.buffs?.duy_quiet) {
+          s.strokeStyle = "rgba(52, 211, 153, 0.42)", s.lineWidth = 1.8, s.setLineDash([7, 5]);
+          s.beginPath(), s.arc(0, 0, radius + 17 + Math.sin(this.elapsedTime * 6) * 2, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+        }
+        s.restore();
       }
       if (!downed && rp.shield > 0) {
         if (heroObj.id === "nguyen") drawNguyenBastionAura(s, vx, drawY, radius, this.elapsedTime, rp.shield / Math.max(1, rp.maxHp || 1500), Boolean(rp.buffs?.nguyen_rescue), a);
@@ -4455,6 +4884,8 @@ export class GameEngine {
           taidu_barrelParity: this.player.taidu_barrelParity || 1,
           nguyen_satellites: (this.player.nguyen_satellitesTimer || 0) > 0,
           nguyen_rescue: (this.player.nguyen_rescueFlashTimer || 0) > 0,
+          duy_idleRatio: this.currentHero.id === "duy" ? Math.min(1, Math.round(((this.player.duy_idleTime || 0) / DUY_PASSIVE_RAMP_SEC) * 100) / 100) : 0,
+          duy_quiet: this.currentHero.id === "duy" && (this.player.duy_idleTime || 0) >= DUY_QUIET_REGEN_DELAY,
           cc_stun: (this.player.stunTimer || 0) > 0,
           cc_root: (this.player.rootTimer || 0) > 0
         }
@@ -4492,6 +4923,7 @@ export class GameEngine {
         bao_marks: e.bao_marks || 0,
         gau_quakeTimer: Math.round((e.gau_quakeTimer || 0) * 100) / 100,
         tin_hasMark: Boolean(e.tin_hasMark),
+        duy_marks: e.duy_marks || 0,
         burnCount: e.longhoiBurnStacks || 0
       });
     }
@@ -4594,7 +5026,7 @@ export class GameEngine {
         if (se) {
           if (Math.hypot(se.x - e.x, se.y - e.y) > 280) e.x = se.x, e.y = se.y;
           let phaseChanged = Boolean(se.phase && e.phase !== se.phase);
-          e.mpTargetX = se.x, e.mpTargetY = se.y, e.facing = se.facing, e.hp = se.hp, e.maxHp = se.maxHp, e.phase = se.phase, e.stunTimer = se.stunTimer, e.slowFactor = se.slowFactor, e.frozenTimer = se.frozenTimer, e.bao_marks = se.bao_marks, e.gau_quakeTimer = se.gau_quakeTimer, e.tin_hasMark = se.tin_hasMark, e.longhoiBurnStacks = se.burnCount || 0;
+          e.mpTargetX = se.x, e.mpTargetY = se.y, e.facing = se.facing, e.hp = se.hp, e.maxHp = se.maxHp, e.phase = se.phase, e.stunTimer = se.stunTimer, e.slowFactor = se.slowFactor, e.frozenTimer = se.frozenTimer, e.bao_marks = se.bao_marks, e.gau_quakeTimer = se.gau_quakeTimer, e.tin_hasMark = se.tin_hasMark, e.duy_marks = se.duy_marks || 0, e.longhoiBurnStacks = se.burnCount || 0;
           if (se.kind) e.kind = se.kind;
           if (se.bossWave) e.bossWave = se.bossWave;
           if (se.name) e.name = se.name;
@@ -4821,6 +5253,20 @@ export class GameEngine {
         this.nguyenSanctuaryWaves.push({ id: this.nextEntityId++, x: ev.x, y: ev.y, maxRadius: ev.maxRadius || 210, life: 0, maxLife: ev.maxLife || 0.48 });
       } else if (ev.type === "nguyen_field_vis") {
         this.nguyenSanctuaryFields.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, radius: ev.radius || 230, timer: 0, duration: ev.duration || 3.2, tickTimer: 0, tickInterval: 0.75, pulsesLeft: 0, healAmt: 0, dmgAmt: 0 });
+      } else if (ev.type === "duy_decoy_vis") {
+        this.duyDecoys.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, radius: ev.radius || 30, blastRadius: ev.blastRadius || DUY_DECOY_BLAST_RADIUS, life: 0, maxLife: ev.maxLife || DUY_DECOY_DURATION, absorbedDamage: 0, hitFlash: 0, textCd: 0, passiveMult: ev.passiveMult || 1 });
+      } else if (ev.type === "duy_decoy_pop_vis") {
+        for (let di = this.duyDecoys.length - 1; di >= 0; di--) {
+          let dc = this.duyDecoys[di];
+          if (dc.visualOnly && Math.hypot(dc.x - ev.x, dc.y - ev.y) <= 75) {
+            this.duyDecoys.splice(di, 1);
+            break;
+          }
+        }
+        this.createCataclysmicExplosion(ev.x, ev.y, (ev.radius || DUY_DECOY_BLAST_RADIUS) * 0.82, "#14B8A6");
+        this.spawnParticles(ev.x, ev.y, "#34D399", 12, 55, 190, 3.2, 0.36);
+      } else if (ev.type === "duy_heal_orb_vis") {
+        this.duyHealOrbs.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, vx: ev.vx || 0, vy: ev.vy || 0, radius: 7, healAmt: 0, life: 0, maxLife: 0.75 });
       } else if (ev.type === "enemy_proj") {
         this.projectiles.push({ id: this.nextEntityId++, kind: ev.kind || "enemy_orb", fromPlayer: false, isHoming: Boolean(ev.isHoming), x: ev.x, y: ev.y, vx: ev.vx, vy: ev.vy, radius: ev.radius || 9, damage: ev.damage || 25, color: ev.color || "#C084FC", angle: ev.angle || 0, distanceTraveled: 0, maxDistance: ev.maxDistance || 460, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set(), ccType: ev.ccType, ccDur: ev.ccDur, ccFactor: ev.ccFactor });
       } else if (ev.type === "enemy_zone") {
@@ -4946,6 +5392,15 @@ export class GameEngine {
       let parts = [`\u{1F6E1}\uFE0F KHI\xCAN \u1EA2O ${Math.round(s.shield || 0)}/${Math.round(s.maxHp || 1500)}`];
       s.nguyen_satellitesTimer > 0 && parts.push(`3 V\u1EC6 TINH ${s.nguyen_satellitesTimer.toFixed(1)}s`);
       s.nguyen_rescueCd > 0 ? parts.push(`C\u1EE8U NGUY ${s.nguyen_rescueCd.toFixed(0)}s`) : parts.push("C\u1EE8U NGUY S\u1EB4N S\xC0NG");
+      l = parts.join(" \xB7 ");
+    } else if (this.currentHero.id === "duy") {
+      let mult = computeDuyPassiveMultiplier(s.duy_idleTime || 0), pct = Math.round(mult * 100);
+      let parts = [`\u{1F3AF} T\u1EE4 S\xC1T ${pct}%`];
+      (s.duy_idleTime || 0) >= DUY_QUIET_REGEN_DELAY && parts.push("\u{1F343} T\u0128NH S\xC1T (+18% T\u1ED0C)");
+      this.duyDecoys.length > 0 && parts.push(`\u{1FA86} H\xCCNH N\u1ED8M x${this.duyDecoys.length}`);
+      if (mult >= 3.5) {
+        for (let i = 0; i < 3; i++) a[i] === "ready" && (a[i] = "empowered");
+      }
       l = parts.join(" \xB7 ");
     }
     let dProf = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(s.taidu_droneMode || "attack") : null;

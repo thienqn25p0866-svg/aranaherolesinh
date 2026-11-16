@@ -833,4 +833,93 @@ export function computeJoystickDragRadius(zoneWidthPx: number): number {
   return Math.max(28, Math.min(44, Math.round(zoneWidthPx * 0.31)));
 }
 
+export const DUY_PASSIVE_MAX_MULT = 4.5;
+export const DUY_PASSIVE_RAMP_SEC = 4.5;
+export const DUY_QUIET_REGEN_DELAY = 1.2;
+export const DUY_DECOY_DURATION = 5.0;
+export const DUY_DECOY_BLAST_RADIUS = 195;
+export const DUY_DECOY_REFLECT_RATIO = 0.3;
+export const DUY_C2_BASE_SHURIKENS = 3;
+export const DUY_C2_BONUS_ATK_STEP = 30;
+export const DUY_C2_STUN_DUR = 0.75;
+export const DUY_C3_BASE_SHURIKENS = 40;
+export const DUY_C3_BONUS_ATK_STEP = 30;
+export const DUY_C3_SHURIKENS_PER_STEP = 3;
+export const DUY_C3_BASE_DMG = 35;
+export const DUY_C3_ATK_RATIO = 0.45;
+export const DUY_C3_HEAL_PER_HIT = 100;
+
+export function computeDuyPassiveMultiplier(idleSeconds: number): number {
+  const t = Math.max(0, Number.isFinite(idleSeconds) ? idleSeconds : 0);
+  const ratio = Math.min(1, t / DUY_PASSIVE_RAMP_SEC);
+  return Math.round((1 + ratio * (DUY_PASSIVE_MAX_MULT - 1)) * 1000) / 1000;
+}
+
+export function computeDuyDecoyBlastDamage(absorbedDamage: number, passiveMultiplier = 1, fallbackAtk = 0): number {
+  const absorbed = Math.max(0, Number.isFinite(absorbedDamage) ? absorbedDamage : 0);
+  const mult = Math.max(1, Number.isFinite(passiveMultiplier) ? passiveMultiplier : 1);
+  if (absorbed > 0) {
+    return Math.round(absorbed * DUY_DECOY_REFLECT_RATIO * mult);
+  }
+  const atk = Math.max(0, Number.isFinite(fallbackAtk) ? fallbackAtk : 0);
+  return Math.round((70 + 0.5 * atk) * mult);
+}
+
+export function computeDuyC2ShurikenCount(bonusPhysicalAtk: number): number {
+  const bonus = Math.max(0, Number.isFinite(bonusPhysicalAtk) ? bonusPhysicalAtk : 0);
+  return DUY_C2_BASE_SHURIKENS + Math.floor(bonus / DUY_C2_BONUS_ATK_STEP);
+}
+
+export function computeDuyC3ShurikenCount(effectiveAtk: number): number {
+  const atk = Math.max(0, Number.isFinite(effectiveAtk) ? effectiveAtk : 0);
+  return DUY_C3_BASE_SHURIKENS + Math.floor(atk / DUY_C3_BONUS_ATK_STEP) * DUY_C3_SHURIKENS_PER_STEP;
+}
+
+export function computeDuyC3ShurikenDamage(effectiveAtk: number, passiveMultiplier = 1): number {
+  const atk = Math.max(0, Number.isFinite(effectiveAtk) ? effectiveAtk : 0);
+  const mult = Math.max(1, Number.isFinite(passiveMultiplier) ? passiveMultiplier : 1);
+  return Math.round((DUY_C3_BASE_DMG + DUY_C3_ATK_RATIO * atk) * mult);
+}
+
+export interface DecoyCandidate {
+  id: number | string;
+  x: number;
+  y: number;
+  radius: number;
+  life: number;
+  maxLife: number;
+  visualOnly?: boolean;
+}
+
+export function selectMonsterTargetWithDecoy<T extends { x: number; y: number }>(
+  playerCandidates: T[],
+  decoys: DecoyCandidate[],
+  fromX: number,
+  fromY: number
+): { kind: 'decoy'; decoy: DecoyCandidate } | { kind: 'player'; player: T } | null {
+  let bestDecoy: DecoyCandidate | null = null;
+  let bestDecoyDist = Infinity;
+  for (const d of decoys) {
+    if (!d || d.visualOnly || d.life >= d.maxLife) continue;
+    const dist = Math.hypot(d.x - fromX, d.y - fromY);
+    if (dist < bestDecoyDist) {
+      bestDecoyDist = dist;
+      bestDecoy = d;
+    }
+  }
+  if (bestDecoy) {
+    return { kind: 'decoy', decoy: bestDecoy };
+  }
+  let bestPlayer: T | null = null;
+  let bestPlayerDist = Infinity;
+  for (const p of playerCandidates) {
+    if (!p) continue;
+    const dist = Math.hypot(p.x - fromX, p.y - fromY);
+    if (dist < bestPlayerDist) {
+      bestPlayerDist = dist;
+      bestPlayer = p;
+    }
+  }
+  return bestPlayer ? { kind: 'player', player: bestPlayer } : null;
+}
 

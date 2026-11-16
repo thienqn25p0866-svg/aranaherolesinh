@@ -803,6 +803,33 @@ class SoundEngine {
     this.playTone(260, 82, 0.26, "sawtooth", 0.2);
     this.playFilteredNoise({ duration: 0.28, filterType: "lowpass", freqStart: 1300, freqEnd: 220, q: 1.2, gainPeak: 0.25 });
   }
+
+  playShurikenThrow() {
+    if (this.canThrottle("shurikenThrow", 38)) return;
+    this.playTone(1180, 420, 0.08, "triangle", 0.14);
+    this.playFilteredNoise({ duration: 0.07, filterType: "bandpass", freqStart: 3200, freqEnd: 1100, q: 2.8, gainPeak: 0.16 });
+  }
+
+  playDecoySummon() {
+    if (this.canThrottle("decoySummon", 110)) return;
+    this.playTone(320, 640, 0.16, "triangle", 0.18);
+    this.playTone(480, 220, 0.18, "sine", 0.14, 0.04);
+    this.playFilteredNoise({ duration: 0.18, filterType: "lowpass", freqStart: 1200, freqEnd: 320, q: 1.4, gainPeak: 0.22 });
+  }
+
+  playDecoyDetonate() {
+    if (this.canThrottle("decoyDetonate", 120)) return;
+    this.playTone(190, 48, 0.38, "sawtooth", 0.28);
+    this.playTone(540, 140, 0.32, "triangle", 0.18, 0.02);
+    this.playFilteredNoise({ duration: 0.36, filterType: "lowpass", freqStart: 1800, freqEnd: 180, q: 1.2, gainPeak: 0.34 });
+  }
+
+  playDuyHealOrb() {
+    if (this.canThrottle("duyHealOrb", 95)) return;
+    this.playTone(587, 880, 0.14, "sine", 0.15);
+    this.playTone(880, 1175, 0.16, "triangle", 0.11, 0.03);
+  }
 }
 
 export const R = new SoundEngine();
+

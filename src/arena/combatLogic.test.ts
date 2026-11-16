@@ -525,14 +525,14 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (14 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 13, 'Must preserve all 10 heroes + add Luan, Tai Du, Nguyen');
+  assert.equal(Mi.length, 14, 'Must preserve all 13 heroes + add Duy');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 13);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen']) {
+  assert.equal(heroIds.size, 14);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
@@ -566,6 +566,14 @@ test('Upgraded Arena Hero roster (13 heroes) and 220-item catalog satisfy exact 
   assert.equal(nguyen.stats.hp, 1280);
   assert.equal(nguyen.stats.damage, 26);
   assert.equal(nguyen.stats.ap, 36);
+
+  const duy = Mi.find((h: any) => h.id === 'duy');
+  assert.ok(duy);
+  assert.equal(duy.skills[0].aimType, 'CIRCLE_FREE');
+  assert.equal(duy.skills[1].aimType, 'LINE');
+  assert.equal(duy.skills[2].aimType, 'CONE');
+  assert.ok(HERO_SKILL_ICONS.duy?.atk && HERO_SKILL_ICONS.duy?.passive && HERO_SKILL_ICONS.duy?.c1 && HERO_SKILL_ICONS.duy?.c2 && HERO_SKILL_ICONS.duy?.c3);
+  assert.ok(Ff.duy && Ff.duy.length >= 3);
 
   assert.equal(zr.length, 220, 'Item catalog must contain 140 existing + 80 new = 220 items');
   const itemIds = new Set(zr.map((it: any) => it.id));
@@ -871,6 +879,8 @@ test('P2PRoomHost generates uniform 6-digit room IDs and GameEngine syncs Boss, 
       fillText: noop,
       strokeText: noop,
       setLineDash: noop,
+      clip: noop,
+      roundRect: noop,
       createLinearGradient: () => gradient,
       createRadialGradient: () => gradient,
       measureText: () => ({ width: 20 }),
@@ -1055,4 +1065,52 @@ test('P2PRoomHost generates uniform 6-digit room IDs and GameEngine syncs Boss, 
   }
 });
 
+test('Duy passive ramp (450% in 4.5s), C2/C3 shuriken scaling, and Decoy taunt priority work as designed', async () => {
+  const {
+    computeDuyPassiveMultiplier,
+    computeDuyDecoyBlastDamage,
+    computeDuyC2ShurikenCount,
+    computeDuyC3ShurikenCount,
+    computeDuyC3ShurikenDamage,
+    selectMonsterTargetWithDecoy,
+    DUY_DECOY_REFLECT_RATIO,
+    DUY_C3_HEAL_PER_HIT,
+  } = await import('./combatLogic.ts');
 
+  assert.equal(computeDuyPassiveMultiplier(0), 1);
+  assert.equal(computeDuyPassiveMultiplier(2.25), 2.75);
+  assert.equal(computeDuyPassiveMultiplier(4.5), 4.5);
+  assert.equal(computeDuyPassiveMultiplier(9.0), 4.5);
+
+  assert.equal(DUY_DECOY_REFLECT_RATIO, 0.3);
+  assert.equal(computeDuyDecoyBlastDamage(1000, 1, 100), 300);
+  assert.equal(computeDuyDecoyBlastDamage(1000, 4.5, 100), 1350);
+  assert.equal(computeDuyDecoyBlastDamage(0, 1, 100), 120);
+
+  assert.equal(computeDuyC2ShurikenCount(0), 3);
+  assert.equal(computeDuyC2ShurikenCount(29), 3);
+  assert.equal(computeDuyC2ShurikenCount(30), 4);
+  assert.equal(computeDuyC2ShurikenCount(95), 6);
+
+  assert.equal(computeDuyC3ShurikenCount(0), 40);
+  assert.equal(computeDuyC3ShurikenCount(30), 43);
+  assert.equal(computeDuyC3ShurikenCount(120), 52);
+
+  assert.equal(computeDuyC3ShurikenDamage(100, 1), 80); // 35 + 45
+  assert.equal(computeDuyC3ShurikenDamage(100, 4.5), 360); // round(80 * 4.5)
+  assert.equal(DUY_C3_HEAL_PER_HIT, 100);
+
+  const selected = selectMonsterTargetWithDecoy(
+    [{ x: 105, y: 100 }],
+    [
+      { id: 1, x: 350, y: 100, radius: 30, life: 1, maxLife: 5, visualOnly: false },
+      { id: 2, x: 120, y: 100, radius: 30, life: 5, maxLife: 5, visualOnly: false },
+    ],
+    100,
+    100
+  );
+  assert.equal(selected?.kind, 'decoy');
+  if (selected?.kind === 'decoy') {
+    assert.equal(selected.decoy.id, 1);
+  }
+});
