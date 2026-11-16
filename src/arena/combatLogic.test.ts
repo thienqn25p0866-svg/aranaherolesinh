@@ -41,6 +41,10 @@ import {
   screenToWorldWithCamera,
   worldToScreenWithCamera,
   computeJoystickDragRadius,
+  HERO_ROLE_CATALOG,
+  HERO_ROLE_ORDER,
+  getHeroRoleKey,
+  filterHeroesByRole,
 } from './combatLogic.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
@@ -1076,16 +1080,18 @@ test('Duy passive ramp (450% in 4.5s), C2/C3 shuriken scaling, and Decoy taunt p
     DUY_DECOY_REFLECT_RATIO,
     DUY_C3_HEAL_PER_HIT,
   } = await import('./combatLogic.ts');
+  const { drawDuyDecoy } = await import('./weaponRenderer.js');
 
   assert.equal(computeDuyPassiveMultiplier(0), 1);
   assert.equal(computeDuyPassiveMultiplier(2.25), 2.75);
   assert.equal(computeDuyPassiveMultiplier(4.5), 4.5);
   assert.equal(computeDuyPassiveMultiplier(9.0), 4.5);
 
-  assert.equal(DUY_DECOY_REFLECT_RATIO, 0.3);
-  assert.equal(computeDuyDecoyBlastDamage(1000, 1, 100), 300);
-  assert.equal(computeDuyDecoyBlastDamage(1000, 4.5, 100), 1350);
-  assert.equal(computeDuyDecoyBlastDamage(0, 1, 100), 120);
+  // Decoy explosion reduced to 40% of previous (0.3 -> 0.12; fallback 70+0.5*atk -> 28+0.2*atk)
+  assert.equal(DUY_DECOY_REFLECT_RATIO, 0.12);
+  assert.equal(computeDuyDecoyBlastDamage(1000, 1, 100), 120);
+  assert.equal(computeDuyDecoyBlastDamage(1000, 4.5, 100), 540);
+  assert.equal(computeDuyDecoyBlastDamage(0, 1, 100), 48);
 
   assert.equal(computeDuyC2ShurikenCount(0), 3);
   assert.equal(computeDuyC2ShurikenCount(29), 3);
@@ -1096,9 +1102,49 @@ test('Duy passive ramp (450% in 4.5s), C2/C3 shuriken scaling, and Decoy taunt p
   assert.equal(computeDuyC3ShurikenCount(30), 43);
   assert.equal(computeDuyC3ShurikenCount(120), 52);
 
-  assert.equal(computeDuyC3ShurikenDamage(100, 1), 80); // 35 + 45
-  assert.equal(computeDuyC3ShurikenDamage(100, 4.5), 360); // round(80 * 4.5)
+  // C3 shuriken damage greatly reduced (35 + 0.45*atk -> 12 + 0.16*atk)
+  assert.equal(computeDuyC3ShurikenDamage(100, 1), 28); // 12 + 16
+  assert.equal(computeDuyC3ShurikenDamage(100, 4.5), 126); // round(28 * 4.5)
   assert.equal(DUY_C3_HEAL_PER_HIT, 100);
+
+  // Verify drawDuyDecoy floating damage preview uses 12% reflect ratio
+  const drawnTexts: string[] = [];
+  const gradient = { addColorStop() {} };
+  const mockCtx: any = {
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, arc() {}, ellipse() {}, rect() {},
+    moveTo() {}, lineTo() {}, quadraticCurveTo() {}, bezierCurveTo() {},
+    fill() {}, stroke() {}, fillRect() {}, strokeRect() {},
+    setLineDash() {}, clip() {}, roundRect() {},
+    createLinearGradient: () => gradient,
+    createRadialGradient: () => gradient,
+    strokeText(t: string) { drawnTexts.push(t); },
+    fillText() {},
+    fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1,
+    font: '12px sans-serif', textAlign: 'center', textBaseline: 'middle',
+    lineCap: 'round', lineJoin: 'round',
+  };
+  drawDuyDecoy(mockCtx, { x: 0, y: 0, radius: 30, blastRadius: 195, life: 1, maxLife: 5, absorbedDamage: 1000, passiveMult: 1 }, 1, false);
+  assert.ok(drawnTexts.some((t) => t.includes('120')), `Expected decoy preview text to contain 120, got: ${drawnTexts.join(', ')}`);
+
+  // Verify gameData.js skill descriptions match updated values
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  (globalThis as any).window = globalThis;
+  (globalThis as any).localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  try {
+    const { Mi } = await import('./gameData.js');
+    const duyHero = Mi.find((h: any) => h.id === 'duy');
+    assert.ok(duyHero, 'Expected duy hero in gameData');
+    const c1 = duyHero.skills.find((s: any) => s.key === 'c1');
+    const c3 = duyHero.skills.find((s: any) => s.key === 'c3');
+    assert.ok(c1 && c3, 'Expected c1 and c3 skills on duy');
+    assert.ok(c1.description.vi.includes('12%') && c1.description.en.includes('12%'));
+    assert.ok(c3.description.vi.includes('12 (+16% CVL)') && c3.description.en.includes('12 (+16% ATK)'));
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+  }
 
   const selected = selectMonsterTargetWithDecoy(
     [{ x: 105, y: 100 }],
@@ -1114,3 +1160,729 @@ test('Duy passive ramp (450% in 4.5s), C2/C3 shuriken scaling, and Decoy taunt p
     assert.equal(selected.decoy.id, 1);
   }
 });
+
+test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/animations and execute windup-to-release skills', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const createMockCtx = () => {
+    const gradient = { addColorStop() {} };
+    const noop = () => {};
+    return {
+      save: noop,
+      restore: noop,
+      translate: noop,
+      rotate: noop,
+      scale: noop,
+      beginPath: noop,
+      closePath: noop,
+      arc: noop,
+      ellipse: noop,
+      rect: noop,
+      moveTo: noop,
+      lineTo: noop,
+      quadraticCurveTo: noop,
+      bezierCurveTo: noop,
+      fill: noop,
+      stroke: noop,
+      fillRect: noop,
+      strokeRect: noop,
+      fillText: noop,
+      strokeText: noop,
+      setLineDash: noop,
+      clip: noop,
+      roundRect: noop,
+      createLinearGradient: () => gradient,
+      createRadialGradient: () => gradient,
+      measureText: () => ({ width: 20 }),
+      fillStyle: '#000',
+      strokeStyle: '#000',
+      lineWidth: 1,
+      globalAlpha: 1,
+      shadowBlur: 0,
+      shadowColor: '#000',
+      font: '12px sans-serif',
+      textAlign: 'center',
+      textBaseline: 'middle',
+      lineCap: 'round',
+      lineJoin: 'round',
+    };
+  };
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    (globalThis as any).localStorage = {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { drawUpgradedBossBody, drawBossWeapon, drawUpgradedProjectile, drawUpgradedSlash } = await import('./weaponRenderer.js');
+    const { Mi } = await import('./gameData.js');
+
+    const mockCtx: any = createMockCtx();
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => mockCtx,
+    };
+
+    const engine = new GameEngine(mockCanvas);
+    const hero = Mi.find((h: any) => h.id === 'tin');
+    engine.startNewGame(hero);
+    if (!engine.player) throw new Error('Expected engine.player to be initialized');
+
+    const upgradedBossWaves = [15, 18, 21, 24, 27];
+    for (const bw of upgradedBossWaves) {
+      for (const phase of [1, 2, 3]) {
+        for (const isMono of [false, true]) {
+          engine.player.tin_monochrome_realm_timer = isMono ? 2 : 0;
+          const bossStates = [
+            {
+              id: 500 + bw,
+              kind: 'boss',
+              bossWave: bw,
+              x: 1500,
+              y: 1200,
+              facing: 0.7,
+              radius: 0, // Verify safe fallback radius
+              hp: 5000,
+              maxHp: 10000,
+              phase,
+              hitFlash: phase === 2 ? 0.1 : 0,
+              animWalkPhase: 1.5,
+              castWindupTimer: 0.2,
+              castWindupTotal: 0.4,
+              skillReleaseTimer: 0,
+              skillReleaseTotal: 0.46,
+              attackAnimTimer: 0,
+              attackAnimDur: 0.34,
+              attackSwingDir: 1,
+            },
+            {
+              id: 600 + bw,
+              kind: 'boss',
+              bossWave: bw,
+              x: 1500,
+              y: 1200,
+              facing: -1.1,
+              radius: 54,
+              hp: 2000,
+              maxHp: 10000,
+              phase,
+              hitFlash: 0,
+              animWalkPhase: 3.2,
+              castWindupTimer: 0,
+              castWindupTotal: 0.4,
+              skillReleaseTimer: 0.22,
+              skillReleaseTotal: 0.46,
+              attackAnimTimer: 0.18,
+              attackAnimDur: 0.34,
+              attackSwingDir: -1,
+            },
+          ];
+          for (const bState of bossStates) {
+            assert.doesNotThrow(() => engine.drawBossEntity(bState), `drawBossEntity failed for wave ${bw} phase ${phase}`);
+            assert.doesNotThrow(() => drawUpgradedBossBody(mockCtx, bState, 4.2, isMono));
+            assert.doesNotThrow(() => drawBossWeapon(mockCtx, bState, 4.2, isMono));
+          }
+        }
+      }
+    }
+
+    // Verify upgraded boss projectiles & slashes render cleanly (normal + mono)
+    for (const kind of ['cyber_bolt', 'thunder_lance', 'venom_fang', 'blood_crystal', 'seraph_spear']) {
+      assert.doesNotThrow(() =>
+        drawUpgradedProjectile(mockCtx, { kind, x: 100, y: 100, angle: 0.4, radius: 11, color: '#38BDF8', distanceTraveled: 80 }, 2.5, false)
+      );
+      assert.doesNotThrow(() =>
+        drawUpgradedProjectile(mockCtx, { kind, x: 100, y: 100, angle: 0.4, radius: 11, color: '#38BDF8', distanceTraveled: 80 }, 2.5, true)
+      );
+    }
+    for (const sKind of ['boss_cyber_slash', 'boss_thunder_slash', 'boss_venom_slash', 'boss_blood_slash', 'boss_seraph_slash']) {
+      assert.doesNotThrow(() =>
+        drawUpgradedSlash(mockCtx, { kind: sKind, x: 100, y: 100, angle: 0.2, radius: 210, spread: 1.5, dir: 1, color: '#FBBF24', life: 0.15, maxLife: 0.35 }, false)
+      );
+    }
+
+    // Verify telegraphed windup -> skill release executes Wave 15 skill 2 (spawns boss_emp_field)
+    engine.enemies = [];
+    engine.zones = [];
+    engine.spawnBoss(15);
+    const rex = engine.enemies.find((e: any) => e.kind === 'boss' && e.bossWave === 15);
+    assert.ok(rex);
+    rex.aoeTimer = 0;
+    rex.bossSkillCycle = 1; // Next increment -> 2 (EMP Ring & EMP Field)
+    engine.updateEnemies(0.05);
+    assert.ok(rex.castWindupTimer > 0, 'Wave 15+ boss must enter telegraphed castWindupTimer before skill cast');
+    assert.ok(rex.pendingSkill, 'Boss pendingSkill must be queued during windup');
+
+    // Advance past windup duration to release the skill
+    engine.updateEnemies(0.5);
+    assert.equal(rex.castWindupTimer, 0);
+    assert.equal(rex.pendingSkill, null);
+    assert.ok(rex.skillReleaseTimer > 0, 'Boss must trigger weapon skillReleaseTimer on cast');
+    assert.ok(engine.zones.some((z: any) => z.kind === 'boss_emp_field'), 'Wave 15 skill 2 must spawn boss_emp_field');
+
+    // Verify Wave 21 venom_meteor warning spawns acid_pool on detonation
+    engine.bossWarnings.push({
+      id: 991,
+      x: 1600,
+      y: 1200,
+      radius: 110,
+      timer: 0.99,
+      duration: 1.0,
+      damage: 80,
+      kind: 'venom_meteor',
+      color: '#22C55E',
+      ccType: 'stun',
+      ccDur: 2.0,
+    });
+    engine.updateBossWarnings(0.05);
+    assert.ok(engine.zones.some((z: any) => z.kind === 'acid_pool'), 'venom_meteor warning should leave lingering acid_pool');
+
+    // Verify applyRemoteVfx("boss_anim") animates synced boss
+    engine.applyRemoteVfx('tin', [
+      { type: 'boss_anim', enemyId: rex.id, kind: 'windup', skillIdx: 1, duration: 0.36 },
+    ]);
+    assert.equal(rex.castSkillIdx, 1);
+    assert.equal(rex.castWindupTimer, 0.36);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('MOBA hero role classification & filtering covers all 14 champions accurately', async () => {
+  const { Mi } = await import('./gameData.js');
+  assert.equal(Mi.length, 14);
+  assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
+
+  const allFiltered = filterHeroesByRole(Mi, 'all');
+  assert.equal(allFiltered.length, Mi.length);
+
+  let sumByRole = 0;
+  for (const roleKey of ['fighter', 'assassin', 'marksman', 'mage', 'tank'] as const) {
+    const bucket = filterHeroesByRole(Mi, roleKey);
+    assert.ok(bucket.length > 0, `Expected non-empty hero bucket for role ${roleKey}`);
+    sumByRole += bucket.length;
+    for (const h of bucket) {
+      assert.equal(HERO_ROLE_CATALOG[h.id], roleKey);
+      assert.equal(getHeroRoleKey(h.id), roleKey);
+    }
+  }
+  assert.equal(sumByRole, Mi.length);
+  assert.equal(getHeroRoleKey('unknown_hero_id'), 'fighter');
+});
+
+test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and without AudioContext', async () => {
+  const { R } = await import('./soundEngine.js');
+  const prevWindow = (globalThis as any).window;
+
+  const invokeAllSounds = () => {
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy'];
+    for (const id of heroIds) {
+      R.lastCooldowns.clear();
+      R.playHeroSelect(id);
+      R.playHeroSkillPreview(id, 'passive');
+      R.playHeroSkillPreview(id, 'atk');
+      R.playHeroSkillPreview(id, 'c3');
+    }
+
+    R.lastCooldowns.clear();
+    R.playClick();
+    R.playHover();
+    R.playTabSwitch();
+    R.playModalOpen();
+    R.playModalClose();
+    R.playCopy();
+    R.playError();
+    R.playHeroLockIn();
+    R.playReadyCheck();
+    R.playMatchStart();
+    R.playLobbyPing('ready');
+    R.lastCooldowns.clear();
+    R.playLobbyPing('wait');
+    R.lastCooldowns.clear();
+    R.playLobbyPing('gather');
+    R.playEquip();
+    R.playUnequip();
+    R.playTestSample();
+    R.playCoin();
+    R.playBuy();
+    R.playUpgrade();
+    R.playFanfare();
+    R.playHeal();
+    R.playLevelUp();
+
+    R.lastCooldowns.clear();
+    R.playHit();
+    R.playPlayerHurt();
+    R.playCritHit();
+    R.playKill(3);
+    R.playMultiKill(5);
+    R.playComboRankUp('SS');
+    R.playXpOrb();
+    R.playShieldAbsorb();
+    R.playShieldBreak();
+    R.playStun();
+    R.playWaveStart(false);
+    R.lastCooldowns.clear();
+    R.playWaveStart(true);
+    R.playWaveClear();
+    R.playBossPhase(2);
+    R.lastCooldowns.clear();
+    R.playBossPhase(3);
+    R.playVictory();
+    R.playDefeat();
+    R.playRevive();
+  };
+
+  try {
+    // 1. Safe no-op without AudioContext
+    R.ctx = null;
+    assert.doesNotThrow(invokeAllSounds);
+
+    // 2. Full synthesis verification with mocked Web Audio API
+    const createParam = (initial = 0) => ({
+      value: initial,
+      setValueAtTime: () => {},
+      linearRampToValueAtTime: () => {},
+      exponentialRampToValueAtTime: () => {},
+      setTargetAtTime: () => {},
+    });
+    const createNode = () => ({
+      connect: () => {},
+      disconnect: () => {},
+      start: () => {},
+      stop: () => {},
+      gain: createParam(1),
+      frequency: createParam(440),
+      Q: createParam(1),
+      pan: createParam(0),
+      delayTime: createParam(0.08),
+      threshold: createParam(-16),
+      knee: createParam(18),
+      ratio: createParam(5.5),
+      attack: createParam(0.004),
+      release: createParam(0.14),
+      type: 'sine',
+      buffer: null,
+    });
+    class MockAudioContext {
+      currentTime = 1.0;
+      sampleRate = 44100;
+      state = 'running';
+      destination = createNode();
+      resume = async () => {};
+      createGain = () => createNode();
+      createOscillator = () => createNode();
+      createBiquadFilter = () => createNode();
+      createBufferSource = () => createNode();
+      createDynamicsCompressor = () => createNode();
+      createDelay = () => createNode();
+      createStereoPanner = () => createNode();
+      createBuffer = (_ch: number, len: number) => ({
+        getChannelData: () => new Float32Array(len),
+      });
+    }
+
+    (globalThis as any).window = { AudioContext: MockAudioContext };
+    R.ctx = null;
+    R.setSfxEnabled(true);
+    R.setMusicEnabled(true);
+    assert.doesNotThrow(invokeAllSounds);
+    for (const mode of ['menu', 'battle', 'boss', 'paused', 'off']) {
+      assert.doesNotThrow(() => R.setMusicMode(mode));
+      assert.doesNotThrow(() => R.scheduleMusicSteps());
+    }
+    R.setMusicMode('off');
+  } finally {
+    R.setMusicMode('off');
+    R.ctx = null;
+    (globalThis as any).window = prevWindow;
+  }
+});
+
+test('P2PRoomHost and P2PRoomPeerClient complete lobby, match start, and velocity sync over AH1R relay when RTCPeerConnection is absent', async () => {
+  const {
+    P2PRoomHost,
+    P2PRoomPeerClient,
+    encodeSignalPayload,
+    decodeSignalPayload,
+  } = await import('./webrtcCoop.js');
+  const prevRTC = (globalThis as any).RTCPeerConnection;
+
+  try {
+    delete (globalThis as any).RTCPeerConnection;
+
+    const encodedRelay = await encodeSignalPayload({ t: 'offer', relay: true, sid: 'ios_msg_1' });
+    assert.ok(encodedRelay.startsWith('AH1R:'));
+    const decodedRelay = await decodeSignalPayload(encodedRelay);
+    assert.equal(decodedRelay.relay, true);
+    assert.equal(decodedRelay.sid, 'ios_msg_1');
+
+    const hostEvents: any[] = [];
+    const peerEvents: any[] = [];
+
+    const host = new P2PRoomHost({
+      hostName: 'iPhoneHost',
+      heroId: 'eohyen',
+      onLocalEvent: (ev: any) => hostEvents.push(ev),
+      onPeersChanged: () => {},
+    });
+    host.start();
+
+    const inviteRes = (await host.createInviteOffer()) as { inviteId: string; code: string; relayOnly?: boolean };
+    const offerCode = inviteRes.code;
+    assert.equal(inviteRes.relayOnly, true);
+    assert.ok(offerCode.startsWith('AH1R:'));
+
+    const peer = new P2PRoomPeerClient({
+      onEvent: (ev: any) => peerEvents.push(ev),
+      onClose: () => {},
+    });
+
+    const answerCode = await peer.createAnswerFromOffer(offerCode, 'MessengerPeer', 'duy');
+    assert.ok(answerCode.startsWith('AH1R:'));
+    assert.equal(peer.rtcUnavailable, true);
+
+    host.setRelaySender((_pid: string, msg: any) => {
+      queueMicrotask(() => peer.receiveRelayMessage(msg));
+    });
+    peer.setRelaySender((msg: any) => {
+      queueMicrotask(() => host.receiveRelayMessage(peer.playerId!, msg));
+    });
+
+    await host.acceptJoinAnswer(answerCode);
+    await new Promise((r) => setTimeout(r, 40));
+
+    assert.equal(host.hasRelayPeers(), true);
+    assert.equal(peer.joinedRoom, true);
+    assert.equal(peer.isOpen(), true);
+    assert.equal(peer.isDirectOpen(), false);
+    assert.ok(peerEvents.some((e) => e.type === 'ROOM_JOINED'));
+
+    peer.send({ type: 'TOGGLE_READY', ready: true });
+    await new Promise((r) => setTimeout(r, 25));
+    host.handleMessage(host.hostId, { type: 'START_MATCH' });
+    await new Promise((r) => setTimeout(r, 40));
+
+    assert.ok(peerEvents.some((e) => e.type === 'MATCH_STARTED'));
+    assert.equal(peer.inMatch, true);
+
+    // Sync enemy velocity & boss cast metadata + player velocity
+    host.handleMessage(host.hostId, {
+      type: 'WORLD_SNAPSHOT',
+      wave: 1,
+      fullList: true,
+      fullMeta: true,
+      waveSpawned: 1,
+      enemies: [
+        {
+          id: 77,
+          kind: 'boss',
+          bossWave: 15,
+          name: 'Rex',
+          radius: 46,
+          color: '#38BDF8',
+          hp: 4000,
+          maxHp: 4000,
+          x: 1200,
+          y: 900,
+          vx: 145,
+          vy: -60,
+          facing: 0.5,
+          phase: 2,
+          castSkillIdx: 2,
+          castWindupTimer: 0.32,
+        },
+      ],
+    });
+    peer.send({
+      type: 'SYNC_PLAYER',
+      state: { x: 800, y: 700, vx: 210, vy: -40, facing: 1.1, hp: 900, maxHp: 900, alive: true },
+    });
+    await new Promise((r) => setTimeout(r, 40));
+
+    const worldSync = peerEvents.find((e) => e.type === 'WORLD_SYNC');
+    assert.ok(worldSync, 'Relay peer must receive WORLD_SYNC');
+    assert.equal(worldSync.enemies[0].vx, 145);
+    assert.equal(worldSync.enemies[0].vy, -60);
+    assert.equal(worldSync.enemies[0].castSkillIdx, 2);
+
+    const playerState = hostEvents.find((e) => e.type === 'PLAYER_STATE' && e.player?.id === peer.playerId);
+    assert.ok(playerState, 'Relay host must receive peer PLAYER_STATE');
+    assert.equal(playerState.player.vx, 210);
+    assert.equal(playerState.player.vy, -40);
+
+    peer.destroy();
+    host.destroy();
+  } finally {
+    if (prevRTC !== undefined) (globalThis as any).RTCPeerConnection = prevRTC;
+    else delete (globalThis as any).RTCPeerConnection;
+  }
+});
+
+test('P2PRoomHost routes volatile updates via arena-coop-fast DataChannel and drops under backpressure', async () => {
+  const { P2PRoomHost } = await import('./webrtcCoop.js');
+  const prevRTC = (globalThis as any).RTCPeerConnection;
+
+  const createdChannels: any[] = [];
+  class DualMockDC {
+    label: string;
+    ordered: boolean;
+    maxRetransmits?: number;
+    readyState = 'open';
+    bufferedAmount = 0;
+    sent: string[] = [];
+    onopen: (() => void) | null = null;
+    onmessage: ((ev: { data: string }) => void) | null = null;
+    onclose: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor(label: string, opts: any = {}) {
+      this.label = label;
+      this.ordered = opts.ordered !== false;
+      this.maxRetransmits = opts.maxRetransmits;
+      createdChannels.push(this);
+    }
+    send(raw: string) {
+      this.sent.push(raw);
+    }
+    close() {
+      this.readyState = 'closed';
+    }
+  }
+
+  class DualMockRTC {
+    connectionState = 'connected';
+    iceConnectionState = 'connected';
+    iceGatheringState = 'complete';
+    localDescription: any = null;
+    remoteDescription: any = null;
+    createDataChannel(label: string, opts?: any) {
+      return new DualMockDC(label, opts);
+    }
+    async createOffer() {
+      return { type: 'offer', sdp: 'v=0\r\no=- dual 1 IN IP4 127.0.0.1\r\n' };
+    }
+    async setLocalDescription(d: any) {
+      this.localDescription = d;
+    }
+    async setRemoteDescription(d: any) {
+      this.remoteDescription = d;
+    }
+    close() {}
+  }
+
+  (globalThis as any).RTCPeerConnection = DualMockRTC;
+  try {
+    const host = new P2PRoomHost({
+      hostName: 'Host',
+      heroId: 'eohyen',
+      onLocalEvent: () => {},
+      onPeersChanged: () => {},
+    });
+    host.start();
+    await host.createInviteOffer();
+    await Promise.resolve();
+
+    const reliableDc = createdChannels.find((c) => c.label === 'arena-coop');
+    const fastDc = createdChannels.find((c) => c.label === 'arena-coop-fast');
+    assert.ok(reliableDc, 'Must create primary reliable DataChannel');
+    assert.ok(fastDc, 'Must create unreliable fast DataChannel when RTCPeerConnection supports bufferedAmount');
+    assert.equal(fastDc.ordered, false);
+    assert.equal(fastDc.maxRetransmits, 0);
+
+    const slot = Array.from(host.peers.values())[0] as any;
+    slot.pendingQueue = [];
+    reliableDc.sent.length = 0;
+    fastDc.sent.length = 0;
+
+    // Critical control packet -> reliable channel
+    host.sendToPlayer(slot.playerId, { type: 'MATCH_STARTED', matchNonce: 1 });
+    assert.equal(reliableDc.sent.length, 1);
+    assert.equal(fastDc.sent.length, 0);
+
+    // Volatile sync packet -> fast unordered channel
+    host.sendToPlayer(slot.playerId, { type: 'WORLD_SYNC', enemies: [] });
+    assert.equal(fastDc.sent.length, 1);
+    assert.equal(reliableDc.sent.length, 1);
+
+    // Saturated fast channel -> volatile packet dropped instead of queuing lag
+    fastDc.bufferedAmount = 128000;
+    host.sendToPlayer(slot.playerId, { type: 'PLAYER_STATE', player: { id: 'p1', x: 10, y: 20 } });
+    assert.equal(fastDc.sent.length, 1, 'Volatile packet must drop when fast channel bufferedAmount > limit');
+    assert.equal(slot.pendingQueue.length, 0, 'Dropped volatile packet must not buffer in pendingQueue');
+
+    host.destroy();
+  } finally {
+    if (prevRTC !== undefined) (globalThis as any).RTCPeerConnection = prevRTC;
+    else delete (globalThis as any).RTCPeerConnection;
+  }
+});
+
+test('GameEngine non-host P2P client dead-reckons enemy/teammate movement and smoothly interpolates facing', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { Mi } = await import('./gameData.js');
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ({
+        save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+        beginPath() {}, closePath() {}, arc() {}, ellipse() {}, rect() {},
+        moveTo() {}, lineTo() {}, quadraticCurveTo() {}, bezierCurveTo() {},
+        fill() {}, stroke() {}, fillRect() {}, strokeRect() {},
+        fillText() {}, strokeText() {}, setLineDash() {}, clip() {}, roundRect() {},
+        createLinearGradient: () => ({ addColorStop() {} }),
+        createRadialGradient: () => ({ addColorStop() {} }),
+        measureText: () => ({ width: 20 }),
+      }),
+    };
+
+    const engine = new GameEngine(mockCanvas);
+    const hero = Mi.find((h: any) => h.id === 'eohyen');
+    engine.startCoopMatch(
+      hero,
+      {
+        roomId: '123456',
+        hostId: 'host_1',
+        playerCount: 2,
+        powerMultiplier: 1.5,
+        members: [
+          { id: 'host_1', name: 'Host', heroId: 'tin', slot: 1, isHost: true },
+          { id: 'peer_2', name: 'Peer', heroId: 'eohyen', slot: 2, isHost: false },
+        ],
+      },
+      { host_1: { x: 600, y: 600 }, peer_2: { x: 800, y: 800 } }
+    );
+    // Force local client as non-host
+    engine.multiplayer.isHost = false;
+
+    engine.enemies.push({
+      id: 901,
+      kind: 'minion',
+      radius: 16,
+      hp: 200,
+      maxHp: 200,
+      x: 1000,
+      y: 1000,
+      vx: 0,
+      vy: 0,
+      mpTargetX: 1000,
+      mpTargetY: 1000,
+      facing: 0,
+      mpTargetFacing: 0,
+      mpSyncAge: 0,
+      stunTimer: 0,
+      slowFactor: 0,
+      slowTimer: 0,
+      hitFlash: 0,
+      attackCooldown: 1,
+    });
+
+    engine.handleMultiplayerMessage({
+      type: 'WORLD_SYNC',
+      wave: 1,
+      fullList: true,
+      enemies: [
+        {
+          id: 901,
+          hp: 200,
+          maxHp: 200,
+          x: 1020,
+          y: 1000,
+          vx: 240,
+          vy: 0,
+          facing: 1.0,
+          phase: 1,
+          stunTimer: 0,
+          slowFactor: 0,
+          frozenTimer: 0,
+        },
+      ],
+    });
+
+    engine.multiplayer.remotePlayers.set('host_1', {
+      id: 'host_1',
+      name: 'Host',
+      heroId: 'tin',
+      alive: true,
+      x: 600,
+      y: 600,
+      vx: 0,
+      vy: 0,
+      targetX: 600,
+      targetY: 600,
+      facing: 0,
+      targetFacing: 0,
+      hp: 840,
+      maxHp: 840,
+    });
+    engine.handleMultiplayerMessage({
+      type: 'PLAYER_STATE',
+      player: {
+        id: 'host_1',
+        name: 'Host',
+        heroId: 'tin',
+        alive: true,
+        x: 615,
+        y: 600,
+        vx: 200,
+        vy: 0,
+        facing: 1.2,
+        hp: 840,
+        maxHp: 840,
+        moveSpeedFactor: 1,
+      },
+    });
+
+    engine.update(0.016);
+
+    const syncedEnemy = engine.enemies.find((e: any) => e.id === 901);
+    assert.ok(syncedEnemy.x > 1004, 'Non-host enemy must dead-reckon smoothly along target + vx');
+    assert.ok(syncedEnemy.facing > 0.1 && syncedEnemy.facing < 1.0, 'Non-host enemy facing must interpolate smoothly');
+
+    const remoteHost = engine.multiplayer.remotePlayers.get('host_1');
+    assert.ok(remoteHost.x > 603, 'Remote teammate must dead-reckon smoothly in update()');
+    assert.ok(remoteHost.facing > 0.1 && remoteHost.facing < 1.2, 'Remote teammate facing must interpolate smoothly in update()');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+
+

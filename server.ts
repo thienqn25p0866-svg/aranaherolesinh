@@ -10,7 +10,29 @@ import { WebSocketServer, WebSocket } from "ws";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = Number(process.env.PORT || 3000);
+function resolvePort(): number {
+  const portIdx = process.argv.indexOf("--port");
+  if (portIdx !== -1 && process.argv[portIdx + 1]) {
+    const cliPort = Number(process.argv[portIdx + 1]);
+    if (Number.isFinite(cliPort) && cliPort > 0) return cliPort;
+  }
+  for (const arg of process.argv) {
+    if (arg.startsWith("--port=")) {
+      const cliPort = Number(arg.slice("--port=".length));
+      if (Number.isFinite(cliPort) && cliPort > 0) return cliPort;
+    }
+  }
+  if (
+    process.env.DEFAULT_APP_PORT &&
+    process.env.NGINX_PORT &&
+    process.env.PORT === process.env.NGINX_PORT
+  ) {
+    return Number(process.env.DEFAULT_APP_PORT) || 3000;
+  }
+  return Number(process.env.PORT || 3000);
+}
+
+const PORT = resolvePort();
 const MAX_PLAYERS_PER_ROOM = 4;
 const MAX_WAVES = 27;
 const P2P_SIGNAL_TTL_MS = 20 * 60 * 1000;
@@ -56,6 +78,8 @@ interface RoomPlayerState {
   weaponSkillDur: number;
   weaponCritTimer: number;
   bowRecoilTimer: number;
+  vx?: number;
+  vy?: number;
   buffs: Record<string, unknown>;
 }
 
@@ -66,6 +90,8 @@ interface ServerEnemy {
   name: string;
   x: number;
   y: number;
+  vx?: number;
+  vy?: number;
   radius: number;
   hp: number;
   maxHp: number;
@@ -78,6 +104,8 @@ interface ServerEnemy {
   accentColor?: string;
   facing: number;
   phase?: number;
+  castSkillIdx?: number;
+  castWindupTimer?: number;
   stunTimer?: number;
   slowFactor?: number;
   frozenTimer?: number;
@@ -128,11 +156,32 @@ interface P2PAnswerEntry {
   createdAt: number;
 }
 
+interface P2PRelayPeer {
+  peerId: string;
+  toPeerQueue: unknown[];
+  waiter: ((events: unknown[]) => void) | null;
+  waiterTimer: ReturnType<typeof setTimeout> | null;
+  lastSeen: number;
+}
+
+interface P2PRelayRoom {
+  code: string;
+  hostId: string;
+  toHostQueue: Array<{ peerId: string; msg: unknown }>;
+  hostWaiter: ((events: Array<{ peerId: string; msg: unknown }>) => void) | null;
+  hostWaiterTimer: ReturnType<typeof setTimeout> | null;
+  hostLastSeen: number;
+  peers: Map<string, P2PRelayPeer>;
+  createdAt: number;
+}
+
 const rooms = new Map<string, Room>();
 const sessions = new Map<string, ClientSession>();
 const wsToPlayerId = new Map<WebSocket, string>();
 const p2pSignals = new Map<string, P2PSignalRecord>();
 const p2pAnswersByOffer = new Map<string, P2PAnswerEntry[]>();
+const p2pRelayRooms = new Map<string, P2PRelayRoom>();
+const P2P_RELAY_TTL_MS = 12 * 60 * 1000;
 
 function cleanupExpiredP2PSignals(now = Date.now()) {
   for (const [code, rec] of p2pSignals.entries()) {
@@ -148,10 +197,111 @@ function cleanupExpiredP2PSignals(now = Date.now()) {
       p2pAnswersByOffer.set(offerCode, fresh);
     }
   }
+  for (const [code, rRoom] of p2pRelayRooms.entries()) {
+    for (const [pid, rPeer] of rRoom.peers.entries()) {
+      if (now - rPeer.lastSeen > 65000) {
+        if (rPeer.waiterTimer) clearTimeout(rPeer.waiterTimer);
+        if (rPeer.waiter) rPeer.waiter([]);
+        rRoom.peers.delete(pid);
+      }
+    }
+    const staleHost = now - rRoom.hostLastSeen > P2P_RELAY_TTL_MS && rRoom.peers.size === 0;
+    const tooOld = now - rRoom.createdAt > P2P_SIGNAL_TTL_MS;
+    if (staleHost || tooOld) {
+      if (rRoom.hostWaiterTimer) clearTimeout(rRoom.hostWaiterTimer);
+      if (rRoom.hostWaiter) rRoom.hostWaiter([]);
+      for (const rPeer of rRoom.peers.values()) {
+        if (rPeer.waiterTimer) clearTimeout(rPeer.waiterTimer);
+        if (rPeer.waiter) rPeer.waiter([]);
+      }
+      p2pRelayRooms.delete(code);
+    }
+  }
   while (p2pSignals.size > MAX_P2P_SIGNALS) {
     const oldestKey = p2pSignals.keys().next().value;
     if (!oldestKey) break;
     p2pSignals.delete(oldestKey);
+  }
+}
+
+function getOrCreateP2PRelayRoom(code: string, hostId = ""): P2PRelayRoom {
+  let rRoom = p2pRelayRooms.get(code);
+  const now = Date.now();
+  if (!rRoom) {
+    rRoom = {
+      code,
+      hostId,
+      toHostQueue: [],
+      hostWaiter: null,
+      hostWaiterTimer: null,
+      hostLastSeen: now,
+      peers: new Map(),
+      createdAt: now,
+    };
+    p2pRelayRooms.set(code, rRoom);
+  } else if (hostId && !rRoom.hostId) {
+    rRoom.hostId = hostId;
+  }
+  return rRoom;
+}
+
+function enqueueRelayToPeer(peer: P2PRelayPeer, payload: any) {
+  if (!payload || typeof payload !== "object") return;
+  const pType = payload.type;
+  if (pType === "WORLD_SYNC") {
+    for (let i = peer.toPeerQueue.length - 1; i >= 0; i--) {
+      if ((peer.toPeerQueue[i] as any)?.type === "WORLD_SYNC") {
+        peer.toPeerQueue.splice(i, 1);
+      }
+    }
+  } else if (pType === "PLAYER_STATE" && payload.player?.id) {
+    const pid = payload.player.id;
+    for (let i = peer.toPeerQueue.length - 1; i >= 0; i--) {
+      const q = peer.toPeerQueue[i] as any;
+      if (q?.type === "PLAYER_STATE" && q?.player?.id === pid) {
+        peer.toPeerQueue.splice(i, 1);
+      }
+    }
+  }
+  peer.toPeerQueue.push(payload);
+  if (peer.toPeerQueue.length > 180) {
+    const idx = peer.toPeerQueue.findIndex((x: any) => x?.type === "WORLD_SYNC" || x?.type === "PLAYER_STATE");
+    peer.toPeerQueue.splice(idx >= 0 ? idx : 0, 1);
+  }
+  if (peer.waiter) {
+    const w = peer.waiter;
+    peer.waiter = null;
+    if (peer.waiterTimer) {
+      clearTimeout(peer.waiterTimer);
+      peer.waiterTimer = null;
+    }
+    w(peer.toPeerQueue.splice(0, peer.toPeerQueue.length));
+  }
+}
+
+function enqueueRelayToHost(rRoom: P2PRelayRoom, peerId: string, msg: any) {
+  if (!msg || typeof msg !== "object") return;
+  if (msg.type === "SYNC_PLAYER") {
+    for (let i = rRoom.toHostQueue.length - 1; i >= 0; i--) {
+      const item = rRoom.toHostQueue[i];
+      if (item.peerId === peerId && (item.msg as any)?.type === "SYNC_PLAYER") {
+        rRoom.toHostQueue.splice(i, 1);
+      }
+    }
+  }
+  rRoom.toHostQueue.push({ peerId, msg });
+  if (rRoom.toHostQueue.length > 220) {
+    const idx = rRoom.toHostQueue.findIndex((x) => (x.msg as any)?.type === "SYNC_PLAYER");
+    rRoom.toHostQueue.splice(idx >= 0 ? idx : 0, 1);
+  }
+  if (rRoom.hostWaiter) {
+    const w = rRoom.hostWaiter;
+    rRoom.hostWaiter = null;
+    if (rRoom.hostWaiterTimer) {
+      clearTimeout(rRoom.hostWaiterTimer);
+      rRoom.hostWaiterTimer = null;
+    }
+    w(rRoom.toHostQueue.splice(0, rRoom.toHostQueue.length));
   }
 }
 
@@ -837,8 +987,12 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
         if (serverEnemy.hp <= 0) continue;
         serverEnemy.x = Number(e.x) || serverEnemy.x;
         serverEnemy.y = Number(e.y) || serverEnemy.y;
+        serverEnemy.vx = Number(e.vx) || 0;
+        serverEnemy.vy = Number(e.vy) || 0;
         serverEnemy.facing = Number(e.facing) || 0;
         serverEnemy.phase = Number(e.phase) || serverEnemy.phase || 1;
+        if (typeof e.castSkillIdx === "number") serverEnemy.castSkillIdx = e.castSkillIdx;
+        if (typeof e.castWindupTimer === "number") serverEnemy.castWindupTimer = e.castWindupTimer;
         serverEnemy.stunTimer = Number(e.stunTimer) || 0;
         serverEnemy.slowFactor = Number(e.slowFactor) || 0;
         serverEnemy.frozenTimer = Number(e.frozenTimer) || 0;
@@ -860,10 +1014,14 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
           xpValue: serverEnemy.xpValue,
           x: Math.round(serverEnemy.x * 10) / 10,
           y: Math.round(serverEnemy.y * 10) / 10,
+          vx: Math.round((serverEnemy.vx || 0)),
+          vy: Math.round((serverEnemy.vy || 0)),
           facing: Math.round(serverEnemy.facing * 100) / 100,
           hp: serverEnemy.hp,
           maxHp: serverEnemy.maxHp,
           phase: serverEnemy.phase,
+          castSkillIdx: serverEnemy.castSkillIdx,
+          castWindupTimer: serverEnemy.castWindupTimer,
           stunTimer: serverEnemy.stunTimer,
           slowFactor: serverEnemy.slowFactor,
           frozenTimer: serverEnemy.frozenTimer,
@@ -908,6 +1066,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const wasAlive = player.alive;
     player.x = Math.max(20, Math.min(1980, Number(s.x) || player.x));
     player.y = Math.max(20, Math.min(1380, Number(s.y) || player.y));
+    player.vx = Number(s.vx) || 0;
+    player.vy = Number(s.vy) || 0;
     player.facing = Number(s.facing) || 0;
     player.hp = Math.max(0, Math.round(Number(s.hp) ?? player.hp));
     player.maxHp = Math.max(1, Math.round(Number(s.maxHp) || player.maxHp));
@@ -940,6 +1100,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
           alive: player.alive,
           x: player.x,
           y: player.y,
+          vx: player.vx,
+          vy: player.vy,
           facing: player.facing,
           hp: player.hp,
           maxHp: player.maxHp,
@@ -1134,7 +1296,7 @@ async function createApp() {
       res.status(400).json({ ok: false, message: "Loại tín hiệu P2P không hợp lệ." });
       return;
     }
-    if (!/^AH1[GJ]:[A-Za-z0-9_-]{8,}$/i.test(payload) || payload.length > 32768) {
+    if (!/^AH1[GJR]:[A-Za-z0-9_-]{8,}$/i.test(payload) || payload.length > 32768) {
       res.status(400).json({ ok: false, message: "Dữ liệu tín hiệu P2P không hợp lệ." });
       return;
     }
@@ -1154,6 +1316,10 @@ async function createApp() {
       forCode,
       createdAt: now,
     });
+
+    if (kind === "offer") {
+      getOrCreateP2PRelayRoom(code);
+    }
 
     if (kind === "answer" && forCode && /^\d{6}$/.test(forCode)) {
       const list = p2pAnswersByOffer.get(forCode) || [];
@@ -1211,6 +1377,198 @@ async function createApp() {
       p2pAnswersByOffer.delete(code);
     }
     res.json({ ok: true, answers: list });
+  });
+
+  app.post("/api/p2p/relay", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const code = String(req.body?.code || "").trim();
+    const role = req.body?.role === "host" ? "host" : req.body?.role === "peer" ? "peer" : "";
+    const peerId = typeof req.body?.peerId === "string" ? req.body.peerId.trim() : "";
+    if (!/^\d{6}$/.test(code) || !role) {
+      res.status(400).json({ ok: false, message: "Tham số P2P Relay không hợp lệ." });
+      return;
+    }
+
+    const rRoom = getOrCreateP2PRelayRoom(code, role === "host" ? peerId : "");
+    const now = Date.now();
+
+    if (role === "host") {
+      rRoom.hostLastSeen = now;
+      if (peerId) rRoom.hostId = peerId;
+      const items: Array<Record<string, any>> = Array.isArray(req.body?.messages)
+        ? req.body.messages
+        : req.body?.payload && typeof req.body.payload === "object"
+        ? [{ targetPeerId: req.body?.targetPeerId, payload: req.body.payload }]
+        : [];
+      for (const item of items) {
+        if (!item || typeof item !== "object") continue;
+        const payload = item.payload && typeof item.payload === "object" ? item.payload : item;
+        const targetId = typeof item.targetPeerId === "string" ? item.targetPeerId : "";
+        if (targetId) {
+          const peer = rRoom.peers.get(targetId);
+          if (peer) enqueueRelayToPeer(peer, payload);
+        } else if (item.broadcast) {
+          const exclude = typeof item.excludePeerId === "string" ? item.excludePeerId : "";
+          for (const [pid, peer] of rRoom.peers.entries()) {
+            if (exclude && pid === exclude) continue;
+            enqueueRelayToPeer(peer, payload);
+          }
+        }
+      }
+      const events = rRoom.toHostQueue.splice(0, rRoom.toHostQueue.length);
+      res.json({ ok: true, events, peerCount: rRoom.peers.size });
+      return;
+    }
+
+    if (!peerId) {
+      res.status(400).json({ ok: false, message: "Thiếu peerId cho P2P Relay." });
+      return;
+    }
+    let peer = rRoom.peers.get(peerId);
+    if (!peer) {
+      peer = {
+        peerId,
+        toPeerQueue: [],
+        waiter: null,
+        waiterTimer: null,
+        lastSeen: now,
+      };
+      rRoom.peers.set(peerId, peer);
+    } else {
+      peer.lastSeen = now;
+    }
+
+    const msgs: Array<Record<string, any>> = Array.isArray(req.body?.messages)
+      ? req.body.messages
+      : req.body?.message && typeof req.body.message === "object"
+      ? [req.body.message]
+      : req.body?.payload && typeof req.body.payload === "object"
+      ? [req.body.payload]
+      : [];
+    for (const m of msgs) {
+      if (m && typeof m === "object") {
+        enqueueRelayToHost(rRoom, peerId, m);
+      }
+    }
+    const events = peer.toPeerQueue.splice(0, peer.toPeerQueue.length);
+    res.json({ ok: true, events });
+  });
+
+  app.get("/api/p2p/relay/:code/poll", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const code = String(req.params.code || "").trim();
+    const role = req.query.role === "host" ? "host" : req.query.role === "peer" ? "peer" : "";
+    const peerId = typeof req.query.peerId === "string" ? req.query.peerId.trim() : "";
+    if (!/^\d{6}$/.test(code) || !role) {
+      res.status(400).json({ ok: false, events: [] });
+      return;
+    }
+
+    let rRoom = p2pRelayRooms.get(code);
+    if (!rRoom && (role === "host" || p2pSignals.has(code))) {
+      rRoom = getOrCreateP2PRelayRoom(code, role === "host" ? peerId : "");
+    }
+    if (!rRoom) {
+      res.status(404).json({ ok: false, expired: true, events: [] });
+      return;
+    }
+
+    const waitMs = Math.max(0, Math.min(2200, Number(req.query.wait) || 1600));
+    const now = Date.now();
+
+    if (role === "host") {
+      rRoom.hostLastSeen = now;
+      if (rRoom.toHostQueue.length > 0 || waitMs === 0) {
+        res.json({ ok: true, events: rRoom.toHostQueue.splice(0, rRoom.toHostQueue.length), peerCount: rRoom.peers.size });
+        return;
+      }
+      if (rRoom.hostWaiter) {
+        const prev = rRoom.hostWaiter;
+        rRoom.hostWaiter = null;
+        if (rRoom.hostWaiterTimer) {
+          clearTimeout(rRoom.hostWaiterTimer);
+          rRoom.hostWaiterTimer = null;
+        }
+        prev([]);
+      }
+      let finished = false;
+      const finish = (events: Array<{ peerId: string; msg: unknown }>) => {
+        if (finished) return;
+        finished = true;
+        if (rRoom!.hostWaiter === finish) rRoom!.hostWaiter = null;
+        if (rRoom!.hostWaiterTimer) {
+          clearTimeout(rRoom!.hostWaiterTimer);
+          rRoom!.hostWaiterTimer = null;
+        }
+        if (!res.headersSent) {
+          res.json({ ok: true, events, peerCount: rRoom!.peers.size });
+        }
+      };
+      rRoom.hostWaiter = finish;
+      rRoom.hostWaiterTimer = setTimeout(() => finish([]), waitMs);
+      req.on("close", () => {
+        if (rRoom?.hostWaiter === finish) rRoom.hostWaiter = null;
+        if (rRoom?.hostWaiterTimer) {
+          clearTimeout(rRoom.hostWaiterTimer);
+          rRoom.hostWaiterTimer = null;
+        }
+      });
+      return;
+    }
+
+    if (!peerId) {
+      res.status(400).json({ ok: false, events: [] });
+      return;
+    }
+    let peer = rRoom.peers.get(peerId);
+    if (!peer) {
+      peer = {
+        peerId,
+        toPeerQueue: [],
+        waiter: null,
+        waiterTimer: null,
+        lastSeen: now,
+      };
+      rRoom.peers.set(peerId, peer);
+    } else {
+      peer.lastSeen = now;
+    }
+
+    if (peer.toPeerQueue.length > 0 || waitMs === 0) {
+      res.json({ ok: true, events: peer.toPeerQueue.splice(0, peer.toPeerQueue.length) });
+      return;
+    }
+    if (peer.waiter) {
+      const prev = peer.waiter;
+      peer.waiter = null;
+      if (peer.waiterTimer) {
+        clearTimeout(peer.waiterTimer);
+        peer.waiterTimer = null;
+      }
+      prev([]);
+    }
+    let finished = false;
+    const finish = (events: unknown[]) => {
+      if (finished) return;
+      finished = true;
+      if (peer!.waiter === finish) peer!.waiter = null;
+      if (peer!.waiterTimer) {
+        clearTimeout(peer!.waiterTimer);
+        peer!.waiterTimer = null;
+      }
+      if (!res.headersSent) {
+        res.json({ ok: true, events });
+      }
+    };
+    peer.waiter = finish;
+    peer.waiterTimer = setTimeout(() => finish([]), waitMs);
+    req.on("close", () => {
+      if (peer?.waiter === finish) peer.waiter = null;
+      if (peer?.waiterTimer) {
+        clearTimeout(peer.waiterTimer);
+        peer.waiterTimer = null;
+      }
+    });
   });
 
   app.post("/api/coop/connect", (_req, res) => {

@@ -838,15 +838,15 @@ export const DUY_PASSIVE_RAMP_SEC = 4.5;
 export const DUY_QUIET_REGEN_DELAY = 1.2;
 export const DUY_DECOY_DURATION = 5.0;
 export const DUY_DECOY_BLAST_RADIUS = 195;
-export const DUY_DECOY_REFLECT_RATIO = 0.3;
+export const DUY_DECOY_REFLECT_RATIO = 0.12;
 export const DUY_C2_BASE_SHURIKENS = 3;
 export const DUY_C2_BONUS_ATK_STEP = 30;
 export const DUY_C2_STUN_DUR = 0.75;
 export const DUY_C3_BASE_SHURIKENS = 40;
 export const DUY_C3_BONUS_ATK_STEP = 30;
 export const DUY_C3_SHURIKENS_PER_STEP = 3;
-export const DUY_C3_BASE_DMG = 35;
-export const DUY_C3_ATK_RATIO = 0.45;
+export const DUY_C3_BASE_DMG = 12;
+export const DUY_C3_ATK_RATIO = 0.16;
 export const DUY_C3_HEAL_PER_HIT = 100;
 
 export function computeDuyPassiveMultiplier(idleSeconds: number): number {
@@ -862,7 +862,7 @@ export function computeDuyDecoyBlastDamage(absorbedDamage: number, passiveMultip
     return Math.round(absorbed * DUY_DECOY_REFLECT_RATIO * mult);
   }
   const atk = Math.max(0, Number.isFinite(fallbackAtk) ? fallbackAtk : 0);
-  return Math.round((70 + 0.5 * atk) * mult);
+  return Math.round((28 + 0.2 * atk) * mult);
 }
 
 export function computeDuyC2ShurikenCount(bonusPhysicalAtk: number): number {
@@ -922,4 +922,66 @@ export function selectMonsterTargetWithDecoy<T extends { x: number; y: number }>
   }
   return bestPlayer ? { kind: 'player', player: bestPlayer } : null;
 }
+
+export type HeroClassRole = 'fighter' | 'assassin' | 'marksman' | 'mage' | 'tank';
+export type HeroRoleFilter = 'all' | HeroClassRole;
+
+export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
+  dung: 'fighter',
+  eohyen: 'fighter',
+  danh: 'fighter',
+  tin: 'assassin',
+  bao: 'assassin',
+  duy: 'assassin',
+  kin: 'marksman',
+  longhoi: 'marksman',
+  taidu: 'marksman',
+  trung: 'mage',
+  duccong: 'mage',
+  luan: 'mage',
+  gau: 'tank',
+  nguyen: 'tank',
+};
+
+export const HERO_ROLE_ORDER: HeroRoleFilter[] = [
+  'all',
+  'fighter',
+  'assassin',
+  'marksman',
+  'mage',
+  'tank',
+];
+
+export const HERO_ROLE_LABELS: Record<'vi' | 'en', Record<HeroRoleFilter, string>> = {
+  vi: {
+    all: 'Tất Cả',
+    fighter: 'Đấu Sĩ',
+    assassin: 'Sát Thủ',
+    marksman: 'Xạ Thủ',
+    mage: 'Pháp Sư',
+    tank: 'Hộ Vệ',
+  },
+  en: {
+    all: 'All',
+    fighter: 'Fighter',
+    assassin: 'Assassin',
+    marksman: 'Marksman',
+    mage: 'Mage',
+    tank: 'Tank',
+  },
+};
+
+export function getHeroRoleKey(heroId: string): HeroClassRole {
+  return HERO_ROLE_CATALOG[heroId] || 'fighter';
+}
+
+export function filterHeroesByRole<T extends { id: string }>(
+  heroes: readonly T[],
+  roleFilter: HeroRoleFilter
+): T[] {
+  if (!Array.isArray(heroes)) return [];
+  if (!roleFilter || roleFilter === 'all') return [...heroes];
+  return heroes.filter((h) => getHeroRoleKey(h?.id) === roleFilter);
+}
+
 

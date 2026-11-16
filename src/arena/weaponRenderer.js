@@ -1,6 +1,8 @@
 // High-craft MOBA Fantasy Weapon & VFX Renderer for Arena Hero
 // Zero ctx.shadowBlur usage for 60fps mobile Canvas 2D performance.
 
+import { DUY_DECOY_REFLECT_RATIO } from "./combatLogic";
+
 function clamp(v, min, max) {
   return v < min ? min : v > max ? max : v;
 }
@@ -2696,106 +2698,238 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   }
 
   if (h.kind === "cyber_bolt") {
-    ctx.fillStyle = isMono ? "#111111" : "#0284C7";
+    // Glowing plasma thruster wake
+    let trail = ctx.createLinearGradient(-32, 0, 8, 0);
+    trail.addColorStop(0, "rgba(56, 189, 248, 0)");
+    trail.addColorStop(0.6, isMono ? "rgba(0,0,0,0.45)" : "rgba(14, 165, 233, 0.55)");
+    trail.addColorStop(1, isMono ? "#FFFFFF" : "#BAE6FD");
+    ctx.fillStyle = trail;
+    ctx.beginPath();
+    ctx.moveTo(-32, 0);
+    ctx.lineTo(-4, -5.5);
+    ctx.lineTo(-4, 5.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Twin stabilizer fins & armored plasma dart
+    ctx.fillStyle = isMono ? "#111111" : "#0F172A";
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(15, 0);
-    ctx.lineTo(2, -6);
-    ctx.lineTo(-14, -4);
-    ctx.lineTo(-10, 0);
-    ctx.lineTo(-14, 4);
-    ctx.lineTo(2, 6);
+    ctx.moveTo(19, 0);
+    ctx.lineTo(4, -7);
+    ctx.lineTo(-14, -6);
+    ctx.lineTo(-9, 0);
+    ctx.lineTo(-14, 6);
+    ctx.lineTo(4, 7);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    // Inner ionized arc core
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(2, -3.4);
+    ctx.lineTo(-7, 0);
+    ctx.lineTo(2, 3.4);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.fillStyle = "#FEF08A";
     ctx.beginPath();
-    ctx.arc(4, 0, 2.8, 0, Math.PI * 2);
+    ctx.arc(5, 0, 2.8, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
 
   if (h.kind === "thunder_lance") {
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-    ctx.lineWidth = 3;
+    let pulse = 0.85 + 0.2 * Math.sin(elapsedTime * 22 + (h.id || 0));
+    // Crackling lightning tail wake
+    ctx.strokeStyle = isMono ? "#000000" : "rgba(56, 189, 248, 0.45)";
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(-22, 0);
-    ctx.lineTo(-8, -4);
-    ctx.lineTo(-2, 4);
+    ctx.moveTo(-30, 0);
+    ctx.lineTo(16, 0);
+    ctx.stroke();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-28, 0);
+    ctx.lineTo(-15, -5.5 * pulse);
+    ctx.lineTo(-6, 5.5 * pulse);
+    ctx.lineTo(4, -3.5);
     ctx.lineTo(18, 0);
     ctx.stroke();
-    ctx.fillStyle = isMono ? "#000000" : "#38BDF8";
+
+    // White-hot core filament
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(22, 0);
-    ctx.lineTo(7, -5.5);
-    ctx.lineTo(10, 0);
-    ctx.lineTo(7, 5.5);
+    ctx.moveTo(-20, 0);
+    ctx.lineTo(18, 0);
+    ctx.stroke();
+
+    // Storm arrowhead
+    ctx.fillStyle = isMono ? "#000000" : "#0284C7";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(25, 0);
+    ctx.lineTo(6, -7);
+    ctx.lineTo(11, 0);
+    ctx.lineTo(6, 7);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+    drawFourPointStar(ctx, 11, 0, 5.5 * pulse, 1.8, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
     return;
   }
 
   if (h.kind === "venom_fang") {
-    ctx.fillStyle = isMono ? "#111111" : "#16A34A";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#A3E635";
-    ctx.lineWidth = 1.8;
+    // Acidic mist wake
+    let vTrail = ctx.createLinearGradient(-28, 0, 8, 0);
+    vTrail.addColorStop(0, "rgba(163, 230, 53, 0)");
+    vTrail.addColorStop(1, isMono ? "rgba(0,0,0,0.45)" : "rgba(132, 204, 22, 0.55)");
+    ctx.fillStyle = vTrail;
     ctx.beginPath();
-    ctx.moveTo(16, 0);
-    ctx.quadraticCurveTo(2, -8, -12, -3);
+    ctx.moveTo(-28, 0);
+    ctx.quadraticCurveTo(-8, -7, 4, -4);
+    ctx.quadraticCurveTo(-8, 7, -28, 0);
+    ctx.fill();
+
+    // Curved bio-chitinous fang
+    ctx.fillStyle = isMono ? "#111111" : "#14532D";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#A3E635";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(19, 0);
+    ctx.quadraticCurveTo(4, -9.5, -13, -4);
     ctx.lineTo(-7, 0);
-    ctx.lineTo(-12, 3);
-    ctx.quadraticCurveTo(2, 8, 16, 0);
+    ctx.lineTo(-13, 4);
+    ctx.quadraticCurveTo(4, 9.5, 19, 0);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    // Glowing toxic nerve vein + droplet
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#BEF264";
+    ctx.beginPath();
+    ctx.ellipse(3, 0, 6.5, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isMono ? "#DDDDDD" : "#4ADE80";
+    ctx.beginPath();
+    ctx.arc(-15, Math.sin(elapsedTime * 14 + (h.id || 0)) * 3, 2.4, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
 
   if (h.kind === "blood_crystal") {
-    ctx.fillStyle = isMono ? "#000000" : "#BE123C";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
-    ctx.lineWidth = 1.8;
+    // Crimson mist wake
+    let bTrail = ctx.createLinearGradient(-26, 0, 4, 0);
+    bTrail.addColorStop(0, "rgba(225, 29, 72, 0)");
+    bTrail.addColorStop(1, isMono ? "rgba(0,0,0,0.45)" : "rgba(251, 113, 133, 0.58)");
+    ctx.fillStyle = bTrail;
     ctx.beginPath();
-    ctx.moveTo(15, 0);
-    ctx.lineTo(0, -6.5);
-    ctx.lineTo(-12, 0);
-    ctx.lineTo(0, 6.5);
+    ctx.moveTo(-26, 0);
+    ctx.lineTo(-2, -5.5);
+    ctx.lineTo(-2, 5.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Multi-faceted ruby prism shard
+    ctx.fillStyle = isMono ? "#000000" : "#9F1239";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(1, -7.5);
+    ctx.lineTo(-13, -2.5);
+    ctx.lineTo(-10, 0);
+    ctx.lineTo(-13, 2.5);
+    ctx.lineTo(1, 7.5);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    // Upper facet highlight
+    ctx.fillStyle = isMono ? "#555555" : "#F43F5E";
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(1, -7.5);
+    ctx.lineTo(-10, 0);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.fillStyle = "#FEF08A";
     ctx.beginPath();
-    ctx.arc(2, 0, 2.2, 0, Math.PI * 2);
+    ctx.arc(3, 0, 2.4, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
 
   if (h.kind === "seraph_spear") {
-    ctx.strokeStyle = isMono ? "#000000" : "#FBBF24";
-    ctx.lineWidth = 2.6;
+    let spin = elapsedTime * 7 + (h.id || 0);
+    // Radiant gold-crimson wake ribbon
+    let sTrail = ctx.createLinearGradient(-34, 0, 6, 0);
+    sTrail.addColorStop(0, "rgba(220, 38, 38, 0)");
+    sTrail.addColorStop(0.55, isMono ? "rgba(0,0,0,0.45)" : "rgba(220, 38, 38, 0.52)");
+    sTrail.addColorStop(1, isMono ? "#FFFFFF" : "rgba(251, 191, 36, 0.8)");
+    ctx.fillStyle = sTrail;
     ctx.beginPath();
-    ctx.moveTo(-20, 0);
-    ctx.lineTo(14, 0);
+    ctx.moveTo(-34, 0);
+    ctx.lineTo(-4, -6.5);
+    ctx.lineTo(-4, 6.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Feather-finned tail
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#DC2626";
+    ctx.beginPath();
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(-22, -7.5);
+    ctx.lineTo(-17, 0);
+    ctx.lineTo(-22, 7.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Golden lance shaft
+    ctx.strokeStyle = isMono ? "#000000" : "#FBBF24";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-21, 0);
+    ctx.lineTo(15, 0);
     ctx.stroke();
+
+    // Celestial diamond blade
     ctx.fillStyle = isMono ? "#FFFFFF" : "#DC2626";
     ctx.strokeStyle = isMono ? "#000000" : "#FEF08A";
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(22, 0);
-    ctx.lineTo(5, -7);
-    ctx.lineTo(9, 0);
-    ctx.lineTo(5, 7);
+    ctx.moveTo(26, 0);
+    ctx.lineTo(6, -8);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(6, 8);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.strokeStyle = "#FBBF24";
-    ctx.lineWidth = 1.4;
+
+    // Rotating sacred halo ring around spear shaft
+    ctx.save();
+    ctx.translate(-3, 0);
+    ctx.rotate(spin);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.arc(-4, 0, 6, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 7.5, 4.2, 0, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
+    drawFourPointStar(ctx, 11, 0, 6, 1.8, "#FEF08A", isMono ? "#000000" : "#DC2626");
     return;
   }
+
 
   if (h.kind === "duy_atk_shuriken" || h.kind === "duy_shuriken" || h.kind === "duy_c3_shuriken") {
     let isUlt = h.kind === "duy_c3_shuriken";
@@ -3346,6 +3480,72 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     drawTaperedArc(ctx, 0, 0, h.radius, -1.05, 1.05, 11 * alpha + 2, "#14B8A6", "#FDE047", isMono);
     drawTaperedArc(ctx, 0, 0, h.radius * 0.78, 0.85, -0.85, 7 * alpha + 1.4, "#F43F5E", "#FFFFFF", isMono);
     ctx.restore();
+    return;
+  }
+
+  if (h.kind === "boss_cyber_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let reach = h.radius * (0.45 + 0.55 * Math.min(1, f * 1.6));
+    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 13 * alpha + 2, "#0284C7", "#E0F2FE", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.78, -h.spread * 0.4, h.spread * 0.4, 6.5 * alpha + 1.2, "#F59E0B", "#FFFFFF", isMono);
+    drawFourPointStar(ctx, Math.cos(h.spread * 0.42) * reach, Math.sin(h.spread * 0.42) * reach, 8 * alpha, 2.2 * alpha, "#FEF08A", "#38BDF8");
+    return;
+  }
+
+  if (h.kind === "boss_thunder_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let reach = h.radius * (0.4 + 0.6 * Math.min(1, f * 1.65));
+    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 14 * alpha + 2, "#0284C7", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.82, h.spread * 0.42, -h.spread * 0.42, 7.5 * alpha + 1.4, "#FDE047", "#FFFFFF", isMono);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 2.4 * alpha + 0.6;
+    for (let i = -2; i <= 2; i++) {
+      let a = i * (h.spread * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * reach * 0.55, Math.sin(a) * reach * 0.55);
+      ctx.lineTo(Math.cos(a + 0.08) * reach * 0.82, Math.sin(a + 0.08) * reach * 0.82);
+      ctx.lineTo(Math.cos(a) * reach * 1.08, Math.sin(a) * reach * 1.08);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (h.kind === "boss_venom_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let reach = h.radius * (0.38 + 0.62 * Math.min(1, f * 1.65));
+    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 14.5 * alpha + 2, "#16A34A", "#BEF264", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.78, -h.spread * 0.42, h.spread * 0.42, 7 * alpha + 1.2, "#84CC16", "#ECFCCB", isMono);
+    for (let i = 0; i < 6; i++) {
+      let a = -h.spread * 0.42 + (h.spread * 0.84 * i) / 5;
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#BEF264";
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * (reach * (0.9 + (i % 2) * 0.14)), Math.sin(a) * (reach * (0.9 + (i % 2) * 0.14)), 3.6 * alpha + 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  if (h.kind === "boss_blood_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let reach = h.radius * (0.36 + 0.64 * Math.min(1, f * 1.7));
+    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 15 * alpha + 2, "#9F1239", "#FDA4AF", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.82, h.spread * 0.45, -h.spread * 0.45, 9.5 * alpha + 1.5, "#FB7185", "#FEF08A", isMono);
+    drawFourPointStar(ctx, Math.cos(h.spread * 0.44) * reach, Math.sin(h.spread * 0.44) * reach, 9 * alpha, 2.4 * alpha, "#FDA4AF", "#9F1239");
+    return;
+  }
+
+  if (h.kind === "boss_seraph_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let dir = h.dir || 1;
+    let reach = h.radius * (0.35 + 0.65 * Math.min(1, f * 1.72));
+    drawTaperedArc(ctx, 0, 0, reach, (-h.spread / 2) * dir, (h.spread / 2) * dir, 17 * alpha + 2.2, h.color || "#DC2626", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, reach * 0.78, (-h.spread * 0.4) * dir, (h.spread * 0.4) * dir, 9 * alpha + 1.5, "#FBBF24", "#FFFFFF", isMono);
+    drawFourPointStar(ctx, Math.cos((h.spread * 0.45) * dir) * reach, Math.sin((h.spread * 0.45) * dir) * reach, 11 * alpha, 3 * alpha, "#FEF08A", "#DC2626");
     return;
   }
 
@@ -4875,16 +5075,64 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
 
 export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
   let wave = boss.bossWave || 3;
-  let r = boss.radius || 42;
+  let r = Math.max(24, Number(boss.radius) || 46);
   let t = elapsedTime || 0;
   let facing = boss.facing || 0;
-  let swing = Math.sin(t * 3.4) * 0.14;
-  let isPhaseBoost = (boss.phase || 1) >= 2;
+  let idleSwing = Math.sin(t * 3.4) * 0.14;
+  let phase = boss.phase || 1;
+  let isPhaseBoost = phase >= 2;
+  let isPhase3 = phase >= 3;
+
+  // Live melee, windup anticipation, and skill release animation curves
+  let windupRatio =
+    boss.castWindupTimer > 0 && boss.castWindupTotal > 0
+      ? clamp(1 - boss.castWindupTimer / boss.castWindupTotal, 0, 1)
+      : 0;
+  let releaseRatio =
+    boss.skillReleaseTimer > 0 && boss.skillReleaseTotal > 0
+      ? clamp(1 - boss.skillReleaseTimer / boss.skillReleaseTotal, 0, 1)
+      : -1;
+  let atkRatio =
+    boss.attackAnimTimer > 0 && boss.attackAnimDur > 0
+      ? clamp(1 - boss.attackAnimTimer / boss.attackAnimDur, 0, 1)
+      : -1;
+
+  let animRot = 0;
+  let animThrustX = 0;
+  let animThrustY = 0;
+  let chargeGlow = windupRatio;
+
+  if (windupRatio > 0) {
+    // Windup pull-back & raise before striking
+    animRot = -0.78 * Math.sin(windupRatio * Math.PI * 0.5);
+    animThrustX = -r * 0.14 * windupRatio;
+    animThrustY = -r * 0.1 * windupRatio;
+  } else if (releaseRatio >= 0) {
+    // High-impact forward cleave or cannon recoil kickback
+    if (wave === 15) {
+      let kick = Math.sin(releaseRatio * Math.PI);
+      animThrustX = -15 * (1 - releaseRatio);
+      animRot = -0.18 * kick;
+    } else {
+      let dir = boss.attackSwingDir || 1;
+      animRot = (-0.95 + releaseRatio * 2.25) * dir;
+      animThrustX = r * 0.28 * Math.sin(releaseRatio * Math.PI);
+    }
+    chargeGlow = Math.max(chargeGlow, (1 - releaseRatio) * 0.85);
+  } else if (atkRatio >= 0) {
+    if (wave === 15) {
+      animThrustX = -10 * Math.sin(atkRatio * Math.PI);
+    } else {
+      let dir = boss.attackSwingDir || 1;
+      animRot = (-0.6 + atkRatio * 1.45) * dir;
+      animThrustX = r * 0.18 * Math.sin(atkRatio * Math.PI);
+    }
+  }
 
   ctx.save();
   ctx.rotate(facing);
-  ctx.translate(r * 0.88, r * 0.42);
-  ctx.rotate(0.28 + swing);
+  ctx.translate(r * 0.86 + animThrustX, r * 0.42 + animThrustY);
+  ctx.rotate(0.28 + idleSwing + animRot);
 
   if (wave === 3) {
     // Stone Titan — Crystal Runic Greathammer
@@ -4920,7 +5168,6 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
     ctx.fill();
     ctx.stroke();
 
-    // Glowing emerald runic crystal core on hammer head
     ctx.fillStyle = isMono ? "#FFFFFF" : isPhaseBoost ? "#6EE7B7" : "#10B981";
     ctx.beginPath();
     ctx.arc(41, 0, 7, 0, Math.PI * 2);
@@ -4957,7 +5204,6 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
     ctx.lineTo(52, 0);
     ctx.stroke();
 
-    // Twin crescent ice wings + lance tip
     ctx.fillStyle = isMono ? "#222222" : "#38BDF8";
     ctx.strokeStyle = "#E0F2FE";
     ctx.lineWidth = 2;
@@ -4997,132 +5243,413 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
     ctx.arc(43, 0, 5.5, 0, Math.PI * 2);
     ctx.fill();
   } else if (wave === 15) {
-    // Wave 15 Siege Automaton Rex — Twin-Barrel Siege Plasma Cannon
-    ctx.fillStyle = isMono ? "#222222" : "#1E293B";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    // Wave 15: Pháo Vương Cơ Giới Rex — Overcharged Twin-Rail Siege Plasma Cannon
+    let accent = isMono ? "#FFFFFF" : isPhase3 ? "#EF4444" : isPhaseBoost ? "#F59E0B" : "#38BDF8";
+    let bodyGrad = ctx.createLinearGradient(-16, -18, 48, 18);
+    bodyGrad.addColorStop(0, isMono ? "#111111" : "#0F172A");
+    bodyGrad.addColorStop(0.5, isMono ? "#2B2B2B" : "#334155");
+    bodyGrad.addColorStop(1, isMono ? "#0A0A0A" : "#1E293B");
+
+    // Heavy armored cannon chassis with chamfered edges
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = accent;
     ctx.lineWidth = 2.4;
-    ctx.fillRect(-14, -14, 54, 28);
-    ctx.strokeRect(-14, -14, 54, 28);
-    // Twin cannon barrels
-    ctx.fillStyle = isMono ? "#444444" : "#64748B";
-    ctx.fillRect(36, -11, 34, 8);
-    ctx.fillRect(36, 3, 34, 8);
-    ctx.strokeStyle = "#38BDF8";
-    ctx.lineWidth = 1.6;
-    ctx.strokeRect(36, -11, 34, 8);
-    ctx.strokeRect(36, 3, 34, 8);
-    // Glowing reactor chamber
-    ctx.fillStyle = isPhaseBoost ? "#FEF08A" : "#38BDF8";
     ctx.beginPath();
-    ctx.arc(14, 0, 7.5, 0, Math.PI * 2);
+    ctx.moveTo(-18, -14);
+    ctx.lineTo(38, -17);
+    ctx.lineTo(48, -11);
+    ctx.lineTo(48, 11);
+    ctx.lineTo(38, 17);
+    ctx.lineTo(-18, 14);
+    ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+
+    // Cooling vents along receiver
+    ctx.fillStyle = isMono ? "#FFFFFF" : accent;
+    for (let vi = 0; vi < 4; vi++) {
+      ctx.fillRect(-8 + vi * 9, -12, 5, 3.5);
+      ctx.fillRect(-8 + vi * 9, 8.5, 5, 3.5);
+    }
+
+    // Twin magnetic plasma rail barrels
+    for (let by of [-11, 4]) {
+      ctx.fillStyle = isMono ? "#333333" : "#64748B";
+      ctx.fillRect(42, by, 40, 7);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(42, by, 40, 7);
+      // Glowing rail slot
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+      ctx.fillRect(45, by + 2.4, 34, 2.2);
+    }
+
+    // 3 Electromagnetic accelerator rings pulsing down the barrels
+    for (let ri = 0; ri < 3; ri++) {
+      let pulse = 0.65 + 0.35 * Math.sin(t * 14 - ri * 1.4);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : accent;
+      ctx.globalAlpha = clamp(pulse + chargeGlow * 0.4, 0.35, 1);
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(52 + ri * 11, -14);
+      ctx.lineTo(52 + ri * 11, 14);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Spinning Plasma Reactor Chamber inside receiver
+    ctx.save();
+    ctx.translate(15, 0);
+    ctx.rotate(t * (isPhaseBoost ? 9 : 5));
+    ctx.fillStyle = isMono ? "#000000" : "#0F172A";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    for (let bi = 0; bi < 4; bi++) {
+      let ba = (Math.PI / 2) * bi;
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(ba) * 7.5, Math.sin(ba) * 7.5);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Target lock laser sight during windup + muzzle burst on release
+    if (windupRatio > 0) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(244, 63, 94, ${0.4 + 0.5 * windupRatio})`;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(84, 0);
+      ctx.lineTo(84 + 190 * windupRatio, 0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawFourPointStar(ctx, 84, 0, 9 * windupRatio, 2.5, "#FEF08A", accent);
+    } else if (releaseRatio >= 0 && releaseRatio < 0.65) {
+      let ms = 1 - releaseRatio / 0.65;
+      drawFourPointStar(ctx, 86, -7.5, 13 * ms, 3.5 * ms, "#FEF08A", accent);
+      drawFourPointStar(ctx, 86, 7.5, 13 * ms, 3.5 * ms, "#FEF08A", accent);
+    }
   } else if (wave === 18) {
-    // Wave 18 Thunder Archon Raijin — Storm-Forged Lightning Naginata
-    ctx.strokeStyle = isMono ? "#333333" : "#0284C7";
-    ctx.lineWidth = 5;
+    // Wave 18: Lôi Thần Thiên Khải — Storm-Forged Raijin Thunder Halberd
+    let shaftColor = isMono ? "#222222" : "#0369A1";
+    let rimColor = isMono ? "#FFFFFF" : isPhase3 ? "#FEF08A" : "#FDE047";
+    let arcColor = isMono ? "#FFFFFF" : "#38BDF8";
+
+    // Polearm grip & dragon pommel
+    ctx.strokeStyle = "#0F172A";
+    ctx.lineWidth = 7.5;
     ctx.beginPath();
-    ctx.moveTo(-24, 0);
-    ctx.lineTo(44, 0);
-    ctx.stroke();
-    // Gold ring guard
-    ctx.strokeStyle = "#FDE047";
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.arc(38, 0, 9, 0, Math.PI * 2);
-    ctx.stroke();
-    // Curved lightning naginata blade
-    ctx.fillStyle = isMono ? "#000000" : "#38BDF8";
-    ctx.strokeStyle = "#FDE047";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(42, -4);
-    ctx.quadraticCurveTo(68, -14, 86, -4);
-    ctx.quadraticCurveTo(64, 9, 42, 5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else if (wave === 21) {
-    // Wave 21 Abyssal Venom Wyrm — Serrated Venom Fang Sickle
-    ctx.strokeStyle = "#14532D";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(-18, 0);
-    ctx.lineTo(40, 0);
-    ctx.stroke();
-    ctx.fillStyle = isMono ? "#111111" : "#16A34A";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#A3E635";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(36, -5);
-    ctx.quadraticCurveTo(72, -16, 78, 22);
-    ctx.quadraticCurveTo(56, 8, 34, 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#BEF264";
-    ctx.beginPath();
-    ctx.arc(64, 10, 4.2, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (wave === 24) {
-    // Wave 24 Crimson Blood Sovereign — Blood-Moon Crescent Glaive
-    ctx.strokeStyle = "#4C0519";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(-22, 0);
+    ctx.moveTo(-28, 0);
     ctx.lineTo(48, 0);
     ctx.stroke();
-    ctx.fillStyle = isMono ? "#000000" : "#BE123C";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = shaftColor;
+    ctx.lineWidth = 4.5;
+    ctx.stroke();
+
+    // Twin golden pommel orb
+    ctx.fillStyle = rimColor;
     ctx.beginPath();
-    ctx.moveTo(44, -22);
-    ctx.quadraticCurveTo(76, -8, 84, 0);
-    ctx.quadraticCurveTo(76, 8, 44, 22);
-    ctx.quadraticCurveTo(56, 0, 44, -22);
+    ctx.arc(-28, 0, 5.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sacred Thunder Drum Ring Crossguard
+    ctx.strokeStyle = rimColor;
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.arc(40, 0, 11.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#000000" : "#0EA5E9";
+    ctx.beginPath();
+    ctx.arc(40, 0, 6.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crescent storm back-spike
+    ctx.fillStyle = isMono ? "#333333" : "#0284C7";
+    ctx.strokeStyle = rimColor;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(35, 7);
+    ctx.quadraticCurveTo(44, 22, 57, 17);
+    ctx.quadraticCurveTo(46, 11, 44, 4);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = "#FEF08A";
-    ctx.beginPath();
-    ctx.arc(58, 0, 5, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    // Wave 27 Final Boss Fallen Seraphim Lucifer — Celestial-Apocalypse Greatsword
-    ctx.strokeStyle = "#78716C";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(-20, 0);
-    ctx.lineTo(66, 0);
-    ctx.stroke();
 
-    ctx.fillStyle = isMono ? "#222222" : "#FBBF24";
-    ctx.beginPath();
-    ctx.moveTo(8, -19);
-    ctx.lineTo(20, -6);
-    ctx.lineTo(20, 6);
-    ctx.lineTo(8, 19);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = isMono ? "#000000" : "#1E1B4B";
-    ctx.beginPath();
-    ctx.moveTo(64, -11);
-    ctx.lineTo(94, 0);
-    ctx.lineTo(64, 11);
-    ctx.lineTo(18, 9);
-    ctx.lineTo(18, -9);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#FBBF24";
+    // Elongated lightning-forged naginata blade with gradient
+    let bladeGrad = ctx.createLinearGradient(42, -16, 98, 6);
+    bladeGrad.addColorStop(0, isMono ? "#000000" : "#0284C7");
+    bladeGrad.addColorStop(0.55, isMono ? "#555555" : "#38BDF8");
+    bladeGrad.addColorStop(1, isMono ? "#FFFFFF" : "#FEF08A");
+    ctx.fillStyle = bladeGrad;
+    ctx.strokeStyle = rimColor;
     ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(42, -5);
+    ctx.quadraticCurveTo(64, -20, 96, -8);
+    ctx.quadraticCurveTo(84, 2, 68, 7);
+    ctx.lineTo(42, 5);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
 
-    ctx.strokeStyle = "#DC2626";
-    ctx.lineWidth = 2.2;
+    // Live crackling electric filament along blade spine
+    let zOff = Math.sin(t * 28) * 3.5;
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(24, 0);
-    ctx.lineTo(80, 0);
+    ctx.moveTo(46, -1);
+    ctx.lineTo(62, -9 + zOff);
+    ctx.lineTo(78, -4 - zOff);
+    ctx.lineTo(95, -8);
     ctx.stroke();
+
+    if (chargeGlow > 0.1 || isPhaseBoost) {
+      let sSize = (isPhaseBoost ? 7 : 5) + chargeGlow * 8;
+      drawFourPointStar(ctx, 96, -8, sSize, sSize * 0.28, "#FFFFFF", arcColor);
+    }
+  } else if (wave === 21) {
+    // Wave 21: Độc Long Ác Ma — Living Abyssal Venom-Fang Scythe
+    let acidEdge = isMono ? "#FFFFFF" : isPhase3 ? "#D9F99D" : "#A3E635";
+    let scaleColor = isMono ? "#222222" : "#14532D";
+
+    // Twisted chitinous bone shaft
+    ctx.strokeStyle = "#052E16";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(-24, 2);
+    ctx.quadraticCurveTo(10, -5, 46, 0);
+    ctx.stroke();
+    ctx.strokeStyle = scaleColor;
+    ctx.lineWidth = 4.6;
+    ctx.stroke();
+
+    // Glowing venom nerve spine along haft
+    ctx.strokeStyle = acidEdge;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-16, 1);
+    ctx.quadraticCurveTo(14, -4, 42, 0);
+    ctx.stroke();
+
+    // Main curved serrated venom-fang reaper blade
+    let vGrad = ctx.createLinearGradient(36, -16, 86, 32);
+    vGrad.addColorStop(0, isMono ? "#111111" : "#166534");
+    vGrad.addColorStop(0.55, isMono ? "#444444" : "#22C55E");
+    vGrad.addColorStop(1, acidEdge);
+    ctx.fillStyle = vGrad;
+    ctx.strokeStyle = acidEdge;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(36, -6);
+    ctx.quadraticCurveTo(64, -22, 86, 10);
+    ctx.quadraticCurveTo(83, 28, 74, 34);
+    ctx.quadraticCurveTo(68, 16, 56, 11);
+    ctx.lineTo(44, 15);
+    ctx.lineTo(46, 7);
+    ctx.lineTo(34, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Secondary lower mandible fang
+    ctx.fillStyle = isMono ? "#333333" : "#4ADE80";
+    ctx.beginPath();
+    ctx.moveTo(40, -6);
+    ctx.lineTo(54, -20);
+    ctx.lineTo(50, -4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pulsing bio-venom gland orb in scythe socket
+    let gPulse = 1 + 0.22 * Math.sin(t * 7);
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#BEF264";
+    ctx.strokeStyle = isMono ? "#000000" : "#14532D";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(42, 0, 6.2 * gPulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Dripping acid droplet from fang tip
+    let dropProg = (t * 1.8) % 1;
+    ctx.fillStyle = acidEdge;
+    ctx.globalAlpha = 1 - dropProg;
+    ctx.beginPath();
+    ctx.arc(74, 34 + dropProg * 14, 2.8 * (1 - dropProg * 0.4), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  } else if (wave === 24) {
+    // Wave 24: Huyết Ma Bá Chủ — Blood-Moon Crescent Sovereign Glaive
+    let rim = isMono ? "#FFFFFF" : isPhase3 ? "#FEF08A" : "#FDA4AF";
+    let crimson = isMono ? "#000000" : "#9F1239";
+
+    // Ornate obsidian-gold polearm shaft
+    ctx.strokeStyle = "#1F030B";
+    ctx.lineWidth = 7.5;
+    ctx.beginPath();
+    ctx.moveTo(-26, 0);
+    ctx.lineTo(56, 0);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#444444" : "#881337";
+    ctx.lineWidth = 4.2;
+    ctx.stroke();
+
+    // Bat-wing golden crossguard
+    ctx.fillStyle = isMono ? "#666666" : "#F59E0B";
+    ctx.beginPath();
+    ctx.moveTo(40, -14);
+    ctx.lineTo(48, -5);
+    ctx.lineTo(48, 5);
+    ctx.lineTo(40, 14);
+    ctx.lineTo(44, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Twin-horned Blood-Moon crescent glaive head
+    let gGrad = ctx.createLinearGradient(44, -26, 90, 26);
+    gGrad.addColorStop(0, crimson);
+    gGrad.addColorStop(0.55, isMono ? "#555555" : "#E11D48");
+    gGrad.addColorStop(1, rim);
+    ctx.fillStyle = gGrad;
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(44, -27);
+    ctx.quadraticCurveTo(78, -14, 92, 0);
+    ctx.quadraticCurveTo(78, 14, 44, 27);
+    ctx.quadraticCurveTo(60, 8, 52, 0);
+    ctx.quadraticCurveTo(60, -8, 44, -27);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Central piercing spear point
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FFE4E6";
+    ctx.beginPath();
+    ctx.moveTo(64, -4);
+    ctx.lineTo(98, 0);
+    ctx.lineTo(64, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Suspended Ruby Blood-Core Orb inside crescent cradle
+    let heartPulse = 1 + 0.25 * Math.pow(Math.abs(Math.sin(t * 4.5)), 4);
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F43F5E";
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(57, 0, 5.5 * heartPulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (chargeGlow > 0.1) {
+      drawFourPointStar(ctx, 98, 0, 8 + chargeGlow * 8, 2.4, "#FDA4AF", "#9F1239");
+    }
+  } else {
+    // Wave 27 Final Boss: Thiên Thần Sa Ngã Lucifer — Fallen Judgment Dual-Aspect Greatsword
+    let gold = isMono ? "#FFFFFF" : "#FBBF24";
+    let crim = isMono ? "#222222" : "#DC2626";
+    let pulse = 0.8 + 0.2 * Math.sin(t * 9);
+
+    // Imperial hilt & eclipse pommel
+    ctx.strokeStyle = isMono ? "#333333" : "#451A03";
+    ctx.lineWidth = 7.5;
+    ctx.beginPath();
+    ctx.moveTo(-24, 0);
+    ctx.lineTo(14, 0);
+    ctx.stroke();
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.arc(-24, 0, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Asymmetric Fallen Seraph Crossguard (Upper Celestial Gold Wing + Lower Abyssal Crimson Thorn)
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.moveTo(8, -24);
+    ctx.quadraticCurveTo(22, -16, 22, -2);
+    ctx.lineTo(12, -2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = crim;
+    ctx.beginPath();
+    ctx.moveTo(8, 24);
+    ctx.quadraticCurveTo(22, 16, 22, 2);
+    ctx.lineTo(12, 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Massive Dual-Aspect Greatsword Blade (Upper Radiant Gold-Indigo, Lower Crimson-Void)
+    ctx.fillStyle = isMono ? "#111111" : "#1E1B4B";
+    ctx.beginPath();
+    ctx.moveTo(18, -10.5);
+    ctx.lineTo(74, -12.5);
+    ctx.lineTo(106, 0);
+    ctx.lineTo(74, 12.5);
+    ctx.lineTo(18, 10.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Split elemental blade bevels
+    ctx.fillStyle = isMono ? "#555555" : "rgba(251, 191, 36, 0.35)";
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(106, 0);
+    ctx.lineTo(74, -12.5);
+    ctx.lineTo(18, -10.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = isMono ? "#222222" : "rgba(220, 38, 38, 0.42)";
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(106, 0);
+    ctx.lineTo(74, 12.5);
+    ctx.lineTo(18, 10.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Golden & crimson edge trims
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(18, -10.5);
+    ctx.lineTo(74, -12.5);
+    ctx.lineTo(106, 0);
+    ctx.stroke();
+
+    ctx.strokeStyle = isMono ? "#AAAAAA" : "#EF4444";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(18, 10.5);
+    ctx.lineTo(74, 12.5);
+    ctx.lineTo(106, 0);
+    ctx.stroke();
+
+    // Glowing Judgment Rune Spine down center
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 2.2 * pulse;
+    ctx.beginPath();
+    ctx.moveTo(26, 0);
+    ctx.lineTo(88, 0);
+    ctx.stroke();
+
+    // Blazing Eclipse Gem in crossguard
+    drawFourPointStar(ctx, 18, 0, 8.5 * pulse, 3.2, "#FEF08A", crim);
+    if (chargeGlow > 0.1 || isPhase3) {
+      let sSize = (isPhase3 ? 8 : 5) + chargeGlow * 10;
+      drawFourPointStar(ctx, 106, 0, sSize, sSize * 0.28, "#FEF08A", "#DC2626");
+    }
   }
 
   ctx.restore();
@@ -6089,7 +6616,7 @@ export function drawDuyDecoy(ctx, decoy, elapsedTime, isMono) {
   ctx.textAlign = "center";
   ctx.strokeStyle = "#000000";
   ctx.lineWidth = 3.5;
-  let dmgNum = Math.round(absorbedDamage * 0.3 * (passiveMult > 1 ? passiveMult : 1));
+  let dmgNum = Math.round(absorbedDamage * DUY_DECOY_REFLECT_RATIO * (passiveMult > 1 ? passiveMult : 1));
   let label = dmgNum > 0 ? `💥 ${dmgNum} · ${remain.toFixed(1)}s` : `🪆 ${remain.toFixed(1)}s`;
   ctx.strokeText(label, 0, -radius - 15);
   ctx.fillStyle = dmgNum > 0 ? "#FDE047" : "#5EEAD4";
@@ -6134,4 +6661,749 @@ export function drawDuyHealOrb(ctx, orb, elapsedTime, isMono) {
   ctx.fill();
   ctx.restore();
 }
+
+// =====================================================================
+// UPGRADED BOSS BODY RENDERER (WAVES 15, 18, 21, 24, 27)
+// Articulated silhouettes, Phase 2/3 visual evolution & windup telegraphs
+// =====================================================================
+
+export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
+  let wave = boss.bossWave || 15;
+  let r = Math.max(24, Number(boss.radius) || 46);
+  let t = elapsedTime || 0;
+  let facing = boss.facing || 0;
+  let hit = (boss.hitFlash || 0) > 0;
+  let phase = boss.phase || 1;
+  let isP2 = phase >= 2;
+  let isP3 = phase >= 3;
+  let walk = boss.animWalkPhase || t * 5;
+  let windupRatio =
+    boss.castWindupTimer > 0 && boss.castWindupTotal > 0
+      ? clamp(1 - boss.castWindupTimer / boss.castWindupTotal, 0, 1)
+      : 0;
+  let releaseRatio =
+    boss.skillReleaseTimer > 0 && boss.skillReleaseTotal > 0
+      ? clamp(1 - boss.skillReleaseTimer / boss.skillReleaseTotal, 0, 1)
+      : -1;
+
+  // Phase 2/3 & Windup aura sigil beneath boss
+  if (isP2 || windupRatio > 0) {
+    let auraColor =
+      wave === 15
+        ? isP3 ? "#EF4444" : "#38BDF8"
+        : wave === 18
+        ? "#FDE047"
+        : wave === 21
+        ? "#A3E635"
+        : wave === 24
+        ? "#FB7185"
+        : isP3 ? "#DC2626" : "#FBBF24";
+    let auraScale = 1 + windupRatio * 0.25 + 0.05 * Math.sin(t * 8);
+    let auraR = r * 1.48 * auraScale;
+    let auraGrad = ctx.createRadialGradient(0, 0, r * 0.45, 0, 0, auraR);
+    auraGrad.addColorStop(0, "rgba(0,0,0,0)");
+    auraGrad.addColorStop(0.65, isMono ? "rgba(255,255,255,0.16)" : `${auraColor}30`);
+    auraGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (windupRatio > 0) {
+      ctx.save();
+      ctx.rotate(t * 4.5);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : auraColor;
+      ctx.lineWidth = 2.6;
+      ctx.setLineDash([12, 8]);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * (1.58 - windupRatio * 0.35), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  if (wave === 15) {
+    // -----------------------------------------------------------------
+    // WAVE 15: Pháo Vương Cơ Giới Rex — Overcharged Siege Automaton
+    // -----------------------------------------------------------------
+    let accent = isMono ? "#FFFFFF" : isP3 ? "#EF4444" : isP2 ? "#F59E0B" : "#38BDF8";
+    let bob = Math.sin(walk * 2) * 2.5;
+    ctx.save();
+    ctx.translate(0, bob);
+
+    // Outer counter-rotating targeting HUD ring
+    ctx.save();
+    ctx.rotate(t * (isP2 ? 2.1 : 1.2));
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([12, 6, 3, 6]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.42, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 4; i++) {
+      let ta = (Math.PI / 2) * i;
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+      ctx.beginPath();
+      ctx.arc(Math.cos(ta) * r * 1.42, Math.sin(ta) * r * 1.42, 3.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Dual Hover-Jet Thrusters spewing plasma exhaust
+    for (let side of [-1, 1]) {
+      let jetLen = (14 + 7 * Math.sin(t * 24 + side)) * (isP2 ? 1.3 : 1);
+      let jGrad = ctx.createLinearGradient(side * r * 0.56, r * 0.72, side * r * 0.56, r * 0.72 + jetLen);
+      jGrad.addColorStop(0, isMono ? "#FFFFFF" : "#FEF08A");
+      jGrad.addColorStop(0.5, accent);
+      jGrad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = jGrad;
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.44, r * 0.68);
+      ctx.lineTo(side * r * 0.56, r * 0.72 + jetLen);
+      ctx.lineTo(side * r * 0.68, r * 0.68);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Articulated Twin Shoulder Mortar / Missile Pods
+    let podRecoil = windupRatio > 0 ? -4 * windupRatio : releaseRatio >= 0 ? 5 * Math.sin(releaseRatio * Math.PI) : 0;
+    for (let side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * r * 0.88, -r * 0.14 + podRecoil);
+      ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#1A1A1A" : "#1E293B";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#94A3B8";
+      ctx.lineWidth = 2.4;
+      ctx.fillRect(-12, -r * 0.48, 24, r * 0.92);
+      ctx.strokeRect(-12, -r * 0.48, 24, r * 0.92);
+      // 3 Glowing missile tubes per pod
+      for (let ti = 0; ti < 3; ti++) {
+        ctx.fillStyle = isMono ? "#FFFFFF" : accent;
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.3 + ti * (r * 0.28), 3.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Main Octagonal Dreadnought Steel Hull with metallic gradient
+    let hullGrad = ctx.createLinearGradient(-r, -r, r, r);
+    hullGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#333333" : "#475569");
+    hullGrad.addColorStop(0.5, hit ? "#FFFFFF" : isMono ? "#1A1A1A" : "#1E293B");
+    hullGrad.addColorStop(1, hit ? "#FFFFFF" : isMono ? "#080808" : "#0F172A");
+
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      let ang = (Math.PI / 4) * i + Math.PI / 8;
+      let px = Math.cos(ang) * r;
+      let py = Math.sin(ang) * r;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = hullGrad;
+    ctx.fill();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    // Inner chamfered chest armor seam
+    ctx.strokeStyle = isMono ? "#888888" : "rgba(148, 163, 184, 0.55)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      let ang = (Math.PI / 4) * i + Math.PI / 8;
+      let px = Math.cos(ang) * (r * 0.76);
+      let py = Math.sin(ang) * (r * 0.76);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    // Spinning Overcharged Chest Reactor Turbine
+    ctx.save();
+    ctx.translate(0, r * 0.14);
+    let coreR = r * (0.36 + windupRatio * 0.08);
+    ctx.fillStyle = isMono ? "#000000" : "#020617";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, coreR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.rotate(t * (isP3 ? 11 : isP2 ? 7 : 4));
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 2.4;
+    for (let bi = 0; bi < 4; bi++) {
+      let ba = (Math.PI / 2) * bi;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(ba) * coreR * 0.85, Math.sin(ba) * coreR * 0.85);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(0, 0, coreR * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Armored Visor Slit + Sweeping Laser Scanner Eye
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(-r * 0.48, -r * 0.62, r * 0.96, 11);
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(-r * 0.48, -r * 0.62, r * 0.96, 11);
+    let scanX = Math.sin(t * (windupRatio > 0 ? 12 : 4)) * r * 0.34;
+    ctx.fillStyle = windupRatio > 0 || isP3 ? "#EF4444" : "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(scanX, -r * 0.565, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+    return;
+  }
+
+  if (wave === 18) {
+    // -----------------------------------------------------------------
+    // WAVE 18: Lôi Thần Thiên Khải — Thunder Archon Raijin
+    // -----------------------------------------------------------------
+    let hover = Math.sin(t * 3.6) * 5;
+    let lightningCol = isMono ? "#FFFFFF" : "#FDE047";
+    let stormBlue = isMono ? "#444444" : "#38BDF8";
+
+    ctx.save();
+    ctx.translate(0, hover);
+
+    // Swirling storm cloud plinth beneath Raijin
+    for (let ci = -2; ci <= 2; ci++) {
+      let cx = ci * r * 0.36 + Math.sin(t * 2.5 + ci) * 3;
+      let cy = r * 0.68 + Math.abs(ci) * 3;
+      ctx.fillStyle = isMono ? "#222222" : ci % 2 === 0 ? "#1E293B" : "#0F172A";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(56, 189, 248, 0.55)";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * (0.34 - Math.abs(ci) * 0.04), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Flowing Celestial Lightning Scarf / Ribbons behind shoulders
+    for (let side of [-1, 1]) {
+      let waveA = Math.sin(t * 6.5 + side * 1.4) * 14;
+      let waveB = Math.cos(t * 5.2 + side) * 18;
+      ctx.strokeStyle = isMono ? "#FFFFFF" : isP2 ? "#FEF08A" : "#38BDF8";
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.45, -r * 0.35);
+      ctx.bezierCurveTo(side * r * 1.15, -r * 0.8 + waveA, side * r * 1.65, r * 0.15 + waveB, side * r * 1.35, r * 0.72 + waveA * 0.6);
+      ctx.stroke();
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    }
+
+    // Ring of 8 Floating Taiko Storm Drums connected by live lightning arcs
+    let drumCount = 8;
+    let drumOrbit = r * (1.38 + windupRatio * 0.14);
+    let drumPts = [];
+    for (let i = 0; i < drumCount; i++) {
+      let ang = t * (isP2 ? 1.85 : 1.2) + ((Math.PI * 2) / drumCount) * i;
+      drumPts.push({ x: Math.cos(ang) * drumOrbit, y: Math.sin(ang) * drumOrbit, ang });
+    }
+    // Live electric chain connecting drums
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.72)";
+    ctx.lineWidth = windupRatio > 0 ? 2.6 : 1.6;
+    for (let i = 0; i < drumCount; i++) {
+      let p1 = drumPts[i];
+      let p2 = drumPts[(i + 1) % drumCount];
+      let mx = (p1.x + p2.x) * 0.5 + Math.sin(t * 24 + i) * 6;
+      let my = (p1.y + p2.y) * 0.5 + Math.cos(t * 24 + i) * 6;
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(mx, my);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    }
+    for (let i = 0; i < drumCount; i++) {
+      let dp = drumPts[i];
+      ctx.save();
+      ctx.translate(dp.x, dp.y);
+      ctx.rotate(dp.ang + t * 2);
+      ctx.fillStyle = isMono ? "#111111" : "#0C4A6E";
+      ctx.strokeStyle = lightningCol;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 9.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Inner golden drumhead symbol
+      ctx.fillStyle = i % 2 === 0 ? lightningCol : stormBlue;
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Storm Avatar Body & Armored Cobalt Pauldrons
+    let bodyGrad = ctx.createRadialGradient(0, -r * 0.2, 8, 0, 0, r);
+    bodyGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#444444" : "#0284C7");
+    bodyGrad.addColorStop(1, hit ? "#FFFFFF" : isMono ? "#090909" : "#082F49");
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = stormBlue;
+    ctx.lineWidth = 3.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Pauldron thunder shoulder plates
+    for (let side of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#222222" : "#0F172A";
+      ctx.strokeStyle = lightningCol;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.55, -r * 0.55);
+      ctx.lineTo(side * r * 1.18, -r * 0.35);
+      ctx.lineTo(side * r * 0.92, r * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Golden Lightning Chest Core
+    drawFourPointStar(ctx, 0, r * 0.16, r * 0.34, r * 0.12, lightningCol, stormBlue);
+
+    // Jagged Twin Golden Kabuto Lightning Horns
+    for (let side of [-1, 1]) {
+      ctx.strokeStyle = lightningCol;
+      ctx.lineWidth = 3.8;
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.28, -r * 0.62);
+      ctx.lineTo(side * r * 0.72, -r * 1.05);
+      ctx.lineTo(side * r * 0.48, -r * 1.25);
+      ctx.lineTo(side * r * 0.85, -r * 1.56);
+      ctx.stroke();
+    }
+
+    // Fierce Glowing Eyes
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(-r * 0.25, -r * 0.22, 4.8, 0, Math.PI * 2);
+    ctx.arc(r * 0.25, -r * 0.22, 4.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+    return;
+  }
+
+  if (wave === 21) {
+    // -----------------------------------------------------------------
+    // WAVE 21: Độc Long Ác Ma — Abyssal Venom Wyrm
+    // -----------------------------------------------------------------
+    let acidCol = isMono ? "#FFFFFF" : isP3 ? "#D9F99D" : "#A3E635";
+    let scaleDark = isMono ? "#111111" : "#052E16";
+    let scaleMid = isMono ? "#333333" : "#15803D";
+
+    // 1. Articulated 6-Segment Serpentine Wyrm Tail trailing opposite facing
+    ctx.save();
+    let tailBaseAng = facing + Math.PI;
+    ctx.rotate(tailBaseAng);
+    let prevX = r * 0.45;
+    let prevY = 0;
+    for (let seg = 1; seg <= 6; seg++) {
+      let segX = r * 0.45 + seg * (r * 0.3);
+      let segY = Math.sin(t * 5.6 - seg * 0.9) * (6 + seg * 3.2);
+      let segR = r * (0.44 - seg * 0.048);
+      ctx.strokeStyle = acidCol;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(segX, segY);
+      ctx.stroke();
+
+      ctx.fillStyle = seg % 2 === 0 ? scaleDark : scaleMid;
+      ctx.strokeStyle = acidCol;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(segX, segY, segR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      if (seg === 6) {
+        // Barbed stinger tail tip
+        ctx.fillStyle = acidCol;
+        ctx.beginPath();
+        ctx.moveTo(segX, segY - segR * 0.8);
+        ctx.lineTo(segX + 20, segY);
+        ctx.lineTo(segX, segY + segR * 0.8);
+        ctx.closePath();
+        ctx.fill();
+      }
+      prevX = segX;
+      prevY = segY;
+    }
+    ctx.restore();
+
+    // 2. Sweeping Membrane Toxic Wyrm Wings
+    let flap = Math.sin(t * 6.2) * 0.22 + windupRatio * 0.32;
+    for (let side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * r * 0.45, -r * 0.1);
+      ctx.rotate(side * (0.28 + flap));
+      let wingGrad = ctx.createLinearGradient(0, 0, side * r * 1.45, -r * 0.8);
+      wingGrad.addColorStop(0, scaleDark);
+      wingGrad.addColorStop(0.65, scaleMid);
+      wingGrad.addColorStop(1, isMono ? "#AAAAAA" : "rgba(163, 230, 53, 0.72)");
+      ctx.fillStyle = wingGrad;
+      ctx.strokeStyle = acidCol;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(side * r * 1.55, -r * 1.05);
+      ctx.lineTo(side * r * 1.2, -r * 0.15);
+      ctx.lineTo(side * r * 1.38, r * 0.35);
+      ctx.lineTo(side * r * 0.75, r * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Wing vein ribs
+      ctx.strokeStyle = acidCol;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(side * r * 1.2, -r * 0.15);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(side * r * 1.38, r * 0.35);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Armored Draconic Carapace
+    let bodyGrad = ctx.createRadialGradient(0, -r * 0.25, 6, 0, 0, r);
+    bodyGrad.addColorStop(0, hit ? "#FFFFFF" : scaleMid);
+    bodyGrad.addColorStop(1, hit ? "#FFFFFF" : scaleDark);
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = acidCol;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 4. Pulsing Caustic Bio-Sacs on shoulders & chest
+    let sacPulse = 0.88 + 0.18 * Math.sin(t * 7);
+    for (let sac of [
+      { x: 0, y: r * 0.24, rad: r * 0.34 },
+      { x: -r * 0.48, y: -r * 0.08, rad: r * 0.2 },
+      { x: r * 0.48, y: -r * 0.08, rad: r * 0.2 },
+    ]) {
+      ctx.fillStyle = acidCol;
+      ctx.beginPath();
+      ctx.arc(sac.x, sac.y, sac.rad * sacPulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ECFCCB";
+      ctx.beginPath();
+      ctx.arc(sac.x, sac.y, sac.rad * 0.42 * sacPulse, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Swept Bone-Obsidian Horns & Glowing Fangs
+    for (let side of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#D9F99D";
+      ctx.strokeStyle = scaleDark;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.3, -r * 0.65);
+      ctx.quadraticCurveTo(side * r * 0.9, -r * 1.2, side * r * 0.65, -r * 1.48);
+      ctx.quadraticCurveTo(side * r * 0.45, -r * 1.05, side * r * 0.14, -r * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Venomous eyes
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(-r * 0.28, -r * 0.3, 4.8, 0, Math.PI * 2);
+    ctx.arc(r * 0.28, -r * 0.3, 4.8, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  if (wave === 24) {
+    // -----------------------------------------------------------------
+    // WAVE 24: Huyết Ma Bá Chủ — Crimson Blood Sovereign
+    // -----------------------------------------------------------------
+    let roseRim = isMono ? "#FFFFFF" : "#FDA4AF";
+    let crimsonBright = isMono ? "#666666" : "#F43F5E";
+    let crimsonDark = isMono ? "#111111" : "#4C0519";
+    let hover = Math.sin(t * 3.2) * 4;
+
+    ctx.save();
+    ctx.translate(0, hover);
+
+    // 1. Multi-Fold Billowing Crimson Vampire Cloak
+    let cloakFlap = Math.sin(t * 4.8) * 0.12 + windupRatio * 0.25;
+    for (let side of [-1, 1]) {
+      ctx.save();
+      ctx.rotate(side * cloakFlap);
+      let cGrad = ctx.createLinearGradient(0, -r * 0.4, side * r * 1.7, r * 0.9);
+      cGrad.addColorStop(0, crimsonDark);
+      cGrad.addColorStop(0.6, isMono ? "#333333" : "#881337");
+      cGrad.addColorStop(1, crimsonBright);
+      ctx.fillStyle = cGrad;
+      ctx.strokeStyle = roseRim;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.25);
+      ctx.lineTo(side * r * 1.65, -r * 1.15);
+      ctx.lineTo(side * r * 1.32, -r * 0.1);
+      ctx.lineTo(side * r * 1.52, r * 0.62);
+      ctx.lineTo(side * r * 0.85, r * 0.95);
+      ctx.lineTo(side * r * 0.35, r * 0.55);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 2. Orbiting Ruby Blood-Crystal Shards (6 in Phase 2/3, 4 in Phase 1)
+    let shardCount = isP2 ? 6 : 4;
+    for (let i = 0; i < shardCount; i++) {
+      let ang = -t * 2.1 + ((Math.PI * 2) / shardCount) * i;
+      let sx = Math.cos(ang) * r * 1.45;
+      let sy = Math.sin(ang) * r * 1.15 - r * 0.1;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(ang + Math.PI / 2);
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#E11D48";
+      ctx.strokeStyle = "#FEF08A";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(0, -9);
+      ctx.lineTo(5.5, 0);
+      ctx.lineTo(0, 9);
+      ctx.lineTo(-5.5, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Shattered Blood-Moon Crescent Halo behind Crown
+    ctx.strokeStyle = crimsonBright;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.32, r * 1.02, 0.28, Math.PI - 0.28, true);
+    ctx.stroke();
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // 4. Crimson-Obsidian Vampire Sovereign Armor
+    let bodyGrad = ctx.createRadialGradient(0, -r * 0.2, 6, 0, 0, r * 0.94);
+    bodyGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#444444" : "#BE123C");
+    bodyGrad.addColorStop(1, hit ? "#FFFFFF" : crimsonDark);
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = roseRim;
+    ctx.lineWidth = 3.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Beating Ruby Heartstone Core
+    let beat = 1 + 0.24 * Math.pow(Math.abs(Math.sin(t * 4.2)), 4);
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F43F5E";
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, r * 0.04 - 11 * beat);
+    ctx.lineTo(9 * beat, r * 0.04);
+    ctx.lineTo(0, r * 0.04 + 13 * beat);
+    ctx.lineTo(-9 * beat, r * 0.04);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Sovereign Crown Spires & Glowing Eyes
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.42, -r * 0.65);
+    ctx.lineTo(-r * 0.28, -r * 1.05);
+    ctx.lineTo(-r * 0.1, -r * 0.78);
+    ctx.lineTo(0, -r * 1.2);
+    ctx.lineTo(r * 0.1, -r * 0.78);
+    ctx.lineTo(r * 0.28, -r * 1.05);
+    ctx.lineTo(r * 0.42, -r * 0.65);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(-r * 0.25, -r * 0.25, 4.6, 0, Math.PI * 2);
+    ctx.arc(r * 0.25, -r * 0.25, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+    return;
+  }
+
+  // -----------------------------------------------------------------
+  // WAVE 27 FINAL BOSS: Thiên Thần Sa Ngã Lucifer — Six-Winged Seraphim
+  // -----------------------------------------------------------------
+  let gold = isMono ? "#FFFFFF" : "#FBBF24";
+  let crim = isMono ? "#444444" : "#DC2626";
+  let indigo = isMono ? "#111111" : "#1E1B4B";
+  let hover = Math.sin(t * 2.8) * 5.5;
+
+  ctx.save();
+  ctx.translate(0, hover);
+
+  // 1. Dual Counter-Rotating 12-Sigil Apocalypse Judgment Rings
+  ctx.save();
+  ctx.rotate(t * (isP3 ? 1.55 : 0.9));
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.74, 0, Math.PI * 2);
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([16, 7, 4, 7]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (let g = 0; g < 12; g++) {
+    let p = ((Math.PI * 2) / 12) * g;
+    let hx = Math.cos(p) * r * 1.74;
+    let hy = Math.sin(p) * r * 1.74;
+    drawFourPointStar(ctx, hx, hy, g % 2 === 0 ? 7.5 : 5.2, 2.2, g % 2 === 0 ? gold : crim);
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.rotate(-t * (isP3 ? 1.9 : 1.15));
+  ctx.strokeStyle = isMono ? "#AAAAAA" : "rgba(220, 38, 38, 0.65)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    let sa = ((Math.PI * 2) / 6) * i;
+    let sx = Math.cos(sa) * r * 1.42;
+    let sy = Math.sin(sa) * r * 1.42;
+    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. Six Articulated Layered Seraphim Wings (3 pairs per side!)
+  let wingSpreadBoost = windupRatio * 0.38 + (isP3 ? 0.16 : 0);
+  for (let side of [-1, 1]) {
+    for (let idx = 0; idx < 3; idx++) {
+      let scale = 0.72 + idx * 0.28;
+      let wy = -r * 0.4 + idx * r * 0.28;
+      let flap = Math.sin(t * 4.4 + idx * 1.15) * 0.18;
+      ctx.save();
+      ctx.translate(side * r * 0.52, wy);
+      ctx.rotate(side * (0.42 * scale + wingSpreadBoost + flap));
+
+      let wGrad = ctx.createLinearGradient(0, 0, side * r * 1.65 * scale, -r * 1.05 * scale);
+      if (idx === 0) {
+        // Upper Seraph Gold Wings
+        wGrad.addColorStop(0, isMono ? "#222222" : "#78350F");
+        wGrad.addColorStop(0.65, isMono ? "#666666" : "#F59E0B");
+        wGrad.addColorStop(1, "#FEF08A");
+      } else if (idx === 1) {
+        // Middle Twilight Amethyst Wings
+        wGrad.addColorStop(0, isMono ? "#111111" : "#1E1B4B");
+        wGrad.addColorStop(0.7, isMono ? "#444444" : "#6D28D9");
+        wGrad.addColorStop(1, isMono ? "#FFFFFF" : "#C084FC");
+      } else {
+        // Lower Abyssal Crimson Blade-Wings
+        wGrad.addColorStop(0, "#09090B");
+        wGrad.addColorStop(0.65, isMono ? "#333333" : "#991B1B");
+        wGrad.addColorStop(1, isMono ? "#FFFFFF" : "#EF4444");
+      }
+
+      ctx.fillStyle = wGrad;
+      ctx.strokeStyle = idx === 0 ? gold : idx === 1 ? (isMono ? "#FFFFFF" : "#A855F7") : crim;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(side * r * 1.65 * scale, -r * 1.12 * scale);
+      ctx.lineTo(side * r * 1.32 * scale, -r * 0.28 * scale);
+      ctx.lineTo(side * r * 1.48 * scale, r * 0.18);
+      ctx.lineTo(side * r * 0.95 * scale, r * 0.34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Feather vane ribs
+      ctx.strokeStyle = idx === 0 ? "#FEF08A" : crim;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(side * r * 1.32 * scale, -r * 0.28 * scale);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // 3. Fallen Seraph Royal Celestial-Obsidian Armor Body
+  let bodyGrad = ctx.createRadialGradient(0, -r * 0.2, 6, 0, 0, r);
+  bodyGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#333333" : "#312E81");
+  bodyGrad.addColorStop(1, hit ? "#FFFFFF" : indigo);
+  ctx.fillStyle = bodyGrad;
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = 4.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Crossed Apocalypse Armor Plate + Beating Eclipse Eye Core
+  ctx.strokeStyle = crim;
+  ctx.lineWidth = 2.8;
+  ctx.strokeRect(-r * 0.44, -r * 0.44, r * 0.88, r * 0.88);
+  let eyePulse = 0.88 + 0.18 * Math.sin(t * 7);
+  ctx.fillStyle = isMono ? "#000000" : "#09090B";
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.arc(0, r * 0.08, r * 0.24 * eyePulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  drawFourPointStar(ctx, 0, r * 0.08, r * 0.2 * eyePulse, r * 0.07, crim, "#FEF08A");
+
+  // Twin Curved Obsidian Seraph Horns & Shattered Crown Halo
+  for (let side of [-1, 1]) {
+    ctx.fillStyle = "#09090B";
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(side * r * 0.34, -r * 0.68);
+    ctx.quadraticCurveTo(side * r * 0.95, -r * 1.05, side * r * 0.72, -r * 1.56);
+    ctx.quadraticCurveTo(side * r * 0.56, -r * 1.05, side * r * 0.2, -r * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Shattered rotating golden halo crown
+  ctx.save();
+  ctx.translate(0, -r * 1.2);
+  ctx.strokeStyle = "#FEF08A";
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.64, r * 0.22, 0, 0.25, Math.PI * 1.85);
+  ctx.stroke();
+  drawFourPointStar(ctx, 0, 0, 8, 2.5, gold, crim);
+  ctx.restore();
+
+  // Piercing Seraph Eyes
+  ctx.fillStyle = isP3 ? "#EF4444" : "#FEF08A";
+  ctx.fillRect(-r * 0.34, -r * 0.32, 9, 4.8);
+  ctx.fillRect(r * 0.18, -r * 0.32, 9, 4.8);
+
+  ctx.restore();
+}
+
 
