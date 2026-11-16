@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "FounderProfile": {
+      "title": "FounderProfile",
+      "description": "Verified Founder access record for unlocking the secret hero Thiên – Đấng Sáng Thế.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Firebase Auth UID of the verified Founder."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Display label for the Founder."
+        },
+        "founderHeroId": {
+          "type": "string",
+          "enum": ["thien"],
+          "description": "Unlocked secret hero ID."
+        },
+        "godModeDefault": {
+          "type": "boolean",
+          "description": "Whether Thần Quyền HUD toggle starts enabled by preference."
+        },
+        "unlockCount": {
+          "type": "integer",
+          "description": "Number of verified Founder unlock sessions."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the Founder profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest update."
+        }
+      },
+      "required": ["uid", "displayName", "founderHeroId", "godModeDefault", "unlockCount", "createdAt", "updatedAt"]
+    },
+    "FounderAuditLog": {
+      "title": "FounderAuditLog",
+      "description": "Immutable security & gameplay audit log for Founder hero sessions.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Firebase Auth UID of the verified Founder."
+        },
+        "eventType": {
+          "type": "string",
+          "enum": ["UNLOCK_VERIFIED", "MATCH_STARTED", "GOD_MODE_TOGGLED"],
+          "description": "Categorized audit event."
+        },
+        "heroId": {
+          "type": "string",
+          "enum": ["thien"],
+          "description": "Secret hero identifier."
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "description": "Verification channel (e.g. backend_pin, google_auth)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the log entry was created."
+        }
+      },
+      "required": ["uid", "eventType", "heroId", "source", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/founder_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/FounderProfile" },
+      "description": "Private Founder profile keyed by Firebase Auth UID."
+    },
+    "/founder_profiles/{userId}/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/FounderAuditLog" },
+      "description": "Immutable audit trail of Founder unlock and secret-hero sessions."
+    }
+  }
+}

@@ -403,6 +403,29 @@ body:-webkit-full-screen {
   right: 8px;
   box-shadow: 0 0 20px #f59e0b8c, 0 4px 16px #000000b8, inset 0 0 12px #fbbf2459;
 }
+#actionControls.four-skills {
+  width: 316px;
+  height: 316px;
+}
+#actionControls.four-skills .btn-skill {
+  width: 74px;
+  height: 74px;
+}
+#actionControls.four-skills .btn-skill.c1 { bottom: 8px; left: 10px; }
+#actionControls.four-skills .btn-skill.c2 { bottom: 98px; left: 26px; }
+#actionControls.four-skills .btn-skill.c3 {
+  border-color: #38bdf8e6;
+  bottom: 170px;
+  left: 102px;
+  right: auto;
+  box-shadow: 0 0 16px #38bdf873, 0 4px 14px #000000b8, inset 0 0 10px #38bdf840;
+}
+#actionControls.four-skills .btn-skill.c4 {
+  border-color: #fbbf24f2;
+  bottom: 196px;
+  right: 12px;
+  box-shadow: 0 0 22px #f59e0ba6, 0 4px 16px #000000b8, inset 0 0 12px #fde04766;
+}
 .btn-skill.state-cooldown { border-color: #475569b3; background: #050811; box-shadow: 0 2px 8px #000000bf; }
 .btn-skill.state-cooldown img { filter: brightness(.42) saturate(.35) grayscale(.72); }
 .btn-skill .cooldown-overlay, .btn-active-item .cooldown-overlay { pointer-events: none; z-index: 5; background: #030712c7; border-top: 1.5px solid #94a3b88c; position: absolute; bottom: 0; left: 0; right: 0; }
@@ -438,6 +461,34 @@ body:-webkit-full-screen {
 }
 .btn-drone-mode img { filter: brightness(1.2) saturate(1.15); }
 .btn-drone-mode:active { transform: scale(.95); }
+.btn-thien-god {
+  color: #fef08a;
+  touch-action: none;
+  background: rgba(15, 23, 42, 0.94);
+  border: 2px solid rgba(250, 204, 21, 0.72);
+  border-radius: 999px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 5px 12px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  position: absolute;
+  bottom: 294px;
+  right: 6px;
+  pointer-events: auto;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.35), 0 4px 12px rgba(0, 0, 0, 0.65);
+}
+.btn-thien-god.active-on {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.92), rgba(56, 189, 248, 0.88));
+  border-color: #fef08a;
+  color: #090d16;
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.78), 0 4px 14px rgba(0, 0, 0, 0.65);
+}
+.btn-thien-god:active { transform: scale(.95); }
 
 #cancelSkillZone {
   top: max(58px, calc(env(safe-area-inset-top) + 46px));
@@ -579,6 +630,13 @@ body:-webkit-full-screen {
   #hudLayer:not(.hud-portrait) .btn-skill.c1 { bottom: 6px; left: 4px; }
   #hudLayer:not(.hud-portrait) .btn-skill.c2 { bottom: 88px; left: 28px; }
   #hudLayer:not(.hud-portrait) .btn-skill.c3 { bottom: 148px; right: 6px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills { width: 268px; height: 268px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill { width: 64px; height: 64px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c1 { bottom: 6px; left: 6px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c2 { bottom: 84px; left: 20px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c3 { bottom: 148px; left: 84px; right: auto; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c4 { bottom: 172px; right: 8px; }
+  #hudLayer:not(.hud-portrait) .btn-thien-god { bottom: 244px; right: 4px; min-height: 36px; padding: 4px 10px; font-size: 11px; }
   #hudLayer:not(.hud-portrait) #cancelSkillZone {
     top: max(42px, calc(env(safe-area-inset-top) + 36px));
     padding: 4px 12px;
@@ -776,6 +834,13 @@ body:-webkit-full-screen {
   .btn-skill.c1 { bottom: 6px; left: 4px; }
   .btn-skill.c2 { bottom: 90px; left: 28px; }
   .btn-skill.c3 { bottom: 148px; right: 6px; }
+  #actionControls.four-skills { width: 256px; height: 256px; }
+  #actionControls.four-skills .btn-skill { width: 62px; height: 62px; }
+  #actionControls.four-skills .btn-skill.c1 { bottom: 6px; left: 4px; }
+  #actionControls.four-skills .btn-skill.c2 { bottom: 82px; left: 18px; }
+  #actionControls.four-skills .btn-skill.c3 { bottom: 146px; left: 82px; right: auto; }
+  #actionControls.four-skills .btn-skill.c4 { bottom: 168px; right: 6px; }
+  .btn-thien-god { bottom: 236px; right: 6px; padding: 4px 10px; font-size: 11px; }
   .btn-drone-mode { bottom: 228px; right: 6px; padding: 5px 12px; font-size: 11px; }
 }
 
@@ -974,6 +1039,51 @@ body:-webkit-full-screen {
 #hudLayer.hud-portrait .btn-skill.active-aim {
   opacity: 1;
   transform: scale(1.08);
+}
+
+#hudLayer.hud-portrait #actionControls.four-skills {
+  width: 208px;
+  height: 232px;
+}
+#hudLayer.hud-portrait #actionControls.four-skills .btn-skill {
+  width: 50px;
+  height: 50px;
+}
+#hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c1 {
+  bottom: 4px;
+  left: auto;
+  right: 92px;
+}
+#hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c2 {
+  bottom: 66px;
+  left: auto;
+  right: 112px;
+}
+#hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c3 {
+  width: 50px;
+  height: 50px;
+  bottom: 122px;
+  left: auto;
+  right: 74px;
+  border-color: #38bdf8e6;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.42), 0 4px 12px rgba(0, 0, 0, 0.65);
+}
+#hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c4 {
+  width: 54px;
+  height: 54px;
+  bottom: 118px;
+  right: 8px;
+  border-color: #fbbf24f2;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.56), 0 4px 14px rgba(0, 0, 0, 0.72);
+}
+#hudLayer.hud-portrait .btn-thien-god {
+  bottom: 184px;
+  right: 4px;
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 11px;
+  border-width: 2px;
+  opacity: 0.96;
 }
 
 #hudLayer.hud-portrait .btn-drone-mode {

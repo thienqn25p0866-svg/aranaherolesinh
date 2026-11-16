@@ -135,6 +135,7 @@ interface ClientSession {
   playerId: string;
   mode: "ws" | "http";
   roomId: string | null;
+  isFounderVerified?: boolean;
   ws?: WebSocket;
   queue: unknown[];
   waiter: ((events: unknown[]) => void) | null;
@@ -173,6 +174,174 @@ interface P2PRelayRoom {
   hostLastSeen: number;
   peers: Map<string, P2PRelayPeer>;
   createdAt: number;
+}
+
+const FOUNDER_HERO_ID = "thien";
+const FOUNDER_EMAIL = "thien.qn25p0866@gmail.com";
+const FOUNDER_PIN_SALT = "e3b2553ae0d9f0bc73bcf230afaa1b8f";
+const FOUNDER_PIN_DIGEST =
+  "b3c31d9e39a7ce4def22983dd52320c8e26c1b58d568d259ad6b0b41dc3008c94ccfac3326a73d4ed9dd502a244d20fdcc2e6544a4f380b9918f45fc6f44fca4";
+const FOUNDER_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+const FOUNDER_COOKIE_NAME = "arena_founder_token";
+const FOUNDER_HMAC_SECRET = process.env.FOUNDER_AUTH_SECRET || crypto.randomBytes(32).toString("hex");
+const founderVerifyAttempts = new Map<string, { count: number; resetAt: number }>();
+const revokedFounderTokens = new Map<string, number>();
+
+let cachedFirebaseApiKey: string | null = null;
+function getFirebaseApiKey(): string {
+  if (cachedFirebaseApiKey !== null) return cachedFirebaseApiKey;
+  try {
+    const cfgPath = path.join(__dirname, "firebase-applet-config.json");
+    if (fs.existsSync(cfgPath)) {
+      const parsed = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
+      cachedFirebaseApiKey = typeof parsed?.apiKey === "string" ? parsed.apiKey : "";
+      return cachedFirebaseApiKey;
+    }
+  } catch {
+  }
+  cachedFirebaseApiKey = "";
+  return cachedFirebaseApiKey;
+}
+
+function verifyFounderPin(rawPin: unknown): boolean {
+  if (typeof rawPin !== "string") return false;
+  const normalized = rawPin.trim();
+  if (!/^\d{8}$/.test(normalized)) return false;
+  try {
+    const derived = crypto.scryptSync(normalized, FOUNDER_PIN_SALT, 64);
+    const expected = Buffer.from(FOUNDER_PIN_DIGEST, "hex");
+    if (derived.length !== expected.length) return false;
+    return crypto.timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
+}
+
+function issueFounderToken(): string {
+  const payloadObj = {
+    role: "founder",
+    jti: crypto.randomBytes(12).toString("hex"),
+    exp: Date.now() + FOUNDER_TOKEN_TTL_MS,
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj), "utf8").toString("base64url");
+  const sig = crypto.createHmac("sha256", FOUNDER_HMAC_SECRET).update(payloadB64).digest("base64url");
+  return `${payloadB64}.${sig}`;
+}
+
+function verifyFounderToken(token: unknown): boolean {
+  if (typeof token !== "string") return false;
+  const trimmed = token.trim();
+  const dotIdx = trimmed.indexOf(".");
+  if (dotIdx <= 0) return false;
+  const payloadB64 = trimmed.slice(0, dotIdx);
+  const sig = trimmed.slice(dotIdx + 1);
+  if (!payloadB64 || !sig) return false;
+
+  try {
+    const expectedSig = crypto.createHmac("sha256", FOUNDER_HMAC_SECRET).update(payloadB64).digest("base64url");
+    const sigBuf = Buffer.from(sig, "utf8");
+    const expBuf = Buffer.from(expectedSig, "utf8");
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return false;
+    }
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+    if (!payload || payload.role !== "founder" || typeof payload.exp !== "number" || typeof payload.jti !== "string") {
+      return false;
+    }
+    const now = Date.now();
+    if (payload.exp <= now) return false;
+    const revokedExp = revokedFounderTokens.get(payload.jti);
+    if (revokedExp && revokedExp > now) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function revokeFounderToken(token: unknown) {
+  if (typeof token !== "string") return;
+  const dotIdx = token.indexOf(".");
+  if (dotIdx <= 0) return;
+  try {
+    const payload = JSON.parse(Buffer.from(token.slice(0, dotIdx), "base64url").toString("utf8"));
+    if (payload?.jti && typeof payload.exp === "number") {
+      revokedFounderTokens.set(payload.jti, payload.exp);
+    }
+  } catch {
+  }
+}
+
+function parseCookieHeader(cookieHeader: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (typeof cookieHeader !== "string" || !cookieHeader) return out;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq <= 0) continue;
+    const key = part.slice(0, eq).trim();
+    const val = part.slice(eq + 1).trim();
+    if (key) out[key] = decodeURIComponent(val);
+  }
+  return out;
+}
+
+function extractFounderTokenFromReq(req?: http.IncomingMessage | express.Request | null): string {
+  if (!req) return "";
+  const headerVal = req.headers?.["x-founder-token"];
+  if (typeof headerVal === "string" && headerVal.trim()) {
+    return headerVal.trim();
+  }
+  const cookies = parseCookieHeader(req.headers?.cookie);
+  return cookies[FOUNDER_COOKIE_NAME] || "";
+}
+
+async function verifyFirebaseFounderIdToken(idToken: unknown): Promise<boolean> {
+  if (typeof idToken !== "string" || !idToken.trim()) return false;
+  const apiKey = getFirebaseApiKey();
+  if (!apiKey) return false;
+  try {
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: idToken.trim() }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const user = Array.isArray(data?.users) ? data.users[0] : null;
+    if (!user || typeof user.email !== "string") return false;
+    return user.email.trim().toLowerCase() === FOUNDER_EMAIL && user.emailVerified === true;
+  } catch {
+    return false;
+  }
+}
+
+function getClientIp(req: express.Request): string {
+  const fwd = req.headers["x-forwarded-for"];
+  if (typeof fwd === "string" && fwd.trim()) {
+    return fwd.split(",")[0].trim();
+  }
+  return req.socket?.remoteAddress || "unknown";
+}
+
+function checkFounderRateLimit(ip: string): { allowed: boolean; retryAfterSec: number } {
+  const now = Date.now();
+  const entry = founderVerifyAttempts.get(ip);
+  if (!entry || entry.resetAt <= now) {
+    return { allowed: true, retryAfterSec: 0 };
+  }
+  if (entry.count >= 6) {
+    return { allowed: false, retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)) };
+  }
+  return { allowed: true, retryAfterSec: 0 };
+}
+
+function recordFounderFailedAttempt(ip: string) {
+  const now = Date.now();
+  const entry = founderVerifyAttempts.get(ip);
+  if (!entry || entry.resetAt <= now) {
+    founderVerifyAttempts.set(ip, { count: 1, resetAt: now + 60_000 });
+  } else {
+    entry.count += 1;
+  }
 }
 
 const rooms = new Map<string, Room>();
@@ -623,10 +792,33 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     return;
   }
 
+  if (msg.type === "AUTH_FOUNDER") {
+    const ok = verifyFounderToken(msg.founderToken) || verifyFounderPin(msg.pin);
+    if (ok) {
+      session.isFounderVerified = true;
+      sendToPlayer(playerId, { type: "FOUNDER_AUTH_RESULT", unlocked: true });
+    } else {
+      sendToPlayer(playerId, { type: "FOUNDER_AUTH_RESULT", unlocked: false, message: "Xác thực Nhà Sáng Lập thất bại." });
+    }
+    return;
+  }
+
+  if (typeof msg.founderToken === "string" && verifyFounderToken(msg.founderToken)) {
+    session.isFounderVerified = true;
+  }
+
   if (msg.type === "CREATE_ROOM") {
+    const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "eohyen";
+    if (heroId === FOUNDER_HERO_ID && !session.isFounderVerified) {
+      sendToPlayer(playerId, {
+        type: "ROOM_ERROR",
+        code: "FOUNDER_LOCKED",
+        message: "Tướng bí mật THIÊN chỉ dành cho Nhà Sáng Lập. Vui lòng nhập mật khẩu xác thực.",
+      });
+      return;
+    }
     removePlayerFromCurrentRoom(playerId);
     const roomId = generateRoomId();
-    const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "eohyen";
     const name = sanitizeName(msg.playerName, 1);
     const pos = getSpawnPosition(0);
 
@@ -686,6 +878,15 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
   }
 
   if (msg.type === "JOIN_ROOM") {
+    const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
+    if (heroId === FOUNDER_HERO_ID && !session.isFounderVerified) {
+      sendToPlayer(playerId, {
+        type: "ROOM_ERROR",
+        code: "FOUNDER_LOCKED",
+        message: "Tướng bí mật THIÊN chỉ dành cho Nhà Sáng Lập. Vui lòng nhập mật khẩu xác thực.",
+      });
+      return;
+    }
     const code = String(msg.roomId || "").trim().toUpperCase();
     const room = rooms.get(code);
     if (!room) {
@@ -706,7 +907,6 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     }
 
     const slot = getNextFreeSlot(room);
-    const heroId = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
     const name = sanitizeName(msg.playerName, slot + 1);
     const pos = getSpawnPosition(slot);
 
@@ -764,6 +964,14 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
   if (msg.type === "SELECT_HERO") {
     if (typeof msg.heroId === "string" && msg.heroId) {
+      if (msg.heroId === FOUNDER_HERO_ID && !session.isFounderVerified) {
+        sendToPlayer(playerId, {
+          type: "ROOM_ERROR",
+          code: "FOUNDER_LOCKED",
+          message: "Tướng bí mật THIÊN chỉ dành cho Nhà Sáng Lập. Vui lòng xác thực mật khẩu!",
+        });
+        return;
+      }
       player.heroId = msg.heroId;
       broadcastRoomUpdate(room);
     }
@@ -789,6 +997,16 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
       return;
     }
     if (room.status !== "LOBBY") return;
+    for (const rp of room.players.values()) {
+      if (rp.heroId === FOUNDER_HERO_ID && !sessions.get(rp.id)?.isFounderVerified) {
+        sendToPlayer(playerId, {
+          type: "ROOM_ERROR",
+          code: "FOUNDER_LOCKED",
+          message: `${rp.name} chưa xác thực quyền Nhà Sáng Lập để dùng tướng THIÊN!`,
+        });
+        return;
+      }
+    }
     const notReady = Array.from(room.players.values()).filter((p) => !p.isHost && !p.ready);
     if (notReady.length > 0) {
       sendToPlayer(playerId, {
@@ -803,6 +1021,16 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
   if (msg.type === "RESTART_MATCH") {
     if (room.hostId !== playerId) return;
+    for (const rp of room.players.values()) {
+      if (rp.heroId === FOUNDER_HERO_ID && !sessions.get(rp.id)?.isFounderVerified) {
+        sendToPlayer(playerId, {
+          type: "ROOM_ERROR",
+          code: "FOUNDER_LOCKED",
+          message: `${rp.name} chưa xác thực quyền Nhà Sáng Lập để dùng tướng THIÊN!`,
+        });
+        return;
+      }
+    }
     startRoomMatch(room);
     return;
   }
@@ -1240,7 +1468,7 @@ async function createApp() {
   app.use("/api", (req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Founder-Token");
     if (req.method === "OPTIONS") {
       res.status(204).end();
       return;
@@ -1252,6 +1480,66 @@ async function createApp() {
   app.get("/api/health", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.json({ ok: true, rooms: rooms.size, sessions: sessions.size });
+  });
+
+  app.get("/api/founder/status", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const token = extractFounderTokenFromReq(req);
+    const unlocked = verifyFounderToken(token);
+    res.json({ ok: true, unlocked });
+  });
+
+  app.post("/api/founder/verify", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const ip = getClientIp(req);
+    const limit = checkFounderRateLimit(ip);
+    if (!limit.allowed) {
+      res.status(429).json({
+        ok: false,
+        unlocked: false,
+        message: `Thử sai quá nhiều lần. Vui lòng đợi ${limit.retryAfterSec} giây.`,
+      });
+      return;
+    }
+
+    const pin = typeof req.body?.pin === "string" ? req.body.pin : "";
+    const firebaseIdToken = typeof req.body?.firebaseIdToken === "string" ? req.body.firebaseIdToken : "";
+
+    let verified = false;
+    if (pin) {
+      verified = verifyFounderPin(pin);
+    } else if (firebaseIdToken) {
+      verified = await verifyFirebaseFounderIdToken(firebaseIdToken);
+    }
+
+    if (!verified) {
+      recordFounderFailedAttempt(ip);
+      res.status(401).json({
+        ok: false,
+        unlocked: false,
+        message: pin
+          ? "Mật khẩu Nhà Sáng Lập không chính xác."
+          : "Tài khoản Google này không có quyền Nhà Sáng Lập.",
+      });
+      return;
+    }
+
+    founderVerifyAttempts.delete(ip);
+    const founderToken = issueFounderToken();
+    const maxAgeSec = Math.floor(FOUNDER_TOKEN_TTL_MS / 1000);
+    res.setHeader(
+      "Set-Cookie",
+      `${FOUNDER_COOKIE_NAME}=${encodeURIComponent(founderToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`
+    );
+    res.json({ ok: true, unlocked: true, founderToken });
+  });
+
+  app.post("/api/founder/logout", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const token = extractFounderTokenFromReq(req);
+    if (token) revokeFounderToken(token);
+    res.setHeader("Set-Cookie", `${FOUNDER_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    res.json({ ok: true, unlocked: false });
   });
 
   app.get("/api/lan-info", (_req, res) => {
@@ -1571,13 +1859,15 @@ async function createApp() {
     });
   });
 
-  app.post("/api/coop/connect", (_req, res) => {
+  app.post("/api/coop/connect", (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     const playerId = generatePlayerId();
+    const token = extractFounderTokenFromReq(req);
     const session: ClientSession = {
       playerId,
       mode: "http",
       roomId: null,
+      isFounderVerified: verifyFounderToken(token),
       queue: [],
       waiter: null,
       waiterTimer: null,
@@ -1744,16 +2034,18 @@ async function createApp() {
     clearInterval(heartbeatInterval);
   });
 
-  wss.on("connection", (ws: WebSocket) => {
+  wss.on("connection", (ws: WebSocket, req?: http.IncomingMessage) => {
     aliveSockets.set(ws, true);
     ws.on("pong", () => {
       aliveSockets.set(ws, true);
     });
     const playerId = generatePlayerId();
+    const token = extractFounderTokenFromReq(req);
     const session: ClientSession = {
       playerId,
       mode: "ws",
       roomId: null,
+      isFounderVerified: verifyFounderToken(token),
       ws,
       queue: [],
       waiter: null,

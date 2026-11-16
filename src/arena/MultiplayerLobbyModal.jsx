@@ -52,6 +52,8 @@ export function MultiplayerLobbyModal({
   lanUrls = [],
   isFullscreen = false,
   onToggleFullscreen,
+  founderUnlocked = false,
+  onRequireFounderAuth,
 }) {
   const [showManualP2P, setShowManualP2P] = React.useState(false);
   const [roleFilter, setRoleFilter] = React.useState("all");
@@ -819,11 +821,17 @@ export function MultiplayerLobbyModal({
                   <div className="grid grid-cols-2 gap-1.5 max-h-[250px] sm:max-h-[290px] overflow-y-auto pr-1 moba-shop-scroll">
                     {filteredHeroes.map((hr) => {
                       const active = selectedHero?.id === hr.id;
+                      const isLocked = Boolean(hr.isSecretFounder && !founderUnlocked);
                       return (
                         <button
                           key={hr.id}
                           type="button"
                           onClick={() => {
+                            if (isLocked) {
+                              R.playModalOpen();
+                              onRequireFounderAuth?.(hr);
+                              return;
+                            }
                             R.playHeroSelect(hr.id);
                             onSelectHero(hr);
                           }}
@@ -831,20 +839,36 @@ export function MultiplayerLobbyModal({
                           className={`min-h-[48px] p-2 rounded-xl border text-left flex items-center gap-2 transition-colors ${
                             active
                               ? "bg-[#15294F] border-[#FBBF24] ring-1 ring-[#FBBF24]/70"
+                              : isLocked
+                              ? "bg-[#081022] border-amber-500/45 hover:border-amber-400"
                               : "bg-[#081022] border-slate-800 hover:border-[#C89B3C]/60"
                           }`}
                         >
                           {SkillIcon && (
-                            <SkillIcon
-                              heroId={hr.id}
-                              skillId="c3"
-                              size={34}
-                              roundedClass="rounded-lg"
-                            />
+                            <div className="relative shrink-0">
+                              <SkillIcon
+                                heroId={hr.id}
+                                skillId={hr.skills?.length >= 4 ? "c4" : "c3"}
+                                size={34}
+                                roundedClass="rounded-lg"
+                              />
+                              {isLocked && (
+                                <span className="absolute inset-0 rounded-lg bg-slate-950/75 border border-amber-400/70 flex items-center justify-center text-xs">
+                                  🔒
+                                </span>
+                              )}
+                            </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <div className="font-moba text-xs font-bold text-white truncate">
-                              {hr.name.split("(")[0].trim()}
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="font-moba text-xs font-bold text-white truncate">
+                                {hr.name.split("(")[0].trim()}
+                              </div>
+                              {isLocked && (
+                                <span className="text-[9px] font-moba font-bold text-amber-300 shrink-0">
+                                  🔒
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-cyan-300 truncate">
                               {hr.role?.[lang] || hr.role?.vi}
@@ -888,6 +912,11 @@ export function MultiplayerLobbyModal({
                     type="button"
                     disabled={!canHostStart}
                     onClick={() => {
+                      if (selectedHero?.isSecretFounder && !founderUnlocked) {
+                        R.playError();
+                        onRequireFounderAuth?.(selectedHero);
+                        return;
+                      }
                       if (canHostStart) {
                         R.playMatchStart();
                         onStartMatch?.();

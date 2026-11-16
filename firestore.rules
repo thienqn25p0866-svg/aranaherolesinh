@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedFounder() {
+      return isEmailVerified() &&
+        request.auth.token.email == "thien.qn25p0866@gmail.com";
+    }
+
+    function isOwner(userId) {
+      return isBootstrappedFounder() && request.auth.uid == userId;
+    }
+
+    function isValidFounderProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'founderHeroId',
+          'godModeDefault',
+          'unlockCount',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'founderHeroId',
+          'godModeDefault',
+          'unlockCount',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.uid is string &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.displayName is string &&
+        data.displayName.size() >= 1 &&
+        data.displayName.size() <= 64 &&
+        data.founderHeroId is string &&
+        data.founderHeroId == "thien" &&
+        data.godModeDefault is bool &&
+        data.unlockCount is int &&
+        data.unlockCount >= 1 &&
+        data.unlockCount <= 1000000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFounderAuditLog(data, userId) {
+      return data.keys().hasAll(['uid', 'eventType', 'heroId', 'source', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'eventType', 'heroId', 'source', 'createdAt']) &&
+        data.uid is string &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.eventType is string &&
+        data.eventType.size() >= 1 &&
+        data.eventType.size() <= 32 &&
+        data.eventType in ['UNLOCK_VERIFIED', 'MATCH_STARTED', 'GOD_MODE_TOGGLED'] &&
+        data.heroId is string &&
+        data.heroId == "thien" &&
+        data.source is string &&
+        data.source.size() >= 1 &&
+        data.source.size() <= 32 &&
+        data.createdAt is timestamp;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /founder_profiles/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if isBootstrappedFounder() && existing().uid == request.auth.uid;
+
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidFounderProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidFounderProfile(incoming(), userId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'godModeDefault', 'unlockCount', 'updatedAt']) &&
+        incoming().uid == existing().uid &&
+        incoming().founderHeroId == existing().founderHeroId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().unlockCount >= existing().unlockCount;
+
+      allow delete: if false;
+
+      match /audit_logs/{logId} {
+        allow get: if isValidId(userId) &&
+          isValidId(logId) &&
+          isOwner(userId) &&
+          exists(/databases/$(database)/documents/founder_profiles/$(userId));
+
+        allow list: if isBootstrappedFounder() && existing().uid == request.auth.uid;
+
+        allow create: if isValidId(userId) &&
+          isValidId(logId) &&
+          isOwner(userId) &&
+          isValidFounderAuditLog(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/founder_profiles/$(userId));
+
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+  }
+}

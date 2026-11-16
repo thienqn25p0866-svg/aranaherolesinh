@@ -16,6 +16,7 @@ export default function HeroPreviewCanvas({
   compact = false,
   attackTrigger = 0,
   interactive = true,
+  locked = false,
   className = "",
   onPreviewStrike,
 }) {
@@ -183,11 +184,66 @@ export default function HeroPreviewCanvas({
         moveSpeedFactor: 0.25,
         walkCyclePhase: t * 3.2,
         bowRecoilTimer: st.atkTimer > 0.1 ? (st.atkTimer - 0.1) : 0,
+        phong_basicStep: st.parity > 0 ? 0 : 1,
+        dang_basicStep: st.parity > 0 ? 0 : 1,
+        dang_rageReady: hero.id === "dang" && st.skillTimer > 0,
+        dang_c2_timer: 0,
+        dang_c3_asTimer: hero.id === "dang" && st.skillTimer > 0 ? 1 : 0,
       };
 
       ctx.save();
       ctx.translate(cx, cy + hoverBob);
       ctx.scale(scaleFactor, scaleFactor);
+
+      if (hero.id === "phong") {
+        ctx.save();
+        ctx.globalAlpha = st.skillTimer > 0 ? 0.55 : 0.3;
+        ctx.translate(-Math.cos(idleFacing) * 10, -Math.sin(idleFacing) * 10);
+        ctx.strokeStyle = "#22D3EE";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.min(26, baseRadius / scaleFactor + 10), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      } else if (hero.id === "dang") {
+        ctx.save();
+        ctx.rotate(t * (st.skillTimer > 0 ? 4.5 : 1.6));
+        const qiR = Math.min(28, baseRadius / scaleFactor + 12);
+        ctx.strokeStyle = "#F8FAFC";
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, qiR, 0, 1.8);
+        ctx.stroke();
+        ctx.strokeStyle = "#18181B";
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, qiR, Math.PI, Math.PI + 1.8);
+        ctx.stroke();
+        ctx.restore();
+      } else if (hero.id === "thien") {
+        ctx.save();
+        ctx.rotate(t * (st.skillTimer > 0 ? 2.4 : 0.95));
+        const thienR = Math.min(32, baseRadius / scaleFactor + 14);
+        ctx.strokeStyle = "#FACC15";
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([8, 5]);
+        ctx.beginPath();
+        ctx.arc(0, 0, thienR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.rotate(-t * 1.9);
+        ctx.strokeStyle = "#38BDF8";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, thienR * 0.78, 0.2, 2.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, thienR * 0.78, Math.PI + 0.2, Math.PI + 2.2);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       drawHeroBody(ctx, {
         heroId: hero.id,
@@ -197,7 +253,7 @@ export default function HeroPreviewCanvas({
         accentColor: accentCol,
         isMono: false,
         hitFlash: false,
-        isUlt: st.skillTimer > 0,
+        isUlt: hero.id === "thien" || st.skillTimer > 0,
         isStealth: false,
         isDowned: false,
         elapsedTime: t,
@@ -208,6 +264,32 @@ export default function HeroPreviewCanvas({
       ctx.rotate(idleFacing);
       drawHeroWeapon(ctx, hero.id, fakePlayer, t, false);
       ctx.restore();
+
+      if (locked) {
+        ctx.save();
+        ctx.fillStyle = "rgba(4, 7, 17, 0.56)";
+        ctx.fillRect(0, 0, w, h);
+        const lockS = compact ? 0.68 : 1.08;
+        ctx.translate(cx, cy);
+        ctx.scale(lockS, lockS);
+        ctx.strokeStyle = "#FACC15";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.arc(0, -6, 8, Math.PI, 0);
+        ctx.stroke();
+        ctx.fillStyle = "#0F172A";
+        ctx.strokeStyle = "#FACC15";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(-11, -5, 22, 16, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#FDE047";
+        ctx.beginPath();
+        ctx.arc(0, 2, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (!reducedMotion) {
         rafId = requestAnimationFrame(drawFrame);
@@ -222,7 +304,7 @@ export default function HeroPreviewCanvas({
       if (rafId) cancelAnimationFrame(rafId);
       obs?.disconnect();
     };
-  }, [hero, compact, reducedMotion]);
+  }, [hero, compact, reducedMotion, locked]);
 
   const handleStrike = () => {
     if (!interactive || !hero) return;

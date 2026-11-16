@@ -163,8 +163,9 @@ function generateRandomSixDigitCode() {
 }
 
 export class P2PRoomHost {
-  constructor({ hostName, heroId, onLocalEvent, onPeersChanged }) {
+  constructor({ hostName, heroId, founderUnlocked = false, onLocalEvent, onPeersChanged }) {
     this.hostId = `p2p_${Math.random().toString(36).slice(2, 10)}`;
+    this.founderUnlocked = Boolean(founderUnlocked);
     this.onLocalEvent = onLocalEvent;
     this.onPeersChanged = onPeersChanged;
     this.relaySender = null;
@@ -172,6 +173,7 @@ export class P2PRoomHost {
     this.pendingPeerCounter = 0;
     this.syncRetryTimer = null;
 
+    const safeHeroId = heroId === "thien" && !this.founderUnlocked ? "eohyen" : heroId || "eohyen";
     const pos = getSpawnPosition(0);
     const codeSuffix = generateRandomSixDigitCode();
     this.room = {
@@ -185,7 +187,7 @@ export class P2PRoomHost {
           {
             id: this.hostId,
             name: sanitizeName(hostName, 1),
-            heroId: heroId || "eohyen",
+            heroId: safeHeroId,
             isHost: true,
             ready: true,
             joinedRoom: true,
@@ -224,6 +226,10 @@ export class P2PRoomHost {
       matchNonce: 0,
       enemies: new Map(),
     };
+  }
+
+  setFounderUnlocked(unlocked) {
+    this.founderUnlocked = Boolean(unlocked);
   }
 
   start() {
@@ -839,8 +845,11 @@ export class P2PRoomHost {
           }
         }
         if (typeof msg.heroId === "string" && msg.heroId && msg.heroId !== existing.heroId && this.room.status === "LOBBY") {
-          existing.heroId = msg.heroId;
-          updated = true;
+          const canPickHero = msg.heroId !== "thien" || (playerId === this.hostId && this.founderUnlocked);
+          if (canPickHero) {
+            existing.heroId = msg.heroId;
+            updated = true;
+          }
         }
         this.sendToPlayer(playerId, {
           type: "ROOM_JOINED",
@@ -862,11 +871,12 @@ export class P2PRoomHost {
       }
       const slot = this.getNextFreeSlot();
       const pos = getSpawnPosition(slot);
+      const requestedHero = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
+      const safePeerHero = requestedHero === "thien" ? "dung" : requestedHero;
       const joined = {
         id: playerId,
         name: sanitizeName(msg.playerName, slot + 1),
-        heroId: typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung",
-        isHost: false,
+        heroId: safePeerHero,
         ready: this.room.status === "PLAYING",
         joinedRoom: !peer,
         slot,
@@ -939,6 +949,14 @@ export class P2PRoomHost {
 
     if (msg.type === "SELECT_HERO") {
       if (typeof msg.heroId === "string" && msg.heroId) {
+        if (msg.heroId === "thien" && !(playerId === this.hostId && this.founderUnlocked)) {
+          this.sendToPlayer(playerId, {
+            type: "ROOM_ERROR",
+            code: "FOUNDER_LOCKED",
+            message: "Tướng bí mật THIÊN chỉ dành cho Nhà Sáng Lập.",
+          });
+          return;
+        }
         player.heroId = msg.heroId;
         this.broadcastRoomUpdate();
       }
@@ -960,6 +978,11 @@ export class P2PRoomHost {
 
     if (msg.type === "START_MATCH") {
       if (playerId !== this.hostId || this.room.status !== "LOBBY") return;
+      for (const rp of this.room.players.values()) {
+        if (rp.heroId === "thien" && !(rp.id === this.hostId && this.founderUnlocked)) {
+          rp.heroId = "eohyen";
+        }
+      }
       const unjoined = Array.from(this.room.players.values()).filter((p) => !p.isHost && !p.joinedRoom);
       if (unjoined.length > 0) {
         this.sendToPlayer(playerId, {
@@ -982,6 +1005,11 @@ export class P2PRoomHost {
 
     if (msg.type === "RESTART_MATCH") {
       if (playerId !== this.hostId) return;
+      for (const rp of this.room.players.values()) {
+        if (rp.heroId === "thien" && !(rp.id === this.hostId && this.founderUnlocked)) {
+          rp.heroId = "eohyen";
+        }
+      }
       this.startMatch();
       return;
     }

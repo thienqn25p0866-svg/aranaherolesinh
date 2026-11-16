@@ -34,6 +34,8 @@ export function MobaLobbyMenu({
   onToggleMusic,
   onToggleFullscreen,
   onToggleLang,
+  founderUnlocked = false,
+  onRequireFounderAuth,
 }) {
   const [attackTrigger, setAttackTrigger] = useState(0);
   const [previewSkillKey, setPreviewSkillKey] = useState("c3");
@@ -43,6 +45,7 @@ export function MobaLobbyMenu({
     heroes.findIndex((h) => h.id === selectedHero?.id)
   );
   const hero = heroes[currentIdx] || selectedHero || heroes[0];
+  const isHeroLocked = Boolean(hero?.isSecretFounder && !founderUnlocked);
   const heroShortName = (hero?.name || "").split("(")[0].trim();
   const roleLabel = HERO_ROLE_LABELS[lang]?.[getHeroRoleKey(hero.id)] || hero.role?.[lang] || "";
 
@@ -268,8 +271,15 @@ export function MobaLobbyMenu({
             <HeroPreviewCanvas
               hero={hero}
               attackTrigger={attackTrigger}
+              locked={isHeroLocked}
               onPreviewStrike={() => {}}
             />
+            {isHeroLocked && (
+              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-slate-950/88 border border-amber-400/60 text-amber-300 text-[11px] font-moba font-bold flex items-center gap-1.5">
+                <span>🔒</span>
+                <span>{lang === "vi" ? "Tướng Bí Mật · Nhà Sáng Lập" : "Secret Founder Hero"}</span>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => handlePreviewSkill("atk")}
@@ -359,6 +369,11 @@ export function MobaLobbyMenu({
             <button
               type="button"
               onClick={() => {
+                if (isHeroLocked) {
+                  R.playError();
+                  onRequireFounderAuth?.(hero);
+                  return;
+                }
                 R.playHeroLockIn();
                 R.playMatchStart();
                 onEnterArena(hero);
@@ -366,14 +381,25 @@ export function MobaLobbyMenu({
               onMouseEnter={() => R.playHover()}
               className="btn-primary min-h-[54px] text-base tracking-wide shadow-lg"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              <span>
-                {lang === "vi"
-                  ? `VÀO TRẬN · ${heroShortName.toUpperCase()}`
-                  : `ENTER ARENA · ${heroShortName.toUpperCase()}`}
-              </span>
+              {isHeroLocked ? (
+                <span>
+                  🔒{" "}
+                  {lang === "vi"
+                    ? `MỞ KHÓA · ${heroShortName.toUpperCase()}`
+                    : `UNLOCK · ${heroShortName.toUpperCase()}`}
+                </span>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  <span>
+                    {lang === "vi"
+                      ? `VÀO TRẬN · ${heroShortName.toUpperCase()}`
+                      : `ENTER ARENA · ${heroShortName.toUpperCase()}`}
+                  </span>
+                </>
+              )}
             </button>
 
             <button
@@ -506,7 +532,7 @@ export function MobaLobbyMenu({
       </main>
 
       <footer className="relative z-10 text-center text-xs text-slate-500 pt-2">
-        16 Tướng Huyền Thoại · 220 Trang Bị 6 Cấp · 27 Màn Sinh Tồn · 9 Đại Trùm Độc Bản
+        {heroes.length} Tướng Huyền Thoại · 220 Trang Bị 6 Cấp · 27 Màn Sinh Tồn · 9 Đại Trùm Độc Bản
       </footer>
     </div>
   );
@@ -527,6 +553,8 @@ export function MobaHeroSelect({
   onOpenShop,
   onBack,
   onToggleFullscreen,
+  founderUnlocked = false,
+  onRequireFounderAuth,
 }) {
   const [roleFilter, setRoleFilter] = useState("all");
   const [attackTrigger, setAttackTrigger] = useState(0);
@@ -537,9 +565,15 @@ export function MobaHeroSelect({
   );
 
   const hero = selectedHero || heroes[0];
+  const isSelectedLocked = Boolean(hero?.isSecretFounder && !founderUnlocked);
   const roleLabels = HERO_ROLE_LABELS[lang] || HERO_ROLE_LABELS.vi;
 
   const handlePickHero = (candidate) => {
+    if (candidate?.isSecretFounder && !founderUnlocked) {
+      R.playModalOpen();
+      onRequireFounderAuth?.(candidate);
+      return;
+    }
     R.playHeroSelect(candidate.id);
     setAttackTrigger((n) => n + 1);
     onSelectHero(candidate);
@@ -587,12 +621,23 @@ export function MobaHeroSelect({
             type="button"
             className="btn-primary min-h-[40px] text-xs px-4"
             onClick={() => {
+              if (isSelectedLocked) {
+                R.playError();
+                onRequireFounderAuth?.(hero);
+                return;
+              }
               R.playHeroLockIn();
               R.playMatchStart();
               onEnterArena(hero);
             }}
           >
-            {lang === "vi" ? "KHÓA TƯỚNG & VÀO TRẬN" : "LOCK IN & FIGHT"} →
+            {isSelectedLocked
+              ? lang === "vi"
+                ? "🔒 MỞ KHÓA THIÊN"
+                : "🔒 UNLOCK THIÊN"
+              : lang === "vi"
+              ? "KHÓA TƯỚNG & VÀO TRẬN →"
+              : "LOCK IN & FIGHT →"}
           </button>
         </div>
       </header>
@@ -629,24 +674,55 @@ export function MobaHeroSelect({
           {filteredHeroes.map((candidate) => {
             const isSel = candidate.id === hero.id;
             const cName = candidate.name.split("(")[0].trim();
+            const isLocked = Boolean(candidate.isSecretFounder && !founderUnlocked);
+            const isFounderUnlocked = Boolean(candidate.isSecretFounder && founderUnlocked);
+            const iconKeys = ["passive", "atk", ...(candidate.skills || []).map((sk) => sk.key)];
             return (
               <button
                 key={candidate.id}
                 type="button"
                 onClick={() => handlePickHero(candidate)}
                 onMouseEnter={() => R.playHover()}
-                className={`hero-card text-left w-full ${isSel ? "selected" : ""}`}
+                className={`hero-card text-left w-full relative ${isSel ? "selected" : ""} ${
+                  candidate.isSecretFounder
+                    ? isLocked
+                      ? "border-amber-500/45 bg-gradient-to-br from-slate-900/95 via-slate-950 to-amber-950/25"
+                      : "border-amber-400/70 bg-gradient-to-br from-slate-900/95 via-sky-950/35 to-amber-950/30"
+                    : ""
+                }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <SkillIcon
-                    heroId={candidate.id}
-                    skillId="c3"
-                    size={36}
-                    roundedClass="rounded-lg"
-                  />
+                  <div className="relative shrink-0">
+                    <SkillIcon
+                      heroId={candidate.id}
+                      skillId={candidate.skills?.length >= 4 ? "c4" : "c3"}
+                      size={36}
+                      roundedClass="rounded-lg"
+                    />
+                    {isLocked && (
+                      <span
+                        title={lang === "vi" ? "Yêu cầu mật khẩu Nhà Sáng Lập" : "Founder password required"}
+                        className="absolute inset-0 rounded-lg bg-slate-950/75 border border-amber-400/70 flex items-center justify-center text-sm"
+                      >
+                        🔒
+                      </span>
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-moba text-sm font-bold text-white truncate leading-snug">
-                      {cName}
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="font-moba text-sm font-bold text-white truncate leading-snug">
+                        {cName}
+                      </div>
+                      {isLocked && (
+                        <span className="text-[10px] font-moba font-extrabold text-amber-300 shrink-0">
+                          🔒 KHÓA
+                        </span>
+                      )}
+                      {isFounderUnlocked && (
+                        <span className="text-[10px] font-moba font-extrabold text-sky-300 shrink-0">
+                          ★ ĐÃ MỞ
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-slate-400 truncate">
                       {candidate.role?.[lang]}
@@ -655,12 +731,12 @@ export function MobaHeroSelect({
                 </div>
 
                 <div className="mt-2.5 flex items-center gap-1">
-                  {["passive", "atk", "c1", "c2", "c3"].map((skId) => (
+                  {iconKeys.map((skId) => (
                     <SkillIcon
                       key={skId}
                       heroId={candidate.id}
                       skillId={skId}
-                      size={24}
+                      size={iconKeys.length >= 6 ? 21 : 24}
                       roundedClass="rounded"
                     />
                   ))}
@@ -690,7 +766,7 @@ export function MobaHeroSelect({
             {/* Live Preview + Header */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 border-b border-slate-800 pb-3">
               <div className="sm:col-span-5 relative h-[156px] sm:h-[168px] rounded-xl border border-slate-800 bg-slate-950/70 overflow-hidden">
-                <HeroPreviewCanvas hero={hero} attackTrigger={attackTrigger} />
+                <HeroPreviewCanvas hero={hero} attackTrigger={attackTrigger} locked={isSelectedLocked} />
                 <button
                   type="button"
                   onClick={() => {
@@ -815,7 +891,7 @@ export function MobaHeroSelect({
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
                             className={`font-mono-numbers text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-                              sk.key === "c3"
+                              sk.key === "c3" || sk.key === "c4"
                                 ? "bg-amber-500 text-slate-950"
                                 : "bg-cyan-500 text-slate-950"
                             }`}
@@ -856,12 +932,23 @@ export function MobaHeroSelect({
               type="button"
               className="btn-primary min-h-[44px] text-xs px-6"
               onClick={() => {
+                if (isSelectedLocked) {
+                  R.playError();
+                  onRequireFounderAuth?.(hero);
+                  return;
+                }
                 R.playHeroLockIn();
                 R.playMatchStart();
                 onEnterArena(hero);
               }}
             >
-              {lang === "vi" ? "KHÓA TƯỚNG & VÀO TRẬN" : "LOCK IN & ENTER ARENA"} →
+              {isSelectedLocked
+                ? lang === "vi"
+                  ? "🔒 XÁC THỰC ĐỂ MỞ KHÓA THIÊN"
+                  : "🔒 VERIFY TO UNLOCK THIÊN"
+                : lang === "vi"
+                ? "KHÓA TƯỚNG & VÀO TRẬN →"
+                : "LOCK IN & ENTER ARENA →"}
             </button>
           </div>
         </div>

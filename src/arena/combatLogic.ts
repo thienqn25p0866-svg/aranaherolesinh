@@ -931,6 +931,7 @@ export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
   eohyen: 'fighter',
   danh: 'fighter',
   dang: 'fighter',
+  thien: 'fighter',
   tin: 'assassin',
   bao: 'assassin',
   duy: 'assassin',
@@ -991,6 +992,12 @@ export const PHONG_ILLUSION_DURATION = 5.5;
 export const PHONG_KILL_HEAL_RATIO = 0.08;
 export const PHONG_KILL_CD_REFUND = 1.2;
 
+export function computePhongIllusionHitHeal(maxHp: number, ap: number): number {
+  const safeMax = Math.max(1, maxHp || 1);
+  const safeAp = Math.max(0, ap || 0);
+  return Math.max(1, Math.round(safeMax * 0.014 + safeAp * 0.18));
+}
+
 export function computePhongMissingHpScale(targetHp: number, targetMaxHp: number): number {
   const safeMax = Math.max(1, targetMaxHp || 1);
   const safeHp = Math.max(0, Math.min(safeMax, targetHp ?? safeMax));
@@ -1039,6 +1046,141 @@ export function computeDangC1WaveHeal(maxHp: number, enemiesHit: number): number
   const safeMax = Math.max(1, maxHp || 1);
   const count = Math.max(0, enemiesHit || 0);
   if (count <= 0) return 0;
-  const ratio = Math.min(0.14, 0.02 + count * 0.018);
+  const ratio = Math.min(0.14, 0.032 + count * 0.018);
   return Math.max(1, Math.round(safeMax * ratio));
 }
+
+export const THIEN_ENERGY_MAX = 100;
+export const THIEN_ASCENDED_DURATION = 7.0;
+export const THIEN_GOD_MODE_CDR_MULT = 5.5;
+export const THIEN_GOD_MODE_DMG_MULT = 2.2;
+export const THIEN_GOD_MODE_REGEN_PER_SEC = 420;
+export const THIEN_C1_SWORD_COUNT = 12;
+
+export function computeThienPassiveGain({
+  currentEnergy,
+  amount,
+  isAscended = false,
+}: {
+  currentEnergy: number;
+  amount: number;
+  isAscended?: boolean;
+}): { nextEnergy: number; triggeredAscension: boolean } {
+  const cur = Math.max(0, Math.min(THIEN_ENERGY_MAX, Number.isFinite(currentEnergy) ? currentEnergy : 0));
+  const add = Math.max(0, Number.isFinite(amount) ? amount : 0);
+  if (isAscended) {
+    return { nextEnergy: THIEN_ENERGY_MAX, triggeredAscension: false };
+  }
+  const sum = Math.min(THIEN_ENERGY_MAX, Math.round((cur + add) * 10) / 10);
+  if (sum >= THIEN_ENERGY_MAX) {
+    return { nextEnergy: THIEN_ENERGY_MAX, triggeredAscension: true };
+  }
+  return { nextEnergy: sum, triggeredAscension: false };
+}
+
+export function computeThienCooldownTickRate({
+  baseCdr = 0,
+  isAscended = false,
+  godMode = false,
+}: {
+  baseCdr?: number;
+  isAscended?: boolean;
+  godMode?: boolean;
+}): number {
+  const clampedCdr = Math.max(0, Math.min(0.7, Number.isFinite(baseCdr) ? baseCdr : 0));
+  let rate = 1 / Math.max(0.3, 1 - clampedCdr);
+  if (isAscended) rate *= 1.45;
+  if (godMode) rate *= THIEN_GOD_MODE_CDR_MULT;
+  return Number(rate.toFixed(4));
+}
+
+export function computeThienAscendedModifiers({
+  isAscended = false,
+  godMode = false,
+}: {
+  isAscended?: boolean;
+  godMode?: boolean;
+}): { dmgMult: number; cdrTickRate: number; regenPerSec: number } {
+  const dmgMult = (isAscended ? 1.38 : 1.0) * (godMode ? THIEN_GOD_MODE_DMG_MULT : 1.0);
+  const regenPerSec = (isAscended ? 160 : 0) + (godMode ? THIEN_GOD_MODE_REGEN_PER_SEC : 0);
+  const cdrTickRate = computeThienCooldownTickRate({ baseCdr: 0, isAscended, godMode });
+  return {
+    dmgMult: Number(dmgMult.toFixed(4)),
+    cdrTickRate,
+    regenPerSec,
+  };
+}
+
+export function computeThienC1SwordDamage({
+  atk,
+  ap,
+  isBoss = false,
+}: {
+  atk: number;
+  ap: number;
+  isBoss?: boolean;
+}): number {
+  const safeAtk = Math.max(0, atk || 0);
+  const safeAp = Math.max(0, ap || 0);
+  const base = 75 + safeAtk * 0.65 + safeAp * 0.72;
+  return Math.max(1, Math.round(isBoss ? base * 1.15 : base));
+}
+
+export function computeThienC2Detonation({
+  storedDamage,
+  atk,
+  ap,
+  maxHp,
+}: {
+  storedDamage: number;
+  atk: number;
+  ap: number;
+  maxHp: number;
+}): { damage: number; heal: number; shield: number } {
+  const safeStored = Math.max(0, storedDamage || 0);
+  const safeAtk = Math.max(0, atk || 0);
+  const safeAp = Math.max(0, ap || 0);
+  const safeMaxHp = Math.max(1, maxHp || 5000);
+  const damage = Math.max(1, Math.round(240 + safeAtk * 1.1 + safeAp * 1.55 + safeStored * 1.45));
+  const heal = Math.max(1, Math.round(safeMaxHp * 0.12 + safeAp * 0.8 + safeStored * 0.35));
+  const shield = Math.max(1, Math.round(safeMaxHp * 0.14 + safeAp * 1.1 + safeStored * 0.45));
+  return { damage, heal, shield };
+}
+
+export function computeThienC4JudgementDamage({
+  atk,
+  ap,
+  targetMaxHp,
+  isBoss = false,
+}: {
+  atk: number;
+  ap: number;
+  targetMaxHp: number;
+  isBoss?: boolean;
+}): { damage: number; executeRegular: boolean } {
+  const safeAtk = Math.max(0, atk || 0);
+  const safeAp = Math.max(0, ap || 0);
+  const safeTargetMax = Math.max(1, targetMaxHp || 1);
+  if (!isBoss) {
+    return {
+      damage: Math.max(Math.round(safeTargetMax * 1.2), Math.round(1200 + safeAtk * 2.5 + safeAp * 3.5)),
+      executeRegular: true,
+    };
+  }
+  return {
+    damage: Math.max(1, Math.round(820 + safeAtk * 2.4 + safeAp * 3.4)),
+    executeRegular: false,
+  };
+}
+
+export function computeThienDamageBreakdownTotal(breakdown: Partial<Record<'atk' | 'c1' | 'c2' | 'c3' | 'c4', number>> | null | undefined): number {
+  if (!breakdown) return 0;
+  return (
+    Math.max(0, Math.round(breakdown.atk || 0)) +
+    Math.max(0, Math.round(breakdown.c1 || 0)) +
+    Math.max(0, Math.round(breakdown.c2 || 0)) +
+    Math.max(0, Math.round(breakdown.c3 || 0)) +
+    Math.max(0, Math.round(breakdown.c4 || 0))
+  );
+}
+

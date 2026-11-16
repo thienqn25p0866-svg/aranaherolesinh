@@ -62,6 +62,29 @@ class MultiplayerClient {
     this.listeners = new Set();
     this.pingTimer = null;
     this.connectPromise = null;
+    this.founderToken = "";
+    this.founderUnlocked = false;
+  }
+
+  setFounderAuth(unlocked, token = "") {
+    this.founderUnlocked = Boolean(unlocked);
+    this.founderToken = unlocked && typeof token === "string" ? token : "";
+    if (this.p2pHost) {
+      this.p2pHost.setFounderUnlocked?.(this.founderUnlocked);
+    }
+    if (this.founderUnlocked && this.isConnected()) {
+      this.send({ type: "AUTH_FOUNDER", founderToken: this.founderToken });
+    }
+  }
+
+  isFounderUnlocked() {
+    return Boolean(this.founderUnlocked);
+  }
+
+  _assertHeroAuthorized(heroId) {
+    if (heroId === "thien" && !this.founderUnlocked) {
+      throw new Error("Tướng bí mật THIÊN chỉ dành cho Nhà Sáng Lập. Vui lòng xác thực mật khẩu!");
+    }
   }
 
   subscribe(fn) {
@@ -365,6 +388,9 @@ class MultiplayerClient {
           clearTimeout(timer);
           resolve();
         }
+        if (this.founderUnlocked && this.founderToken) {
+          this.send({ type: "AUTH_FOUNDER", founderToken: this.founderToken });
+        }
         this.startHeartbeat();
         this.emit({ type: "WS_OPEN", transport: "ws" });
       };
@@ -423,10 +449,12 @@ class MultiplayerClient {
 
     let res;
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (this.founderToken) headers["X-Founder-Token"] = this.founderToken;
       res = await fetch(`${this.httpBaseUrl}/api/coop/connect`, {
         method: "POST",
         credentials: this._isCrossOriginHttp() ? "omit" : "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers,
         cache: "no-store",
         body: JSON.stringify({}),
         signal: controller ? controller.signal : undefined,
@@ -523,10 +551,12 @@ class MultiplayerClient {
     this.httpFlushing = true;
     const batch = coalesceCoopOutbox(this.httpOutbox.splice(0, this.httpOutbox.length));
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (this.founderToken) headers["X-Founder-Token"] = this.founderToken;
       const res = await fetch(`${this.httpBaseUrl}/api/coop/send`, {
         method: "POST",
         credentials: this._isCrossOriginHttp() ? "omit" : "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers,
         cache: "no-store",
         body: JSON.stringify({ playerId: this.playerId, messages: batch }),
       });
@@ -1425,6 +1455,7 @@ class MultiplayerClient {
   }
 
   async startP2PHost(playerName, heroId) {
+    this._assertHeroAuthorized(heroId);
     this.stopHeartbeat();
     this._cleanupSocket(this.ws);
     this.ws = null;
@@ -1437,6 +1468,7 @@ class MultiplayerClient {
     const host = new P2PRoomHost({
       hostName: playerName,
       heroId,
+      founderUnlocked: this.founderUnlocked,
       onLocalEvent: (ev) => this._handleIncomingMessage(ev),
       onPeersChanged: () => this.emit({ type: "P2P_PEERS_CHANGED" }),
     });
@@ -1683,6 +1715,7 @@ class MultiplayerClient {
   }
 
   async joinP2PWithOffer(offerInput, playerName, heroId, opts = {}) {
+    this._assertHeroAuthorized(heroId);
     const cleanInput = String(offerInput || "").trim().replace(/\s+/g, "");
     let resolvedOffer = cleanInput;
     let usedShortOfferCode;
@@ -1874,6 +1907,7 @@ class MultiplayerClient {
   }
 
   async createRoom(playerName, heroId) {
+    this._assertHeroAuthorized(heroId);
     if (this.transportMode === "p2p_host" && this.p2pHost && this.room) {
       return { mode: "p2p", room: this.room, inviteCode: "" };
     }
@@ -1885,7 +1919,12 @@ class MultiplayerClient {
 
     if (!offline && !(localFile && !hasCustomServer)) {
       try {
-        await this._ensureSend({ type: "CREATE_ROOM", playerName, heroId });
+        await this._ensureSend({
+          type: "CREATE_ROOM",
+          playerName,
+          heroId,
+          founderToken: this.founderToken || undefined,
+        });
         return { mode: "server", room: this.room };
       } catch (err) {
         console.info("Co-op server unavailable during CREATE_ROOM, falling back to Direct P2P:", err?.message || err);
@@ -1896,6 +1935,7 @@ class MultiplayerClient {
   }
 
   async joinRoom(roomId, playerName, heroId) {
+    this._assertHeroAuthorized(heroId);
     const classified = classifyJoinCode(roomId);
     if (classified.kind === "empty") {
       throw new Error("Vui lòng nhập mã 6 số hoặc mã mời P2P (AH1...).");
@@ -1930,7 +1970,13 @@ class MultiplayerClient {
 
         if (roomCheckRes?.exists) {
           serverResolved = true;
-          await this._ensureSend({ type: "JOIN_ROOM", roomId: classified.normalized, playerName, heroId });
+          await this._ensureSend({
+            type: "JOIN_ROOM",
+            roomId: classified.normalized,
+            playerName,
+            heroId,
+            founderToken: this.founderToken || undefined,
+          });
           return { mode: "server", room: this.room };
         }
 
@@ -1962,7 +2008,13 @@ class MultiplayerClient {
     }
 
     try {
-      await this._ensureSend({ type: "JOIN_ROOM", roomId: classified.normalized, playerName, heroId });
+      await this._ensureSend({
+        type: "JOIN_ROOM",
+        roomId: classified.normalized,
+        playerName,
+        heroId,
+        founderToken: this.founderToken || undefined,
+      });
       return { mode: "server", room: this.room };
     } catch (err) {
       throw new Error(
@@ -1986,7 +2038,14 @@ class MultiplayerClient {
   }
 
   selectHero(heroId) {
-    this.send({ type: "SELECT_HERO", heroId });
+    if (heroId === "thien" && !this.founderUnlocked) {
+      return;
+    }
+    this.send({
+      type: "SELECT_HERO",
+      heroId,
+      founderToken: heroId === "thien" ? this.founderToken || undefined : undefined,
+    });
   }
 
   setName(playerName) {

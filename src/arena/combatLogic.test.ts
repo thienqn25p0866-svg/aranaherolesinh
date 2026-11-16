@@ -49,6 +49,7 @@ import {
   PHONG_ILLUSION_DURATION,
   PHONG_KILL_HEAL_RATIO,
   PHONG_KILL_CD_REFUND,
+  computePhongIllusionHitHeal,
   computePhongMissingHpScale,
   computePhongC3SlashDamage,
   DANG_RAGE_MAX,
@@ -1441,9 +1442,9 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
     R.playPhongIllusionSpawn();
     R.playPhongSwap();
     R.playPhongDeathFlurry();
-    R.playDangTigerPunch(false);
+    R.playDangTigerPunch(0);
     R.lastCooldowns.clear();
-    R.playDangTigerPunch(true);
+    R.playDangTigerPunch(1);
     R.playDangTigerWave();
     R.playDangBlackArmor();
     R.playDangTigerRoar();
@@ -1961,6 +1962,9 @@ test('Phong and Dang pure combat helpers enforce missing-HP scaling, boss cap, R
   const heal3 = computeDangC1WaveHeal(1450, 3);
   const healMany = computeDangC1WaveHeal(1450, 20);
   assert.ok(heal1 > 0 && heal3 > heal1 && healMany <= Math.round(1450 * 0.14));
+
+  const illHeal = computePhongIllusionHitHeal(1000, 35);
+  assert.equal(illHeal, 20);
 });
 
 test('Phong (Sat Thu Anh Toc) illusions, kill heal/refund, C1 3-dash, C2 Hoan Anh, and C3 missing-HP slashes work in GameEngine', async () => {
@@ -2026,8 +2030,8 @@ test('Phong (Sat Thu Anh Toc) illusions, kill heal/refund, C1 3-dash, C2 Hoan An
     assert.ok(enemy1.hp < 2700, 'C1 3 dashes must damage enemy');
     assert.ok(player.hp > hpBefore3rd, 'C1 3rd slash must heal Phong');
 
-    // Verify illusion cap of 4 and autonomous projectile firing
-    for (let i = 0; i < 5; i++) engine.spawnPhongIllusion(1200 + i * 25, 1200, 0);
+    // Verify illusion cap of 4, autonomous projectile firing, and bolt sustain heal
+    for (let i = 0; i < 5; i++) engine.spawnPhongIllusion(1200 + i * 25, 1200);
     assert.equal(engine.phongIllusions.length, PHONG_MAX_ILLUSIONS, 'Shadow illusions capped at 4');
     engine.phongIllusions[0].fireTimer = 0.01;
     engine.projectiles = [];
@@ -2036,8 +2040,11 @@ test('Phong (Sat Thu Anh Toc) illusions, kill heal/refund, C1 3-dash, C2 Hoan An
       engine.projectiles.some((p: any) => p.kind === 'phong_illusion_bolt'),
       'Illusions must autonomously fire phong_illusion_bolt'
     );
+    const hpBeforeBoltHit = player.hp;
+    for (let i = 0; i < 4; i++) engine.updateProjectiles(0.05);
+    assert.ok(player.hp > hpBeforeBoltHit, 'phong_illusion_bolt hits must heal Phong');
 
-    // Cast C2 Hoan Anh: swaps to nearest illusion and explodes AoE + slow
+    // Cast C2 Hoan Anh: swaps to nearest illusion, grants shield + heal, and explodes AoE + slow
     engine.phongIllusions = [{
       id: 99, x: 1550, y: 1200, facing: 0, life: 4, maxLife: 5.5, fireTimer: 0.5, scale: 1, ownerId: 'local',
     }];
@@ -2047,26 +2054,45 @@ test('Phong (Sat Thu Anh Toc) illusions, kill heal/refund, C1 3-dash, C2 Hoan An
       facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
     };
     engine.enemies.push(enemyNearIllusion);
+    player.hp = 600;
+    player.shield = 0;
     engine.castSkill(1, 0, 1550, 1200);
     assert.ok(Math.hypot(player.x - 1550, player.y - 1200) < 5, 'C2 Hoan Anh must teleport Phong to nearest illusion');
+    assert.ok(player.shield > 0, 'C2 Hoan Anh must grant Shadow Veil shield');
+    assert.ok(player.hp > 600, 'C2 Hoan Anh arrival must heal Phong');
     assert.ok(enemyNearIllusion.hp < 2000, 'C2 arrival must damage nearby enemy');
     assert.ok(enemyNearIllusion.slowTimer > 0, 'C2 arrival must slow nearby enemy');
 
+    // Verify C3 CC immunity + boss-hit baseline heal + execute bonus heal + passive CD refund
+    player.hp = 500;
+    player.cooldowns = [4.0, 5.0, 0];
+    const durableBoss: any = {
+      id: 98, kind: 'boss', bossWave: 3, name: 'DurableBoss', radius: 36,
+      x: 1520, y: 1200, hp: 9000, maxHp: 9000, speed: 60, damage: 10,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies = [durableBoss];
+    engine.castSkill(2, 0, durableBoss.x, durableBoss.y);
+    engine.applyPlayerCC('stun', 1.5);
+    assert.equal(player.stunTimer, 0, 'Phong C3 flurry must grant CC immunity');
+    for (let i = 0; i < 10; i++) engine.updatePhongAndDangSystems(0.05);
+    assert.ok(player.hp > 580, 'Phong C3 finisher hitting a boss must restore baseline HP');
+
     // Cast C3 Tu Than Giang Lam on a low-HP marked target & verify missing-HP scaling + execute heal + passive CD refund
     player.hp = 500;
-    player.skillCooldowns = [4.0, 5.0, 0];
+    player.cooldowns = [4.0, 5.0, 0];
     const weakTarget: any = {
       id: 3, kind: 'minion', name: 'WeakTarget', radius: 18,
       x: 1620, y: 1200, hp: 260, maxHp: 2000, speed: 60, damage: 10,
       facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
     };
-    engine.enemies.push(weakTarget);
+    engine.enemies = [weakTarget];
     engine.castSkill(2, 0, weakTarget.x, weakTarget.y);
-    assert.ok(weakTarget.phong_c3_marked > 0 || !engine.enemies.includes(weakTarget));
+    assert.ok(weakTarget.phong_c3_marked > 0 || weakTarget.hp <= 0);
     for (let i = 0; i < 12; i++) engine.updatePhongAndDangSystems(0.05);
-    assert.ok(!engine.enemies.includes(weakTarget), 'C3 flurry should execute weakened target');
+    assert.ok(weakTarget.hp <= 0, 'C3 flurry should execute weakened target');
     assert.ok(player.hp > 650, 'Passive kill heal + C3 execute heal should substantially restore Phong HP');
-    assert.ok(player.skillCooldowns[0] < 4.0 && player.skillCooldowns[1] < 5.0, 'Passive kill must refund skill cooldowns');
+    assert.ok(player.cooldowns[0] < 4.0 && player.cooldowns[1] < 5.0, 'Passive kill must refund skill cooldowns');
   } finally {
     (globalThis as any).window = prevWindow;
     (globalThis as any).localStorage = prevLocalStorage;
@@ -2133,7 +2159,7 @@ test('Dang (Dau Si Ho Quyen) Rage Ho Quyen, C1 Bach Ho waves, C2 Hac Ho DR/count
     };
     engine.enemies.push(foeA, foeB);
 
-    engine.triggerBasicAttack(0);
+    engine.triggerBasicAttack();
     assert.equal(player.dang_rage, 0, 'Ho Quyen consumes 100 Rage');
     assert.equal(player.dang_rageReady, false);
     assert.ok(foeA.hp < 3000 && foeB.hp < 3000, 'Ho Quyen hits multiple enemies in AoE');
@@ -2148,34 +2174,41 @@ test('Dang (Dau Si Ho Quyen) Rage Ho Quyen, C1 Bach Ho waves, C2 Hac Ho DR/count
     for (let i = 0; i < 6; i++) engine.updateProjectiles(0.05);
     assert.ok(player.hp >= hpBeforeWaves, 'C1 wave hits heal Dang');
 
-    // 3. C2 Hac Ho Ho The reduces incoming damage, counters & heals, then recast detonates knockback explosion
+    // 3. C2 Hac Ho Ho The grants shield, reduces incoming damage, counters & heals, then recast detonates knockback explosion + heal
     player.hp = 1000;
+    player.shield = 0;
     player.dang_c2_timer = 0;
-    player.skillCooldowns[1] = 0;
+    player.cooldowns[1] = 0;
     engine.castSkill(1, 0, player.x, player.y);
     assert.ok(player.dang_c2_timer > 3.0, 'C2 activates Hac Ho armor');
+    assert.ok(player.shield > 0, 'C2 activates Hac Ho initial shield');
     const hpBeforeHit = player.hp;
-    engine.damagePlayer(100, { x: foeA.x, y: foeA.y });
-    // With 42% DR (58 dmg) minus 2.5% MaxHP counter-heal (~36), net HP drop < 58
+    engine.damagePlayer(100, { x: foeA.x, y: foeA.y } as any);
+    // Shield + 42% DR + 3% MaxHP counter-heal keeps HP >= hpBeforeHit - 58
     assert.ok(player.hp > hpBeforeHit - 58, 'C2 armor must reduce damage & trigger counter-heal');
     assert.ok(foeA.hp < 2850, 'C2 counter must damage nearby attackers');
 
-    // Recast C2 after brief lock -> detonates & puts C2 on cooldown
+    // Recast C2 after brief lock -> detonates, pushes back, heals, & puts C2 on cooldown
     player.dang_c2_recastLock = 0;
+    player.hp = 1000;
     const foeXBeforeBoom = foeA.x;
     assert.equal(engine.canActivateSkill(1), true, 'C2 recast must be allowed while armor is active');
     engine.castSkill(1, 0, player.x, player.y);
     assert.equal(player.dang_c2_timer, 0, 'Recast detonates and ends C2 armor');
-    assert.ok(player.skillCooldowns[1] > 0, 'Detonation puts C2 on cooldown');
+    assert.ok(player.cooldowns[1] > 0, 'Detonation puts C2 on cooldown');
     assert.ok(foeA.x > foeXBeforeBoom, 'C2 explosion pushes enemies back');
+    assert.ok(player.hp > 1000, 'C2 detonation hitting enemies heals Dang');
 
-    // 4. C3 Ho Quyen Diet The 5-punch combo + giant tiger head + heal + +50% AS buff
+    // 4. C3 Ho Quyen Diet The 5-punch combo (CC-immune) + giant tiger head + stun + heal + +50% AS buff
     player.hp = 900;
     player.dang_c3_asTimer = 0;
     const baseInterval = engine.getEffectiveAttackInterval();
     engine.projectiles = [];
     engine.castSkill(2, 0, 1400, 1200);
-    assert.equal(engine.dangFlurryQueue.length, 4, 'Punch 1 fires immediately and 4 more punches are queued');
+    engine.applyPlayerCC('stun', 1.5);
+    assert.equal(player.stunTimer, 0, 'Dang C3 flurry must grant CC immunity');
+    assert.equal(engine.dangFlurryQueue.length, 1, 'Punch 1 fires immediately and remaining 4 punches are scheduled');
+    assert.equal(engine.dangFlurryQueue[0].step, 1, 'Flurry queue starts at step 1 for remaining 4 punches');
     for (let i = 0; i < 14; i++) engine.updatePhongAndDangSystems(0.05);
     assert.equal(engine.dangFlurryQueue.length, 0);
     assert.ok(
@@ -2185,6 +2218,11 @@ test('Dang (Dau Si Ho Quyen) Rage Ho Quyen, C1 Bach Ho waves, C2 Hac Ho DR/count
     assert.ok(player.hp > 900, 'C3 finisher must heal Dang');
     assert.ok(player.dang_c3_asTimer > 4.0, 'C3 finisher must grant attack speed buff');
     assert.ok(engine.getEffectiveAttackInterval() < baseInterval, 'C3 AS buff must reduce attack interval');
+    foeA.x = player.x + 120;
+    foeA.y = player.y;
+    foeA.stunTimer = 0;
+    for (let i = 0; i < 4; i++) engine.updateProjectiles(0.05);
+    assert.ok(foeA.stunTimer > 0, 'Giant tiger head impact must stun non-immune monsters');
   } finally {
     (globalThis as any).window = prevWindow;
     (globalThis as any).localStorage = prevLocalStorage;
@@ -2226,19 +2264,19 @@ test('Phong and Dang weaponRenderer routines draw cleanly with zero shadowBlur',
 
   for (const isMono of [false, true]) {
     assert.doesNotThrow(() =>
-      drawHeroBody(ctx, 'phong', { x: 100, y: 100, facing: 0.4, animWalkPhase: 1.2, animAttackTimer: 0.2, animAttackDur: 0.35, phong_basicStep: 1 }, 3.4, isMono)
+      drawHeroBody(ctx, { heroId: 'phong', radius: 22, facing: 0.4, color: '#0EA5E9', accentColor: '#22D3EE', isMono, isUlt: true, elapsedTime: 3.4, moveSpeedFactor: 0.8, walkCyclePhase: 1.2 })
     );
     assert.doesNotThrow(() =>
-      drawHeroWeapon(ctx, 'phong', { x: 100, y: 100, facing: 0.4, animAttackTimer: 0.2, animAttackDur: 0.35, phong_basicStep: 1 }, 3.4, isMono)
+      drawHeroWeapon(ctx, 'phong', { x: 100, y: 100, facing: 0.4, attackAnimTimer: 0.2, weaponAttackDuration: 0.35, attackSwingParity: 1, phong_basicStep: 1 }, 3.4, isMono)
     );
     assert.doesNotThrow(() =>
-      drawHeroBody(ctx, 'dang', { x: 100, y: 100, facing: -0.5, animWalkPhase: 2.1, animAttackTimer: 0.15, animAttackDur: 0.35, dang_rageReady: true, dang_c2_timer: 2.0, dang_c3_asTimer: 3.0, dang_basicStep: 2 }, 3.4, isMono)
+      drawHeroBody(ctx, { heroId: 'dang', radius: 22, facing: -0.5, color: '#18181B', accentColor: '#F8FAFC', isMono, isUlt: true, elapsedTime: 3.4, moveSpeedFactor: 0.8, walkCyclePhase: 2.1 })
     );
     assert.doesNotThrow(() =>
-      drawHeroWeapon(ctx, 'dang', { x: 100, y: 100, facing: -0.5, animAttackTimer: 0.15, animAttackDur: 0.35, dang_rageReady: true, dang_c2_timer: 2.0, dang_c3_asTimer: 3.0, dang_basicStep: 2 }, 3.4, isMono)
+      drawHeroWeapon(ctx, 'dang', { x: 100, y: 100, facing: -0.5, attackAnimTimer: 0.15, weaponAttackDuration: 0.35, attackSwingParity: -1, dang_rageReady: true, dang_c2_timer: 2.0, dang_c3_asTimer: 3.0, dang_basicStep: 2 }, 3.4, isMono)
     );
     assert.doesNotThrow(() =>
-      drawPhongIllusion(ctx, { x: 200, y: 180, facing: 0.7, life: 3.2, maxLife: 5.5, scale: 1 }, 3.4, isMono)
+      drawPhongIllusion(ctx, { x: 200, y: 180, facing: 0.7, life: 3.2, maxLife: 5.5, attackAnim: 0.15 }, 3.4, isMono)
     );
     for (const kind of ['phong_illusion_bolt', 'dang_tiger_wave', 'dang_tiger_head']) {
       assert.doesNotThrow(() =>
