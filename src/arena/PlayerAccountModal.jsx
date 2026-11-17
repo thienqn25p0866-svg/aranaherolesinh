@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import PlayerAvatarBadge, { CrestSvg } from "./PlayerAvatarBadge.jsx";
 import HeroPreviewCanvas from "./HeroPreviewCanvas.jsx";
+import AuthErrorBanner from "./AuthErrorBanner.jsx";
 import { R } from "./soundEngine.js";
 import {
   AVATAR_CRESTS,
@@ -12,9 +13,11 @@ import {
   isFrameUnlocked,
 } from "./playerAccount.ts";
 import {
+  FALLBACK_WEB_PLAY_URL,
   fetchLeaderboardTopPlayers,
   fetchMyFriendRelations,
   removeFriendRelation,
+  resolvePlayableWebUrls,
   respondFriendRequest,
   searchPublicPlayers,
   sendFriendRequest,
@@ -30,6 +33,9 @@ export default function PlayerAccountModal({
   googleUser = null,
   founderUnlocked = false,
   syncBusy = false,
+  authError = "",
+  authDetails = null,
+  onClearAuthError,
   onSaveProfile,
   onSignInGoogle,
   onSignOutGoogle,
@@ -356,7 +362,17 @@ export default function PlayerAccountModal({
         {/* Scrollable Content Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
           {tab === "profile" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <>
+              {!googleUser && authError && (
+                <AuthErrorBanner
+                  lang={lang}
+                  authError={authError}
+                  authDetails={authDetails}
+                  onClear={onClearAuthError}
+                  onCopyText={onCopyText}
+                />
+              )}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Left Summary + Daily Check-In + Career Stats */}
               <div className="lg:col-span-5 space-y-3.5">
                 <div className="rounded-2xl border border-amber-500/35 bg-gradient-to-b from-[#101C36] to-[#080F20] p-4 flex flex-col items-center text-center">
@@ -762,6 +778,7 @@ export default function PlayerAccountModal({
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {tab === "storage" && (
@@ -817,6 +834,32 @@ export default function PlayerAccountModal({
                 </div>
 
                 <div className="space-y-2">
+                  {!googleUser && !authError && typeof window !== "undefined" && window.location.protocol === "file:" && (
+                    <div className="rounded-xl bg-amber-950/55 border border-amber-400/50 px-3 py-2.5 text-xs text-amber-100 leading-relaxed space-y-2">
+                      <div>
+                        {isVi
+                          ? "Bạn đang mở bản HTML tải về (file://). Trình duyệt không hỗ trợ đăng nhập Google trực tiếp trên file:// — hãy mở bản Web HTTPS để đăng nhập & đồng bộ Cloud."
+                          : "You are running a local file:// HTML copy. Open the HTTPS web version to sign in with Google and sync Cloud Save."}
+                      </div>
+                      <a
+                        href={resolvePlayableWebUrls()[0] || FALLBACK_WEB_PLAY_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-moba font-black text-[11px]"
+                      >
+                        🌐 {isVi ? "Mở Bản Web HTTPS ↗" : "Open HTTPS Web Version ↗"}
+                      </a>
+                    </div>
+                  )}
+                  {!googleUser && authError && (
+                    <AuthErrorBanner
+                      lang={lang}
+                      authError={authError}
+                      authDetails={authDetails}
+                      onClear={onClearAuthError}
+                      onCopyText={onCopyText}
+                    />
+                  )}
                   {!googleUser ? (
                     <button
                       type="button"
@@ -825,7 +868,7 @@ export default function PlayerAccountModal({
                         R.playClick();
                         onSignInGoogle?.();
                       }}
-                      className="w-full min-h-[48px] rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-moba text-sm font-black flex items-center justify-center gap-2.5 cursor-pointer shadow-lg"
+                      className="w-full min-h-[48px] rounded-xl bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-950 font-moba text-sm font-black flex items-center justify-center gap-2.5 cursor-pointer shadow-lg"
                     >
                       <span>G</span>
                       <span>
@@ -964,15 +1007,32 @@ export default function PlayerAccountModal({
                       ? "Tính năng tìm chiến binh qua Tên hoặc Mã Bạn Bè (AH-XXXXXX), gửi lời mời kết bạn và rủ tổ đội Co-op sử dụng danh bạ đám mây bảo mật qua tài khoản Google."
                       : "Player search, friend requests, and friend lists require Google Sign-In so other players can discover your public warrior card."}
                   </p>
+                  {authError && (
+                    <AuthErrorBanner
+                      lang={lang}
+                      authError={authError}
+                      authDetails={authDetails}
+                      onClear={onClearAuthError}
+                      onCopyText={onCopyText}
+                      align="center"
+                    />
+                  )}
                   <button
                     type="button"
+                    disabled={syncBusy}
                     onClick={() => {
                       R.playClick();
                       onSignInGoogle?.();
                     }}
-                    className="btn-primary min-h-[46px] px-6 text-sm"
+                    className="btn-primary min-h-[46px] px-6 text-sm disabled:opacity-60"
                   >
-                    {isVi ? "Đăng Nhập Google Ngay" : "Sign In With Google"}
+                    {syncBusy
+                      ? isVi
+                        ? "Đang đăng nhập..."
+                        : "Signing in..."
+                      : isVi
+                      ? "Đăng Nhập Google Ngay"
+                      : "Sign In With Google"}
                   </button>
                 </div>
               ) : (
@@ -1279,15 +1339,32 @@ export default function PlayerAccountModal({
                       ? "Kết nối tài khoản Google để xem thứ hạng vượt ải 27 màn và tổng số quái tiêu diệt của cộng đồng."
                       : "Connect your Google account to view community rankings."}
                   </p>
+                  {authError && (
+                    <AuthErrorBanner
+                      lang={lang}
+                      authError={authError}
+                      authDetails={authDetails}
+                      onClear={onClearAuthError}
+                      onCopyText={onCopyText}
+                      align="center"
+                    />
+                  )}
                   <button
                     type="button"
+                    disabled={syncBusy}
                     onClick={() => {
                       R.playClick();
                       onSignInGoogle?.();
                     }}
-                    className="btn-primary min-h-[46px] px-6 text-sm"
+                    className="btn-primary min-h-[46px] px-6 text-sm disabled:opacity-60"
                   >
-                    {isVi ? "Đăng Nhập Google" : "Sign In With Google"}
+                    {syncBusy
+                      ? isVi
+                        ? "Đang đăng nhập..."
+                        : "Signing in..."
+                      : isVi
+                      ? "Đăng Nhập Google"
+                      : "Sign In With Google"}
                   </button>
                 </div>
               ) : (

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { drawHeroBody, drawHeroWeapon } from "./weaponRenderer.js";
 import { R } from "./soundEngine.js";
 
@@ -308,6 +308,21 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
   }
 }
 
+function traceRoundedRect(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w * 0.5, h * 0.5);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+  ctx.lineTo(x + rad, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+  ctx.lineTo(x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.closePath();
+}
+
 export default function HeroPreviewCanvas({
   hero,
   compact = false,
@@ -318,37 +333,33 @@ export default function HeroPreviewCanvas({
   onPreviewStrike,
 }) {
   const canvasRef = useRef(null);
-  const inViewRef = useRef(true);
   const stateRef = useRef({
     elapsed: 0,
     atkTimer: 0,
     skillTimer: 0,
+    autoFlourishTimer: 1.4,
     parity: 1,
     pointerAngle: null,
-    sparks: Array.from({ length: compact ? 6 : 18 }, (_, idx) => ({
-      angle: (Math.PI * 2 * idx) / (compact ? 6 : 18),
-      dist: 0.45 + (idx % 4) * 0.14,
-      speed: 0.35 + (idx % 3) * 0.18,
-      size: compact ? 1.4 : 2 + (idx % 3) * 0.8,
-      phase: idx * 0.9,
+    sparks: Array.from({ length: compact ? 8 : 20 }, (_, idx) => ({
+      angle: (Math.PI * 2 * idx) / (compact ? 8 : 20),
+      dist: 0.42 + (idx % 4) * 0.14,
+      speed: 0.48 + (idx % 3) * 0.22,
+      size: compact ? 1.5 : 2.1 + (idx % 3) * 0.85,
+      phase: idx * 0.85,
     })),
   });
-  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(Boolean(mq.matches));
-    const onChange = (e) => setReducedMotion(Boolean(e.matches));
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, []);
+    const st = stateRef.current;
+    st.autoFlourishTimer = 1.1;
+  }, [hero?.id]);
 
   useEffect(() => {
     if (attackTrigger > 0) {
       const st = stateRef.current;
-      st.atkTimer = 0.28;
-      st.skillTimer = 0.42;
+      st.atkTimer = 0.3;
+      st.skillTimer = 0.46;
+      st.autoFlourishTimer = 3.2;
       st.parity = -st.parity;
     }
   }, [attackTrigger]);
@@ -360,56 +371,38 @@ export default function HeroPreviewCanvas({
     if (!ctx) return;
 
     let rafId = 0;
+    let disposed = false;
     let lastTime = performance.now();
     let lastCompactRender = 0;
+    let lastW = 0;
+    let lastH = 0;
 
-    const io =
-      typeof IntersectionObserver !== "undefined"
-        ? new IntersectionObserver(
-            (entries) => {
-              inViewRef.current = Boolean(entries[0]?.isIntersecting ?? true);
-            },
-            { threshold: 0.01 }
-          )
-        : null;
-    io?.observe(canvas);
-
-    const syncSize = () => {
-      const dpr = Math.min(compact ? 1.5 : 2, window.devicePixelRatio || 1);
+    const getCanvasBox = () => {
       const rect = canvas.getBoundingClientRect();
-      const w = Math.max(40, Math.round(rect.width || (compact ? 72 : 260)));
-      const h = Math.max(40, Math.round(rect.height || (compact ? 72 : 240)));
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-      return { w, h, dpr };
+      const parentRect = canvas.parentElement?.getBoundingClientRect();
+      const rawW = rect.width >= 8 ? rect.width : parentRect?.width || (compact ? 56 : 260);
+      const rawH = rect.height >= 8 ? rect.height : parentRect?.height || (compact ? 56 : 220);
+      const w = Math.max(40, Math.round(rawW));
+      const h = Math.max(40, Math.round(rawH));
+      const dpr = Math.min(compact ? 1.5 : 2, window.devicePixelRatio || 1);
+      return { w, h, dpr, visible: rawW >= 8 && rawH >= 8 };
     };
 
-    const drawFrame = (now) => {
-      if (!reducedMotion && !inViewRef.current) {
-        lastTime = now;
-        rafId = requestAnimationFrame(drawFrame);
-        return;
+    const syncSize = () => {
+      const { w, h, dpr, visible } = getCanvasBox();
+      const targetW = Math.round(w * dpr);
+      const targetH = Math.round(h * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
       }
+      lastW = w;
+      lastH = h;
+      return { w, h, dpr, visible };
+    };
 
-      if (compact && !reducedMotion && now - lastCompactRender < 32 && lastCompactRender !== 0) {
-        rafId = requestAnimationFrame(drawFrame);
-        return;
-      }
-      lastCompactRender = now;
-
-      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
-      lastTime = now;
-
+    const renderScene = (w, h, dpr) => {
       const st = stateRef.current;
-      if (!reducedMotion) {
-        st.elapsed += dt;
-      }
-      if (st.atkTimer > 0) st.atkTimer = Math.max(0, st.atkTimer - dt);
-      if (st.skillTimer > 0) st.skillTimer = Math.max(0, st.skillTimer - dt);
-
-      const { w, h, dpr } = syncSize();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
@@ -425,14 +418,22 @@ export default function HeroPreviewCanvas({
       const accentCol = hero.accentColor || "#BAE6FD";
       const t = st.elapsed;
 
-      // 1. Tactical MOBA Pedestal Glow
-      const bgGlow = ctx.createRadialGradient(cx, cy + minDim * 0.04, 2, cx, cy + minDim * 0.04, minDim * 0.48);
-      bgGlow.addColorStop(0, hexToRgba(mainCol, compact ? 0.26 : 0.36));
-      bgGlow.addColorStop(0.55, hexToRgba(accentCol, 0.11));
+      // 1. Tactical MOBA Pedestal Glow (gentle breathing pulse)
+      const glowPulse = 1 + Math.sin(t * 2.5) * 0.06;
+      const bgGlow = ctx.createRadialGradient(
+        cx,
+        cy + minDim * 0.04,
+        2,
+        cx,
+        cy + minDim * 0.04,
+        minDim * 0.48 * glowPulse
+      );
+      bgGlow.addColorStop(0, hexToRgba(mainCol, compact ? 0.28 : 0.38));
+      bgGlow.addColorStop(0.55, hexToRgba(accentCol, 0.13));
       bgGlow.addColorStop(1, "rgba(7, 11, 20, 0)");
       ctx.fillStyle = bgGlow;
       ctx.beginPath();
-      ctx.arc(cx, cy + minDim * 0.04, minDim * 0.48, 0, Math.PI * 2);
+      ctx.arc(cx, cy + minDim * 0.04, minDim * 0.48 * glowPulse, 0, Math.PI * 2);
       ctx.fill();
 
       // 2. Pedestal Ring & Rotating Arcane Sigil
@@ -441,16 +442,16 @@ export default function HeroPreviewCanvas({
       ctx.scale(1, compact ? 0.54 : 0.52);
 
       const ringR = minDim * (compact ? 0.37 : 0.34);
-      ctx.strokeStyle = hexToRgba(accentCol, 0.35);
+      ctx.strokeStyle = hexToRgba(accentCol, 0.38);
       ctx.lineWidth = compact ? 1.1 : 1.8;
       ctx.beginPath();
       ctx.arc(0, 0, ringR, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.save();
-      ctx.rotate(t * 0.48);
-      ctx.strokeStyle = hexToRgba(mainCol, 0.56);
-      ctx.lineWidth = compact ? 1.1 : 2;
+      ctx.rotate(t * 0.72);
+      ctx.strokeStyle = hexToRgba(mainCol, 0.62);
+      ctx.lineWidth = compact ? 1.2 : 2.1;
       for (let i = 0; i < 4; i++) {
         const a0 = Math.PI * 0.5 * i + 0.15;
         ctx.beginPath();
@@ -461,23 +462,21 @@ export default function HeroPreviewCanvas({
       ctx.restore();
 
       // 3. Drifting Elemental Sparks
-      if (!reducedMotion) {
-        for (const sp of st.sparks) {
-          const ang = sp.angle + t * sp.speed;
-          const orbit = minDim * 0.37 * sp.dist;
-          const sx = cx + Math.cos(ang) * orbit;
-          const sy = cy + Math.sin(ang) * orbit * 0.65 - ((t * 14 + sp.phase * 10) % (compact ? 12 : 26));
-          const alpha = 0.25 + 0.35 * Math.sin(t * 2.4 + sp.phase);
-          ctx.fillStyle = hexToRgba(accentCol, Math.max(0.08, alpha));
-          ctx.beginPath();
-          ctx.arc(sx, sy, sp.size, 0, Math.PI * 2);
-          ctx.fill();
-        }
+      for (const sp of st.sparks) {
+        const ang = sp.angle + t * sp.speed;
+        const orbit = minDim * 0.38 * sp.dist;
+        const sx = cx + Math.cos(ang) * orbit;
+        const sy = cy + Math.sin(ang) * orbit * 0.65 - ((t * 16 + sp.phase * 10) % (compact ? 13 : 28));
+        const alpha = 0.28 + 0.38 * Math.sin(t * 2.8 + sp.phase);
+        ctx.fillStyle = hexToRgba(accentCol, Math.max(0.1, alpha));
+        ctx.beginPath();
+        ctx.arc(sx, sy, sp.size, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      // 4. Interactive Attack Shockwave Arc
+      // 4. Interactive / Showcase Attack Shockwave Arc
       if (st.atkTimer > 0) {
-        const prog = 1 - st.atkTimer / 0.28;
+        const prog = 1 - st.atkTimer / 0.3;
         const arcR = minDim * (0.28 + prog * 0.16);
         const facing = st.pointerAngle ?? -0.25;
         ctx.save();
@@ -491,22 +490,24 @@ export default function HeroPreviewCanvas({
         ctx.restore();
       }
 
-      // 5. Render Hero Signature Aura + Body + Weapon
-      const idleFacing = st.pointerAngle !== null ? st.pointerAngle : -0.22 + Math.sin(t * 1.15) * 0.18;
-      const hoverBob = reducedMotion ? 0 : Math.sin(t * 2.6) * (compact ? 1.4 : 2.8);
+      // 5. Render Hero Signature Aura + Body + Weapon with dynamic breathing & stance
+      const idleFacing =
+        st.pointerAngle !== null ? st.pointerAngle : -0.22 + Math.sin(t * 1.45) * 0.24;
+      const hoverBob = Math.sin(t * 2.9) * (compact ? 1.8 : 3.5);
+      const breatheScale = 1 + Math.sin(t * 2.9) * (compact ? 0.015 : 0.024);
       const fakePlayer = {
         x: 0,
         y: 0,
         radius: 22,
         facing: idleFacing,
         attackAnimTimer: st.atkTimer,
-        weaponAttackDuration: 0.28,
+        weaponAttackDuration: 0.3,
         attackSwingParity: st.parity,
         weaponSkillTimer: st.skillTimer,
-        weaponSkillDur: 0.42,
-        weaponCritTimer: st.skillTimer > 0.15 ? st.skillTimer : 0,
-        moveSpeedFactor: 0.28,
-        walkCyclePhase: t * 3.2,
+        weaponSkillDur: 0.46,
+        weaponCritTimer: st.skillTimer > 0.16 ? st.skillTimer : 0,
+        moveSpeedFactor: 0.36,
+        walkCyclePhase: t * 3.8,
         bowRecoilTimer: st.atkTimer > 0.1 ? st.atkTimer - 0.1 : 0,
         phong_basicStep: st.parity > 0 ? 0 : 1,
         dang_basicStep: st.parity > 0 ? 0 : 1,
@@ -517,34 +518,40 @@ export default function HeroPreviewCanvas({
 
       ctx.save();
       ctx.translate(cx, cy + hoverBob);
-      ctx.scale(scaleFactor, scaleFactor);
+      ctx.scale(scaleFactor * breatheScale, scaleFactor * breatheScale);
 
-      const auraRadius = Math.min(31, baseRadius / scaleFactor + 12);
-      drawHeroSignatureAura(ctx, hero.id, t, auraRadius, idleFacing, st);
+      try {
+        const auraRadius = Math.min(31, baseRadius / scaleFactor + 12);
+        drawHeroSignatureAura(ctx, hero.id, t, auraRadius, idleFacing, st);
 
-      drawHeroBody(ctx, {
-        heroId: hero.id,
-        radius: Math.min(24, baseRadius / scaleFactor + 8),
-        facing: idleFacing,
-        color: mainCol,
-        accentColor: accentCol,
-        isMono: false,
-        hitFlash: false,
-        isUlt: hero.id === "thien" || st.skillTimer > 0,
-        isStealth: false,
-        isDowned: false,
-        elapsedTime: t,
-        moveSpeedFactor: 0.24,
-        walkCyclePhase: t * 3.2,
-      });
+        drawHeroBody(ctx, {
+          heroId: hero.id,
+          radius: Math.min(24, baseRadius / scaleFactor + 8),
+          facing: idleFacing,
+          color: mainCol,
+          accentColor: accentCol,
+          isMono: false,
+          hitFlash: false,
+          isUlt: hero.id === "thien" || st.skillTimer > 0,
+          isStealth: false,
+          isDowned: false,
+          elapsedTime: t,
+          moveSpeedFactor: 0.34,
+          walkCyclePhase: t * 3.8,
+        });
 
-      ctx.rotate(idleFacing);
-      drawHeroWeapon(ctx, hero.id, fakePlayer, t, false);
+        ctx.rotate(idleFacing);
+        drawHeroWeapon(ctx, hero.id, fakePlayer, t, false);
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("HeroPreviewCanvas render fallback:", hero.id, err);
+        }
+      }
       ctx.restore();
 
       if (locked) {
         ctx.save();
-        ctx.fillStyle = "rgba(4, 7, 17, 0.56)";
+        ctx.fillStyle = "rgba(4, 7, 17, 0.54)";
         ctx.fillRect(0, 0, w, h);
         const lockS = compact ? 0.62 : 1.08;
         ctx.translate(cx, cy);
@@ -557,8 +564,7 @@ export default function HeroPreviewCanvas({
         ctx.fillStyle = "#0F172A";
         ctx.strokeStyle = "#FACC15";
         ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.roundRect(-11, -5, 22, 16, 4);
+        traceRoundedRect(ctx, -11, -5, 22, 16, 4);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = "#FDE047";
@@ -567,28 +573,96 @@ export default function HeroPreviewCanvas({
         ctx.fill();
         ctx.restore();
       }
+    };
 
-      if (!reducedMotion) {
+    const drawFrame = (now) => {
+      if (disposed) return;
+
+      if (typeof document !== "undefined" && document.hidden) {
+        lastTime = now;
         rafId = requestAnimationFrame(drawFrame);
+        return;
+      }
+
+      if (compact && now - lastCompactRender < 30 && lastCompactRender !== 0) {
+        rafId = requestAnimationFrame(drawFrame);
+        return;
+      }
+
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      const st = stateRef.current;
+      st.elapsed += dt;
+      if (st.atkTimer > 0) st.atkTimer = Math.max(0, st.atkTimer - dt);
+      if (st.skillTimer > 0) st.skillTimer = Math.max(0, st.skillTimer - dt);
+
+      // Visual-only periodic showcase combat flourish on main stage
+      if (!compact && !locked) {
+        st.autoFlourishTimer -= dt;
+        if (st.autoFlourishTimer <= 0) {
+          st.autoFlourishTimer = 3.2;
+          st.atkTimer = 0.3;
+          st.skillTimer = 0.46;
+          st.parity = -st.parity;
+        }
+      }
+
+      const { w, h, dpr, visible } = syncSize();
+      if (visible) {
+        lastCompactRender = now;
+        renderScene(w, h, dpr);
+      }
+
+      rafId = requestAnimationFrame(drawFrame);
+    };
+
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        lastTime = performance.now();
       }
     };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
 
-    const obs = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => syncSize()) : null;
+    const obs =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            if (disposed) return;
+            const prevW = lastW;
+            const prevH = lastH;
+            const { w, h, dpr, visible } = syncSize();
+            if (visible && (w !== prevW || h !== prevH)) {
+              renderScene(w, h, dpr);
+            }
+          })
+        : null;
     obs?.observe(canvas);
+    if (canvas.parentElement) obs?.observe(canvas.parentElement);
 
-    drawFrame(performance.now());
+    const initBox = syncSize();
+    if (initBox.visible) {
+      renderScene(initBox.w, initBox.h, initBox.dpr);
+    }
+    rafId = requestAnimationFrame(drawFrame);
+
     return () => {
+      disposed = true;
       if (rafId) cancelAnimationFrame(rafId);
       obs?.disconnect();
-      io?.disconnect();
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      }
     };
-  }, [hero, compact, reducedMotion, locked]);
+  }, [hero, compact, locked]);
 
   const handleStrike = () => {
     if (!interactive || !hero) return;
     const st = stateRef.current;
-    st.atkTimer = 0.28;
-    st.skillTimer = 0.42;
+    st.atkTimer = 0.3;
+    st.skillTimer = 0.46;
+    st.autoFlourishTimer = 3.2;
     st.parity = -st.parity;
     R.playHeroSkillPreview(hero.id, "atk");
     onPreviewStrike?.(hero);

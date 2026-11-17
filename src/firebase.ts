@@ -40,8 +40,168 @@ export const FOUNDER_EMAIL = "thien.qn25p0866@gmail.com";
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+auth.useDeviceLanguage?.();
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
+
+let googleSignInInFlight: Promise<{
+  user: User;
+  idToken: string;
+  isFounder: boolean;
+}> | null = null;
+
+export const FALLBACK_WEB_PLAY_URL =
+  "https://ais-pre-tpdjbv2vshwdy6lbv3ffbk-123739589644.asia-southeast1.run.app";
+
+export interface FirebaseAuthErrorDetails {
+  code: string;
+  message: string;
+  host: string;
+  origin: string;
+  protocol: string;
+  projectId: string;
+  authDomain: string;
+  authorizedDomains: string[];
+  webAppUrl: string;
+  webAppUrls: string[];
+  consoleUrl: string;
+  isStaleConfig?: boolean;
+  liveProjectId?: string;
+}
+
+export function resolvePlayableWebUrls(authorizedDomains: string[] = []): string[] {
+  const urls: string[] = [];
+  const addUrl = (raw: string) => {
+    const clean = String(raw || "").trim().replace(/\/+$/, "");
+    if (!clean || !/^https?:\/\//i.test(clean)) return;
+    if (!urls.includes(clean)) urls.push(clean);
+  };
+  if (typeof window !== "undefined") {
+    const w = window as unknown as { __ARENA_API_URL__?: string };
+    if (typeof w.__ARENA_API_URL__ === "string") {
+      addUrl(w.__ARENA_API_URL__);
+    }
+  }
+  const appHosts = authorizedDomains
+    .filter(
+      (d) =>
+        typeof d === "string" &&
+        d.length > 0 &&
+        !d.endsWith(".firebaseapp.com") &&
+        !d.endsWith(".web.app")
+    )
+    .sort((a, b) => {
+      const rank = (s: string) =>
+        s.startsWith("ais-pre-") ? 0 : s.startsWith("ais-dev-") ? 1 : s.startsWith("ais-mob-") ? 2 : 3;
+      return rank(a) - rank(b);
+    });
+  for (const h of appHosts) {
+    addUrl(`https://${h}`);
+  }
+  addUrl(FALLBACK_WEB_PLAY_URL);
+  return urls;
+}
+
+export async function fetchLiveAuthorizedDomains(): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/projects?key=${encodeURIComponent(firebaseConfig.apiKey)}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.authorizedDomains)
+      ? data.authorizedDomains.filter((d: unknown): d is string => typeof d === "string" && d.length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function buildFirebaseAuthErrorDetails(
+  rawCode: string,
+  message: string,
+  extra?: Partial<FirebaseAuthErrorDetails>
+): FirebaseAuthErrorDetails {
+  const protocol = typeof window !== "undefined" ? window.location.protocol || "" : "";
+  const host =
+    typeof window !== "undefined"
+      ? window.location.hostname || window.location.host || (protocol === "file:" ? "file:// (tệp cục bộ)" : "")
+      : "";
+  const origin = typeof window !== "undefined" ? window.location.origin || "" : "";
+  const projectId = firebaseConfig.projectId || "";
+  const authorizedDomains = Array.isArray(extra?.authorizedDomains) ? extra.authorizedDomains : [];
+  const webAppUrls = resolvePlayableWebUrls(authorizedDomains);
+  return {
+    code: rawCode,
+    message,
+    host,
+    origin,
+    protocol,
+    projectId,
+    authDomain: firebaseConfig.authDomain || "",
+    authorizedDomains,
+    webAppUrl: webAppUrls[0] || FALLBACK_WEB_PLAY_URL,
+    webAppUrls,
+    consoleUrl: projectId
+      ? `https://console.firebase.google.com/project/${encodeURIComponent(projectId)}/authentication/settings`
+      : "https://console.firebase.google.com/",
+    ...extra,
+  };
+}
+
+export function formatFirebaseAuthError(
+  err: unknown
+): Error & { code?: string; details?: FirebaseAuthErrorDetails } {
+  const rawCode =
+    typeof err === "object" && err !== null && "code" in err
+      ? String((err as { code?: unknown }).code || "")
+      : "";
+  const protocol = typeof window !== "undefined" ? window.location.protocol || "" : "";
+  const host =
+    typeof window !== "undefined"
+      ? window.location.hostname || window.location.host || (protocol === "file:" ? "file:// (tệp cục bộ)" : "")
+      : "";
+  let message =
+    err instanceof Error && err.message
+      ? err.message
+      : "Đăng nhập Google không thành công. Vui lòng thử lại.";
+
+  switch (rawCode) {
+    case "auth/unauthorized-domain":
+      if (protocol === "file:") {
+        message = `Không thể đăng nhập Google khi mở trực tiếp từ tệp cục bộ (file://). Hãy mở game qua đường dẫn web https:// hoặc máy chủ đã cấp phép (Dự án: ${firebaseConfig.projectId}).`;
+      } else {
+        message = `Tên miền hiện tại${host ? ` (${host})` : ""} chưa được cấp phép trong Firebase Auth Authorized Domains (Dự án đang nạp: ${firebaseConfig.projectId}).`;
+      }
+      break;
+    case "auth/popup-blocked":
+      message = "Trình duyệt đã chặn cửa sổ đăng nhập Google. Vui lòng cho phép mở cửa sổ bật lên (Pop-up) rồi thử lại.";
+      break;
+    case "auth/popup-closed-by-user":
+      message = "Cửa sổ đăng nhập Google đã bị đóng trước khi hoàn tất.";
+      break;
+    case "auth/cancelled-popup-request":
+      message = "Yêu cầu đăng nhập trước đó đã bị hủy do mở cửa sổ mới.";
+      break;
+    case "auth/operation-not-allowed":
+      message = "Phương thức đăng nhập Google chưa được bật trên dự án Firebase.";
+      break;
+    case "auth/network-request-failed":
+      message = "Lỗi kết nối mạng khi đăng nhập Google. Vui lòng kiểm tra Internet và thử lại.";
+      break;
+    default:
+      break;
+  }
+
+  const out = new Error(message) as Error & {
+    code?: string;
+    details?: FirebaseAuthErrorDetails;
+  };
+  if (rawCode) out.code = rawCode;
+  out.details = buildFirebaseAuthErrorDetails(rawCode, message);
+  return out;
+}
 
 export enum OperationType {
   CREATE = "create",
@@ -127,13 +287,76 @@ export async function signInPlayerWithGoogle(): Promise<{
   idToken: string;
   isFounder: boolean;
 }> {
-  const result = await signInWithPopup(auth, googleProvider);
-  const idToken = await result.user.getIdToken();
-  return {
-    user: result.user,
-    idToken,
-    isFounder: isFounderGoogleUser(result.user),
-  };
+  if (googleSignInInFlight) {
+    return googleSignInInFlight;
+  }
+  googleSignInInFlight = (async () => {
+    try {
+      if (typeof window !== "undefined" && !/^https?:$/i.test(window.location.protocol)) {
+        const localErr = formatFirebaseAuthError({ code: "auth/unauthorized-domain" });
+        const liveDomains = await fetchLiveAuthorizedDomains();
+        if (localErr.details) {
+          localErr.details.authorizedDomains = liveDomains;
+          const webAppUrls = resolvePlayableWebUrls(liveDomains);
+          localErr.details.webAppUrls = webAppUrls;
+          localErr.details.webAppUrl = webAppUrls[0] || FALLBACK_WEB_PLAY_URL;
+        }
+        throw localErr;
+      }
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      return {
+        user: result.user,
+        idToken,
+        isFounder: isFounderGoogleUser(result.user),
+      };
+    } catch (err) {
+      const formatted = formatFirebaseAuthError(err);
+      if (formatted.code === "auth/unauthorized-domain") {
+        if (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol)) {
+          try {
+            const res = await fetch(`/firebase-applet-config.json?t=${Date.now()}`, {
+              cache: "no-store",
+            });
+            if (res.ok) {
+              const liveCfg = await res.json();
+              if (liveCfg?.projectId && liveCfg.projectId !== firebaseConfig.projectId) {
+                const staleMsg = `Trình duyệt đang giữ cấu hình Firebase cũ (${firebaseConfig.projectId}) trong khi máy chủ đã chuyển sang dự án mới (${liveCfg.projectId}). Vui lòng bấm "Tải lại trang" để áp dụng cấu hình mới.`;
+                const staleErr = new Error(staleMsg) as Error & {
+                  code?: string;
+                  details?: FirebaseAuthErrorDetails;
+                };
+                staleErr.code = "auth/unauthorized-domain";
+                staleErr.details = buildFirebaseAuthErrorDetails("auth/unauthorized-domain", staleMsg, {
+                  isStaleConfig: true,
+                  liveProjectId: liveCfg.projectId,
+                });
+                throw staleErr;
+              }
+            }
+          } catch (refreshCheckErr) {
+            if (
+              refreshCheckErr instanceof Error &&
+              refreshCheckErr.message.includes("cấu hình Firebase cũ")
+            ) {
+              throw refreshCheckErr;
+            }
+          }
+        }
+        const liveDomains = await fetchLiveAuthorizedDomains();
+        if (formatted.details) {
+          formatted.details.authorizedDomains = liveDomains;
+          const webAppUrls = resolvePlayableWebUrls(liveDomains);
+          formatted.details.webAppUrls = webAppUrls;
+          formatted.details.webAppUrl = webAppUrls[0] || FALLBACK_WEB_PLAY_URL;
+        }
+      }
+      throw formatted;
+    } finally {
+      googleSignInInFlight = null;
+    }
+  })();
+  return googleSignInInFlight;
 }
 
 export async function signOutPlayer(): Promise<void> {

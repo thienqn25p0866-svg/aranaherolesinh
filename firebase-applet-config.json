@@ -1,12 +1,12 @@
 {
-  "projectId": "atlantean-silo-4gt36",
-  "appId": "1:1087303972508:web:8fbd5fe7346834a97c1f59",
-  "apiKey": "AIzaSyBhtk4B6LwUHcw76Oun1ptChaQaZ6Rm3WI",
-  "authDomain": "atlantean-silo-4gt36.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-aranaherolesinh-8fe6af8e-6499-49e1-b97f-bd4582a7b595",
-  "storageBucket": "atlantean-silo-4gt36.firebasestorage.app",
-  "messagingSenderId": "1087303972508",
+  "projectId": "gen-lang-client-0797931846",
+  "appId": "1:371646497201:web:c648100d1157c24b807d90",
+  "apiKey": "AIzaSyBFX1Qf1xIW22FmbqyR22zN83zUrS_DnGA",
+  "authDomain": "gen-lang-client-0797931846.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-aranaherolesinh-8470404d-4af9-4c25-bbe5-a37ac06fea4f",
+  "storageBucket": "gen-lang-client-0797931846.firebasestorage.app",
+  "messagingSenderId": "371646497201",
   "measurementId": "",
-  "oAuthClientId": "1087303972508-nbg56css5b3rsjbqoe6agejmb75ilqg7.apps.googleusercontent.com",
+  "oAuthClientId": "371646497201-f7qpbi0d37pp4qrgsm7a2nporocnsdr7.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

@@ -1188,6 +1188,14 @@ body:-webkit-full-screen {
   box-shadow: inset 0 0 40px rgba(2, 6, 23, 0.88);
 }
 
+.moba-stage-canvas-wrap > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .moba-hero-strip {
   display: flex;
   align-items: stretch;

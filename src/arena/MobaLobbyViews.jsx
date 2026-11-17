@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import HeroPreviewCanvas from "./HeroPreviewCanvas.jsx";
 import PlayerAvatarBadge from "./PlayerAvatarBadge.jsx";
+import AuthErrorBanner from "./AuthErrorBanner.jsx";
 import { DAILY_CHECKIN_REWARD } from "./playerAccount.ts";
 import { R } from "./soundEngine.js";
 import {
@@ -45,6 +46,10 @@ export function MobaLobbyMenu({
   onClaimDailyCheckIn,
   onOpenAccountModal,
   onSignInGoogle,
+  authError = "",
+  authDetails = null,
+  onClearAuthError,
+  onCopyText,
 }) {
   const [attackTrigger, setAttackTrigger] = useState(0);
   const [previewSkillKey, setPreviewSkillKey] = useState("c3");
@@ -536,6 +541,17 @@ export function MobaLobbyMenu({
                 </button>
               )}
             </div>
+
+            {!googleUser && authError && (
+              <AuthErrorBanner
+                lang={lang}
+                authError={authError}
+                authDetails={authDetails}
+                onClear={onClearAuthError}
+                onCopyText={onCopyText}
+                compact
+              />
+            )}
 
             <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
               <button

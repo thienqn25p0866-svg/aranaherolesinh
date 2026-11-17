@@ -8,6 +8,7 @@ import { MultiplayerLobbyModal } from "./MultiplayerLobbyModal";
 import { detectClientEnvironment, isPrivateOrDevOrigin, classifyJoinCode, sortItemsByRarityAsc, sortItemsByRarityDesc, isSixDigitCode, computeCameraViewportConfig, computeJoystickDragRadius, DUY_DECOY_REFLECT_RATIO } from "./combatLogic";
 import { MobaLobbyMenu, MobaHeroSelect } from "./MobaLobbyViews";
 import PlayerAccountModal from "./PlayerAccountModal";
+import AuthErrorBanner from "./AuthErrorBanner";
 import {
   DAILY_CHECKIN_REWARD,
   canClaimDailyCheckIn,
@@ -1162,26 +1163,36 @@ function ny() {
     [founderPinInput, setFounderPinInput] = (0, ie.useState)(""),
     [founderAuthBusy, setFounderAuthBusy] = (0, ie.useState)(false),
     [founderAuthError, setFounderAuthError] = (0, ie.useState)(""),
+    [founderAuthDetails, setFounderAuthDetails] = (0, ie.useState)(null),
     [thienEyeOpen, setThienEyeOpen] = (0, ie.useState)(true),
     [accountModalOpen, setAccountModalOpen] = (0, ie.useState)(false),
     [accountModalTab, setAccountModalTab] = (0, ie.useState)("profile"),
     [googleUser, setGoogleUser] = (0, ie.useState)(null),
     [playerProfile, setPlayerProfile] = (0, ie.useState)(() => loadLocalPlayerProfile()),
     [accountSyncBusy, setAccountSyncBusy] = (0, ie.useState)(false),
+    [accountAuthError, setAccountAuthError] = (0, ie.useState)(""),
+    [accountAuthDetails, setAccountAuthDetails] = (0, ie.useState)(null),
     [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null }),
     [mt, S] = (0, ie.useState)(null),
     selectedHeroRef = (0, ie.useRef)(p),
     founderUnlockedRef = (0, ie.useRef)(false),
     founderPendingActionRef = (0, ie.useRef)(null),
     mpBusyTimerRef = (0, ie.useRef)(null),
+    toastTimerRef = (0, ie.useRef)(null),
     googleUserRef = (0, ie.useRef)(null),
     playerProfileRef = (0, ie.useRef)(playerProfile),
     lastTrackedMatchKillsRef = (0, ie.useRef)(0),
     syncedBootUidRef = (0, ie.useRef)(null),
-    G = (0, ie.useCallback)((w) => {
-      S(w), setTimeout(() => {
+    G = (0, ie.useCallback)((w, durationMs = 2400) => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
+      }
+      S(w);
+      toastTimerRef.current = setTimeout(() => {
+        toastTimerRef.current = null;
         S((j) => j === w ? null : j);
-      }, 2400);
+      }, durationMs);
     }, []);
   founderUnlockedRef.current = founderUnlocked;
   googleUserRef.current = googleUser;
@@ -1717,6 +1728,7 @@ function ny() {
   }, handleVerifyFounderGoogle = async () => {
     setFounderAuthBusy(true);
     setFounderAuthError("");
+    setFounderAuthDetails(null);
     try {
       const authRes = await signInFounderWithGoogle();
       if (!authRes?.isFounder) {
@@ -1759,6 +1771,7 @@ function ny() {
     } catch (err) {
       R.playError();
       setFounderAuthError(err?.message || "Đăng nhập Google Nhà Sáng Lập thất bại hoặc đã bị hủy.");
+      setFounderAuthDetails(err?.details || null);
     } finally {
       setFounderAuthBusy(false);
     }
@@ -1909,6 +1922,7 @@ function ny() {
   let pullAndMergeCloudSave = (0, ie.useCallback)(
     async (userObj, explicitAction = false) => {
       if (!userObj?.uid) return;
+      setAccountAuthError("");
       setAccountSyncBusy(true);
       try {
         const [privRes, pubRes] = await Promise.allSettled([
@@ -1976,6 +1990,10 @@ function ny() {
   (0, ie.useEffect)(() => {
     const unsub = subscribeToAuthChanges((fbUser) => {
       setGoogleUser(fbUser || null);
+      if (fbUser) {
+        setAccountAuthError("");
+        setAccountAuthDetails(null);
+      }
       if (fbUser?.uid && syncedBootUidRef.current !== fbUser.uid) {
         syncedBootUidRef.current = fbUser.uid;
         void pullAndMergeCloudSave(fbUser, false);
@@ -1986,6 +2004,10 @@ function ny() {
     return () => unsub();
   }, [pullAndMergeCloudSave]);
   let handleOpenAccountModal = (0, ie.useCallback)((tab = "profile") => {
+    if (googleUserRef.current) {
+      setAccountAuthError("");
+      setAccountAuthDetails(null);
+    }
     setAccountModalTab(tab || "profile");
     setAccountModalOpen(true);
   }, []);
@@ -2041,6 +2063,9 @@ function ny() {
     }
   };
   let handlePlayerGoogleSignIn = async () => {
+    if (accountSyncBusy) return;
+    setAccountAuthError("");
+    setAccountAuthDetails(null);
     setAccountSyncBusy(true);
     try {
       const authRes = await signInPlayerWithGoogle();
@@ -2072,7 +2097,10 @@ function ny() {
       await pullAndMergeCloudSave(authRes.user, true);
     } catch (err) {
       R.playError();
-      G(err?.message || "Đăng nhập Google đã bị hủy hoặc chưa hoàn tất.");
+      const errMsg = err?.message || "Đăng nhập Google đã bị hủy hoặc chưa hoàn tất.";
+      setAccountAuthError(errMsg);
+      setAccountAuthDetails(err?.details || null);
+      G(errMsg, 5000);
     } finally {
       setAccountSyncBusy(false);
     }
@@ -2769,7 +2797,7 @@ function ny() {
     w.preventDefault(), w.stopPropagation(), a.current?.toggleTaiDuDroneMode();
   }, title: "\u0110\u1ED5i ch\u1EBF \u0111\u1ED9 Drone (Ph\xEDm T)", children: [(0, u.jsx)(Wt, { heroId: "taidu", skillId: "passive", size: isPortraitHud ? 24 : 36, roundedClass: "rounded-full", className: "pointer-events-none", alt: "Drone" }), (0, u.jsx)("span", { className: `${isPortraitHud ? "text-[11px]" : "text-xs"} font-moba font-black tracking-tight leading-none`, style: { color: re.droneColor || "#38BDF8" }, children: re.droneLabel || "T\u1EA5n C\xF4ng" })] }), (0, u.jsx)("button", { className: "btn-attack", onPointerDown: (w) => {
     w.preventDefault(), w.stopPropagation(), a.current?.triggerBasicAttack();
-  }, title: p.weapon[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: isPortraitHud ? 76 : 118, roundedClass: "rounded-full", className: "pointer-events-none", alt: p.weapon[c] }), (0, u.jsx)("span", { className: `absolute bottom-1 inset-x-0 text-center font-moba ${isPortraitHud ? "text-[10px]" : "text-xs"} font-black text-amber-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] pointer-events-none`, children: ze.atk })] })] }), (0, u.jsx)("div", { id: "cancelSkillZone", ref: Ye, children: ze.cancelSkill })] }), l === "MENU" && (0, u.jsx)(MobaLobbyMenu, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, sfxEnabled: Ft, musicEnabled: musicOn, isFullscreen: fsActive, mpRoom, envInfo, SkillIcon: Wt, founderUnlocked, playerProfile, googleUser, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), canDailyCheckIn: canClaimDailyCheckIn(playerProfile?.dailyCheckInDate || "", getTodayDateKey()), onClaimDailyCheckIn: handleClaimDailyCheckIn, onOpenAccountModal: handleOpenAccountModal, onSignInGoogle: handlePlayerGoogleSignIn, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
+  }, title: p.weapon[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: isPortraitHud ? 76 : 118, roundedClass: "rounded-full", className: "pointer-events-none", alt: p.weapon[c] }), (0, u.jsx)("span", { className: `absolute bottom-1 inset-x-0 text-center font-moba ${isPortraitHud ? "text-[10px]" : "text-xs"} font-black text-amber-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] pointer-events-none`, children: ze.atk })] })] }), (0, u.jsx)("div", { id: "cancelSkillZone", ref: Ye, children: ze.cancelSkill })] }), l === "MENU" && (0, u.jsx)(MobaLobbyMenu, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, sfxEnabled: Ft, musicEnabled: musicOn, isFullscreen: fsActive, mpRoom, envInfo, SkillIcon: Wt, founderUnlocked, playerProfile, googleUser, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), canDailyCheckIn: canClaimDailyCheckIn(playerProfile?.dailyCheckInDate || "", getTodayDateKey()), onClaimDailyCheckIn: handleClaimDailyCheckIn, onOpenAccountModal: handleOpenAccountModal, onSignInGoogle: handlePlayerGoogleSignIn, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onCopyText: handleCopyText, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
     h(w);
     if (!(w?.isSecretFounder && !founderUnlockedRef.current) && a.current) {
       a.current.currentHero = w;
@@ -2924,6 +2952,6 @@ function ny() {
     handleLeaveRoom();
   }, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pManualOfferCode, p2pHasServerSignal, p2pAnswerCode, p2pAutoPaired, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, lanUrls, isFullscreen: fsActive, onToggleFullscreen: toggleFullscreen, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
     setMpLobbyOpen(false);
-  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)("div", { className: "rounded-xl bg-rose-950/70 border border-rose-500/60 px-3 py-2 text-rose-200 font-semibold leading-relaxed", children: founderAuthError }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
+  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
 }
 export default ny;

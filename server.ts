@@ -2081,6 +2081,20 @@ async function createApp() {
     });
   });
 
+  app.use((req, res, next) => {
+    if (
+      req.path === "/" ||
+      req.path === "/index.html" ||
+      req.path.startsWith("/firebase-applet-config.json") ||
+      req.path === "/src/firebase.ts"
+    ) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+    next();
+  });
+
   const isProd = process.env.NODE_ENV === "production";
   if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
