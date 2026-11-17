@@ -10,6 +10,7 @@ import {
   filterHeroesByRole,
   getHeroRoleKey,
 } from "./combatLogic.ts";
+import { ARENA_MAPS, isMapUnlocked } from "./bloodCitadelMap.ts";
 
 export function MobaLobbyMenu({
   lang,
@@ -50,6 +51,10 @@ export function MobaLobbyMenu({
   authDetails = null,
   onClearAuthError,
   onCopyText,
+  selectedMapId = "classic",
+  unlockedMaps = ["classic"],
+  citadelSecrets = null,
+  onSelectMap,
 }) {
   const [attackTrigger, setAttackTrigger] = useState(0);
   const [previewSkillKey, setPreviewSkillKey] = useState("c3");
@@ -584,6 +589,99 @@ export function MobaLobbyMenu({
               >
                 {isVi ? "Tìm Bạn & Top" : "Friends & Top"}
               </button>
+            </div>
+          </div>
+
+          {/* Map Selector: Classic vs Cổ Thành Huyết Táng */}
+          <div className="rounded-xl bg-slate-950/85 border border-slate-800/90 p-2.5 mt-3">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] font-moba font-bold tracking-wider uppercase text-slate-300">
+                {isVi ? "Bản Đồ Chiến Trường" : "Battleground Map"}
+              </span>
+              <span className="text-[10px] text-slate-400">
+                {isMapUnlocked("blood_citadel", unlockedMaps)
+                  ? isVi
+                    ? "Đã mở Cổ Thành"
+                    : "Citadel Unlocked"
+                  : isVi
+                    ? "Mở sau Màn 27 Cổ Điển"
+                    : "Unlock: Classic Wave 27"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {ARENA_MAPS.map((m) => {
+                const unlocked = isMapUnlocked(m.id, unlockedMaps);
+                const active = selectedMapId === m.id;
+                const isCitadel = m.id === "blood_citadel";
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      if (!unlocked) {
+                        R.playError();
+                        return;
+                      }
+                      R.playTabSwitch();
+                      onSelectMap?.(m.id);
+                    }}
+                    className={`text-left rounded-lg p-2 border transition cursor-pointer ${
+                      active
+                        ? isCitadel
+                          ? "bg-rose-950/75 border-rose-400/80 text-rose-100"
+                          : "bg-amber-950/60 border-amber-400/80 text-amber-100"
+                        : unlocked
+                          ? "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
+                          : "bg-slate-900/50 border-slate-800/70 text-slate-500 opacity-80"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-moba font-extrabold leading-tight truncate">
+                        {unlocked ? (isCitadel ? "🏰 " : "⚔️ ") : "🔒 "}
+                        {isVi ? m.nameVi : m.nameEn}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                      {unlocked
+                        ? `${m.width}×${m.height} · ${isVi ? m.shortDescVi : m.shortDescEn}`
+                        : isVi
+                          ? "Phá đảo Màn 27 ở Đấu Trường Cổ Điển để mở khóa"
+                          : "Clear Wave 27 in Classic Arena to unlock"}
+                    </div>
+                    {isCitadel && unlocked && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                            citadelSecrets?.tinClue
+                              ? "bg-rose-500/20 border-rose-400/50 text-rose-200"
+                              : "bg-slate-900 border-slate-700 text-slate-500"
+                          }`}
+                        >
+                          Tin {citadelSecrets?.tinClue ? "✓" : "?"}
+                        </span>
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                            citadelSecrets?.baoClue
+                              ? "bg-purple-500/20 border-purple-400/50 text-purple-200"
+                              : "bg-slate-900 border-slate-700 text-slate-500"
+                          }`}
+                        >
+                          Bảo {citadelSecrets?.baoClue ? "✓" : "?"}
+                        </span>
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                            citadelSecrets?.combinedUnlocked
+                              ? "bg-amber-500/20 border-amber-400/60 text-amber-200"
+                              : "bg-slate-900 border-slate-700 text-slate-500"
+                          }`}
+                        >
+                          {isVi ? "Bí Mật Chung" : "Shared"} {citadelSecrets?.combinedUnlocked ? "✓" : "?"}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

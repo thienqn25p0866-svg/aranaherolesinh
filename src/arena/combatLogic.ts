@@ -2148,9 +2148,15 @@ export const MINH_PASSIVE_SHIELD_RATIO = 0.08;
 export const MINH_PASSIVE_SHIELD_DUR = 4;
 export const MINH_PASSIVE_ICD = 1.2;
 
-export const MINH_C1_MOB_ROOT = 3;
-export const MINH_C1_BOSS_ROOT = 1.2;
-export const MINH_C1_HEAL_RATIO = 0.04;
+export const MINH_C1_MOB_ROOT = 3.5;
+export const MINH_C1_BOSS_ROOT = 1.75;
+export const MINH_C1_BOSS27_SLOW = 0.75;
+export const MINH_C1_BOSS27_SLOW_DUR = 3;
+export const MINH_C1_RANGE = 460;
+export const MINH_C1_WIDTH = 220;
+export const MINH_C1_CHAIN_COUNT = 5;
+export const MINH_C1_HEAL_RATIO = 0.03;
+export const MINH_C1_MAX_HEAL_RATIO = 0.18;
 
 export const MINH_C2_MOB_FREEZE = 3;
 export const MINH_C2_BOSS_FREEZE = 1;
@@ -2164,8 +2170,27 @@ export const MINH_C3_BOSS_SEAL = 2;
 export const MINH_C3_ALLY_HEAL_RATIO = 0.18;
 export const MINH_C3_ALLY_SHIELD_RATIO = 0.20;
 
+export function computeMinhBasicDamage({ atk, ap }: { atk: number; ap: number }): number {
+  return Math.max(1, Math.round(20 + (atk || 0) * 0.44 + (ap || 0) * 0.74));
+}
+
 export function computeMinhC1Damage({ atk, ap }: { atk: number; ap: number }): number {
   return Math.max(1, Math.round(62 + (atk || 0) * 0.45 + (ap || 0) * 1.15));
+}
+
+export function computeMinhC1CcHeal({
+  maxHp,
+  ccCount,
+}: {
+  maxHp: number;
+  ccCount: number;
+}): { totalHeal: number; totalRatio: number } {
+  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1000);
+  const safeCount = Math.max(0, Math.floor(Number.isFinite(ccCount) ? ccCount : 0));
+  if (safeCount <= 0) return { totalHeal: 0, totalRatio: 0 };
+  const totalRatio = Math.min(MINH_C1_MAX_HEAL_RATIO, safeCount * MINH_C1_HEAL_RATIO);
+  const totalHeal = Math.max(1, Math.round(safeMaxHp * totalRatio));
+  return { totalHeal, totalRatio };
 }
 
 export function computeMinhC2TickDamage({ atk, ap }: { atk: number; ap: number }): number {

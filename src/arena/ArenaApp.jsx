@@ -10,6 +10,15 @@ import { MobaLobbyMenu, MobaHeroSelect } from "./MobaLobbyViews";
 import PlayerAccountModal from "./PlayerAccountModal";
 import AuthErrorBanner from "./AuthErrorBanner";
 import {
+  ARENA_MAPS,
+  CITADEL_UNLOCK_WAVE,
+  createDefaultCitadelSecrets,
+  normalizeCitadelSecrets,
+  computeUnlockedMaps,
+  isMapUnlocked,
+  normalizeArenaMapId,
+} from "./bloodCitadelMap";
+import {
   DAILY_CHECKIN_REWARD,
   canClaimDailyCheckIn,
   computeUnlockedTitles,
@@ -1186,9 +1195,14 @@ function ny() {
     [accountSyncBusy, setAccountSyncBusy] = (0, ie.useState)(false),
     [accountAuthError, setAccountAuthError] = (0, ie.useState)(""),
     [accountAuthDetails, setAccountAuthDetails] = (0, ie.useState)(null),
-    [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null }),
+    [selectedMapId, setSelectedMapId] = (0, ie.useState)("classic"),
+    [unlockedMaps, setUnlockedMaps] = (0, ie.useState)(["classic"]),
+    [citadelSecrets, setCitadelSecrets] = (0, ie.useState)(() => createDefaultCitadelSecrets()),
+    [citadelLoreModal, setCitadelLoreModal] = (0, ie.useState)(null),
+    [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null, mapId: "classic", nearbyInteractable: null, citadelSecrets: createDefaultCitadelSecrets() }),
     [mt, S] = (0, ie.useState)(null),
     selectedHeroRef = (0, ie.useRef)(p),
+    citadelLorePausedRef = (0, ie.useRef)(false),
     founderUnlockedRef = (0, ie.useRef)(false),
     founderPendingActionRef = (0, ie.useRef)(null),
     mpBusyTimerRef = (0, ie.useRef)(null),
@@ -1300,6 +1314,24 @@ function ny() {
     w.applyPerformanceSettings?.(perfPrefsRef.current);
     a.current = w, w.onToast = G, w.onStateChange = () => {
       m(w.gameState), v(w.playerCoins);
+      setSelectedMapId(w.selectedMapId || "classic");
+      setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
+      setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
+    };
+    w.onCitadelLore = (lorePayload) => {
+      if (!lorePayload) return;
+      if (w.citadelSecrets) setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
+      v(w.playerCoins);
+      if (!w.multiplayer?.active && w.gameState === "PLAYING") {
+        citadelLorePausedRef.current = true;
+        w.gameState = "PAUSED";
+        w.moveInput = { x: 0, y: 0 };
+        w.tapDestination = null;
+        w.aimState.active = false;
+      } else {
+        citadelLorePausedRef.current = false;
+      }
+      setCitadelLoreModal(lorePayload);
     };
     const recordCareerProgress = (waveReached, isMatchEnd, victory) => {
       const totalKilledNow = Number(w.totalKilled) || 0;
@@ -1311,6 +1343,18 @@ function ny() {
 
       const curProf = playerProfileRef.current || loadLocalPlayerProfile();
       const nextHighestWave = Math.max(curProf.highestWave || 0, w.highestWaveCleared || 0, waveReached || 0);
+      w.highestWaveCleared = Math.max(w.highestWaveCleared || 0, nextHighestWave);
+      if (victory && (w.activeMapId || "classic") === "classic" && nextHighestWave >= CITADEL_UNLOCK_WAVE) {
+        w.classicCleared = true;
+      }
+      w.unlockedMaps = computeUnlockedMaps({
+        classicCleared: Boolean(w.classicCleared),
+        highestWaveCleared: w.highestWaveCleared,
+        existing: w.unlockedMaps,
+      });
+      w.saveGame();
+      setUnlockedMaps([...w.unlockedMaps]);
+      setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
       const saved = saveLocalPlayerProfile(
         {
           ...curProf,
@@ -1354,7 +1398,18 @@ function ny() {
         { founderUnlocked: founderUnlockedRef.current, minHighestWave: w.highestWaveCleared }
       );
       setPlayerProfile(syncedLocal);
+    } else if ((playerProfileRef.current?.highestWave || 0) > (w.highestWaveCleared || 0)) {
+      w.highestWaveCleared = playerProfileRef.current.highestWave;
+      w.unlockedMaps = computeUnlockedMaps({
+        classicCleared: Boolean(w.classicCleared),
+        highestWaveCleared: w.highestWaveCleared,
+        existing: w.unlockedMaps,
+      });
+      w.saveGame();
     }
+    setSelectedMapId(w.selectedMapId || "classic");
+    setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
+    setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
     v(w.playerCoins);
     if (w.currentHero && !(w.currentHero.isSecretFounder && !founderUnlockedRef.current)) {
       h(w.currentHero);
@@ -1410,7 +1465,7 @@ function ny() {
             mates.push({ id: mem.id, name: mem.name, heroId: rp?.heroId || mem.heroId, isHost: mem.isHost, hp: Math.max(0, Math.ceil(mHp)), maxHp: Math.max(1, Math.ceil(mMaxHp)), level: rp?.level || mem.level || 1, alive: mAlive });
           }
         }
-        vt({ heroName: w.currentHero.name.split("(")[0].trim(), level: w.player.level, hp: Math.ceil(w.player.hp), maxHp: w.player.maxHp, shield: Math.ceil(w.player.shield), xpPct: Math.min(100, w.player.xp / w.player.xpToNext * 100), wave: w.wave, kills: w.waveKilled, waveTotal: w.waveTotal, totalKilled: w.totalKilled || 0, totalDamage: Math.round(w.player.totalDamage || 0), waveElapsedTime: w.waveElapsedTime || 0, lastWaveClearTime: w.lastWaveClearTime || 0, buffsText: X.join(" \xB7 "), resourceText: we.resourceText, thienState: we.thienState || null, droneMode: we.droneMode || "attack", droneLabel: we.droneLabel || "T\u1EA5n C\xF4ng", droneColor: we.droneColor || "#38BDF8", cooldowns: [...w.player.cooldowns], padTeleportCds: we.padTeleportCds || [0, 0, 0, 0], skillStates: we.skillStates, chargeActive: we.chargeActive, chargeProgress: we.chargeProgress, chargeLabel: we.chargeLabel, combo: we.combo, coopActive: Boolean(w.multiplayer?.active), localDowned: Boolean(w.multiplayer?.localDowned), powerMultiplier: w.multiplayer?.powerMultiplier || 1, teammates: mates, boss: le && le.hp > 0 ? { name: le.name, hp: Math.ceil(le.hp), maxHp: le.maxHp, immune: false, phase: le.phase || 1 } : null }), v(w.playerCoins);
+        vt({ heroName: w.currentHero.name.split("(")[0].trim(), level: w.player.level, hp: Math.ceil(w.player.hp), maxHp: w.player.maxHp, shield: Math.ceil(w.player.shield), xpPct: Math.min(100, w.player.xp / w.player.xpToNext * 100), wave: w.wave, kills: w.waveKilled, waveTotal: w.waveTotal, totalKilled: w.totalKilled || 0, totalDamage: Math.round(w.player.totalDamage || 0), waveElapsedTime: w.waveElapsedTime || 0, lastWaveClearTime: w.lastWaveClearTime || 0, buffsText: X.join(" \xB7 "), resourceText: we.resourceText, thienState: we.thienState || null, droneMode: we.droneMode || "attack", droneLabel: we.droneLabel || "T\u1EA5n C\xF4ng", droneColor: we.droneColor || "#38BDF8", cooldowns: [...w.player.cooldowns], padTeleportCds: we.padTeleportCds || [0, 0, 0, 0], skillStates: we.skillStates, chargeActive: we.chargeActive, chargeProgress: we.chargeProgress, chargeLabel: we.chargeLabel, combo: we.combo, coopActive: Boolean(w.multiplayer?.active), localDowned: Boolean(w.multiplayer?.localDowned), powerMultiplier: w.multiplayer?.powerMultiplier || 1, teammates: mates, boss: le && le.hp > 0 ? { name: le.name, hp: Math.ceil(le.hp), maxHp: le.maxHp, immune: false, phase: le.phase || 1 } : null, mapId: we.mapId || w.activeMapId || "classic", nearbyInteractable: we.nearbyInteractable || null, citadelSecrets: we.citadelSecrets || w.citadelSecrets || createDefaultCitadelSecrets() }), v(w.playerCoins);
       }
       const nextMs = isHidden || w.gameState !== "PLAYING" ? 280 : (w.getPerformanceProfile?.().hudIntervalMs || 80);
       hudTimerId = setTimeout(tickHud, nextMs);
@@ -1878,6 +1933,14 @@ function ny() {
       victories: Math.max(0, Math.floor(Number(prof.victories) || 0)),
       dailyCheckInDate: String(prof.dailyCheckInDate || ""),
       unlockedTitles: computeUnlockedTitles(highestWave, founderUnlockedRef.current),
+      selectedMapId: w?.selectedMapId || "classic",
+      classicCleared: Boolean(w?.classicCleared),
+      unlockedMaps: computeUnlockedMaps({
+        classicCleared: Boolean(w?.classicCleared),
+        highestWaveCleared: highestWave,
+        existing: w?.unlockedMaps,
+      }),
+      citadelSecrets: normalizeCitadelSecrets(w?.citadelSecrets),
     };
   }, []);
   let applyProgressSnapshotToEngine = (0, ie.useCallback)((snapshot) => {
@@ -1898,6 +1961,18 @@ function ny() {
     w.playerCoins = Math.max(0, Math.floor(Number(snapshot.coins) || 0));
     w.currentWaveNumber = Math.max(1, Math.min(27, Math.floor(Number(snapshot.currentWave) || 1)));
     w.highestWaveCleared = Math.max(w.highestWaveCleared || 0, Number(snapshot.highestWave) || 0);
+    w.classicCleared = Boolean(w.classicCleared || snapshot.classicCleared);
+    w.unlockedMaps = computeUnlockedMaps({
+      classicCleared: w.classicCleared,
+      highestWaveCleared: w.highestWaveCleared,
+      existing: [...(w.unlockedMaps || []), ...(snapshot.unlockedMaps || [])],
+    });
+    w.citadelSecrets = normalizeCitadelSecrets({
+      ...w.citadelSecrets,
+      ...(snapshot.citadelSecrets || {}),
+    });
+    const reqMap = normalizeArenaMapId(snapshot.selectedMapId || w.selectedMapId);
+    w.selectedMapId = isMapUnlocked(reqMap, w.unlockedMaps) ? reqMap : "classic";
     let candidate = Mi.find((hr) => hr.id === snapshot.selectedHeroId) || Mi[4];
     if (candidate?.isSecretFounder && !founderUnlockedRef.current) {
       candidate = Mi[4];
@@ -1907,6 +1982,9 @@ function ny() {
     h(candidate);
     w.saveGame();
     w.computeHeroStats();
+    setSelectedMapId(w.selectedMapId);
+    setUnlockedMaps([...w.unlockedMaps]);
+    setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
     v(w.playerCoins);
     bt((n) => n + 1);
   }, []);
@@ -2587,7 +2665,7 @@ function ny() {
     let le = he.getBoundingClientRect();
     pt.current = { idx: w, pointerId: j.pointerId, originX: le.left + le.width / 2, originY: le.top + le.height / 2 };
     let X = ee.currentHero.skills[w], we = ee.getDefaultAimForSkill(w);
-    ee.aimState = { active: true, skillIdx: w, aimType: X.aimType, angle: we.angle, targetX: we.targetX, targetY: we.targetY, cancelled: false, range: X.range, radius: X.radius || 0, hasTargetInRange: ee.checkAimHasTarget(we.angle, X.range, X.aimType) }, ee.startSkillHold(w, we.angle, we.targetX, we.targetY), Ye.current && (Ye.current.style.display = "block", Ye.current.classList.remove("hover-cancel"));
+    ee.aimState = { active: true, skillIdx: w, aimType: X.aimType, angle: we.angle, targetX: we.targetX, targetY: we.targetY, cancelled: false, range: X.range, radius: X.radius || 0, width: X.width || 0, hasTargetInRange: ee.checkAimHasTarget(we.angle, X.range, X.aimType, X.width || 0) }, ee.startSkillHold(w, we.angle, we.targetX, we.targetY), Ye.current && (Ye.current.style.display = "block", Ye.current.classList.remove("hover-cancel"));
   }, ta = (w) => {
     let j = a.current, ee = pt.current;
     if (!j || !ee || ee.pointerId !== w.pointerId || !j.aimState.active) return;
@@ -2598,10 +2676,12 @@ function ny() {
       let Et = Math.atan2(le, he);
       if (j.aimState.angle = Et, j.player.facing = Et, rt.aimType === "CIRCLE_FREE") {
         let ue = Math.min(1, Math.max(0.12, X / 110)), fe = rt.range * ue;
-        j.aimState.targetX = Math.max(30, Math.min(1970, j.player.x + Math.cos(Et) * fe)), j.aimState.targetY = Math.max(30, Math.min(1370, j.player.y + Math.sin(Et) * fe));
-      } else if (rt.aimType === "PATH") {
+        let maxW = (j.mapWidth || 2000) - 30, maxH = (j.mapHeight || 1400) - 30;
+        j.aimState.targetX = Math.max(30, Math.min(maxW, j.player.x + Math.cos(Et) * fe)), j.aimState.targetY = Math.max(30, Math.min(maxH, j.player.y + Math.sin(Et) * fe));
+      } else if (rt.aimType === "PATH" || rt.aimType === "RECT") {
         let fe = rt.range || 560;
-        j.aimState.targetX = Math.max(30, Math.min(1970, j.player.x + Math.cos(Et) * fe)), j.aimState.targetY = Math.max(30, Math.min(1370, j.player.y + Math.sin(Et) * fe));
+        let maxW = (j.mapWidth || 2000) - 30, maxH = (j.mapHeight || 1400) - 30;
+        j.aimState.targetX = Math.max(30, Math.min(maxW, j.player.x + Math.cos(Et) * fe)), j.aimState.targetY = Math.max(30, Math.min(maxH, j.player.y + Math.sin(Et) * fe));
       } else j.aimState.targetX = j.player.x + Math.cos(Et) * (rt.range || 120), j.aimState.targetY = j.player.y + Math.sin(Et) * (rt.range || 120);
       j.updateSkillHoldAim(j.aimState.angle, j.aimState.targetX, j.aimState.targetY);
     }
@@ -2711,7 +2791,7 @@ function ny() {
       console.error(w);
     }
     setShareGuideOpen(true);
-  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen, _i = (0, ie.useRef)(Xa);
+  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen || Boolean(citadelLoreModal), _i = (0, ie.useRef)(Xa);
   (0, ie.useEffect)(() => {
     _i.current = Xa, Xa && (Ci.current.clear(), Da.current.clear(), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.tapDestination = null, a.current.aimState.active = false, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true)));
   }, [Xa]), (0, ie.useEffect)(() => {
@@ -2727,12 +2807,13 @@ function ny() {
       if (!Ie) return ue.getDefaultAimForSkill(fe);
       if (Kt.current) {
         let Xe = ue.screenToWorld(Kt.current.x, Kt.current.y), Qa = Xe.x - ue.player.x, Kn = Xe.y - ue.player.y, va = Math.atan2(Kn, Qa), Fi = Xe.x, Za = Xe.y;
+        let maxW = (ue.mapWidth || 2000) - 30, maxH = (ue.mapHeight || 1400) - 30;
         if (Ie.aimType === "CIRCLE_FREE") {
           let Un = Ie.range || 240;
-          Math.hypot(Qa, Kn) > Un && (Fi = ue.player.x + Math.cos(va) * Un, Za = ue.player.y + Math.sin(va) * Un), Fi = Math.max(30, Math.min(1970, Fi)), Za = Math.max(30, Math.min(1370, Za));
-        } else if (Ie.aimType === "PATH") {
+          Math.hypot(Qa, Kn) > Un && (Fi = ue.player.x + Math.cos(va) * Un, Za = ue.player.y + Math.sin(va) * Un), Fi = Math.max(30, Math.min(maxW, Fi)), Za = Math.max(30, Math.min(maxH, Za));
+        } else if (Ie.aimType === "PATH" || Ie.aimType === "RECT") {
           let Un = Ie.range || 560;
-          Fi = Math.max(30, Math.min(1970, ue.player.x + Math.cos(va) * Un)), Za = Math.max(30, Math.min(1370, ue.player.y + Math.sin(va) * Un));
+          Fi = Math.max(30, Math.min(maxW, ue.player.x + Math.cos(va) * Un)), Za = Math.max(30, Math.min(maxH, ue.player.y + Math.sin(va) * Un));
         } else Fi = ue.player.x + Math.cos(va) * (Ie.range || 120), Za = ue.player.y + Math.sin(va) * (Ie.range || 120);
         return { angle: va, targetX: Fi, targetY: Za };
       }
@@ -2745,6 +2826,14 @@ function ny() {
       let fe = a.current;
       if (!fe) return;
       if (ue.code === "Escape") {
+        if (citadelLoreModal) {
+          setCitadelLoreModal(null);
+          if (citadelLorePausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
+            citadelLorePausedRef.current = false;
+            a.current.gameState = "PLAYING";
+          }
+          return;
+        }
         if (founderModalOpen) {
           setFounderModalOpen(false);
           return;
@@ -2796,7 +2885,7 @@ function ny() {
           fe.player.facing = Math.atan2(Qa.y - fe.player.y, Qa.x - fe.player.x);
         }
         fe.triggerBasicAttack();
-      } else ue.repeat || (ue.code === "Digit1" || ue.code === "KeyQ" ? (ue.preventDefault(), X(fe, 0, ue.code)) : ue.code === "Digit2" || ue.code === "KeyE" ? (ue.preventDefault(), X(fe, 1, ue.code)) : ue.code === "Digit3" || ue.code === "KeyR" ? (ue.preventDefault(), X(fe, 2, ue.code)) : (ue.code === "Digit4" || ue.code === "KeyF") && fe.currentHero.skills.length >= 4 ? (ue.preventDefault(), X(fe, 3, ue.code)) : ue.code === "KeyG" && fe.currentHero.id === "thien" ? (ue.preventDefault(), (() => { const gVal = fe.toggleThienGodMode(); if (typeof gVal === "boolean") logFounderAuditEvent("GOD_MODE_TOGGLED", gVal ? "god_on" : "god_off").catch(() => {}); })()) : ue.code === "KeyT" && fe.currentHero.id === "taidu" && (ue.preventDefault(), fe.toggleTaiDuDroneMode()));
+      } else ue.repeat || (ue.code === "Digit1" || ue.code === "KeyQ" ? (ue.preventDefault(), X(fe, 0, ue.code)) : ue.code === "Digit2" || ue.code === "KeyE" ? (ue.preventDefault(), X(fe, 1, ue.code)) : ue.code === "Digit3" || ue.code === "KeyR" ? (ue.preventDefault(), X(fe, 2, ue.code)) : (ue.code === "Digit4" || ue.code === "KeyF") && fe.currentHero.skills.length >= 4 ? (ue.preventDefault(), X(fe, 3, ue.code)) : ue.code === "KeyV" ? (ue.preventDefault(), fe.interactNearestCitadelNode?.()) : ue.code === "KeyG" && fe.currentHero.id === "thien" ? (ue.preventDefault(), (() => { const gVal = fe.toggleThienGodMode(); if (typeof gVal === "boolean") logFounderAuditEvent("GOD_MODE_TOGGLED", gVal ? "god_on" : "god_off").catch(() => {}); })()) : ue.code === "KeyT" && fe.currentHero.id === "taidu" && (ue.preventDefault(), fe.toggleTaiDuDroneMode()));
     }, rt = (ue) => {
       let fe = a.current;
       if (j.has(ue.code)) {
@@ -2812,7 +2901,7 @@ function ny() {
     return window.addEventListener("keydown", we), window.addEventListener("keyup", rt), window.addEventListener("blur", Et), () => {
       window.removeEventListener("keydown", we), window.removeEventListener("keyup", rt), window.removeEventListener("blur", Et);
     };
-  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen]);
+  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen, citadelLoreModal]);
   let ze = Ef[c];
   let fsActive = isFullscreen || isPseudoFullscreen;
   let portraitVp = computeCameraViewportConfig({ viewW: viewportSize.w, viewH: viewportSize.h, layoutMode, fovPreset: portraitFov });
@@ -2838,7 +2927,7 @@ function ny() {
     R.playClick(), je(p.id), N(true);
   }, title: "Cửa Hàng Trang Bị", children: [(0, u.jsx)("span", { children: "🪙" }), (0, u.jsx)("span", { className: "font-mono-numbers tabular-nums", children: f })] }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn border-cyan-500/45 text-cyan-200", onClick: () => {
     R.playClick(), ye(true);
-  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState)) && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
+  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve  }, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-rose-950/55 border-t border-rose-500/30 text-rose-200", children: [(0, u.jsx)("span", { className: "font-bold truncate", children: c === "vi" ? "🏰 Cổ Thành Huyết Táng" : "🏰 Bloodsoaked Citadel" }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: ["Tin ", re.citadelSecrets?.tinClue ? "✓" : "?", " · Bảo ", re.citadelSecrets?.baoClue ? "✓" : "?", " · Ẩn ", re.citadelSecrets?.combinedUnlocked ? "✓" : "?"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState)) && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "px-1.5 py-0.5 rounded-md bg-slate-950/68 border border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "💀" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
   }) })] }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: [re.combo.efficiency, "%"] })] })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] })]  }) : (0, u.jsxs)("div", { className: "hud-header", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-hero-card w-[184px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold leading-tight", children: [(0, u.jsx)("span", { className: "text-white font-moba text-xs text-neon-cyan truncate", children: re.heroName }), (0, u.jsxs)("span", { className: "text-[#F59E0B] font-mono-numbers text-[11px] shrink-0", children: ["Lv.", re.level] })] }), (0, u.jsxs)("div", { className: "bar-container h-[7px] mt-1", children: [(0, u.jsx)("div", { className: "bar-fill hp-fill", style: { width: `${re.hp / re.maxHp * 100}%` } }), (0, u.jsx)("div", { className: "shield-fill", style: { width: `${Math.min(100, re.shield / re.maxHp * 100)}%` } })] }), (0, u.jsxs)("div", { className: "flex justify-between text-[9.5px] text-slate-400 mt-0.5 font-mono-numbers leading-tight", children: [(0, u.jsxs)("span", { children: [re.hp, " / ", re.maxHp] }), re.shield > 0 && (0, u.jsxs)("span", { className: "text-[#38BDF8]", children: ["Khi\xEAn: ", re.shield] })] }), re.resourceText && (0, u.jsx)("div", { className: "text-[9.5px] font-mono-numbers font-extrabold text-amber-300 mt-0.5 truncate leading-tight", children: re.resourceText }), re.buffsText && (0, u.jsx)("div", { className: "text-[9.5px] text-[#FDE68A] mt-0.5 truncate font-semibold leading-tight", children: re.buffsText }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill xp-fill", style: { width: `${re.xpPct}%` } }) })] }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap mt-1 pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "HP Boss:" : "Boss HP:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name} ${b.hp.toLocaleString()}/${b.maxHp.toLocaleString()}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK: ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1: ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2: ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3: ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4: ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-1 border-t border-sky-500/20", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Tổng ST:" : "Total DMG:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-amber-300 font-black", children: (re.thienState.totalDamage || 0).toLocaleString() })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Quái hạ gục:" : "Kills:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300 font-bold", children: [re.kills, "/", re.waveTotal, " (Tổng ", re.thienState.totalKilled || 0, ")"] })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Hoàn thành màn:" : "Wave Clear:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200 font-bold", children: [formatWaveClock(re.thienState.waveElapsedTime), re.thienState.lastWaveClearTime > 0 ? ` · Trước ${formatWaveClock(re.thienState.lastWaveClearTime)}` : ""] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "mt-1 flex flex-col gap-1 w-[152px] sm:w-[178px] pointer-events-none", children: re.teammates.map((mate) => {
@@ -2870,7 +2959,13 @@ function ny() {
       a.current.selectedHeroId = w.id;
       a.current.saveGame();
     }
-  }, onEnterArena: (w) => ke(w), onOpenHeroSelect: () => m("HERO_SELECT"), onOpenCoop: () => {
+  }, onEnterArena: (w) => ke(w), onOpenHeroSelect: () => m("HERO_SELECT"), selectedMapId, unlockedMaps, citadelSecrets, onSelectMap: (nextMapId) => {
+    if (a.current?.setSelectedMap?.(nextMapId)) {
+      setSelectedMapId(a.current.selectedMapId);
+    } else {
+      G("Hãy phá đảo Màn 27 ở Đấu Trường Cổ Điển để mở khóa Cổ Thành Huyết Táng!");
+    }
+  }, onOpenCoop: () => {
     setMpError("");
     setMpLobbyOpen(true);
   }, onOpenShop: () => {
@@ -2956,8 +3051,8 @@ function ny() {
   })() : (0, u.jsx)("button", { className: "btn-primary flex-1 py-2.5 text-xs font-bold", onClick: () => {
     nt(false);
     let w = a.current;
-    w && (w.waitingReward = false, w.waveCleared = false, w.wave >= 27 ? (w.gameState = "VICTORY", m("VICTORY")) : w.startWave(w.wave + 1));
-  }, children: ce.isFinalWave ? c === "vi" ? "Chinh Ph\u1EE5c!" : "Victory!" : c === "vi" ? "M\xE0n Ti\u1EBFp Theo \u2192" : "Next Wave \u2192" })] })] }) }), (l === "GAME_OVER" || l === "VICTORY") && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[460px] text-center", children: [(0, u.jsx)("div", { className: "w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center bg-amber-500/20 text-amber-400 text-3xl", children: l === "VICTORY" ? "\u{1F451}" : "\u{1F480}" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white", children: l === "VICTORY" ? ze.victory : ze.defeat }), (0, u.jsx)("p", { className: "text-xs text-slate-400 mt-1", children: l === "VICTORY" ? ze.victorySub : ze.defeatSub }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 my-3 grid grid-cols-2 gap-2 text-left text-xs font-mono-numbers", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "M\xE0n ch\u01A1i:" }), (0, u.jsxs)("div", { className: "text-amber-400 font-bold text-sm", children: [a.current?.wave || 1, " / 27"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "Ti\xEAu di\u1EC7t:" }), (0, u.jsx)("div", { className: "text-white font-bold text-sm", children: a.current?.totalKilled || 0 })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "C\u1EA5p \u0111\u1ED9:" }), (0, u.jsx)("div", { className: "text-emerald-400 font-bold text-sm", children: ["Lv.", a.current?.player?.level || 1] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "T\u1ED5ng s\xE1t th\u01B0\u01A1ng:" }), (0, u.jsx)("div", { className: "text-rose-400 font-bold text-sm", children: (a.current?.player?.totalDamage || 0).toLocaleString() })] })] }), (a.current?.multiplayer?.active || mpMatchResult) && (mpMatchResult?.room?.members || mpRoom?.members) && (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 mb-3 text-left text-xs", children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-bold text-cyan-300 uppercase tracking-wider mb-1.5", children: "B\u1EA3ng S\xE1t Th\u01B0\u01A1ng \u0110\u1ED3ng \u0110\u1ED9i" }), (0, u.jsx)("div", { className: "space-y-1", children: (mpMatchResult?.room?.members || mpRoom?.members || []).map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between font-mono-numbers text-[11px]", children: [(0, u.jsxs)("span", { className: "text-slate-200 truncate", children: [mem.isHost ? "\u{1F451} " : "", mem.name] }), (0, u.jsx)("span", { className: "text-rose-400 font-bold", children: [(mem.totalDamage || 0).toLocaleString(), " DMG"] })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "flex flex-col gap-2", children: [a.current?.multiplayer?.active || mpMatchResult ? (0, u.jsxs)(u.Fragment, { children: [(mpMatchResult?.room?.hostId || mpRoom?.hostId) === mpClient.playerId && (0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
+    w && (w.waitingReward = false, w.waveCleared = false, w.wave >= 27 ? (w.gameState = "VICTORY", w.unlockCitadelIfEligible?.(), w.saveGame(), w.onGameOver?.(true), m("VICTORY")) : w.startWave(w.wave + 1));
+  }, children: ce.isFinalWave ? c === "vi" ? "Chinh Ph\u1EE5c!" : "Victory!" : c === "vi" ? "M\xE0n Ti\u1EBFp Theo \u2192" : "Next Wave \u2192" })] })] }) }), (l === "GAME_OVER" || l === "VICTORY") && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[460px] text-center", children: [(0, u.jsx)("div", { className: "w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center bg-amber-500/20 text-amber-400 text-3xl", children: l === "VICTORY" ? "\u{1F451}" : "\u{1F480}" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white", children: l === "VICTORY" ? ze.victory : ze.defeat }), (0, u.jsx)("p", { className: "text-xs text-slate-400 mt-1", children: l === "VICTORY" ? ze.victorySub : ze.defeatSub }), l === "VICTORY" && isMapUnlocked("blood_citadel", unlockedMaps) && (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-rose-950/75 border border-rose-400/60 text-rose-100 text-xs font-moba font-bold", children: c === "vi" ? "🏰 Bản đồ mới ĐÃ MỞ KHÓA: CỔ THÀNH HUYẾT TÁNG! Chọn trong Sảnh Chính." : "🏰 New Map UNLOCKED: BLOODSOAKED CITADEL! Select it in the Lobby." }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 my-3 grid grid-cols-2 gap-2 text-left text-xs font-mono-numbers", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "M\xE0n ch\u01A1i:" }), (0, u.jsxs)("div", { className: "text-amber-400 font-bold text-sm", children: [a.current?.wave || 1, " / 27"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "Ti\xEAu di\u1EC7t:" }), (0, u.jsx)("div", { className: "text-white font-bold text-sm", children: a.current?.totalKilled || 0 })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "C\u1EA5p \u0111\u1ED9:" }), (0, u.jsx)("div", { className: "text-emerald-400 font-bold text-sm", children: ["Lv.", a.current?.player?.level || 1] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "T\u1ED5ng s\xE1t th\u01B0\u01A1ng:" }), (0, u.jsx)("div", { className: "text-rose-400 font-bold text-sm", children: (a.current?.player?.totalDamage || 0).toLocaleString() })] })] }), (a.current?.multiplayer?.active || mpMatchResult) && (mpMatchResult?.room?.members || mpRoom?.members) && (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 mb-3 text-left text-xs", children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-bold text-cyan-300 uppercase tracking-wider mb-1.5", children: "B\u1EA3ng S\xE1t Th\u01B0\u01A1ng \u0110\u1ED3ng \u0110\u1ED9i" }), (0, u.jsx)("div", { className: "space-y-1", children: (mpMatchResult?.room?.members || mpRoom?.members || []).map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between font-mono-numbers text-[11px]", children: [(0, u.jsxs)("span", { className: "text-slate-200 truncate", children: [mem.isHost ? "\u{1F451} " : "", mem.name] }), (0, u.jsx)("span", { className: "text-rose-400 font-bold", children: [(mem.totalDamage || 0).toLocaleString(), " DMG"] })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "flex flex-col gap-2", children: [a.current?.multiplayer?.active || mpMatchResult ? (0, u.jsxs)(u.Fragment, { children: [(mpMatchResult?.room?.hostId || mpRoom?.hostId) === mpClient.playerId && (0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
     R.playClick();
     mpClient.restartMatch();
   }, children: "\u{1F501} Ch\u01A1i L\u1EA1i (C\xF9ng Ph\xF2ng)" }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs border-cyan-500/50 text-cyan-200", onClick: () => {
@@ -3026,6 +3121,20 @@ function ny() {
     handleLeaveRoom();
   }, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pManualOfferCode, p2pHasServerSignal, p2pAnswerCode, p2pAutoPaired, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, lanUrls, isFullscreen: fsActive, onToggleFullscreen: toggleFullscreen, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
     setMpLobbyOpen(false);
-  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
+  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), citadelLoreModal && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10060 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[520px] border-rose-500/70 bg-gradient-to-b from-[#160b18] to-[#080910]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-rose-300", children: c === "vi" ? citadelLoreModal.subtitleVi : citadelLoreModal.subtitleEn }), (0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white mt-0.5", children: c === "vi" ? citadelLoreModal.titleVi : citadelLoreModal.titleEn })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => {
+    R.playModalClose();
+    setCitadelLoreModal(null);
+    if (citadelLorePausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
+      citadelLorePausedRef.current = false;
+      a.current.gameState = "PLAYING";
+    }
+  }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-2.5 text-xs leading-relaxed text-slate-200", children: [citadelLoreModal.quote && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-400/45 text-amber-200 font-moba font-bold italic", children: citadelLoreModal.quote }), (c === "vi" ? citadelLoreModal.paragraphsVi : citadelLoreModal.paragraphsEn)?.map((para, idx) => (0, u.jsx)("p", { className: "text-slate-300", children: para }, idx)), citadelLoreModal.rewardTextVi && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-emerald-500/12 border border-emerald-400/45 text-emerald-200 font-bold", children: citadelLoreModal.rewardTextVi }), (0, u.jsx)("button", { type: "button", className: "w-full btn-primary py-2.5 text-xs font-black mt-1", onClick: () => {
+    R.playModalClose();
+    setCitadelLoreModal(null);
+    if (citadelLorePausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
+      citadelLorePausedRef.current = false;
+      a.current.gameState = "PLAYING";
+    }
+  }, children: c === "vi" ? "Tiếp Tục Chiến Đấu" : "Continue Fighting" })] })] }) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
 }
 export default ny;

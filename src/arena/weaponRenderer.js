@@ -4133,6 +4133,38 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     return;
   }
 
+  if (h.kind === "citadel_tower_bolt") {
+    let trailGrad = ctx.createLinearGradient(-34, 0, 12, 0);
+    trailGrad.addColorStop(0, "rgba(127, 29, 29, 0)");
+    trailGrad.addColorStop(0.6, isMono ? "rgba(0,0,0,0.45)" : "rgba(220, 38, 38, 0.55)");
+    trailGrad.addColorStop(1, isMono ? "#000000" : "#FCA5A5");
+    ctx.strokeStyle = trailGrad;
+    ctx.lineWidth = 6.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-34, 0);
+    ctx.lineTo(10, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#111111" : "#991B1B";
+    ctx.strokeStyle = isMono ? "#000000" : "#FCA5A5";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.lineTo(-4, -7.5);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(-4, 7.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FEE2E2";
+    ctx.beginPath();
+    ctx.arc(3, 0, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
   ctx.beginPath();
   ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#000000" : h.color;
@@ -5127,6 +5159,46 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     drawFourPointStar(ctx, 0, 0, r * 0.68 * alpha, r * 0.15 * alpha, "#FEF08A", "#FFFFFF");
     ctx.rotate(Math.PI / 4);
     drawFourPointStar(ctx, 0, 0, r * 0.52 * alpha, r * 0.12 * alpha, "#38BDF8", "#FFFFFF");
+    return;
+  }
+
+  if (h.kind === "minh_chain_rect") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    let len = h.length || h.radius || 460;
+    let hw = h.halfWidth || 110;
+    let sweep = Math.min(1, f * 2.1);
+
+    let bgGrad = ctx.createLinearGradient(0, 0, len, 0);
+    bgGrad.addColorStop(0, isMono ? `rgba(255, 255, 255, ${alpha * 0.08})` : `rgba(56, 189, 248, ${alpha * 0.12})`);
+    bgGrad.addColorStop(0.55, isMono ? `rgba(229, 229, 229, ${alpha * 0.24})` : `rgba(250, 204, 21, ${alpha * 0.22})`);
+    bgGrad.addColorStop(1, isMono ? `rgba(255, 255, 255, ${alpha * 0.04})` : `rgba(56, 189, 248, ${alpha * 0.05})`);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, -hw, len * sweep, hw * 2);
+
+    ctx.strokeStyle = isMono ? `rgba(255, 255, 255, ${alpha * 0.85})` : `rgba(253, 224, 71, ${alpha * 0.85})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, -hw, len, hw * 2);
+
+    ctx.strokeStyle = isMono ? `rgba(229, 229, 229, ${alpha * 0.55})` : `rgba(56, 189, 248, ${alpha * 0.65})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12, 10]);
+    for (let i = -2; i <= 2; i++) {
+      let ly = (i / 2) * (hw * 0.8);
+      ctx.beginPath();
+      ctx.moveTo(16, ly);
+      ctx.lineTo(len * sweep, ly);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    let barX = len * sweep;
+    ctx.strokeStyle = isMono ? `rgba(255, 255, 255, ${alpha})` : `rgba(254, 240, 138, ${alpha})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(barX, -hw);
+    ctx.lineTo(barX, hw);
+    ctx.stroke();
     return;
   }
 

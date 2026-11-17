@@ -129,7 +129,12 @@ import {
   MINH_PASSIVE_ICD,
   MINH_C1_MOB_ROOT,
   MINH_C1_BOSS_ROOT,
+  MINH_C1_BOSS27_SLOW,
+  MINH_C1_BOSS27_SLOW_DUR,
+  MINH_C1_WIDTH,
+  MINH_C1_CHAIN_COUNT,
   MINH_C1_HEAL_RATIO,
+  MINH_C1_MAX_HEAL_RATIO,
   MINH_C2_MOB_FREEZE,
   MINH_C2_BOSS_FREEZE,
   MINH_C2_BOSS_SLOW,
@@ -140,7 +145,9 @@ import {
   MINH_C3_BOSS_SEAL,
   MINH_C3_ALLY_HEAL_RATIO,
   MINH_C3_ALLY_SHIELD_RATIO,
+  computeMinhBasicDamage,
   computeMinhC1Damage,
+  computeMinhC1CcHeal,
   computeMinhC2TickDamage,
   computeMinhC3DetonateDamage,
   DUCANH_PASSIVE_DR,
@@ -3863,8 +3870,16 @@ test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunit
   assert.equal(shieldCapRes.nextShield, 650);
   assert.equal(shieldCapRes.added, 50);
 
-  // Minh damage scaling
+  // Minh damage scaling & per-CC heal
+  assert.equal(minh.skills[0].aimType, 'RECT');
+  assert.ok((minh.skills[0] as any).width >= 200);
+  const minhBasicBase = computeMinhBasicDamage({ atk: 22, ap: 45 });
+  assert.ok(minhBasicBase > 0 && minhBasicBase < 77, 'Minh basic attack damage should be reduced below 77 at base stats');
   assert.ok(computeMinhC1Damage({ atk: 22, ap: 45 }) > 0);
+  assert.equal(computeMinhC1CcHeal({ maxHp: 1000, ccCount: 0 }).totalHeal, 0);
+  assert.equal(computeMinhC1CcHeal({ maxHp: 1000, ccCount: 1 }).totalHeal, 30);
+  assert.equal(computeMinhC1CcHeal({ maxHp: 1000, ccCount: 3 }).totalHeal, 90);
+  assert.equal(computeMinhC1CcHeal({ maxHp: 1000, ccCount: 10 }).totalRatio, MINH_C1_MAX_HEAL_RATIO);
   assert.ok(computeMinhC2TickDamage({ atk: 22, ap: 45 }) > 0);
   assert.ok(computeMinhC3DetonateDamage({ atk: 22, ap: 45 }) > computeMinhC1Damage({ atk: 22, ap: 45 }));
 
@@ -3888,9 +3903,14 @@ test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunit
   assert.equal(MINH_PASSIVE_HEAL_RATIO, 0.05);
   assert.equal(MINH_PASSIVE_SHIELD_RATIO, 0.08);
   assert.equal(MINH_PASSIVE_SHIELD_DUR, 4);
-  assert.equal(MINH_C1_MOB_ROOT, 3);
-  assert.equal(MINH_C1_BOSS_ROOT, 1.2);
-  assert.equal(MINH_C1_HEAL_RATIO, 0.04);
+  assert.equal(MINH_C1_MOB_ROOT, 3.5);
+  assert.equal(MINH_C1_BOSS_ROOT, 1.75);
+  assert.equal(MINH_C1_BOSS27_SLOW, 0.75);
+  assert.equal(MINH_C1_BOSS27_SLOW_DUR, 3);
+  assert.equal(MINH_C1_WIDTH, 220);
+  assert.equal(MINH_C1_CHAIN_COUNT, 5);
+  assert.equal(MINH_C1_HEAL_RATIO, 0.03);
+  assert.equal(MINH_C1_MAX_HEAL_RATIO, 0.18);
   assert.equal(MINH_C2_MOB_FREEZE, 3);
   assert.equal(MINH_C2_BOSS_FREEZE, 1);
   assert.equal(MINH_C2_BOSS_SLOW, 0.5);
@@ -3986,6 +4006,13 @@ test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunit
     assert.equal(engine.player.maxHp, 1150);
     engine.player.hp = 600;
     engine.player.shield = 0;
+    // Basic attack damage reduction check
+    engine.player.attackTimer = 0;
+    engine.triggerBasicAttack();
+    const basicOrb = engine.projectiles.find((p: any) => p.kind === 'minh_orb');
+    assert.ok(basicOrb && basicOrb.damage < 77, 'Minh in-engine basic attack damage should be reduced below 77');
+    engine.projectiles = [];
+
     const bossNormal: any = {
       id: 8101, kind: 'boss', bossWave: 12, name: 'Boss12', radius: 42,
       x: engine.player.x + 120, y: engine.player.y,
@@ -3995,28 +4022,33 @@ test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunit
     };
     const boss27: any = {
       id: 8102, kind: 'boss', bossWave: 27, name: 'Boss27', radius: 52,
-      x: engine.player.x + 160, y: engine.player.y,
+      x: engine.player.x + 160, y: engine.player.y - 70,
       hp: 40000, maxHp: 40000, speed: 100, damage: 90,
       facing: Math.PI, stunTimer: 0, frozenTimer: 0, rootTimer: 0, sealTimer: 0, knockupTimer: 0,
       slowFactor: 0, slowTimer: 0, bossCcImmunityTimer: 0, hitFlash: 0, attackCooldown: 1,
     };
     const mobMinh: any = {
       id: 8103, kind: 'minion', name: 'Mob1', radius: 18,
-      x: engine.player.x + 90, y: engine.player.y,
+      x: engine.player.x + 90, y: engine.player.y + 82,
       hp: 2000, maxHp: 2000, speed: 90, damage: 15,
       facing: Math.PI, stunTimer: 0, frozenTimer: 0, rootTimer: 0, sealTimer: 0, knockupTimer: 0,
       slowFactor: 0, slowTimer: 0, bossCcImmunityTimer: 0, hitFlash: 0, attackCooldown: 1,
     };
     engine.enemies = [mobMinh, bossNormal, boss27];
 
-    // Cast Minh C1 -> piercing chains root mob (3s) & non-27 Boss (1.2s), heal Minh + passive shield; Wave 27 Boss immune to root
+    // Cast Minh C1 -> 5 parallel chains in large rectangle hit off-center enemies, root mob 3.5s & non-27 Boss 1.75s, slow Wave 27 Boss 75%, heal scaled by CC count
     engine.castSkill(0, 0, bossNormal.x, bossNormal.y);
+    assert.equal(engine.projectiles.filter((p: any) => p.kind === 'minh_chain').length, MINH_C1_CHAIN_COUNT, 'Minh C1 must launch multiple chains across the rectangle');
+    assert.equal(engine.checkAimHasTarget(0, minh.skills[0].range, 'RECT', (minh.skills[0] as any).width), true, 'RECT aim check must detect enemies inside wide area');
     for (let i = 0; i < 12; i++) engine.updateProjectiles(0.05);
-    assert.ok(mobMinh.rootTimer > 0, 'Minh C1 must root normal monster');
-    assert.ok(bossNormal.rootTimer > 0, 'Minh C1 must root non-27 Boss');
+    assert.ok(mobMinh.rootTimer >= 3.45 && mobMinh.rootTimer <= 3.55, 'Minh C1 must root normal monster for 3.5s');
+    assert.ok(bossNormal.rootTimer >= 1.7 && bossNormal.rootTimer <= 1.8, 'Minh C1 must root non-27 Boss for 1.75s');
     assert.equal(boss27.rootTimer, 0, 'Wave 27 Boss must remain immune to hard CC');
+    assert.ok(boss27.slowFactor >= 0.75 && boss27.slowTimer >= 2.5, 'Wave 27 Boss must suffer 75% slow from Minh C1');
     assert.ok(boss27.hp < 40000, 'Wave 27 Boss must still take damage from Minh C1');
-    assert.ok(engine.player.hp > 600, 'Minh C1 + passive must heal Minh');
+    assert.equal(boss27.hp, 40000 - computeMinhC1Damage({ atk: engine.getEffectiveDamage(), ap: engine.getEffectiveAP() }), 'Each enemy must take Minh C1 damage at most once across parallel chains');
+    const expectedMinhHeal = computeMinhC1CcHeal({ maxHp: engine.player.maxHp, ccCount: 3 }).totalHeal + Math.round(engine.player.maxHp * MINH_PASSIVE_HEAL_RATIO);
+    assert.equal(engine.player.hp, 600 + expectedMinhHeal, 'Minh C1 heal must scale with number of CCd enemies plus passive heal');
     assert.ok(engine.player.shield > 0, 'Minh passive must grant virtual shield on CC');
 
     // When hard CC ends on Boss12, Boss12 enters post-CC immunity window (2.5s)
@@ -4146,6 +4178,7 @@ test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunit
         { kind: 'nhi_flask_boom', x: 240, y: 200, angle: 0, radius: 100, spread: Math.PI * 2, color: '#4ADE80', life: 0.15, maxLife: 0.34 },
         { kind: 'nhi_mist_pulse', x: 240, y: 200, angle: 0, radius: 110, spread: Math.PI * 2, color: '#4ADE80', life: 0.15, maxLife: 0.34 },
         { kind: 'nhi_ult_shock', x: 240, y: 200, angle: 0.2, radius: 78, spread: Math.PI * 2, color: '#E879F9', life: 0.15, maxLife: 0.34 },
+        { kind: 'minh_chain_rect', x: 280, y: 200, angle: 0.1, radius: 460, length: 460, halfWidth: 110, spread: 0, color: '#FACC15', accentColor: '#38BDF8', life: 0.18, maxLife: 0.46 },
         { kind: 'minh_seal_boom', x: 300, y: 200, angle: 0, radius: 185, spread: Math.PI * 2, color: '#FACC15', life: 0.18, maxLife: 0.4 },
         { kind: 'ducanh_fortress_boom', x: 350, y: 200, angle: 0, radius: 170, spread: Math.PI * 2, color: '#F59E0B', life: 0.16, maxLife: 0.36 },
         { kind: 'ducanh_meteor_boom', x: 380, y: 200, angle: 0, radius: 185, spread: Math.PI * 2, color: '#F97316', life: 0.2, maxLife: 0.42 },

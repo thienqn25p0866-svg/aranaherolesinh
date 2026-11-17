@@ -1,3 +1,13 @@
+import {
+  type ArenaMapId,
+  type CitadelSecretsProgress,
+  computeUnlockedMaps,
+  createDefaultCitadelSecrets,
+  isMapUnlocked,
+  normalizeArenaMapId,
+  normalizeCitadelSecrets,
+} from "./bloodCitadelMap";
+
 export const PLAYER_PROFILE_STORAGE_KEY = "arena_player_profile_v1";
 export const MP_PLAYER_NAME_STORAGE_KEY = "arena_hero_mp_name";
 export const GAME_SAVE_STORAGE_KEY = "arena_hero_save_v1";
@@ -135,6 +145,10 @@ export interface ProgressSnapshot {
   victories: number;
   dailyCheckInDate: string;
   unlockedTitles: string[];
+  selectedMapId?: ArenaMapId;
+  classicCleared?: boolean;
+  unlockedMaps?: ArenaMapId[];
+  citadelSecrets?: CitadelSecretsProgress;
 }
 
 export function getTodayDateKey(now: Date = new Date()): string {
@@ -382,9 +396,23 @@ export function mergeLocalAndCloudProgress(
   cloud: Partial<ProgressSnapshot> | null | undefined,
   founderUnlocked: boolean
 ): ProgressSnapshot {
+  const localClassicCleared = Boolean(local.classicCleared || (Number(local.highestWave) || 0) >= 27);
   if (!cloud) {
     const safeHero = local.selectedHeroId === "thien" && !founderUnlocked ? "eohyen" : local.selectedHeroId;
-    return { ...local, selectedHeroId: safeHero || "eohyen" };
+    const unlockedMaps = computeUnlockedMaps({
+      highestWaveCleared: local.highestWave,
+      classicCleared: localClassicCleared,
+      storedUnlocked: local.unlockedMaps,
+    });
+    const rawMap = normalizeArenaMapId(local.selectedMapId);
+    return {
+      ...local,
+      selectedHeroId: safeHero || "eohyen",
+      selectedMapId: isMapUnlocked(rawMap, unlockedMaps) ? rawMap : "classic",
+      classicCleared: localClassicCleared,
+      unlockedMaps,
+      citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
+    };
   }
   const cloudWave = Math.max(0, Math.min(27, Math.floor(Number(cloud.highestWave) || 0)));
   const localWave = Math.max(0, Math.min(27, Math.floor(Number(local.highestWave) || 0)));
@@ -403,6 +431,24 @@ export function mergeLocalAndCloudProgress(
       : String(local.dailyCheckInDate || "");
 
   const unlockedTitles = computeUnlockedTitles(highestWave, founderUnlocked);
+  const classicCleared = Boolean(localClassicCleared || cloud.classicCleared || highestWave >= 27);
+  const unlockedMaps = computeUnlockedMaps({
+    highestWaveCleared: highestWave,
+    classicCleared,
+    storedUnlocked: [...(local.unlockedMaps || []), ...(cloud.unlockedMaps || [])],
+  });
+  const candidateMap = normalizeArenaMapId(preferCloud ? cloud.selectedMapId : local.selectedMapId);
+  const selectedMapId = isMapUnlocked(candidateMap, unlockedMaps) ? candidateMap : "classic";
+
+  const localSec = normalizeCitadelSecrets(local.citadelSecrets);
+  const cloudSec = normalizeCitadelSecrets(cloud.citadelSecrets);
+  const combinedUnlocked = Boolean(localSec.combinedUnlocked || cloudSec.combinedUnlocked);
+  const citadelSecrets = normalizeCitadelSecrets({
+    tinClue: Boolean(localSec.tinClue || cloudSec.tinClue || combinedUnlocked),
+    baoClue: Boolean(localSec.baoClue || cloudSec.baoClue || combinedUnlocked),
+    combinedUnlocked,
+    inspectedNodes: Array.from(new Set([...localSec.inspectedNodes, ...cloudSec.inspectedNodes])),
+  });
 
   return {
     coins: Math.max(0, Math.min(10000000, Math.floor(Math.max(Number(local.coins) || 0, Number(cloud.coins) || 0)))),
@@ -416,6 +462,10 @@ export function mergeLocalAndCloudProgress(
     victories: Math.max(0, Math.min(1000000, Math.floor(Math.max(Number(local.victories) || 0, Number(cloud.victories) || 0)))),
     dailyCheckInDate,
     unlockedTitles,
+    selectedMapId,
+    classicCleared,
+    unlockedMaps,
+    citadelSecrets,
   };
 }
 
@@ -435,6 +485,15 @@ export function parseSavePackageJson(
     if (selectedHeroId === "thien" && !founderUnlocked) {
       selectedHeroId = "eohyen";
     }
+    const classicCleared = Boolean(p.classicCleared || highestWave >= 27);
+    const unlockedMaps = computeUnlockedMaps({
+      highestWaveCleared: highestWave,
+      classicCleared,
+      storedUnlocked: p.unlockedMaps,
+    });
+    const rawMap = normalizeArenaMapId(p.selectedMapId);
+    const selectedMapId = isMapUnlocked(rawMap, unlockedMaps) ? rawMap : "classic";
+    const citadelSecrets = p.citadelSecrets ? normalizeCitadelSecrets(p.citadelSecrets) : createDefaultCitadelSecrets();
     const progress: ProgressSnapshot = {
       coins: Math.max(0, Math.min(10000000, Math.floor(Number(p.coins) || 100))),
       currentWave: Math.max(1, Math.min(27, Math.floor(Number(p.currentWave) || 1))),
@@ -451,6 +510,10 @@ export function parseSavePackageJson(
       victories: Math.max(0, Math.min(1000000, Math.floor(Number(p.victories) || 0))),
       dailyCheckInDate: typeof p.dailyCheckInDate === "string" ? p.dailyCheckInDate.slice(0, 16) : "",
       unlockedTitles: computeUnlockedTitles(highestWave, founderUnlocked),
+      selectedMapId,
+      classicCleared,
+      unlockedMaps,
+      citadelSecrets,
     };
     return {
       ok: true,
