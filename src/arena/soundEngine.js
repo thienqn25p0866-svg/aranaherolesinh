@@ -1037,6 +1037,10 @@ class SoundEngine {
     this.playLayerTone({ startFreq: 1318, endFreq: 1760, duration: 0.14, type: "sine", vol: 0.16, delay: 0.05, sendAmbiance: true });
   }
 
+  playCoinPickup() {
+    this.playCoin();
+  }
+
   playBuy() {
     this.playSubPunch(180, 72, 0.09, 0.15);
     this.playChord([523.25, 659.25, 1046.5], 0.18, { type: "triangle", vol: 0.13, stagger: 0.04, sendAmbiance: true });

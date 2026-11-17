@@ -834,12 +834,12 @@ export default function PlayerAccountModal({
                 </div>
 
                 <div className="space-y-2">
-                  {!googleUser && !authError && typeof window !== "undefined" && window.location.protocol === "file:" && (
-                    <div className="rounded-xl bg-amber-950/55 border border-amber-400/50 px-3 py-2.5 text-xs text-amber-100 leading-relaxed space-y-2">
+                  {!googleUser && !authError && typeof window !== "undefined" && !/^https?:$/i.test(window.location.protocol || "") && (
+                    <div className="rounded-xl bg-cyan-950/45 border border-cyan-400/45 px-3 py-2.5 text-xs text-cyan-100 leading-relaxed space-y-2">
                       <div>
                         {isVi
-                          ? "Bạn đang mở bản HTML tải về (file://). Trình duyệt không hỗ trợ đăng nhập Google trực tiếp trên file:// — hãy mở bản Web HTTPS để đăng nhập & đồng bộ Cloud."
-                          : "You are running a local file:// HTML copy. Open the HTTPS web version to sign in with Google and sync Cloud Save."}
+                          ? "Bạn đang mở bản HTML cục bộ. Bấm 'ĐĂNG NHẬP BẰNG GOOGLE' bên dưới để mở cửa sổ xác thực HTTPS và đồng bộ Cloud Save ngay trên bản này, hoặc mở trực tiếp bản Web HTTPS:"
+                          : "You are running a local HTML copy. Click 'SIGN IN WITH GOOGLE' below to open the secure HTTPS auth bridge and sync Cloud Save, or open the HTTPS web version:"}
                       </div>
                       <a
                         href={resolvePlayableWebUrls()[0] || FALLBACK_WEB_PLAY_URL}

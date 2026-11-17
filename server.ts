@@ -1483,6 +1483,105 @@ async function createApp() {
     res.json({ ok: true, rooms: rooms.size, sessions: sessions.size });
   });
 
+  const authBridgeResults = new Map<
+    string,
+    {
+      user: {
+        uid: string;
+        email: string | null;
+        emailVerified: boolean;
+        displayName: string | null;
+        photoURL: string | null;
+      };
+      idToken: string;
+      expiresAt: number;
+      createdAt: number;
+    }
+  >();
+
+  app.post("/api/auth-bridge/complete", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const now = Date.now();
+    for (const [k, v] of authBridgeResults.entries()) {
+      if (now - v.createdAt > 180_000) authBridgeResults.delete(k);
+    }
+
+    const sid = typeof req.body?.sid === "string" ? req.body.sid.trim() : "";
+    const idToken = typeof req.body?.idToken === "string" ? req.body.idToken.trim() : "";
+    const rawUser = req.body?.user;
+    if (!/^[a-zA-Z0-9_-]{12,64}$/.test(sid) || !idToken || !rawUser?.uid) {
+      res.status(400).json({ ok: false, message: "Thiếu dữ liệu xác thực cầu nối." });
+      return;
+    }
+
+    const apiKey = getFirebaseApiKey();
+    if (apiKey) {
+      try {
+        const lookupRes = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          }
+        );
+        if (!lookupRes.ok) {
+          res.status(401).json({ ok: false, message: "Firebase ID Token không hợp lệ." });
+          return;
+        }
+        const lookupData = await lookupRes.json();
+        const verifiedUser = Array.isArray(lookupData?.users) ? lookupData.users[0] : null;
+        if (!verifiedUser || verifiedUser.localId !== String(rawUser.uid)) {
+          res.status(401).json({ ok: false, message: "Thông tin tài khoản không khớp token." });
+          return;
+        }
+      } catch {
+        res.status(502).json({ ok: false, message: "Không thể xác minh token Firebase." });
+        return;
+      }
+    }
+
+    authBridgeResults.set(sid, {
+      user: {
+        uid: String(rawUser.uid),
+        email: rawUser.email ? String(rawUser.email) : null,
+        emailVerified: Boolean(rawUser.emailVerified),
+        displayName: rawUser.displayName ? String(rawUser.displayName) : null,
+        photoURL: rawUser.photoURL ? String(rawUser.photoURL) : null,
+      },
+      idToken,
+      expiresAt: typeof req.body?.expiresAt === "number" ? req.body.expiresAt : now + 50 * 60 * 1000,
+      createdAt: now,
+    });
+    res.json({ ok: true });
+  });
+
+  app.get("/api/auth-bridge/poll", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const sid = typeof req.query.sid === "string" ? req.query.sid.trim() : "";
+    if (!/^[a-zA-Z0-9_-]{12,64}$/.test(sid)) {
+      res.status(400).json({ ok: false, pending: false });
+      return;
+    }
+    const now = Date.now();
+    for (const [k, v] of authBridgeResults.entries()) {
+      if (now - v.createdAt > 180_000) authBridgeResults.delete(k);
+    }
+    const entry = authBridgeResults.get(sid);
+    if (!entry) {
+      res.json({ ok: true, pending: true });
+      return;
+    }
+    authBridgeResults.delete(sid);
+    res.json({
+      ok: true,
+      pending: false,
+      user: entry.user,
+      idToken: entry.idToken,
+      expiresAt: entry.expiresAt,
+    });
+  });
+
   app.get("/api/founder/status", (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     const token = extractFounderTokenFromReq(req);
@@ -2102,8 +2201,7 @@ async function createApp() {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: disableHmr ? false : { server, path: "/__vite_ws" },
-        ...(disableHmr ? { ws: false, watch: null } : {}),
+        ...(disableHmr ? { hmr: false, ws: false, watch: null } : {}),
       },
       plugins: disableHmr
         ? [
@@ -2140,6 +2238,10 @@ async function createApp() {
       res.sendFile(path.join(distDir, "index.html"));
     });
   }
+
+  server.on("error", (err) => {
+    console.error("HTTP server error:", err);
+  });
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Arena Hero 11.8 server listening on http://0.0.0.0:${PORT}`);

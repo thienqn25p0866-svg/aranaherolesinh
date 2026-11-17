@@ -12,13 +12,19 @@ export default function AuthErrorBanner({
 }) {
   if (!authError) return null;
   const isVi = lang === "vi";
+  const currentProtocol =
+    authDetails?.protocol ||
+    (typeof window !== "undefined" ? window.location.protocol || "" : "");
+  const isBridgeUnavailable = authDetails?.code === "auth/bridge-unavailable";
+  const isBridgeRetry = authDetails?.code === "auth/bridge-ready-retry";
+  const isFileProtocol = Boolean(currentProtocol && !/^https?:$/i.test(currentProtocol));
   const isUnauthorizedDomain =
-    authDetails?.code === "auth/unauthorized-domain" ||
-    authError.includes("Authorized Domains") ||
-    authError.includes("file://");
-  const isFileProtocol =
-    authDetails?.protocol === "file:" ||
-    (typeof window !== "undefined" && window.location.protocol === "file:");
+    !isBridgeUnavailable &&
+    !isBridgeRetry &&
+    (authDetails?.code === "auth/unauthorized-domain" ||
+      authError.includes("Authorized Domains") ||
+      authError.includes("file://") ||
+      isFileProtocol);
   const isStaleConfig =
     Boolean(authDetails?.isStaleConfig) || authError.includes("cấu hình");
   const currentHost =
@@ -41,7 +47,9 @@ export default function AuthErrorBanner({
       ? `https://console.firebase.google.com/project/${encodeURIComponent(projectId)}/authentication/settings`
       : "https://console.firebase.google.com/");
 
-  const boxClass = isFileProtocol
+  const boxClass = isBridgeRetry
+    ? "bg-emerald-950/65 border-emerald-400/65 text-emerald-100"
+    : isFileProtocol
     ? "bg-amber-950/65 border-amber-400/65 text-amber-100"
     : "bg-rose-950/75 border-rose-500/65 text-rose-100";
 
@@ -54,7 +62,11 @@ export default function AuthErrorBanner({
       <div className="flex items-start justify-between gap-2">
         <div
           className={`font-semibold break-words select-text ${
-            isFileProtocol ? "text-amber-200" : "text-rose-200"
+            isBridgeRetry
+              ? "text-emerald-200"
+              : isFileProtocol
+              ? "text-amber-200"
+              : "text-rose-200"
           }`}
         >
           {authError}
@@ -83,12 +95,47 @@ export default function AuthErrorBanner({
         </div>
       )}
 
-      {isFileProtocol && !isStaleConfig && (
+      {isBridgeUnavailable && !isStaleConfig && (
+        <div className="rounded-lg bg-slate-950/85 border border-amber-400/35 p-2.5 space-y-2 text-[11px] text-slate-200">
+          <div className="font-semibold text-amber-200">
+            {isVi
+              ? "Cách bật Đăng nhập Google cho file HTML tải về:"
+              : "How to enable Google Sign-In for downloaded HTML files:"}
+          </div>
+          <ul className="list-disc pl-4 space-y-1 text-slate-200">
+            <li>
+              {isVi
+                ? "Bước 1: Trên AI Studio, bấm Share / Publish để kích hoạt đường dẫn Web công khai (ais-pre-...)."
+                : "Step 1: In AI Studio, click Share / Publish to activate the public HTTPS Web URL (ais-pre-...)."}
+            </li>
+            <li>
+              {isVi
+                ? "Bước 2: Sau khi đã bật Share/Publish, bấm lại nút Đăng nhập Google trong file HTML (hoặc tải lại bản HTML mới)."
+                : "Step 2: Once published, tap Google Sign-In again in this HTML file (or re-download the HTML file)."}
+            </li>
+            <li>
+              {isVi
+                ? "Hoặc chơi & đăng nhập Google trực tiếp ngay trên tab Web Preview của AI Studio, rồi dùng nút Xuất/Nhập (.json) để đồng bộ file cục bộ."
+                : "Or sign in directly inside AI Studio's Web Preview tab and use Export/Import (.json) to sync progress with your local file."}
+            </li>
+          </ul>
+        </div>
+      )}
+
+      {isBridgeRetry && !isStaleConfig && (
+        <div className="rounded-lg bg-slate-950/85 border border-emerald-400/35 p-2.5 text-[11px] text-emerald-100">
+          {isVi
+            ? "Kết nối HTTPS đã sẵn sàng. Hãy bấm lại nút 'ĐĂNG NHẬP BẰNG GOOGLE' ngay phía trên để mở cửa sổ chọn tài khoản Google."
+            : "HTTPS auth bridge is ready. Click 'SIGN IN WITH GOOGLE' above once more to open the Google account popup."}
+        </div>
+      )}
+
+      {isFileProtocol && !isStaleConfig && !isBridgeUnavailable && !isBridgeRetry && (
         <div className="rounded-lg bg-slate-950/85 border border-amber-400/35 p-2.5 space-y-2 text-[11px] text-slate-200">
           <div className="text-slate-200 leading-relaxed">
             {isVi
-              ? "Bản HTML tải về (file://) lưu tiến trình offline ngay trên máy. Để đăng nhập Google và đồng bộ Cloud, hãy mở bản Web HTTPS chính thức:"
-              : "Downloaded HTML files (file://) save locally. To sign in with Google and sync Cloud Save, open the official HTTPS web version:"}
+              ? "Khi mở file HTML cục bộ (file://), hãy cho phép trình duyệt mở cửa sổ Pop-up xác thực Google hoặc mở trực tiếp bản Web HTTPS chính thức:"
+              : "When opening a local HTML file (file://), allow the Google auth Pop-up or open the official HTTPS web version:"}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <a

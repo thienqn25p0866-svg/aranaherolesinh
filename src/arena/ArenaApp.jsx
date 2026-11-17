@@ -1183,6 +1183,7 @@ function ny() {
     playerProfileRef = (0, ie.useRef)(playerProfile),
     lastTrackedMatchKillsRef = (0, ie.useRef)(0),
     syncedBootUidRef = (0, ie.useRef)(null),
+    cloudPullInFlightRef = (0, ie.useRef)(null),
     G = (0, ie.useCallback)((w, durationMs = 2400) => {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
@@ -1922,9 +1923,25 @@ function ny() {
   let pullAndMergeCloudSave = (0, ie.useCallback)(
     async (userObj, explicitAction = false) => {
       if (!userObj?.uid) return;
+      if (cloudPullInFlightRef.current && cloudPullInFlightRef.current.uid === userObj.uid) {
+        try {
+          await cloudPullInFlightRef.current.promise;
+          if (explicitAction) {
+            R.playHeroLockIn();
+            G("Đã kết nối Google & đồng bộ tiến trình thành công!");
+          }
+        } catch {
+          if (explicitAction) {
+            R.playError();
+            G("Đã đăng nhập Google! Dữ liệu trình duyệt vẫn được giữ nguyên.");
+          }
+        }
+        return;
+      }
       setAccountAuthError("");
       setAccountSyncBusy(true);
-      try {
+      const run = (async () => {
+        try {
         const [privRes, pubRes] = await Promise.allSettled([
           fetchPrivatePlayerSave(userObj.uid),
           fetchOwnPublicProfile(userObj.uid),
@@ -1975,15 +1992,21 @@ function ny() {
           R.playHeroLockIn();
           G("Đã kết nối Google & đồng bộ tiến trình thành công!");
         }
-      } catch (err) {
-        console.warn("Pull/merge cloud error:", err);
-        if (explicitAction) {
-          R.playError();
-          G("Đã đăng nhập Google! Dữ liệu trình duyệt vẫn được giữ nguyên.");
+        } catch (err) {
+          console.warn("Pull/merge cloud error:", err);
+          if (explicitAction) {
+            R.playError();
+            G("Đã đăng nhập Google! Dữ liệu trình duyệt vẫn được giữ nguyên.");
+          }
+        } finally {
+          if (cloudPullInFlightRef.current?.uid === userObj.uid) {
+            cloudPullInFlightRef.current = null;
+          }
+          setAccountSyncBusy(false);
         }
-      } finally {
-        setAccountSyncBusy(false);
-      }
+      })();
+      cloudPullInFlightRef.current = { uid: userObj.uid, promise: run };
+      await run;
     },
     [G, applyProgressSnapshotToEngine, buildProgressSnapshot, syncCloudProgress]
   );
@@ -2596,7 +2619,7 @@ function ny() {
       setShareGuideOpen(true);
       return;
     }
-    if (typeof window < "u" && window.location.protocol === "file:") {
+    if (typeof window < "u" && !/^https?:$/i.test(window.location.protocol || "")) {
       G("Bạn đang mở bản HTML offline hoàn chỉnh!");
       return;
     }
@@ -2621,6 +2644,16 @@ function ny() {
               const liveOrigin = typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol) ? window.location.origin : "";
               if (liveOrigin) {
                 const isLanWiFi = /^https?:\/\/(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|[a-zA-Z0-9-]+\.local)(?::\d+)?$/i.test(liveOrigin);
+                const authUrls = [];
+                if (/^https:\/\/ais-dev-([^.]+)\.(.+)$/i.test(liveOrigin)) {
+                  authUrls.push(liveOrigin.replace(/^https:\/\/ais-dev-/i, "https://ais-pre-"));
+                } else if (/^https:\/\//i.test(liveOrigin) && !isLanWiFi && !isPrivateOrDevOrigin(liveOrigin)) {
+                  authUrls.push(liveOrigin);
+                }
+                if (authUrls.length > 0 && !j.includes("window.__ARENA_AUTH_URL__")) {
+                  const authInjected = `<script>window.__ARENA_AUTH_URL__=${JSON.stringify(authUrls[0])};window.__ARENA_AUTH_URLS__=${JSON.stringify(authUrls)};<\/script>`;
+                  j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${authInjected}\n</head>`) : `${authInjected}\n${j}`;
+                }
                 if (!isPrivateOrDevOrigin(liveOrigin) && !j.includes("window.__ARENA_API_URL__")) {
                   const injected = `<script>window.__ARENA_API_URL__=${JSON.stringify(liveOrigin)};<\/script>`;
                   j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
