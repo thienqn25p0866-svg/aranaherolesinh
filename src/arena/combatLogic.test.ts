@@ -99,6 +99,25 @@ import {
   computeThienC2Detonation,
   computeThienC4JudgementDamage,
   computeThienDamageBreakdownTotal,
+  normalizeQualityMode,
+  normalizeFpsCapMode,
+  detectDeviceHardwareTier,
+  resolvePerformanceProfile,
+  stepAdaptiveQualityGovernor,
+  computeWorldViewBounds,
+  isCircleInViewBounds,
+  isSegmentInViewBounds,
+  swapRemoveAt,
+  computeAdaptiveSyncIntervals,
+  DUNG_BASE_CRIT,
+  DUNG_MAX_CRIT,
+  DUNG_BASE_CRIT_DMG_RATIO,
+  DUNG_BASE_LIFESTEAL,
+  DUNG_C1_COOLDOWN,
+  DUNG_C2_COOLDOWN,
+  DUNG_C3_COOLDOWN,
+  computeDungCritProfile,
+  computeDungHealValues,
 } from './combatLogic.ts';
 import {
   DAILY_CHECKIN_REWARD,
@@ -3162,9 +3181,570 @@ test('GameEngine integration for Thanh & Nhi: echo mimicry after 0.8s, swallow, 
   }
 });
 
+test('Performance helpers: hardware detection, adaptive profile, governor, frustum culling, swapRemoveAt & network sync intervals', () => {
+  assert.equal(normalizeQualityMode('HIGH'), 'auto');
+  assert.equal(normalizeQualityMode('saver'), 'saver');
+  assert.equal(normalizeQualityMode('balanced'), 'balanced');
+  assert.equal(normalizeFpsCapMode('45'), '45');
+  assert.equal(normalizeFpsCapMode('120'), 'auto');
 
+  const lowEndMobile = detectDeviceHardwareTier({
+    userAgent: 'Mozilla/5.0 (Linux; Android 11; Mobile) Zalo',
+    cores: 4,
+    memoryGb: 2,
+    devicePixelRatio: 3,
+    reducedMotion: true,
+  });
+  assert.equal(lowEndMobile.tier, 'saver');
+  assert.equal(lowEndMobile.isMobile, true);
+  assert.equal(lowEndMobile.isInAppBrowser, true);
+  assert.equal(lowEndMobile.reducedMotion, true);
 
+  const strongDesktop = detectDeviceHardwareTier({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    cores: 12,
+    memoryGb: 16,
+    devicePixelRatio: 1,
+    reducedMotion: false,
+  });
+  assert.equal(strongDesktop.tier, 'high');
+  assert.equal(strongDesktop.isMobile, false);
 
+  const saverProf = resolvePerformanceProfile({
+    qualityMode: 'auto',
+    fpsCapMode: 'auto',
+    hardware: lowEndMobile,
+    adaptiveStep: 0,
+    hidden: false,
+  });
+  assert.equal(saverProf.effectiveTier, 'saver');
+  assert.equal(saverProf.enableRadialGlows, false);
+  assert.equal(saverProf.audioLowPower, true);
+  assert.ok(saverProf.maxDpr <= 1.25);
 
+  const highProf = resolvePerformanceProfile({
+    qualityMode: 'high',
+    fpsCapMode: '45',
+    hardware: lowEndMobile,
+    adaptiveStep: 2,
+    hidden: false,
+  });
+  assert.equal(highProf.effectiveTier, 'high');
+  assert.equal(highProf.targetFps, 45);
+  assert.equal(highProf.enableRadialGlows, true);
 
+  const hiddenProf = resolvePerformanceProfile({
+    qualityMode: 'high',
+    fpsCapMode: '60',
+    hardware: strongDesktop,
+    adaptiveStep: 0,
+    hidden: true,
+  });
+  assert.equal(hiddenProf.targetFps, 10);
 
+  const down = stepAdaptiveQualityGovernor({
+    frameTimeEmaMs: 26,
+    currentStep: 0,
+    cooldownSec: 0,
+    dtSec: 0.5,
+  });
+  assert.equal(down.nextStep, 1);
+  assert.equal(down.changed, true);
+
+  const inCooldown = stepAdaptiveQualityGovernor({
+    frameTimeEmaMs: 26,
+    currentStep: 1,
+    cooldownSec: down.nextCooldownSec,
+    dtSec: 0.5,
+  });
+  assert.equal(inCooldown.nextStep, 1);
+  assert.equal(inCooldown.changed, false);
+
+  const up = stepAdaptiveQualityGovernor({
+    frameTimeEmaMs: 10,
+    currentStep: 1,
+    cooldownSec: 0,
+    dtSec: 0.5,
+  });
+  assert.equal(up.nextStep, 0);
+  assert.equal(up.changed, true);
+
+  const bounds = computeWorldViewBounds(1000, 1000, { visibleWorldW: 600, visibleWorldH: 400 }, 50);
+  assert.deepEqual(bounds, { minX: 650, maxX: 1350, minY: 750, maxY: 1250 });
+  assert.equal(isCircleInViewBounds(1000, 1000, 20, bounds), true);
+  assert.equal(isCircleInViewBounds(200, 200, 20, bounds), false);
+  assert.equal(isSegmentInViewBounds(700, 700, 1300, 1300, 10, bounds), true);
+  assert.equal(isSegmentInViewBounds(100, 100, 300, 300, 10, bounds), false);
+
+  const arr = ['a', 'b', 'c', 'd'];
+  swapRemoveAt(arr, 1);
+  assert.deepEqual(arr, ['a', 'd', 'c']);
+  swapRemoveAt(arr, 2);
+  assert.deepEqual(arr, ['a', 'd']);
+  swapRemoveAt(arr, 99);
+  assert.deepEqual(arr, ['a', 'd']);
+
+  const fastNet = computeAdaptiveSyncIntervals({ transportMode: 'p2p_host', isRelayMode: false, isActing: true, rttMs: 30, networkEffectiveType: '4g' });
+  const slowNet = computeAdaptiveSyncIntervals({ transportMode: 'p2p_host', isRelayMode: false, isActing: true, rttMs: 320, networkEffectiveType: '3g' });
+  const relayNet = computeAdaptiveSyncIntervals({ transportMode: 'ws', isRelayMode: true, isActing: false, rttMs: 90 });
+  assert.ok(slowNet.playerInterval > fastNet.playerInterval);
+  assert.ok(slowNet.worldInterval > fastNet.worldInterval);
+  assert.ok(relayNet.playerInterval > fastNet.playerInterval);
+});
+
+test('GameEngine performance integration: resizeCanvas DPR/dimension clamping, saver budget, culling & render', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const store = new Map<string, string>();
+  let radialCalls = 0;
+  const ctxStub: any = {
+    canvas: { width: 1000, height: 1800 },
+    save() {},
+    restore() {},
+    translate() {},
+    rotate() {},
+    scale() {},
+    beginPath() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    quadraticCurveTo() {},
+    bezierCurveTo() {},
+    arc() {},
+    ellipse() {},
+    rect() {},
+    roundRect() {},
+    fillRect() {},
+    strokeRect() {},
+    clearRect() {},
+    fill() {},
+    stroke() {},
+    clip() {},
+    setTransform() {},
+    setLineDash() {},
+    fillText() {},
+    measureText: (t: string) => ({ width: (t || '').length * 7 }),
+    createRadialGradient: () => { radialCalls++; return { addColorStop() {} }; },
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 900,
+    innerHeight: 1700,
+    devicePixelRatio: 3,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const { Mi } = await import('./gameData.js');
+    const { GameEngine } = await import('./GameEngine.js');
+
+    const canvasStub: any = {
+      width: 0,
+      height: 0,
+      getBoundingClientRect: () => ({ width: 900, height: 1700 }),
+      getContext: () => ctxStub,
+    };
+
+    const engine: any = new GameEngine(canvasStub);
+    engine.applyPerformanceSettings({ qualityMode: 'saver', fpsCapMode: '30' });
+    const prof = engine.getPerformanceProfile(true);
+    assert.equal(prof.effectiveTier, 'saver');
+    assert.equal(prof.targetFps, 30);
+    assert.equal(prof.enableRadialGlows, false);
+    assert.ok(canvasStub.width <= prof.maxCanvasDim && canvasStub.height <= prof.maxCanvasDim);
+    assert.ok(engine.currentDpr <= prof.maxDpr);
+
+    const eohyen = Mi.find((h: any) => h.id === 'eohyen') || Mi[0];
+    engine.startNewGame(eohyen);
+    for (let i = 0; i < 200; i++) engine.spawnParticles(engine.player.x, engine.player.y, '#38BDF8', 12, 40, 120, 3, 0.4);
+    assert.ok(engine.particles.length <= prof.maxParticles);
+
+    for (let i = 0; i < 80; i++) engine.addFloatingText(engine.player.x, engine.player.y, `-${i}`, '#FFF', 14);
+    assert.ok(engine.floatingTexts.length <= prof.maxFloatingTexts);
+
+    engine.lavaPools.push({ x: engine.player.x, y: engine.player.y, radius: 90, duration: 4, timer: 0 });
+    engine.tinCrystals.push({ x: engine.player.x + 40, y: engine.player.y, radius: 44, life: 0, maxLife: 6, pulse: 0 });
+    engine.enemies.push({ id: 9999, kind: 'minion', x: 50, y: 50, radius: 16, hp: 100, maxHp: 100, speed: 50, damage: 5 });
+
+    radialCalls = 0;
+    engine.updateVFX(0.05);
+    engine.render();
+    const saverGradientCalls = radialCalls;
+
+    engine.applyPerformanceSettings({ qualityMode: 'high', fpsCapMode: '60' });
+    radialCalls = 0;
+    engine.render();
+    const highGradientCalls = radialCalls;
+
+    assert.ok(
+      highGradientCalls >= saverGradientCalls + 3,
+      `Expected high quality to use >=3 more radial gradients (lava + crystal + eohyen aura) than saver mode (${highGradientCalls} vs ${saverGradientCalls})`
+    );
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Dung yeu SaNy buff: boosted base stats, strong sustain, high crit & crit dmg, reduced cooldowns, and GameEngine integration', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+
+  const dung = Mi.find((h: any) => h.id === 'dung');
+  assert.ok(dung);
+  assert.equal(dung.stats.hp, 1280);
+  assert.equal(dung.stats.damage, 46);
+  assert.equal(dung.stats.speed, 116);
+  assert.equal(dung.stats.attackInterval, 0.50);
+  assert.equal(dung.baseCrit, DUNG_BASE_CRIT);
+  assert.equal(dung.maxCrit, DUNG_MAX_CRIT);
+  assert.equal(dung.critDmgRatio, DUNG_BASE_CRIT_DMG_RATIO);
+  assert.equal(DUNG_BASE_LIFESTEAL, 0.12);
+  assert.deepEqual(
+    dung.skills.map((s: any) => s.cooldown),
+    [DUNG_C1_COOLDOWN, DUNG_C2_COOLDOWN, DUNG_C3_COOLDOWN],
+  );
+  assert.deepEqual(dung.skills.map((s: any) => s.cooldown), [4.2, 10.5, 21]);
+
+  const baseCritProfile = computeDungCritProfile({
+    baseAndGearCrit: DUNG_BASE_CRIT,
+    berserkActive: false,
+    c3Active: false,
+  });
+  assert.equal(baseCritProfile.critChance, 0.28);
+  assert.equal(baseCritProfile.critDmgRatio, 2.05);
+
+  const fullBuffCritProfile = computeDungCritProfile({
+    baseAndGearCrit: DUNG_BASE_CRIT,
+    berserkActive: true,
+    c3Active: true,
+  });
+  assert.ok(Math.abs(fullBuffCritProfile.critChance - 0.56) < 1e-6);
+  assert.ok(Math.abs(fullBuffCritProfile.critDmgRatio - 2.60) < 1e-6);
+
+  const cappedGearProfile = computeDungCritProfile({
+    baseAndGearCrit: 0.90,
+    berserkActive: false,
+    c3Active: false,
+  });
+  assert.equal(cappedGearProfile.critChance, 0.80);
+
+  const cappedBuffedGearProfile = computeDungCritProfile({
+    baseAndGearCrit: 0.90,
+    berserkActive: true,
+    c3Active: true,
+  });
+  assert.equal(cappedBuffedGearProfile.critChance, 0.95);
+
+  const healsNormal = computeDungHealValues({ maxHp: 1280, c3Active: false });
+  const healsC3 = computeDungHealValues({ maxHp: 1280, c3Active: true });
+  assert.equal(healsNormal.passiveHeal, Math.round(85 + 1280 * 0.045));
+  assert.equal(healsC3.passiveHeal, Math.round(260 + 1280 * 0.065));
+  assert.equal(healsNormal.c1HitHeal, Math.round(45 + 1280 * 0.03));
+  assert.equal(healsNormal.c2CastHeal, Math.round(80 + 1280 * 0.06));
+  assert.equal(healsC3.c2HitHeal, healsNormal.c2HitHeal * 2);
+  assert.equal(healsNormal.c3CastHeal, Math.round(240 + 1280 * 0.14));
+  assert.equal(healsNormal.c3HitBonusHeal, Math.round(100 + 1280 * 0.04));
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.startNewGame(dung);
+
+    // Base crit includes DUNG_BASE_CRIT even with empty gear
+    const baseGearStats = engine.getHeroGearStats('dung');
+    assert.ok(Math.abs(baseGearStats.crit - DUNG_BASE_CRIT) < 1e-6);
+    assert.equal(engine.getDungEffectiveCrit().critChance, 0.28);
+    assert.equal(engine.getDungEffectiveCrit().critDmgRatio, 2.05);
+
+    const baseAtkInterval = engine.getEffectiveAttackInterval();
+
+    // Test C2 cast heal, reduced cooldown (10.5s), berserkTimer, and crit boost
+    engine.player.hp = Math.round(engine.player.maxHp * 0.4);
+    const hpBeforeC2 = engine.player.hp;
+    engine.castSkill(1, 0);
+    assert.equal(engine.player.cooldowns[1], 10.5);
+    assert.equal(engine.player.berserkTimer, 6.5);
+    assert.ok(engine.player.hp > hpBeforeC2, 'C2 cast must heal immediately');
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critChance - 0.38) < 1e-6);
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critDmgRatio - 2.25) < 1e-6);
+
+    // Spawn an enemy within C3 radius and test C3 cast sustain, shield, cooldown (21s), crit, and AS boost
+    engine.enemies.push({
+      id: 7777,
+      kind: 'minion',
+      x: engine.player.x + 50,
+      y: engine.player.y,
+      radius: 18,
+      hp: 2000,
+      maxHp: 2000,
+      speed: 0,
+      damage: 0,
+      stunTimer: 0,
+      slowTimer: 0,
+    });
+    const hpBeforeC3 = engine.player.hp;
+    engine.castSkill(2, 0);
+    assert.equal(engine.player.cooldowns[2], 21);
+    assert.equal(engine.player.dung_c3_buff_timer, 10.5);
+    assert.ok(engine.player.shield >= 650, 'C3 must grant 650 shield');
+    assert.ok(engine.player.hp > hpBeforeC3, 'C3 must grant strong sustain heal on cast + hit');
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critChance - 0.56) < 1e-6);
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critDmgRatio - 2.60) < 1e-6);
+    assert.ok(engine.getEffectiveAttackInterval() < baseAtkInterval, 'C2 + C3 must speed up attack interval');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Dung Three-Headed Cerberus Ult & upgraded skill VFX: waves, slashes, HUD, remote VFX, SoundEngine roar, and zero shadowBlur rendering', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+  const { R } = await import('./soundEngine.js');
+  const {
+    drawDungCerberusForm,
+    drawDungCerberusUlt,
+    drawUpgradedSlash,
+    drawImpactBurst,
+  } = await import('./weaponRenderer.js');
+
+  const dung = Mi.find((h: any) => h.id === 'dung');
+  assert.ok(dung);
+  assert.ok(dung.skills[2].name.vi.includes('Tam Đầu Khuyển'));
+  assert.ok(dung.skills[2].description.vi.includes('Chó Ba Đầu'));
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  let shadowBlurUsed = false;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+  Object.defineProperty(ctxStub, 'shadowBlur', {
+    get() { return 0; },
+    set(val: number) { if (val > 0) shadowBlurUsed = true; },
+    configurable: true,
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    // SoundEngine playCerberusRoar safety without AudioContext
+    R.ctx = null;
+    R.lastCooldowns.clear();
+    assert.doesNotThrow(() => R.playCerberusRoar());
+
+    // SoundEngine playCerberusRoar with mocked AudioContext
+    const createParam = (initial = 0) => ({
+      value: initial,
+      setValueAtTime: () => {},
+      linearRampToValueAtTime: () => {},
+      exponentialRampToValueAtTime: () => {},
+      setTargetAtTime: () => {},
+    });
+    const createNode = () => ({
+      connect: () => {},
+      disconnect: () => {},
+      start: () => {},
+      stop: () => {},
+      gain: createParam(1),
+      frequency: createParam(440),
+      Q: createParam(1),
+      pan: createParam(0),
+      delayTime: createParam(0.08),
+      threshold: createParam(-16),
+      knee: createParam(18),
+      ratio: createParam(5.5),
+      attack: createParam(0.004),
+      release: createParam(0.14),
+      type: 'sine',
+      buffer: null,
+    });
+    class MockAudioContext {
+      currentTime = 1.0;
+      sampleRate = 44100;
+      state = 'running';
+      destination = createNode();
+      resume = async () => {};
+      createGain = () => createNode();
+      createOscillator = () => createNode();
+      createBiquadFilter = () => createNode();
+      createBufferSource = () => createNode();
+      createDynamicsCompressor = () => createNode();
+      createDelay = () => createNode();
+      createStereoPanner = () => createNode();
+      createBuffer = (_ch: number, len: number) => ({ getChannelData: () => new Float32Array(len) });
+    }
+    (globalThis as any).window.AudioContext = MockAudioContext;
+    R.lastCooldowns.clear();
+    R.setSfxEnabled(true);
+    assert.doesNotThrow(() => R.playCerberusRoar());
+
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.startNewGame(dung);
+    engine.multiplayer.active = true;
+    engine.multiplayer.vfxQueue = [];
+
+    // Enemy nearby for C1/C3/basic attack hit VFX
+    engine.enemies.push({
+      id: 9001,
+      kind: 'minion',
+      x: engine.player.x + 55,
+      y: engine.player.y,
+      radius: 18,
+      hp: 5000,
+      maxHp: 5000,
+      speed: 0,
+      damage: 0,
+      stunTimer: 0,
+      slowTimer: 0,
+    });
+
+    // 1. Cast C3 (Cerberus Ult)
+    engine.castSkill(2, 0.2);
+    assert.equal(engine.cerberusUltWaves.length, 1);
+    assert.equal(engine.cerberusUltWaves[0].radius, 185);
+    assert.equal(engine.cerberusUltWaves[0].maxLife, 1.35);
+
+    const queuedCerberus = engine.multiplayer.vfxQueue.find((v: any) => v.type === 'dung_cerberus_vis');
+    assert.ok(queuedCerberus, 'C3 cast should queue dung_cerberus_vis for multiplayer sync');
+
+    // HUD snapshot while Cerberus Ult is active
+    const hudC3 = engine.getHudSnapshot();
+    assert.ok(hudC3.resourceText.includes('TAM ĐẦU KHUYỂN'), 'HUD resourceText should display TAM ĐẦU KHUYỂN');
+    assert.equal(hudC3.skillStates[0], 'empowered');
+    assert.equal(hudC3.skillStates[1], 'empowered');
+
+    // 2. Cast C1, C2, and Basic Attack while in Cerberus form
+    engine.castSkill(0, 0);
+    assert.ok(engine.slashes.some((s: any) => s.kind === 'dung_c1_charge'));
+    engine.castSkill(1, 0);
+    assert.ok(engine.slashes.some((s: any) => s.kind === 'dung_c2_awaken'));
+    engine.triggerBasicAttack();
+    assert.ok(engine.slashes.some((s: any) => s.kind === 'spear' && s.cerberus === true));
+
+    // 3. Apply remote VFX sync
+    const wavesBeforeRemote = engine.cerberusUltWaves.length;
+    engine.applyRemoteVfx('dung', [{
+      type: 'dung_cerberus_vis',
+      x: engine.player.x + 120,
+      y: engine.player.y,
+      angle: 0.4,
+      radius: 185,
+      maxLife: 1.35,
+    }]);
+    assert.equal(engine.cerberusUltWaves.length, wavesBeforeRemote + 1);
+    assert.equal(engine.cerberusUltWaves[engine.cerberusUltWaves.length - 1].visualOnly, true);
+
+    // 4. Render engine + direct renderer routines and verify zero shadowBlur
+    assert.doesNotThrow(() => engine.render());
+    assert.doesNotThrow(() => {
+      drawDungCerberusForm(ctxStub, 300, 300, 20, 0.25, 1.4, {
+        buffTimer: 9.0,
+        atkActive: true,
+        skillActive: true,
+      }, false);
+      drawDungCerberusUlt(ctxStub, [
+        { x: 320, y: 300, angle: 0.2, radius: 185, life: 0.45, maxLife: 1.35 },
+      ], 1.4, false);
+      drawUpgradedSlash(ctxStub, { kind: 'spear', x: 300, y: 300, angle: 0, spread: 1.2, radius: 95, color: '#38BDF8', cerberus: true, empowered: true }, 0.45, false);
+      drawUpgradedSlash(ctxStub, { kind: 'dung_cerberus_bite', x: 320, y: 300, angle: 0.3, spread: 1.1, radius: 55, color: '#FDE047' }, 0.4, false);
+      drawUpgradedSlash(ctxStub, { kind: 'dung_c1_charge', x: 320, y: 300, angle: 0, spread: 1.2, radius: 75, color: '#38BDF8' }, 0.4, false);
+      drawUpgradedSlash(ctxStub, { kind: 'dung_c2_awaken', x: 320, y: 300, angle: 0, spread: 6.28, radius: 115, color: '#FACC15' }, 0.4, false);
+      drawImpactBurst(ctxStub, { x: 320, y: 300, radius: 34, color: '#FDE047', isCrit: true, life: 0.1, maxLife: 0.3 }, false);
+    });
+    assert.equal(shadowBlurUsed, false, 'Cerberus Ult & Dung VFX must never use shadowBlur');
+
+    // 5. Update VFX until cerberusUltWaves expire and get cleaned up
+    for (let i = 0; i < 16; i++) {
+      engine.updateVFX(0.1);
+    }
+    assert.equal(engine.cerberusUltWaves.length, 0, 'Expired cerberusUltWaves must be cleanly removed');
+  } finally {
+    R.ctx = null;
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});

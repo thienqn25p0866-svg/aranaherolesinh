@@ -275,10 +275,10 @@ function drawDungSpear(ctx, p, t, state, isMono) {
 
   // Dual spiraling lightning ribbons during Ult / Skill / Crit / Berserk
   if (flare > 0.1 || isUlt) {
-    let a = clamp(Math.max(flare * 0.85, isUlt ? 0.75 : 0), 0, 1);
+    let a = clamp(Math.max(flare * 0.85, isUlt ? 0.78 : 0), 0, 1);
     ctx.globalAlpha = a;
     ctx.strokeStyle = isMono ? "#000000" : isUlt || critBoost > 0.1 ? "#FEF08A" : "#67E8F9";
-    ctx.lineWidth = 1.9;
+    ctx.lineWidth = isUlt ? 2.2 : 1.9;
     for (let s of [-1, 1]) {
       let ph = t * 16 + s * 1.7;
       ctx.beginPath();
@@ -286,9 +286,25 @@ function drawDungSpear(ctx, p, t, state, isMono) {
       ctx.bezierCurveTo(32, s * (10 + Math.sin(ph) * 3.5), 42, -s * (7 + Math.cos(ph) * 2.5), 56, 0);
       ctx.stroke();
     }
+    if (isUlt) {
+      // Cerberus Phantom Fang Halberd Aura along spear tip
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+      ctx.lineWidth = 1.6;
+      for (let s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(30, s * 6);
+        ctx.quadraticCurveTo(44, s * 12, 60, s * 2.2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = isMono ? "#000000" : "#F43F5E";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(26, 0, 11.5, -0.9, 0.9);
+      ctx.stroke();
+    }
     if (critBoost > 0.1 || isUlt) {
-      let starScale = Math.max(critBoost, isUlt ? 0.72 : 0);
-      drawFourPointStar(ctx, 56, 0, 8 * starScale, 2.2 * starScale, "#FEF08A", "#FFFFFF");
+      let starScale = Math.max(critBoost, isUlt ? 0.82 : 0);
+      drawFourPointStar(ctx, 56, 0, 8.5 * starScale, 2.3 * starScale, "#FEF08A", "#FFFFFF");
     }
   }
 
@@ -4176,30 +4192,157 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
   if (h.kind === "spear") {
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle);
-    // Directional spear thrust lance-wave + thunder spiral + shock cone
+    // Directional spear thrust lance-wave + thunder spiral + Cerberus triple-fang streaks
     let reach = h.radius * (0.55 + 0.45 * Math.min(1, f * 1.8));
-    drawTaperedArc(ctx, 0, 0, reach * 0.9, -h.spread * 0.42, h.spread * 0.42, 8.5 * alpha + 1.5, h.color, "#FFFFFF", isMono);
-    ctx.strokeStyle = isMono ? "#000000" : h.color;
-    ctx.lineWidth = 5.5 * alpha + 1;
-    ctx.lineCap = "round";
+    let isCerb = Boolean(h.cerberus);
+    let isEmp = Boolean(h.empowered);
+    drawTaperedArc(ctx, 0, 0, reach * 0.92, -h.spread * 0.44, h.spread * 0.44, (isCerb ? 11.5 : 8.8) * alpha + 1.5, h.color, isCerb ? "#FEF08A" : "#FFFFFF", isMono);
+    if (isCerb || isEmp) {
+      // Triple phantom hound fang-lances fanning along spear thrust
+      let fanCols = isCerb ? ["#38BDF8", "#FDE047", "#F43F5E"] : ["#38BDF8", "#FEF08A", "#67E8F9"];
+      for (let idx = -1; idx <= 1; idx++) {
+        let offA = idx * 0.24;
+        let len = idx === 0 ? reach + 20 : reach * 0.88;
+        ctx.save();
+        ctx.rotate(offA);
+        ctx.strokeStyle = isMono ? "#000000" : fanCols[idx + 1];
+        ctx.lineWidth = (idx === 0 ? 6.5 : 4.2) * alpha + 1;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(16, 0);
+        ctx.lineTo(len, 0);
+        ctx.stroke();
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1.8 * alpha;
+        ctx.beginPath();
+        ctx.moveTo(22, 0);
+        ctx.lineTo(len + 2, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+      drawFourPointStar(ctx, reach + 18, 0, (isCerb ? 13 : 10) * alpha, 2.8 * alpha, "#FEF08A", isCerb ? "#F43F5E" : h.color);
+    } else {
+      ctx.strokeStyle = isMono ? "#000000" : h.color;
+      ctx.lineWidth = 5.5 * alpha + 1;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(16, 0);
+      ctx.lineTo(reach + 12, 0);
+      ctx.stroke();
+      // Spiral storm helix around thrust shaft
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+      ctx.lineWidth = 2.2 * alpha + 0.6;
+      ctx.beginPath();
+      ctx.moveTo(18, -6);
+      ctx.bezierCurveTo(reach * 0.4, 9, reach * 0.7, -8, reach + 12, 0);
+      ctx.stroke();
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2 * alpha;
+      ctx.beginPath();
+      ctx.moveTo(24, 0);
+      ctx.lineTo(reach + 14, 0);
+      ctx.stroke();
+      drawFourPointStar(ctx, reach + 14, 0, 8.5 * alpha, 2.2 * alpha, "#FFFFFF", h.color);
+    }
+    return;
+  }
+
+  if (h.kind === "dung_cerberus_bite") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    let r = (h.radius || 68) * (0.52 + 0.48 * Math.pow(f, 0.6));
+    let biteGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, r);
+    biteGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.48)" : `rgba(253, 224, 71, ${0.42 * alpha})`);
+    biteGrad.addColorStop(0.65, isMono ? "rgba(0,0,0,0.22)" : `rgba(56, 189, 248, ${0.26 * alpha})`);
+    biteGrad.addColorStop(1, "rgba(15, 23, 42, 0)");
+    ctx.fillStyle = biteGrad;
     ctx.beginPath();
-    ctx.moveTo(16, 0);
-    ctx.lineTo(reach + 12, 0);
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3 ferocious Cerberus claw rakes + snapping fang arcs
+    let cols = ["#38BDF8", "#FDE047", "#F43F5E"];
+    for (let i = -1; i <= 1; i++) {
+      let yOff = i * r * 0.25;
+      ctx.strokeStyle = isMono ? "#000000" : cols[i + 1];
+      ctx.lineWidth = (i === 0 ? 5.6 : 4.2) * alpha + 1.2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.72, yOff - r * 0.28);
+      ctx.quadraticCurveTo(0, yOff + r * 0.08, r * 0.78, yOff + r * 0.26);
+      ctx.stroke();
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 1.6 * alpha;
+      ctx.stroke();
+    }
+    drawTaperedArc(ctx, 0, 0, r * 0.85, -1.1, 1.1, 7 * alpha + 1.5, h.color || "#FDE047", "#FFFFFF", isMono);
+    drawFourPointStar(ctx, 0, 0, 14 * alpha, 3.2 * alpha, "#FFFFFF", "#FDE047");
+    return;
+  }
+
+  if (h.kind === "dung_c1_charge") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    let reach = (h.radius || 175) * (0.4 + 0.6 * Math.min(1, f * 1.5));
+    let coneGrad = ctx.createLinearGradient(0, 0, reach, 0);
+    coneGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
+    coneGrad.addColorStop(0.45, isMono ? "rgba(255,255,255,0.38)" : `rgba(56, 189, 248, ${0.42 * alpha})`);
+    coneGrad.addColorStop(1, isMono ? "rgba(255,255,255,0.72)" : `rgba(253, 224, 71, ${0.72 * alpha})`);
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, -28);
+    ctx.lineTo(reach, 0);
+    ctx.lineTo(0, 28);
+    ctx.closePath();
+    ctx.fill();
+
+    for (let s of [-1, 0, 1]) {
+      ctx.strokeStyle = s === 0 ? "#FFFFFF" : s < 0 ? "#38BDF8" : "#FDE047";
+      ctx.lineWidth = (s === 0 ? 4.8 : 3.2) * alpha + 0.8;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-14, s * 16);
+      ctx.lineTo(reach + (s === 0 ? 18 : -10), s * 4);
+      ctx.stroke();
+    }
+    drawFourPointStar(ctx, reach + 10, 0, 13 * alpha, 3 * alpha, "#FEF08A", "#38BDF8");
+    return;
+  }
+
+  if (h.kind === "dung_c2_awaken") {
+    let r = (h.radius || 125) * (0.22 + 0.78 * Math.pow(f, 0.62));
+    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.18, h.x, h.y, r);
+    grad.addColorStop(0, "rgba(254, 240, 138, 0)");
+    grad.addColorStop(0.55, isMono ? "rgba(255,255,255,0.32)" : `rgba(249, 115, 22, ${0.38 * alpha})`);
+    grad.addColorStop(0.85, isMono ? "rgba(0,0,0,0.28)" : `rgba(244, 63, 94, ${0.32 * alpha})`);
+    grad.addColorStop(1, "rgba(244, 63, 94, 0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#000000" : h.color || "#F59E0B";
+    ctx.lineWidth = 8.5 * alpha + 1.5;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
     ctx.stroke();
-    // Spiral storm helix around thrust shaft
+
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.2 * alpha + 0.6;
+    ctx.lineWidth = 3.5 * alpha + 0.8;
     ctx.beginPath();
-    ctx.moveTo(18, -6);
-    ctx.bezierCurveTo(reach * 0.4, 9, reach * 0.7, -8, reach + 12, 0);
+    ctx.arc(h.x, h.y, r * 0.74, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 2 * alpha;
-    ctx.beginPath();
-    ctx.moveTo(24, 0);
-    ctx.lineTo(reach + 14, 0);
-    ctx.stroke();
-    drawFourPointStar(ctx, reach + 14, 0, 8.5 * alpha, 2.2 * alpha, "#FFFFFF", h.color);
+
+    for (let i = 0; i < 8; i++) {
+      let ang = (Math.PI / 4) * i + f * 0.8;
+      ctx.strokeStyle = i % 2 === 0 ? "#FEF08A" : "#FB7185";
+      ctx.lineWidth = 2.6 * alpha + 0.8;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(h.x + Math.cos(ang) * r * 0.55, h.y + Math.sin(ang) * r * 0.55);
+      ctx.lineTo(h.x + Math.cos(ang) * r * 1.12, h.y + Math.sin(ang) * r * 1.12);
+      ctx.stroke();
+    }
     return;
   }
 
@@ -4726,10 +4869,19 @@ export function drawImpactBurst(ctx, b, isMono) {
     ctx.stroke();
   }
 
-  // Directional collision flare + sparks (lightweight)
-  if (f < 0.72) {
-    let starScale = (1 - f / 0.72) * (b.isCrit ? 1.4 : 0.95);
-    drawFourPointStar(ctx, 0, 0, 13 * starScale, 2.6 * starScale, isMono ? "#FFFFFF" : "#FEF08A", isMono ? "#000000" : b.color);
+  // Directional collision flare + anime crit slash flash (lightweight)
+  if (f < 0.78) {
+    let starScale = (1 - f / 0.78) * (b.isCrit ? 1.55 : 1.0);
+    drawFourPointStar(ctx, 0, 0, 14 * starScale, 2.8 * starScale, isMono ? "#FFFFFF" : "#FEF08A", isMono ? "#000000" : b.color);
+    if (b.isCrit) {
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2.4 * (1 - f);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.35, -r * 0.65);
+      ctx.lineTo(r * 1.35, r * 0.65);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }
@@ -9359,6 +9511,552 @@ export function drawNhiToxicMist(ctx, mists, elapsedTime, isMono) {
     ctx.restore();
   }
 }
+
+// =====================================================================
+// DŨNG YÊU SANY — SIGMA WIBU THREE-HEADED CERBERUS ULTIMATE RENDERERS
+// =====================================================================
+
+function drawSingleCerberusHead(ctx, {
+  x = 0,
+  y = 0,
+  scale = 1,
+  tilt = 0,
+  side = 0, // -1 left cyan-frost wolf, 0 center imperial gold-alpha wolf, 1 right crimson-void wolf
+  jawOpen = 0.25,
+  elapsedTime = 0,
+  isMono = false,
+  eyeTrailScale = 1,
+}) {
+  const furDark = isMono
+    ? "#18181B"
+    : side === 0
+    ? "#0F172A"
+    : side < 0
+    ? "#082F49"
+    : "#2E072D";
+  const furMid = isMono
+    ? "#3F3F46"
+    : side === 0
+    ? "#1E293B"
+    : side < 0
+    ? "#0C4A6E"
+    : "#4C0519";
+  const rimCol = isMono
+    ? "#FFFFFF"
+    : side === 0
+    ? "#FDE047"
+    : side < 0
+    ? "#38BDF8"
+    : "#FB7185";
+  const eyeCol = isMono
+    ? "#FFFFFF"
+    : side === 0
+    ? "#FEF08A"
+    : side < 0
+    ? "#67E8F9"
+    : "#F43F5E";
+  const maneCol = isMono
+    ? "#71717A"
+    : side === 0
+    ? "#F59E0B"
+    : side < 0
+    ? "#0284C7"
+    : "#9333EA";
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt);
+  ctx.scale(scale, scale);
+
+  // 1. Spiked Sigma Wolf Mane & Shoulder Ruff
+  ctx.fillStyle = maneCol;
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-22, -16);
+  ctx.lineTo(-32, -26);
+  ctx.lineTo(-14, -22);
+  ctx.lineTo(-6, -33);
+  ctx.lineTo(6, -33);
+  ctx.lineTo(14, -22);
+  ctx.lineTo(32, -26);
+  ctx.lineTo(22, -16);
+  ctx.lineTo(26, 2);
+  ctx.lineTo(16, 16);
+  ctx.lineTo(-16, 16);
+  ctx.lineTo(-26, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 2. Razor Wolf Ears (tall, swept back, glowing inner ear trim)
+  for (let s of [-1, 1]) {
+    ctx.fillStyle = furDark;
+    ctx.strokeStyle = rimCol;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(s * 9, -15);
+    ctx.lineTo(s * 24, -40);
+    ctx.lineTo(s * 21, -10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = eyeCol;
+    ctx.beginPath();
+    ctx.moveTo(s * 12, -16);
+    ctx.lineTo(s * 21, -33);
+    ctx.lineTo(s * 18, -14);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Alpha center head floating Sigma Thunder Crown
+  if (side === 0) {
+    let crownY = -36 + Math.sin(elapsedTime * 8) * 2.2;
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.strokeStyle = isMono ? "#000000" : "#F97316";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, crownY - 12);
+    ctx.lineTo(5.5, crownY - 1);
+    ctx.lineTo(14, crownY - 7);
+    ctx.lineTo(9, crownY + 4);
+    ctx.lineTo(-9, crownY + 4);
+    ctx.lineTo(-14, crownY - 7);
+    ctx.lineTo(-5.5, crownY - 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // 3. Lower Jaw & Razor Fangs (articulates downward when roaring/attacking)
+  let jawDrop = clamp(jawOpen, 0, 1) * 11.5;
+  ctx.save();
+  ctx.translate(0, jawDrop);
+  ctx.fillStyle = furMid;
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-12, 4);
+  ctx.lineTo(-7, 22);
+  ctx.lineTo(0, 26);
+  ctx.lineTo(7, 22);
+  ctx.lineTo(12, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Inner roaring abyss mouth + lower fangs
+  ctx.fillStyle = isMono ? "#000000" : "#450A0A";
+  ctx.beginPath();
+  ctx.moveTo(-8, 6);
+  ctx.lineTo(0, 21);
+  ctx.lineTo(8, 6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#FFFFFF";
+  for (let f of [-5, 5]) {
+    ctx.beginPath();
+    ctx.moveTo(f - 2.2, 11);
+    ctx.lineTo(f, 4);
+    ctx.lineTo(f + 2.2, 11);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 4. Sculpted Angular Skull, Cheek Armor Plates & Snout
+  ctx.fillStyle = furDark;
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(0, -24);
+  ctx.lineTo(18, -14);
+  ctx.lineTo(20, 1);
+  ctx.lineTo(11, 14);
+  ctx.lineTo(0, 19);
+  ctx.lineTo(-11, 14);
+  ctx.lineTo(-20, 1);
+  ctx.lineTo(-18, -14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Upper snout bridge & gleaming fangs
+  ctx.fillStyle = furMid;
+  ctx.beginPath();
+  ctx.moveTo(-8, -8);
+  ctx.lineTo(8, -8);
+  ctx.lineTo(10, 11);
+  ctx.lineTo(0, 17);
+  ctx.lineTo(-10, 11);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#FFFFFF";
+  for (let f of [-6.5, 6.5]) {
+    ctx.beginPath();
+    ctx.moveTo(f - 2.4, 12);
+    ctx.lineTo(f, 20);
+    ctx.lineTo(f + 2.4, 12);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Forehead Sigma Lightning Mark
+  ctx.strokeStyle = eyeCol;
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-2, -18);
+  ctx.lineTo(2, -12);
+  ctx.lineTo(-2, -9);
+  ctx.lineTo(2, -3);
+  ctx.stroke();
+
+  // 5. Fierce Slitted Anime Glowing Eyes + Trailing Eye-Flare Ribbons!
+  for (let s of [-1, 1]) {
+    ctx.fillStyle = eyeCol;
+    ctx.beginPath();
+    ctx.moveTo(s * 4.5, -2);
+    ctx.lineTo(s * 13.5, -6.5);
+    ctx.lineTo(s * 12, -1.5);
+    ctx.lineTo(s * 5.5, 1.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sigma Anime Eye Light-Trail streaming outward
+    if (eyeTrailScale > 0.1) {
+      let trailLen = (16 + Math.sin(elapsedTime * 15 + s) * 3) * eyeTrailScale;
+      ctx.strokeStyle = eyeCol;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(s * 12.5, -5.5);
+      ctx.quadraticCurveTo(s * (14 + trailLen * 0.5), -11, s * (14 + trailLen), -6);
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawDungCerberusForm(ctx, x, y, radius, facing, elapsedTime, opts = {}, isMono = false) {
+  const atkActive = Boolean(opts.atkActive);
+  const skillActive = Boolean(opts.skillActive);
+  const berserkActive = Boolean(opts.berserkActive);
+  const ratio = opts.ratio !== undefined ? clamp(opts.ratio, 0, 1) : 1;
+  const fadeAlpha = ratio < 0.08 ? ratio / 0.08 : 1;
+
+  ctx.save();
+  ctx.globalAlpha = fadeAlpha;
+  ctx.translate(x, y);
+
+  // 1. Sigma Abyssal Lightning Runic Ground Aura (Imperial Gold + Cyan + Crimson)
+  let auraR = radius * 2.95;
+  let auraGrad = ctx.createRadialGradient(0, 0, radius * 0.3, 0, 0, auraR);
+  auraGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.22)" : "rgba(253, 224, 71, 0.28)");
+  auraGrad.addColorStop(0.5, isMono ? "rgba(0,0,0,0.12)" : berserkActive ? "rgba(244, 63, 94, 0.24)" : "rgba(56, 189, 248, 0.22)");
+  auraGrad.addColorStop(1, "rgba(15, 23, 42, 0)");
+  ctx.fillStyle = auraGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, auraR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outer rotating Sigma rune gear ring
+  ctx.save();
+  ctx.rotate(elapsedTime * 2.4);
+  ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
+  ctx.lineWidth = 2.4;
+  ctx.setLineDash([14, 7, 4, 7]);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius + 21, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (let i = 0; i < 3; i++) {
+    let a = (Math.PI * 2 / 3) * i;
+    let ox = Math.cos(a) * (radius + 21);
+    let oy = Math.sin(a) * (radius + 21);
+    drawFourPointStar(ctx, ox, oy, 6.5, 2.0, i === 0 ? "#FDE047" : i === 1 ? "#38BDF8" : "#F43F5E", "#FFFFFF");
+  }
+  ctx.restore();
+
+  // Counter-rotating obsidian-cyan hexagram frame
+  ctx.save();
+  ctx.rotate(-elapsedTime * 1.85);
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(56, 189, 248, 0.65)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    let a = (Math.PI / 3) * i;
+    let px = Math.cos(a) * (radius + 14);
+    let py = Math.sin(a) * (radius + 14);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. Spectral Guardian Three-Headed Cerberus Manifestation Behind Dũng
+  ctx.save();
+  ctx.rotate(facing);
+  let hover = Math.sin(elapsedTime * 6.5) * 3.2;
+  let lunge = atkActive || skillActive ? 9 : 0;
+  let jawAmt = atkActive || skillActive ? 0.85 : 0.25 + 0.14 * Math.sin(elapsedTime * 7);
+
+  // Flowing broken abyssal demon chains / shadow-thunder mantle
+  for (let s of [-1, 1]) {
+    let whip = Math.sin(elapsedTime * 11 + s * 1.5) * 6;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : s < 0 ? "rgba(56, 189, 248, 0.72)" : "rgba(244, 63, 94, 0.72)";
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.6, s * (radius * 0.8));
+    ctx.quadraticCurveTo(-radius * 1.5, s * (radius * 1.3) + whip, -radius * 2.25, s * (radius * 0.9) - whip * 0.7);
+    ctx.stroke();
+  }
+
+  // Dark spectral Cerberus shoulder silhouette behind player
+  ctx.fillStyle = isMono ? "rgba(0,0,0,0.45)" : "rgba(15, 23, 42, 0.68)";
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.75)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(-radius * 0.65 + lunge * 0.35, 0, radius * 0.85, radius * 1.48, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Three articulated Cerberus heads oriented forward along hero's facing (+90deg aligns upward head template -> +X facing!)
+  const headConfigs = [
+    { side: -1, ox: -radius * 0.35 + lunge * 0.7, oy: -radius * 1.15 - hover * 0.4, tilt: Math.PI / 2 - 0.34, sc: 0.56 },
+    { side: 1, ox: -radius * 0.35 + lunge * 0.7, oy: radius * 1.15 + hover * 0.4, tilt: Math.PI / 2 + 0.34, sc: 0.56 },
+    { side: 0, ox: -radius * 0.65 + lunge, oy: hover * 0.3, tilt: Math.PI / 2, sc: 0.72 },
+  ];
+  for (let hc of headConfigs) {
+    drawSingleCerberusHead(ctx, {
+      x: hc.ox,
+      y: hc.oy,
+      scale: hc.sc,
+      tilt: hc.tilt,
+      side: hc.side,
+      jawOpen: jawAmt,
+      elapsedTime,
+      isMono,
+      eyeTrailScale: atkActive || skillActive ? 1.35 : 0.9,
+    });
+  }
+  ctx.restore();
+
+  ctx.restore();
+}
+
+export function drawDungCerberusUlt(ctx, bursts, elapsedTime, isMono) {
+  if (!Array.isArray(bursts) || bursts.length === 0) return;
+  for (let b of bursts) {
+    if (!b) continue;
+    let maxL = Math.max(0.2, b.maxLife || 1.35);
+    let p = clamp((b.life || 0) / maxL, 0, 1);
+    let fadeOut = p > 0.72 ? clamp(1 - (p - 0.72) / 0.28, 0, 1) : 1;
+    let appear = clamp(p / 0.16, 0, 1);
+    let r = b.radius || 185;
+    let surgeY = Math.sin(Math.min(1, p * 1.35) * Math.PI * 0.65) * 44;
+    let scalePop = 0.65 + 0.55 * Math.sin(Math.min(1, p * 2.2) * Math.PI * 0.5);
+    let roarJaw = p < 0.58 ? 0.45 + 0.55 * Math.sin(clamp(p / 0.58, 0, 1) * Math.PI) : 0.35;
+
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.globalAlpha = fadeOut;
+
+    // 1. Abyssal Thunder Seal / Sigma Magic Circle on the arena floor
+    let sealGrad = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r * 1.12);
+    sealGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.68)" : `rgba(253, 224, 71, ${0.58 * appear})`);
+    sealGrad.addColorStop(0.38, isMono ? "rgba(180,180,180,0.4)" : `rgba(56, 189, 248, ${0.42 * appear})`);
+    sealGrad.addColorStop(0.74, isMono ? "rgba(0,0,0,0.32)" : `rgba(147, 51, 234, ${0.32 * appear})`);
+    sealGrad.addColorStop(1, "rgba(15, 23, 42, 0)");
+    ctx.fillStyle = sealGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Triple staggered expanding shockwaves
+    for (let wi = 0; wi < 3; wi++) {
+      let wp = clamp((p - wi * 0.08) / 0.65, 0, 1);
+      if (wp <= 0 || wp >= 1) continue;
+      let wr = r * (0.25 + wp * 0.92);
+      ctx.strokeStyle = isMono
+        ? "#FFFFFF"
+        : wi === 0
+        ? "#FDE047"
+        : wi === 1
+        ? "#38BDF8"
+        : "#F43F5E";
+      ctx.lineWidth = (7.5 - wi * 1.5) * (1 - wp) + 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, wr, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Rotating Sigma Magic Hexagram + Cerberus Runic Tri-Ring
+    ctx.save();
+    ctx.rotate(elapsedTime * 1.9);
+    ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([16, 10]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Twin interlocking triangles (Seal of the Hound)
+    for (let tIdx = 0; tIdx < 2; tIdx++) {
+      ctx.beginPath();
+      for (let k = 0; k < 3; k++) {
+        let ang = (Math.PI * 2 / 3) * k + (tIdx * Math.PI / 3);
+        let px = Math.cos(ang) * r * 0.78;
+        let py = Math.sin(ang) * r * 0.78;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = tIdx === 0 ? (isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.82)") : (isMono ? "#000000" : "rgba(244, 63, 94, 0.75)");
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 2. Anime Impact Speedlines Radiating Outward
+    if (p < 0.75) {
+      let rayAlpha = 1 - p / 0.75;
+      ctx.save();
+      ctx.globalAlpha = fadeOut * rayAlpha;
+      for (let ri = 0; ri < 12; ri++) {
+        let ra = (Math.PI * 2 / 12) * ri + p * 0.45;
+        let rIn = r * (0.35 + p * 0.25);
+        let rOut = r * (0.98 + (ri % 2) * 0.24);
+        ctx.strokeStyle = isMono ? "#FFFFFF" : ri % 3 === 0 ? "#FEF08A" : ri % 3 === 1 ? "#38BDF8" : "#F43F5E";
+        ctx.lineWidth = (ri % 2 === 0 ? 4.2 : 2.6) * rayAlpha + 0.8;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ra) * rIn, Math.sin(ra) * rIn);
+        ctx.lineTo(Math.cos(ra) * rOut, Math.sin(ra) * rOut);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 3. Towering Three-Headed Cerberus Avatar Erupting Above the Arena!
+    ctx.save();
+    ctx.translate(0, -surgeY - 12);
+    ctx.scale(scalePop, scalePop);
+
+    // Snapping Abyssal Demon Chains around Cerberus torso
+    for (let ci of [-1, 1]) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+      ctx.lineWidth = 3.2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(ci * 22, 24);
+      ctx.quadraticCurveTo(ci * 78, -6 + Math.sin(elapsedTime * 16) * 8, ci * 108, 36);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Twin spectral colossal claws slamming outward
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#18181B" : s < 0 ? "#0C4A6E" : "#4C0519";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : s < 0 ? "#38BDF8" : "#FB7185";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(s * 34, 14);
+      ctx.lineTo(s * 82, 34);
+      ctx.lineTo(s * 96, 52);
+      ctx.lineTo(s * 76, 46);
+      ctx.lineTo(s * 84, 62);
+      ctx.lineTo(s * 64, 48);
+      ctx.lineTo(s * 54, 64);
+      ctx.lineTo(s * 42, 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Armored Cerberus Abyssal Torso Silhouette
+    let torsoGrad = ctx.createRadialGradient(0, 6, 8, 0, 6, 62);
+    torsoGrad.addColorStop(0, isMono ? "#3F3F46" : "#1E293B");
+    torsoGrad.addColorStop(0.65, isMono ? "#18181B" : "#0F172A");
+    torsoGrad.addColorStop(1, "rgba(15, 23, 42, 0)");
+    ctx.fillStyle = torsoGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 58, 42, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Roaring Sound-Wave Cones blasting from the 3 mouths during peak roar
+    if (p > 0.12 && p < 0.72) {
+      let rp = (p - 0.12) / 0.6;
+      let coneR = 46 + rp * 65;
+      for (let mc of [
+        { x: -46, y: 12, ang: Math.PI * 0.64, col: "#38BDF8" },
+        { x: 46, y: 12, ang: Math.PI * 0.36, col: "#FB7185" },
+        { x: 0, y: -10, ang: Math.PI * 0.5, col: "#FDE047" },
+      ]) {
+        ctx.save();
+        ctx.globalAlpha = fadeOut * (1 - rp) * 0.85;
+        ctx.strokeStyle = isMono ? "#FFFFFF" : mc.col;
+        ctx.lineWidth = 3.2 * (1 - rp) + 1;
+        ctx.beginPath();
+        ctx.arc(mc.x, mc.y, coneR, mc.ang - 0.42, mc.ang + 0.42);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Left (Cyan Frost-Lightning), Right (Crimson Void), Center (Imperial Alpha Gold) Heads
+    drawSingleCerberusHead(ctx, {
+      x: -44,
+      y: 2,
+      scale: 0.96,
+      tilt: -0.36,
+      side: -1,
+      jawOpen: roarJaw,
+      elapsedTime,
+      isMono,
+      eyeTrailScale: 1.4,
+    });
+    drawSingleCerberusHead(ctx, {
+      x: 44,
+      y: 2,
+      scale: 0.96,
+      tilt: 0.36,
+      side: 1,
+      jawOpen: roarJaw,
+      elapsedTime,
+      isMono,
+      eyeTrailScale: 1.4,
+    });
+    drawSingleCerberusHead(ctx, {
+      x: 0,
+      y: -18,
+      scale: 1.24,
+      tilt: 0,
+      side: 0,
+      jawOpen: Math.min(1, roarJaw * 1.15),
+      elapsedTime,
+      isMono,
+      eyeTrailScale: 1.65,
+    });
+
+    ctx.restore();
+    ctx.restore();
+  }
+}
+
 
 
 

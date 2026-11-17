@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { drawHeroBody, drawHeroWeapon } from "./weaponRenderer.js";
+import { drawHeroBody, drawHeroWeapon, drawDungCerberusForm } from "./weaponRenderer.js";
 import { R } from "./soundEngine.js";
 
 function hexToRgba(hex, alpha) {
@@ -92,17 +92,25 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
 
   if (heroId === "dung") {
     ctx.save();
-    ctx.strokeStyle = "#38BDF8";
-    ctx.lineWidth = 1.6;
-    for (let i = 0; i < 4; i++) {
-      const baseA = t * 2.4 + (Math.PI * 0.5 * i);
-      const r1 = auraR * 0.85;
-      const r2 = auraR * (1.05 + 0.14 * Math.sin(t * 14 + i * 2));
+    const triCols = ["#38BDF8", "#FDE047", "#F43F5E"];
+    for (let i = 0; i < 3; i++) {
+      const baseA = t * 2.1 * activeBoost + ((Math.PI * 2) / 3) * i;
+      const r1 = auraR * 0.88;
+      const r2 = auraR * (1.12 + 0.14 * Math.sin(t * 14 + i * 2.1));
+      ctx.strokeStyle = triCols[i];
+      ctx.lineWidth = i === 1 ? 2.1 : 1.7;
       ctx.beginPath();
       ctx.moveTo(Math.cos(baseA) * r1, Math.sin(baseA) * r1);
-      ctx.lineTo(Math.cos(baseA + 0.2) * r2, Math.sin(baseA + 0.2) * r2);
-      ctx.lineTo(Math.cos(baseA + 0.4) * r1, Math.sin(baseA + 0.4) * r1);
+      ctx.lineTo(Math.cos(baseA + 0.24) * r2, Math.sin(baseA + 0.24) * r2);
+      ctx.lineTo(Math.cos(baseA + 0.48) * r1, Math.sin(baseA + 0.48) * r1);
       ctx.stroke();
+
+      const fx = Math.cos(baseA + 0.24) * (auraR * 1.08);
+      const fy = Math.sin(baseA + 0.24) * (auraR * 1.08);
+      ctx.fillStyle = triCols[i];
+      ctx.beginPath();
+      ctx.arc(fx, fy, st.skillTimer > 0 ? 3.2 : 2.3, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
     return;
@@ -409,18 +417,28 @@ export default function HeroPreviewCanvas({
     let disposed = false;
     let lastTime = performance.now();
     let lastCompactRender = 0;
-    let lastW = 0;
-    let lastH = 0;
+    let cachedW = compact ? 56 : 260;
+    let cachedH = compact ? 56 : 220;
+    let hasBox = false;
+    let isIntersecting = true;
+    let hovered = false;
+    let compactWakeUntil = performance.now() + (attackTrigger > 0 ? 700 : 80);
 
-    const getCanvasBox = () => {
+    const measureBox = () => {
       const rect = canvas.getBoundingClientRect();
       const parentRect = canvas.parentElement?.getBoundingClientRect();
       const rawW = rect.width >= 8 ? rect.width : parentRect?.width || (compact ? 56 : 260);
       const rawH = rect.height >= 8 ? rect.height : parentRect?.height || (compact ? 56 : 220);
-      const w = Math.max(40, Math.round(rawW));
-      const h = Math.max(40, Math.round(rawH));
-      const dpr = Math.min(compact ? 1.5 : 2, window.devicePixelRatio || 1);
-      return { w, h, dpr, visible: rawW >= 8 && rawH >= 8 };
+      cachedW = Math.max(40, Math.round(rawW));
+      cachedH = Math.max(40, Math.round(rawH));
+      hasBox = rawW >= 8 && rawH >= 8;
+    };
+
+    const getCanvasBox = () => {
+      if (!hasBox) measureBox();
+      const dprCap = compact ? 1.35 : 1.75;
+      const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
+      return { w: cachedW, h: cachedH, dpr, visible: hasBox };
     };
 
     const syncSize = () => {
@@ -431,9 +449,24 @@ export default function HeroPreviewCanvas({
         canvas.width = targetW;
         canvas.height = targetH;
       }
-      lastW = w;
-      lastH = h;
       return { w, h, dpr, visible };
+    };
+
+    const wakeLoop = (durationMs = 0) => {
+      if (disposed) return;
+      if (durationMs > 0) {
+        compactWakeUntil = Math.max(compactWakeUntil, performance.now() + durationMs);
+      }
+      if (!rafId && isIntersecting && !(typeof document !== "undefined" && document.hidden)) {
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(drawFrame);
+      }
+    };
+
+    canvas.__arenaWakePreview = wakeLoop;
+    canvas.__arenaSetHover = (nextHovered) => {
+      hovered = Boolean(nextHovered);
+      if (hovered) wakeLoop(350);
     };
 
     const renderScene = (w, h, dpr) => {
@@ -549,6 +582,7 @@ export default function HeroPreviewCanvas({
         dang_rageReady: hero.id === "dang" && st.skillTimer > 0,
         dang_c2_timer: 0,
         dang_c3_asTimer: hero.id === "dang" && st.skillTimer > 0 ? 1 : 0,
+        dung_c3_buff_timer: hero.id === "dung" && st.skillTimer > 0 ? 1 : 0,
       };
 
       ctx.save();
@@ -558,6 +592,18 @@ export default function HeroPreviewCanvas({
       try {
         const auraRadius = Math.min(31, baseRadius / scaleFactor + 12);
         drawHeroSignatureAura(ctx, hero.id, t, auraRadius, idleFacing, st);
+        if (!compact && hero.id === "dung" && st.skillTimer > 0) {
+          drawDungCerberusForm(
+            ctx,
+            0,
+            0,
+            Math.min(24, baseRadius / scaleFactor + 8),
+            idleFacing,
+            t,
+            { atkActive: st.atkTimer > 0, skillActive: true, berserkActive: false, ratio: Math.min(1, st.skillTimer / 0.15) },
+            false
+          );
+        }
 
         drawHeroBody(ctx, {
           heroId: hero.id,
@@ -611,15 +657,15 @@ export default function HeroPreviewCanvas({
     };
 
     const drawFrame = (now) => {
-      if (disposed) return;
+      rafId = 0;
+      if (disposed || !isIntersecting) return;
+      if (typeof document !== "undefined" && document.hidden) return;
 
-      if (typeof document !== "undefined" && document.hidden) {
-        lastTime = now;
-        rafId = requestAnimationFrame(drawFrame);
+      if (compact && !hovered && now > compactWakeUntil && stateRef.current.atkTimer <= 0 && stateRef.current.skillTimer <= 0) {
         return;
       }
 
-      if (compact && now - lastCompactRender < 30 && lastCompactRender !== 0) {
+      if (compact && now - lastCompactRender < 32 && lastCompactRender !== 0) {
         rafId = requestAnimationFrame(drawFrame);
         return;
       }
@@ -649,24 +695,51 @@ export default function HeroPreviewCanvas({
         renderScene(w, h, dpr);
       }
 
-      rafId = requestAnimationFrame(drawFrame);
+      if (!compact || hovered || now < compactWakeUntil || st.atkTimer > 0 || st.skillTimer > 0) {
+        rafId = requestAnimationFrame(drawFrame);
+      }
     };
 
     const onVisibilityChange = () => {
-      if (typeof document !== "undefined" && !document.hidden) {
-        lastTime = performance.now();
+      if (typeof document !== "undefined" && !document.hidden && isIntersecting) {
+        wakeLoop(compact ? 120 : 0);
       }
     };
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", onVisibilityChange);
     }
 
+    const io =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            (entries) => {
+              if (disposed) return;
+              const entry = entries[0];
+              isIntersecting = Boolean(entry?.isIntersecting);
+              if (isIntersecting) {
+                measureBox();
+                const box = syncSize();
+                if (box.visible) renderScene(box.w, box.h, box.dpr);
+                if (!compact || hovered || performance.now() < compactWakeUntil) {
+                  wakeLoop(0);
+                }
+              } else if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = 0;
+              }
+            },
+            { threshold: 0.01 }
+          )
+        : null;
+    io?.observe(canvas);
+
     const obs =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
             if (disposed) return;
-            const prevW = lastW;
-            const prevH = lastH;
+            const prevW = cachedW;
+            const prevH = cachedH;
+            measureBox();
             const { w, h, dpr, visible } = syncSize();
             if (visible && (w !== prevW || h !== prevH)) {
               renderScene(w, h, dpr);
@@ -676,21 +749,27 @@ export default function HeroPreviewCanvas({
     obs?.observe(canvas);
     if (canvas.parentElement) obs?.observe(canvas.parentElement);
 
+    measureBox();
     const initBox = syncSize();
     if (initBox.visible) {
       renderScene(initBox.w, initBox.h, initBox.dpr);
     }
-    rafId = requestAnimationFrame(drawFrame);
+    if (!compact || attackTrigger > 0) {
+      rafId = requestAnimationFrame(drawFrame);
+    }
 
     return () => {
       disposed = true;
       if (rafId) cancelAnimationFrame(rafId);
+      io?.disconnect();
       obs?.disconnect();
+      delete canvas.__arenaWakePreview;
+      delete canvas.__arenaSetHover;
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", onVisibilityChange);
       }
     };
-  }, [hero, compact, locked]);
+  }, [hero, compact, locked, attackTrigger]);
 
   const handleStrike = () => {
     if (!interactive || !hero) return;
@@ -699,8 +778,13 @@ export default function HeroPreviewCanvas({
     st.skillTimer = 0.46;
     st.autoFlourishTimer = 3.2;
     st.parity = -st.parity;
+    canvasRef.current?.__arenaWakePreview?.(700);
     R.playHeroSkillPreview(hero.id, "atk");
     onPreviewStrike?.(hero);
+  };
+
+  const handlePointerEnter = () => {
+    canvasRef.current?.__arenaSetHover?.(true);
   };
 
   const handlePointerMove = (e) => {
@@ -715,12 +799,14 @@ export default function HeroPreviewCanvas({
 
   const handlePointerLeave = () => {
     stateRef.current.pointerAngle = null;
+    canvasRef.current?.__arenaSetHover?.(false);
   };
 
   return (
     <canvas
       ref={canvasRef}
       onClick={handleStrike}
+      onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       aria-label={hero?.name || "Hero showcase"}

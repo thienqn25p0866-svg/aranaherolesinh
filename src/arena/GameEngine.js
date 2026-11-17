@@ -1,19 +1,87 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
-import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist } from "./weaponRenderer";
-import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal } from "./combatLogic";
+import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt } from "./weaponRenderer";
+import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal, normalizeQualityMode, normalizeFpsCapMode, detectDeviceHardwareTier, resolvePerformanceProfile, stepAdaptiveQualityGovernor, computeWorldViewBounds, isCircleInViewBounds, isSegmentInViewBounds, swapRemoveAt, computeAdaptiveSyncIntervals, DUNG_BASE_CRIT, DUNG_MAX_CRIT, DUNG_BASE_LIFESTEAL, DUNG_C2_DURATION, DUNG_C3_DURATION, DUNG_C3_BOSS_DMG_MULT, computeDungCritProfile, computeDungHealValues } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: Se / 2, y: Ce / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced" }, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
-      let l = (a - this.lastTime) / 1e3, m = Number.isFinite(l) && l > 0 ? Math.min(l, 0.05) : 0;
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: Se / 2, y: Ce / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+      let hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
+      let profile = this.getPerformanceProfile(false, hidden);
+      let rawMs = a - this.lastTime;
+      let minFrameMs = 1000 / Math.max(10, profile.targetFps) - 1.2;
+      if (Number.isFinite(rawMs) && rawMs > 0 && rawMs < minFrameMs) {
+        if (this.animFrameId !== null) this.animFrameId = requestAnimationFrame(this.loop);
+        return;
+      }
+      let l = rawMs / 1e3, m = Number.isFinite(l) && l > 0 ? Math.min(l, 0.05) : 0;
       this.lastTime = a;
+      let workStart = performance.now();
       try {
         this.update(m), this.render();
       } catch (err) {
         console.error("GameEngine loop error:", err);
       }
+      let workMs = performance.now() - workStart;
+      if (Number.isFinite(workMs)) {
+        this._frameTimeEmaMs = this._frameTimeEmaMs * 0.9 + workMs * 0.1;
+      }
+      if (this.gameSettings.qualityMode === "auto" && !hidden && this.gameState === "PLAYING") {
+        let gov = stepAdaptiveQualityGovernor({
+          frameTimeEmaMs: this._frameTimeEmaMs,
+          currentStep: this._adaptiveQualityStep,
+          cooldownSec: this._adaptiveCooldownSec,
+          dtSec: m,
+        });
+        this._adaptiveCooldownSec = gov.nextCooldownSec;
+        if (gov.changed) {
+          let prevTier = profile.effectiveTier;
+          this._adaptiveQualityStep = gov.nextStep;
+          let nextProfile = this.getPerformanceProfile(true, false);
+          if (prevTier !== nextProfile.effectiveTier) {
+            this.resizeCanvas();
+          }
+          if (typeof R?.setPerformanceProfile === "function") {
+            R.setPerformanceProfile({ maxVoices: nextProfile.audioMaxVoices, lowPowerAudio: nextProfile.audioLowPower });
+          }
+        }
+      }
       if (this.animFrameId !== null) this.animFrameId = requestAnimationFrame(this.loop);
     }, this.canvas = s, this.ctx = s.getContext("2d"), this.currentHero = Mi[4], this.loadSave(), this.initPlayer(), this.resizeCanvas();
+  }
+  getPerformanceProfile(force = false, hiddenOverride = null) {
+    let hidden = hiddenOverride !== null ? Boolean(hiddenOverride) : (typeof document !== "undefined" ? Boolean(document.hidden) : false);
+    let now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (!force && this._perfProfile && this._perfLastHidden === hidden && now - this._lastPerfRefresh < 250) {
+      return this._perfProfile;
+    }
+    this._perfLastHidden = hidden;
+    this._lastPerfRefresh = now;
+    this._perfProfile = resolvePerformanceProfile({
+      qualityMode: this.gameSettings?.qualityMode || "auto",
+      fpsCapMode: this.gameSettings?.fpsCapMode || "auto",
+      hardware: this._hardwareProfile,
+      adaptiveStep: this._adaptiveQualityStep,
+      hidden,
+    });
+    return this._perfProfile;
+  }
+  applyPerformanceSettings({ qualityMode, fpsCapMode } = {}) {
+    if (qualityMode !== undefined) {
+      this.gameSettings.qualityMode = normalizeQualityMode(qualityMode);
+      if (this.gameSettings.qualityMode !== "auto") {
+        this._adaptiveQualityStep = 0;
+        this._adaptiveCooldownSec = 0;
+      }
+    }
+    if (fpsCapMode !== undefined) {
+      this.gameSettings.fpsCapMode = normalizeFpsCapMode(fpsCapMode);
+    }
+    let profile = this.getPerformanceProfile(true);
+    if (typeof R?.setPerformanceProfile === "function") {
+      R.setPerformanceProfile({ maxVoices: profile.audioMaxVoices, lowPowerAudio: profile.audioLowPower });
+    }
+    this.resizeCanvas();
+    return profile;
   }
   getCoopPowerMultiplier() {
     return this.multiplayer.active ? Math.max(1, this.multiplayer.powerMultiplier || 1) : 1;
@@ -30,10 +98,22 @@ export class GameEngine {
     mpClient.send({ type: "ALLY_SUPPORT", x: Math.round(x), y: Math.round(y), radius: Math.round(radius), heal: Math.round(heal), shield: Math.round(shield), label, color });
   }
   resizeCanvas() {
-    let s = this.canvas.getBoundingClientRect();
+    let s = this.canvas?.getBoundingClientRect ? this.canvas.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
     this.viewW = Math.max(1, Math.round(s.width || window.innerWidth || 1280)), this.viewH = Math.max(1, Math.round(s.height || window.innerHeight || 720));
-    let a = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = Math.round(this.viewW * a), this.canvas.height = Math.round(this.viewH * a);
+    let profile = this.getPerformanceProfile(false);
+    let rawDpr = window.devicePixelRatio || 1;
+    let a = Math.min(rawDpr, profile.maxDpr || 1.75);
+    let maxDim = Math.max(this.viewW * a, this.viewH * a);
+    if (profile.maxCanvasDim && maxDim > profile.maxCanvasDim) {
+      a = Math.max(1, a * (profile.maxCanvasDim / maxDim));
+    }
+    this.currentDpr = a;
+    let targetW = Math.max(1, Math.round(this.viewW * a));
+    let targetH = Math.max(1, Math.round(this.viewH * a));
+    if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+      this.canvas.width = targetW;
+      this.canvas.height = targetH;
+    }
   }
   getCameraViewport() {
     return computeCameraViewportConfig({
@@ -81,7 +161,15 @@ export class GameEngine {
       let p = g.stats || {};
       p.atk && (l.atk += p.atk), p.matk && (l.matk += p.matk), p.hp && (l.hp += p.hp), p.hpRegen && (l.hpRegen += p.hpRegen), p.ms && (l.ms += p.ms), p.as && (l.as += p.as), p.crit && (l.crit += p.crit), p.critExtraDmg && (l.critExtraDmg += p.critExtraDmg), p.cdr && (l.cdr += p.cdr), p.lifesteal && (l.lifesteal += p.lifesteal), p.reflect && (l.reflect += p.reflect), p.dmgRed && (l.dmgRed += p.dmgRed), p.lightningChance && (l.lightningChance = p.lightningChance, l.lightningDmg = p.lightningDmg || 35), p.frostThornsChance && (l.frostThornsChance = p.frostThornsChance), p.killHeal && (l.killHeal += p.killHeal), p.autoShield20 && (l.autoShield20 = Math.max(l.autoShield20, p.autoShield20)), p.dashAttackSpeed && (l.dashAttackSpeed = Math.max(l.dashAttackSpeed, p.dashAttackSpeed)), p.skillBurstChance && (l.skillBurstChance = p.skillBurstChance, l.skillBurstDmg = p.skillBurstDmg || 40), p.autoShield30 && (l.autoShield30 = Math.max(l.autoShield30, p.autoShield30)), p.bossDmgBonus && (l.bossDmgBonus += p.bossDmgBonus), p.hitProcCount && (l.hitProcCount = p.hitProcCount, l.hitProcDmg = Math.max(l.hitProcDmg, p.hitProcDmg || 0)), p.healAmp && (l.healAmp += p.healAmp), p.bossSkillExtraDmg && (l.bossSkillExtraDmg += p.bossSkillExtraDmg), p.autoShield25 && (l.autoShield25 = Math.max(l.autoShield25, p.autoShield25)), p.frostSlowDur && (l.frostSlowDur = Math.max(l.frostSlowDur, p.frostSlowDur)), p.aoeAmp && (l.aoeAmp += p.aoeAmp), p.autoHeal20 && (l.autoHeal20 = Math.max(l.autoHeal20, p.autoHeal20), p.autoHeal20Cd && (l.autoHeal20Cd = p.autoHeal20Cd)), p.waveStartShield && (l.waveStartShield += p.waveStartShield), p.skillMoveSpeedBonus && (l.skillMoveSpeedBonus = Math.max(l.skillMoveSpeedBonus, p.skillMoveSpeedBonus));
     }
-    return l.cdr = Math.min(0.45, l.cdr), l.ms = Math.min(0.5, l.ms), l.lifesteal = Math.min(0.25, l.lifesteal), l.dmgRed = Math.min(0.35, l.dmgRed), s === "kin" ? (l.as = Math.min(0.85, l.as), l.crit = Math.min(0.92, l.crit * 1.65 + 0.35), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 2)) : s === "longhoi" ? (l.as = Math.min(0.45, l.as), l.crit = Math.min(0.55, l.crit + 0.08)) : s === "taidu" ? (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.56, l.crit + 0.12)) : s === "tin" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.45, l.crit + 0.08)) : s === "nguyen" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.4, l.crit + 0.08)) : s === "duy" ? (l.as = Math.min(0.65, l.as), l.crit = Math.min(0.65, l.crit + 0.16), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 0.45)) : (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.5, l.crit)), l;
+    return l.cdr = Math.min(0.45, l.cdr), l.ms = Math.min(0.5, l.ms), l.lifesteal = Math.min(0.25, l.lifesteal), l.dmgRed = Math.min(0.35, l.dmgRed), s === "dung" ? (l.as = Math.min(0.7, l.as), l.crit = Math.min(DUNG_MAX_CRIT, l.crit + DUNG_BASE_CRIT)) : s === "kin" ? (l.as = Math.min(0.85, l.as), l.crit = Math.min(0.92, l.crit * 1.65 + 0.35), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 2)) : s === "longhoi" ? (l.as = Math.min(0.45, l.as), l.crit = Math.min(0.55, l.crit + 0.08)) : s === "taidu" ? (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.56, l.crit + 0.12)) : s === "tin" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.45, l.crit + 0.08)) : s === "nguyen" ? (l.as = Math.min(0.55, l.as), l.crit = Math.min(0.4, l.crit + 0.08)) : s === "duy" ? (l.as = Math.min(0.65, l.as), l.crit = Math.min(0.65, l.crit + 0.16), l.critExtraDmg = (l.critExtraDmg || 0) + Math.round((l.atk || 0) * 0.45)) : (l.as = Math.min(0.6, l.as), l.crit = Math.min(0.5, l.crit)), l;
+  }
+  getDungEffectiveCrit() {
+    let g = this.getHeroGearStats("dung");
+    return computeDungCritProfile({
+      baseAndGearCrit: g.crit,
+      berserkActive: (this.player?.berserkTimer || 0) > 0,
+      c3Active: (this.player?.dung_c3_buff_timer || 0) > 0,
+    });
   }
   initPlayer() {
     let s = this.getHeroGearStats(this.currentHero.id), a = this.currentHero.stats.hp + s.hp;
@@ -89,7 +177,7 @@ export class GameEngine {
     this.killStreakCount = 0;
     this.killStreakTimer = 0;
     this._lastComboRank = "D";
-    this.player = { x: Se / 2, y: Ce / 2, vx: 0, vy: 0, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, berserkTimer: 0, berserkHealPerHit: 22, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: Se / 2 - 42, taidu_droneY: Ce / 2 - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, phong_basicStep: 0, phong_dashProtectTimer: 0, phong_c3_flurryTimer: 0, phong_afterimageCd: 0, phong_illHealCd: 0, dang_rage: 0, dang_rageReady: false, dang_c2_timer: 0, dang_c2_recastLock: 0, dang_c2_counterCd: 0, dang_c3_asTimer: 0, dang_c3_flurryTimer: 0, dang_basicStep: 0, thien_energy: 0, thien_ascendedTimer: 0, thien_godMode: false, thien_godInvulnTextCd: 0, thien_regenTimer: 0, thien_c2ZoneId: null, thien_c2RecastLock: 0, thien_c3PortalTimer: 0, thien_c3RecastLock: 0, thien_c3Origin: null, thien_swordHealCd: 0, thien_damageBreakdown: { atk: 0, c1: 0, c2: 0, c3: 0, c4: 0 }, thanh_passiveCd: 0, thanh_dmgEvents: [], thanh_c3Timer: 0, thanh_sacrificeIcd: 0, thanh_c2HealCd: 0, thanh_companionAngle: 0, nhi_passiveCd: 0, nhi_passiveIdx: 0, nhi_ammoType: "purple", nhi_c2HealCd: 0, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: Se / 2, targetY: Ce / 2 }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
+    this.player = { x: Se / 2, y: Ce / 2, vx: 0, vy: 0, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, dung_c1_healed: false, berserkTimer: 0, berserkHealPerHit: 45, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: Se / 2 - 42, taidu_droneY: Ce / 2 - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, phong_basicStep: 0, phong_dashProtectTimer: 0, phong_c3_flurryTimer: 0, phong_afterimageCd: 0, phong_illHealCd: 0, dang_rage: 0, dang_rageReady: false, dang_c2_timer: 0, dang_c2_recastLock: 0, dang_c2_counterCd: 0, dang_c3_asTimer: 0, dang_c3_flurryTimer: 0, dang_basicStep: 0, thien_energy: 0, thien_ascendedTimer: 0, thien_godMode: false, thien_godInvulnTextCd: 0, thien_regenTimer: 0, thien_c2ZoneId: null, thien_c2RecastLock: 0, thien_c3PortalTimer: 0, thien_c3RecastLock: 0, thien_c3Origin: null, thien_swordHealCd: 0, thien_damageBreakdown: { atk: 0, c1: 0, c2: 0, c3: 0, c4: 0 }, thanh_passiveCd: 0, thanh_dmgEvents: [], thanh_c3Timer: 0, thanh_sacrificeIcd: 0, thanh_c2HealCd: 0, thanh_companionAngle: 0, nhi_passiveCd: 0, nhi_passiveIdx: 0, nhi_ammoType: "purple", nhi_c2HealCd: 0, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: Se / 2, targetY: Ce / 2 }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
   }
   computeHeroStats() {
     if (!this.currentHero) return;
@@ -108,14 +196,14 @@ export class GameEngine {
   }
   getEffectiveAttackInterval() {
     let s = this.getHeroGearStats(this.currentHero.id), a = 1 + this.player.attackSpeedBonus + s.as;
-    this.player.berserkTimer > 0 && (a += 0.25), this.player.dung_c3_buff_timer > 0 && (a += 0.9), this.player.kin_asBuffTimer > 0 && (a += 0.35), this.player.dashBuffAsTimer > 0 && (a += 0.2), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (a += 0.18), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (a += 0.15), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (a += computeDanhDragonFormModifiers(true).attackSpeedMult - 1), this.currentHero.id === "dang" && this.player.dang_c3_asTimer > 0 && (a += DANG_C3_AS_BONUS), this.currentHero.id === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 && (a += 0.35), this.player.thien_godMode && (a += 0.65));
+    this.player.berserkTimer > 0 && (a += this.currentHero.id === "dung" ? 0.35 : 0.25), this.player.dung_c3_buff_timer > 0 && (a += 1.0), this.player.kin_asBuffTimer > 0 && (a += 0.35), this.player.dashBuffAsTimer > 0 && (a += 0.2), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (a += 0.18), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (a += 0.15), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (a += computeDanhDragonFormModifiers(true).attackSpeedMult - 1), this.currentHero.id === "dang" && this.player.dang_c3_asTimer > 0 && (a += DANG_C3_AS_BONUS), this.currentHero.id === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 && (a += 0.35), this.player.thien_godMode && (a += 0.65));
     let l = this.currentHero.stats.attackInterval || 0.55;
     return Math.max(0.09, l / a);
   }
   getEffectiveMoveSpeed() {
     if (this.player.stunTimer > 0 || this.player.rootTimer > 0) return 0;
     let s = 1 + this.getHeroGearStats(this.currentHero.id).ms, tdSpeed = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(this.player.taidu_droneMode || "attack").pursuitSpeedBonus || 0 : 0;
-    return this.player.berserkTimer > 0 && (s += 0.15), this.player.longhoi_msBuffTimer > 0 && (s += 0.12), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (s += 0.12), this.currentHero.id === "bao" && this.player.bao_stealthTimer > 0 && (s += 0.25), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (s += 0.2), this.currentHero.id === "danh" && this.player.chargeState.active && (s *= 0.55), this.currentHero.id === "duy" && (this.player.duy_idleTime || 0) >= DUY_QUIET_REGEN_DELAY && (s += 0.18), this.currentHero.id === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 || this.player.thien_godMode) && (s += 0.25), this.player.slowTimer > 0 && (s *= Math.max(0.35, 1 - this.player.slowFactor)), (this.currentHero.stats.speed + tdSpeed) * 2.15 * s;
+    return this.player.berserkTimer > 0 && (s += this.currentHero.id === "dung" ? 0.18 : 0.15), this.player.longhoi_msBuffTimer > 0 && (s += 0.12), this.currentHero.id === "tin" && this.player.tin_monochrome_realm_timer > 0 && (s += 0.12), this.currentHero.id === "bao" && this.player.bao_stealthTimer > 0 && (s += 0.25), this.currentHero.id === "danh" && this.player.danh_dragonTimer > 0 && (s += 0.2), this.currentHero.id === "danh" && this.player.chargeState.active && (s *= 0.55), this.currentHero.id === "duy" && (this.player.duy_idleTime || 0) >= DUY_QUIET_REGEN_DELAY && (s += 0.18), this.currentHero.id === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 || this.player.thien_godMode) && (s += 0.25), this.player.slowTimer > 0 && (s *= Math.max(0.35, 1 - this.player.slowFactor)), (this.currentHero.stats.speed + tdSpeed) * 2.15 * s;
   }
   isBossImmune(s) {
     return false;
@@ -206,40 +294,67 @@ export class GameEngine {
     this.gameSettings.screenShake && (this.shakeMagnitude = Math.max(this.shakeMagnitude, s), this.shakeTimer = Math.max(this.shakeTimer, a));
   }
   addFloatingText(s, a, l, m, c = 15) {
-    (this.gameSettings.showDamageNumbers || l.startsWith("+") || l.includes("LV") || l.includes("M\xC0N")) && this.floatingTexts.push({ x: s + (Math.random() - 0.5) * 16, y: a - 14, vy: -42, text: l, color: m, life: 0, maxLife: 0.75, size: c });
+    if (!(this.gameSettings.showDamageNumbers || l.startsWith("+") || l.includes("LV") || l.includes("M\xC0N"))) return;
+    let prof = this.getPerformanceProfile();
+    if (this.floatingTexts.length >= prof.maxFloatingTexts) {
+      if (l.startsWith("+") || l.includes("LV") || l.includes("M\xC0N")) this.floatingTexts.shift();
+      else return;
+    }
+    this.floatingTexts.push({ x: s + (Math.random() - 0.5) * 16, y: a - 14, vy: -42, text: l, color: m, life: 0, maxLife: 0.75, size: c });
   }
   spawnImpactBurst(x, y, color = "#38BDF8", isCrit = false, angle = 0) {
-    this.impactBursts.length < 24 && this.impactBursts.push({ x, y, color, isCrit, angle, radius: isCrit ? 34 : 20, life: 0, maxLife: isCrit ? 0.24 : 0.17 });
+    let prof = this.getPerformanceProfile();
+    this.impactBursts.length < prof.maxImpactBursts && this.impactBursts.push({ x, y, color, isCrit, angle, radius: isCrit ? 34 : 20, life: 0, maxLife: isCrit ? 0.24 : 0.17 });
   }
   spawnParticles(s, a, l, m, c = 40, g = 150, p = 3.5, h = 0.45) {
-    let cap = Math.max(0, 140 - this.particles.length);
-    for (let f = 0, lim = Math.min(m, cap); f < lim; f++) {
+    if (!this.gameSettings.particles) return;
+    let prof = this.getPerformanceProfile();
+    let scaled = Math.max(1, Math.round(m * prof.particleBudgetScale));
+    let cap = Math.max(0, prof.maxParticles - this.particles.length);
+    for (let f = 0, lim = Math.min(scaled, cap); f < lim; f++) {
       let v = Math.random() * Math.PI * 2, T = c + Math.random() * (g - c);
       this.particles.push({ x: s, y: a, vx: Math.cos(v) * T, vy: Math.sin(v) * T, radius: p * (0.6 + Math.random() * 0.7), color: l, life: 0, maxLife: h * (0.7 + Math.random() * 0.5) });
     }
   }
   spawnFlameParticles(s, a, l = "red", m = 6, c = 30, g = 100) {
-    for (let p = 0; p < m; p++) {
+    if (!this.gameSettings.particles) return;
+    let prof = this.getPerformanceProfile();
+    let scaled = Math.max(1, Math.round(m * prof.particleBudgetScale));
+    let cap = Math.max(0, prof.maxFlames - this.flameParticles.length);
+    for (let p = 0, lim = Math.min(scaled, cap); p < lim; p++) {
       let h = -Math.PI / 2 + (Math.random() - 0.5) * 1.5, f = c + Math.random() * (g - c);
       this.flameParticles.push({ x: s + (Math.random() - 0.5) * 12, y: a + (Math.random() - 0.5) * 12, vx: Math.cos(h) * f, vy: Math.sin(h) * f, radius: 3.5 + Math.random() * 4.5, colorMode: l, life: 0, maxLife: 0.35 + Math.random() * 0.35 });
     }
   }
   spawnRedCrystals(s, a, l = 8, m = 60, c = 180) {
-    for (let g = 0; g < l; g++) {
+    if (!this.gameSettings.particles) return;
+    let prof = this.getPerformanceProfile();
+    let scaled = Math.max(1, Math.round(l * prof.particleBudgetScale));
+    let cap = Math.max(0, prof.maxCrystals - this.redCrystals.length);
+    for (let g = 0, lim = Math.min(scaled, cap); g < lim; g++) {
       let p = Math.random() * Math.PI * 2, h = m + Math.random() * (c - m);
       this.redCrystals.push({ x: s, y: a, vx: Math.cos(p) * h, vy: Math.sin(p) * h, size: 4 + Math.random() * 6, rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 12, alpha: 1, life: 0, maxLife: 0.5 + Math.random() * 0.4 });
     }
   }
   spawnSmokePuff(s, a, l = 7, m = "rgba(148, 163, 184, 0.5)") {
+    if (!this.gameSettings.particles) return;
+    let prof = this.getPerformanceProfile();
+    if (this.smokePuffs.length >= prof.maxSmoke) return;
     this.smokePuffs.push({ x: s, y: a, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20 - 15, radius: l, color: m, life: 0, maxLife: 0.45 + Math.random() * 0.35 });
   }
   spawnBloodSplatter(s, a, l = 12, m = null, c = Math.PI * 2) {
-    if (this.gameSettings.particles) for (let g = 0; g < l; g++) {
+    if (!this.gameSettings.particles) return;
+    let prof = this.getPerformanceProfile();
+    let scaled = Math.max(1, Math.round(l * prof.particleBudgetScale));
+    let cap = Math.max(0, prof.maxBlood - this.bloodParticles.length);
+    for (let g = 0, lim = Math.min(scaled, cap); g < lim; g++) {
       let p = m === null ? Math.random() * Math.PI * 2 : m - c / 2 + Math.random() * c, h = 50 + Math.random() * 160;
       this.bloodParticles.push({ x: s, y: a, vx: Math.cos(p) * h, vy: Math.sin(p) * h, radius: 2 + Math.random() * 3.5, color: Math.random() < 0.65 ? "#DC2626" : Math.random() < 0.5 ? "#991B1B" : "#7F1D1D", life: 0, maxLife: 0.6 + Math.random() * 0.45, gravity: 140 });
     }
   }
   createBranchingLightning(s, a, l, m, c = "#38BDF8", g = 3, p = 0) {
+    let prof = this.getPerformanceProfile();
+    if (this.lightnings.length >= prof.maxLightnings) return;
     let h = [{ x: s, y: a }], f = l - s, v = m - a, T = Math.hypot(f, v) || 1, b = -v / T, x = f / T;
     let segs = Math.max(6, Math.min(12, Math.floor(T / 30)));
     let maxJitter = Math.min(34, Math.max(10, T * 0.2));
@@ -254,10 +369,14 @@ export class GameEngine {
     h.push({ x: l, y: m }), this.lightnings.push({ points: h, color: c, life: 0, maxLife: 0.22, width: g });
   }
   createCataclysmicExplosion(s, a, l = 140, m = "#EF4444") {
+    let prof = this.getPerformanceProfile();
+    if (this.cataclysmicExplosions.length >= prof.maxExplosions) this.cataclysmicExplosions.shift();
     this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 0.55, color: m }), this.addShake(16, 0.4), this.screenFlashWhite = 0.25, R.playExplosion(), this.spawnFlameParticles(s, a, "red", 18, 60, 240), this.spawnRedCrystals(s, a, 12, 80, 260);
     for (let c = 0; c < 8; c++) this.spawnSmokePuff(s + (Math.random() - 0.5) * 40, a + (Math.random() - 0.5) * 40, 14 + Math.random() * 10);
   }
   spawnGroundCrack(s, a, l, m, c = "#EA580C", g = "#FEF08A") {
+    let prof = this.getPerformanceProfile();
+    if (this.groundCracks.length >= prof.maxCracks) this.groundCracks.shift();
     let steps = 7, points = [{ x: 0, y: 0 }];
     for (let i = 1; i < steps; i++) {
       let t = i / steps;
@@ -330,6 +449,8 @@ export class GameEngine {
   damageEnemy(s, a, l = 0, m = 0, c = false, g = null, p = null) {
     if (!s || s.hp <= 0 || s.mpKilled) return false;
     let h = this.getHeroGearStats(this.currentHero.id), f = Math.max(1, a), v = false;
+    let isDung = this.currentHero.id === "dung";
+    let dungCrit = isDung ? computeDungCritProfile({ baseAndGearCrit: h.crit, berserkActive: (this.player.berserkTimer || 0) > 0, c3Active: (this.player.dung_c3_buff_timer || 0) > 0 }) : null;
     if (s.kind === "shield_knight") {
       let atkAng = Math.atan2(this.player.y - s.y, this.player.x - s.x);
       let diff = Math.abs(Math.atan2(Math.sin(atkAng - (s.facing || 0)), Math.cos(atkAng - (s.facing || 0))));
@@ -340,12 +461,18 @@ export class GameEngine {
         let C = h.skillBurstDmg || 40;
         f += C, this.slashes.push({ x: s.x, y: s.y, angle: 0, radius: 70, spread: Math.PI * 2, color: "#C084FC", life: 0, maxLife: 0.25, kind: "shockwave" }), this.queueVfx("slash", { x: s.x, y: s.y, angle: 0, radius: 70, spread: Math.PI * 2, color: "#C084FC", maxLife: 0.25, kind: "shockwave" }), this.addFloatingText(s.x, s.y - 22, `TINH VÂN +${C}`, "#C084FC", 14);
       }
-      if (p?.forceCrit) {
+      if (p?.forceCrit || (isDung && !p?.noCrit && Math.random() < dungCrit.critChance)) {
         v = true;
-        f = Math.round(f * (this.currentHero.critDmgRatio || 1.5));
+        f = Math.round(f * (isDung ? dungCrit.critDmgRatio : (this.currentHero.critDmgRatio || 1.5)));
         h.critExtraDmg > 0 && (f += h.critExtraDmg);
         this.player.weaponCritTimer = 0.36;
         this.spawnRedCrystals(s.x, s.y, 4, 60, 150);
+        this.spawnImpactBurst(s.x, s.y, isDung && (this.player.dung_c3_buff_timer || 0) > 0 ? "#FDE047" : "#F59E0B", true, Math.atan2(s.y - this.player.y, s.x - this.player.x));
+      }
+      if (isDung && this.player.hp > 0) {
+        let dungSkillSteal = DUNG_BASE_LIFESTEAL * (this.player.dung_c3_buff_timer > 0 ? 2 : 1);
+        let dHeal = Math.round(Math.min(s.hp, f) * dungSkillSteal);
+        dHeal > 0 && this.healPlayer(dHeal, "LIFESTEAL");
       }
       if (this.currentHero.id === "duccong" && p && !p.hasHealedPlayer) {
         p.hasHealedPlayer = true;
@@ -354,11 +481,13 @@ export class GameEngine {
       }
       this.currentHero.id === "duccong" && g !== null && p && this.applyDucCongHitRefund(g, s.id, p.refundedEnemyIds);
     } else {
-      if (v = Math.random() < h.crit, v && (f = Math.round(f * (this.currentHero.critDmgRatio || 1.5)), h.critExtraDmg > 0 && (f += h.critExtraDmg), this.player.weaponCritTimer = 0.36, this.spawnRedCrystals(s.x, s.y, 4, 60, 150)), h.lightningChance > 0 && Math.random() < h.lightningChance) {
+      let critProb = isDung ? dungCrit.critChance : h.crit;
+      let critMult = isDung ? dungCrit.critDmgRatio : (this.currentHero.critDmgRatio || 1.5);
+      if (v = Math.random() < critProb, v && (f = Math.round(f * critMult), h.critExtraDmg > 0 && (f += h.critExtraDmg), this.player.weaponCritTimer = 0.36, this.spawnRedCrystals(s.x, s.y, 4, 60, 150), this.spawnImpactBurst(s.x, s.y, isDung && (this.player.dung_c3_buff_timer || 0) > 0 ? "#FDE047" : "#F59E0B", true, Math.atan2(s.y - this.player.y, s.x - this.player.x))), h.lightningChance > 0 && Math.random() < h.lightningChance) {
         let H = h.lightningDmg || 35;
         f += H, R.playElectricZap(), this.createBranchingLightning(this.player.x, this.player.y, s.x, s.y, "#FCD34D", 2.8), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: s.x, y2: s.y, color: "#FCD34D", width: 2.8 }), this.addFloatingText(s.x, s.y - 20, `SẤM +${H}`, "#FCD34D", 13);
       }
-      let C = (h.lifesteal + (this.currentHero.id === "tin" ? 0.05 : 0)) * (this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 ? 2 : 1);
+      let C = (h.lifesteal + (this.currentHero.id === "tin" ? 0.05 : isDung ? DUNG_BASE_LIFESTEAL : 0)) * (isDung && this.player.dung_c3_buff_timer > 0 ? 2 : 1);
       if (C > 0) {
         let H = Math.min(s.hp, f);
         this.healPlayer(Math.round(H * C), "LIFESTEAL");
@@ -376,7 +505,7 @@ export class GameEngine {
         showText && healed > 0 && (this.player.luan_vampTextCd = 0.4);
       }
     }
-    (s.taidu_empTimer || 0) > 0 && (f = Math.round(f * 1.1)), this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 && s.kind === "boss" && (f = Math.round(f * 1.2)), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (f = Math.round(f * 1.25));
+    (s.taidu_empTimer || 0) > 0 && (f = Math.round(f * 1.1)), isDung && this.player.dung_c3_buff_timer > 0 && s.kind === "boss" && (f = Math.round(f * DUNG_C3_BOSS_DMG_MULT)), this.currentHero.id === "gau" && this.player.gau_cuongHungTimer > 0 && (f = Math.round(f * 1.25));
     this.currentHero.id === "dang" && !(p && p.fromDangPassive) && this.grantDangRage(c ? 8 : 12);
     let T = Math.min(s.hp, f);
     if (this.currentHero.id === "thien") {
@@ -676,7 +805,15 @@ export class GameEngine {
       R.playKill(this.killStreakCount);
       this.killStreakCount >= 2 && R.playMultiKill(this.killStreakCount);
     }
-    this.deadCorpses.push({ x: s.x, y: s.y, radius: s.radius, color: s.color, kind: s.kind, bossWave: s.bossWave, name: s.name, facing: s.facing || 0, timer: 0, maxLife: s.kind === "boss" ? 3.5 : 2.4, splatRadius: s.radius * 1.55, splatColor: s.kind === "boss" ? "#7F1D1D" : "#5C1D1D" }), this.spawnBloodSplatter(s.x, s.y, s.kind === "boss" ? 32 : 14), this.spawnRedCrystals(s.x, s.y, s.kind === "boss" ? 16 : 6, 60, 200), s.kind === "boss" && (this.createCataclysmicExplosion(s.x, s.y, 180, "#EF4444"), this.syncMusicState(), this.onStateChange && this.onStateChange()), this.xpOrbs.push({ x: s.x, y: s.y, value: s.xpValue, radius: s.kind === "boss" ? 11 : 7, pulse: 0 });
+    let perfProf = this.getPerformanceProfile();
+    if (this.deadCorpses.length >= perfProf.maxCorpses) swapRemoveAt(this.deadCorpses, 0);
+    this.deadCorpses.push({ x: s.x, y: s.y, radius: s.radius, color: s.color, kind: s.kind, bossWave: s.bossWave, name: s.name, facing: s.facing || 0, timer: 0, maxLife: s.kind === "boss" ? 3.5 : 2.4, splatRadius: s.radius * 1.55, splatColor: s.kind === "boss" ? "#7F1D1D" : "#5C1D1D" }), this.spawnBloodSplatter(s.x, s.y, s.kind === "boss" ? 32 : 14), this.spawnRedCrystals(s.x, s.y, s.kind === "boss" ? 16 : 6, 60, 200), s.kind === "boss" && (this.createCataclysmicExplosion(s.x, s.y, 180, "#EF4444"), this.syncMusicState(), this.onStateChange && this.onStateChange());
+    if (this.xpOrbs.length >= perfProf.maxXpOrbs && this.xpOrbs.length > 0) {
+      let mergeIdx = this.xpOrbs.length - 1;
+      this.xpOrbs[mergeIdx].value += s.xpValue;
+    } else {
+      this.xpOrbs.push({ x: s.x, y: s.y, value: s.xpValue, radius: s.kind === "boss" ? 11 : 7, pulse: 0 });
+    }
   }
   grantXp(s) {
     for (this.player.xp += s; this.player.xp >= this.player.xpToNext; ) {
@@ -1709,32 +1846,34 @@ export class GameEngine {
     if (this.currentHero.id === "dung") {
       this.player.dung_passive = (this.player.dung_passive || 0) + 1;
       let c = 0, g = false, p = this.player.dung_c3_buff_timer > 0;
+      let dungHeals = computeDungHealValues({ maxHp: this.player.maxHp, c3Active: p });
       if (this.player.dung_passive >= 5 || p) {
-        this.player.dung_passive >= 5 && (this.player.dung_passive = 0), c = 45, g = true;
-        let f = p ? 230 : 55;
-        this.healPlayer(f, "HEAL", `+${f} HP (${p ? "CHI\u1EBEN TH\u1EA6N S\xC9T" : "CHI\u1EBEN \xDD"})`), p ? R.playThunderStrike() : R.playElectricZap(), p || this.addFloatingText(this.player.x, this.player.y - 20, "\u26A1 S\u1EA4M S\xC9T LAN (120% + LAN 5 QU\xC1I)", "#38BDF8", 15);
+        this.player.dung_passive >= 5 && (this.player.dung_passive = 0), c = 60, g = true;
+        let f = dungHeals.passiveHeal;
+        this.healPlayer(f, "HEAL", `+${f} HP (${p ? "CHI\u1EBEN TH\u1EA6N S\xC9T" : "CHI\u1EBEN \xDD"})`), p ? R.playThunderStrike() : R.playElectricZap(), p || this.addFloatingText(this.player.x, this.player.y - 20, "\u26A1 S\u1EA4M S\xC9T LAN (145% + LAN 6 QU\xC1I)", "#38BDF8", 15);
       }
-      R.playSpear(), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 20, spread: 1.15, color: g ? "#FCD34D" : "#38BDF8", life: 0, maxLife: 0.22, kind: "spear" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 20, spread: 1.15, color: g ? "#FCD34D" : "#38BDF8", maxLife: 0.22, kind: "spear" }), this.spawnParticles(this.player.x + s * 0.7 * Math.cos(l), this.player.y + s * 0.7 * Math.sin(l), "#818CF8", 6, 40, 100, 2.5, 0.25);
+      R.playSpear(), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + (p ? 38 : 24), spread: p ? 1.35 : 1.15, empowered: g, cerberus: p, color: p ? "#FDE047" : g ? "#FCD34D" : "#38BDF8", life: 0, maxLife: p ? 0.25 : 0.22, kind: "spear" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + (p ? 38 : 24), spread: p ? 1.35 : 1.15, empowered: g, cerberus: p, color: p ? "#FDE047" : g ? "#FCD34D" : "#38BDF8", maxLife: p ? 0.25 : 0.22, kind: "spear" }), this.spawnParticles(this.player.x + s * 0.7 * Math.cos(l), this.player.y + s * 0.7 * Math.sin(l), p ? "#FDE047" : "#818CF8", p ? 9 : 6, 40, 125, 2.8, 0.28);
       let h = [];
       for (let f of [...this.enemies]) {
         let v = f.x - this.player.x, T = f.y - this.player.y, b = Math.hypot(v, T) - f.radius;
         b <= s + 18 && (Math.abs(Math.atan2(Math.sin(Math.atan2(T, v) - l), Math.cos(Math.atan2(T, v) - l))) <= 0.75 || b < 35) && h.push(f);
       }
       for (let f of h) {
-        let v = g ? Math.round(m * 1.2 + c) : m + c;
-        if (this.damageEnemy(f, v, Math.cos(l) * 14, Math.sin(l) * 14), this.createBranchingLightning(this.player.x, this.player.y, f.x, f.y, g ? "#FCD34D" : "#38BDF8", 2.8), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: f.x, y2: f.y, color: g ? "#FCD34D" : "#38BDF8", width: 2.8 }), g) {
+        let v = g ? Math.round(m * 1.45 + c) : m + c;
+        let hitAng = Math.atan2(f.y - this.player.y, f.x - this.player.x);
+        if (this.damageEnemy(f, v, Math.cos(l) * 14, Math.sin(l) * 14), this.createBranchingLightning(this.player.x, this.player.y, f.x, f.y, p ? "#FDE047" : g ? "#FCD34D" : "#38BDF8", p ? 3.2 : 2.8), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: f.x, y2: f.y, color: p ? "#FDE047" : g ? "#FCD34D" : "#38BDF8", width: p ? 3.2 : 2.8 }), g && (this.slashes.push({ x: f.x, y: f.y, angle: hitAng, radius: p ? 68 : 54, spread: 1.5, color: p ? "#FDE047" : "#38BDF8", life: 0, maxLife: 0.24, kind: "dung_cerberus_bite" }), this.queueVfx("slash", { x: f.x, y: f.y, angle: hitAng, radius: p ? 68 : 54, spread: 1.5, color: p ? "#FDE047" : "#38BDF8", maxLife: 0.24, kind: "dung_cerberus_bite" }), this.spawnImpactBurst(f.x, f.y, p ? "#FDE047" : "#38BDF8", p, hitAng)), g) {
           let T = 0;
           for (let b of this.enemies) {
-            if (T >= 5) break;
-            if (!(b.id === f.id || b.hp <= 0) && Math.hypot(b.x - f.x, b.y - f.y) <= 280) {
+            if (T >= 6) break;
+            if (!(b.id === f.id || b.hp <= 0) && Math.hypot(b.x - f.x, b.y - f.y) <= 310) {
               T++;
-              let x = Math.round(m * 0.8);
-              this.damageEnemy(b, x, 0, 0, true), this.createBranchingLightning(f.x, f.y, b.x, b.y, "#38BDF8", 2.4), this.queueVfx("lightning", { x1: f.x, y1: f.y, x2: b.x, y2: b.y, color: "#38BDF8", width: 2.4 }), this.addFloatingText(b.x, b.y - 18, `S\u1EA4M LAN ${x}`, "#38BDF8", 13);
+              let x = Math.round(m * 0.95);
+              this.damageEnemy(b, x, 0, 0, true), this.createBranchingLightning(f.x, f.y, b.x, b.y, p ? "#F43F5E" : "#38BDF8", 2.5), this.queueVfx("lightning", { x1: f.x, y1: f.y, x2: b.x, y2: b.y, color: p ? "#F43F5E" : "#38BDF8", width: 2.5 }), this.spawnImpactBurst(b.x, b.y, p ? "#FDE047" : "#38BDF8", false, Math.atan2(b.y - f.y, b.x - f.x)), this.addFloatingText(b.x, b.y - 18, `S\u1EA4M LAN ${x}`, p ? "#FDE047" : "#38BDF8", 13);
             }
           }
         }
       }
-      h.length > 0 && this.player.berserkTimer > 0 && this.healPlayer(((this.player.berserkHealPerHit || 22) + Math.round(this.player.maxHp * 0.01)) * (p ? 2 : 1), "HEAL");
+      h.length > 0 && this.player.berserkTimer > 0 && this.healPlayer(dungHeals.c2HitHeal, "HEAL", `+${dungHeals.c2HitHeal} HP (CU\u1ED2NG CHI\u1EBEN)`);
     } else if (this.currentHero.id === "tin") {
       R.playSlash();
       this.player.tin_basicCount = (this.player.tin_basicCount || 0) + 1;
@@ -2109,22 +2248,45 @@ export class GameEngine {
       p.dashAttackSpeed > 0 && (this.player.dashBuffAsTimer = Math.max(this.player.dashBuffAsTimer, 2), this.addFloatingText(this.player.x, this.player.y - 15, "L\xD4I \u1EA2NH +20% T\u1ED0C \u0110\xC1NH", "#FDE68A", 13));
     };
     if (this.currentHero.id === "dung") {
+      let dungHeals = computeDungHealValues({ maxHp: this.player.maxHp, c3Active: this.player.dung_c3_buff_timer > 0 });
       if (s === 0) {
-        R.playDash(), R.playElectricZap(), T(), this.player.dashActive = true, this.player.dashKind = "dung_c1", this.player.dashTimer = 0.22;
+        R.playDash(), R.playElectricZap(), T(), this.player.dashActive = true, this.player.dashKind = "dung_c1", this.player.dashTimer = 0.22, this.player.dung_c1_healed = false;
         let b = g.range / 0.22;
-        this.player.dashVx = Math.cos(a) * b, this.player.dashVy = Math.sin(a) * b, this.player.dashDamage = 85 * v, this.player.dashHitIds.clear(), this.scorchMarks.push({ x: this.player.x, y: this.player.y, angle: a, len: g.range, life: 0, maxLife: 3.5 }), this.spawnGroundCrack(this.player.x, this.player.y, a, g.range * 0.9, "#F97316", "#FDE047"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: a, len: g.range * 0.9, color: "#F97316", glowColor: "#FDE047" }), this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 12, 50, 160, 3, 0.4), this.queueVfx("particles", { x: this.player.x, y: this.player.y, color: "#38BDF8", count: 12, minSpd: 50, maxSpd: 160, size: 3, life: 0.4 });
-      } else if (s === 1) R.playLevelUp(), this.player.berserkTimer = 6, this.player.berserkHealPerHit = 22, this.spawnFlameParticles(this.player.x, this.player.y, "red", 16, 50, 150), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 85, spread: Math.PI * 2, color: "#F97316", life: 0, maxLife: 0.28, kind: "shockwave" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 85, spread: Math.PI * 2, color: "#F97316", maxLife: 0.28, kind: "shockwave" }), this.queueVfx("particles", { x: this.player.x, y: this.player.y, flame: true, flameColor: "red", count: 16, minSpd: 50, maxSpd: 150 }), this.addFloatingText(this.player.x, this.player.y - 24, "CUỒNG CHIẾN HUYẾT MẠCH!", "#F59E0B", 16);
-      else if (s === 2) {
-        R.playThunderStrike(), this.addShake(12, 0.35);
-        let b = g.radius || 160;
-        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: b, spread: Math.PI * 2, color: "#38BDF8", life: 0, maxLife: 0.42, kind: "shockwave" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: b, spread: Math.PI * 2, color: "#38BDF8", maxLife: 0.42, kind: "shockwave" }), this.spawnGroundCrack(this.player.x, this.player.y, 0, b * 0.85, "#38BDF8", "#E0F2FE"), this.spawnGroundCrack(this.player.x, this.player.y, Math.PI / 2, b * 0.85, "#38BDF8", "#E0F2FE"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: 0, len: b * 0.85, color: "#38BDF8", glowColor: "#E0F2FE" }), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: Math.PI / 2, len: b * 0.85, color: "#38BDF8", glowColor: "#E0F2FE" });
-        for (let C = 0; C < 6; C++) {
-          let H = Math.PI * 2 / 6 * C;
-          this.createBranchingLightning(this.player.x, this.player.y, this.player.x + Math.cos(H) * b, this.player.y + Math.sin(H) * b, "#38BDF8", 3), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: this.player.x + Math.cos(H) * b, y2: this.player.y + Math.sin(H) * b, color: "#38BDF8", width: 3 });
+        this.player.dashVx = Math.cos(a) * b, this.player.dashVy = Math.sin(a) * b, this.player.dashDamage = 110 * v, this.player.dashHitIds.clear(), this.scorchMarks.push({ x: this.player.x, y: this.player.y, angle: a, len: g.range, life: 0, maxLife: 3.5 }), this.spawnGroundCrack(this.player.x, this.player.y, a, g.range * 0.9, "#F97316", "#FDE047"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: a, len: g.range * 0.9, color: "#F97316", glowColor: "#FDE047" }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: a, radius: g.range * 0.92, spread: 1.15, color: "#38BDF8", life: 0, maxLife: 0.28, kind: "dung_c1_charge" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: a, radius: g.range * 0.92, spread: 1.15, color: "#38BDF8", maxLife: 0.28, kind: "dung_c1_charge" }), this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 14, 60, 190, 3.2, 0.42), this.queueVfx("particles", { x: this.player.x, y: this.player.y, color: "#38BDF8", count: 14, minSpd: 60, maxSpd: 190, size: 3.2, life: 0.42 });
+      } else if (s === 1) {
+        R.playLevelUp(), R.playElectricZap(), this.addShake(8, 0.22), this.player.berserkTimer = DUNG_C2_DURATION, this.player.berserkHealPerHit = 45;
+        this.healPlayer(dungHeals.c2CastHeal, "HEAL", `+${dungHeals.c2CastHeal} HP (CU\u1ED2NG CHI\u1EBEN)`);
+        this.spawnFlameParticles(this.player.x, this.player.y, "red", 18, 55, 165), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 112, spread: Math.PI * 2, color: "#F97316", life: 0, maxLife: 0.34, kind: "dung_c2_awaken" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 112, spread: Math.PI * 2, color: "#F97316", maxLife: 0.34, kind: "dung_c2_awaken" }), this.queueVfx("particles", { x: this.player.x, y: this.player.y, flame: true, flameColor: "red", count: 18, minSpd: 55, maxSpd: 165 });
+        for (let ci = 0; ci < 4; ci++) {
+          let ca = Math.PI / 2 * ci + 0.38;
+          this.createBranchingLightning(this.player.x, this.player.y, this.player.x + Math.cos(ca) * 105, this.player.y + Math.sin(ca) * 105, ci % 2 === 0 ? "#F59E0B" : "#FDE047", 2.6);
+          this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: this.player.x + Math.cos(ca) * 105, y2: this.player.y + Math.sin(ca) * 105, color: ci % 2 === 0 ? "#F59E0B" : "#FDE047", width: 2.6 });
+        }
+        this.addFloatingText(this.player.x, this.player.y - 34, "\u{1F525} CU\u1ED2NG CHI\u1EBEN! +10% CM \xB7 +20% STCM", "#F59E0B", 15);
+      } else if (s === 2) {
+        R.playCerberusRoar(), R.playThunderStrike(), this.addShake(16, 0.45), this.screenFlashWhite = Math.max(this.screenFlashWhite, 0.14);
+        let b = g.radius || 185;
+        this.cerberusUltWaves.push({ id: this.nextEntityId++, x: this.player.x, y: this.player.y, angle: a, radius: b, life: 0, maxLife: 1.35 });
+        this.queueVfx("dung_cerberus_vis", { x: this.player.x, y: this.player.y, angle: a, radius: b, maxLife: 1.35 });
+        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: b * 1.08, spread: Math.PI * 2, color: "#FDE047", life: 0, maxLife: 0.45, kind: "shockwave" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: b * 1.08, spread: Math.PI * 2, color: "#FDE047", maxLife: 0.45, kind: "shockwave" });
+        for (let ki = 0; ki < 4; ki++) {
+          let ka = Math.PI / 4 * ki;
+          this.spawnGroundCrack(this.player.x, this.player.y, ka, b * 0.92, "#38BDF8", "#FDE047"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: ka, len: b * 0.92, color: "#38BDF8", glowColor: "#FDE047" });
+        }
+        for (let C = 0; C < 8; C++) {
+          let H = Math.PI * 2 / 8 * C, lCol = C % 3 === 0 ? "#FDE047" : C % 3 === 1 ? "#38BDF8" : "#A855F7";
+          this.createBranchingLightning(this.player.x, this.player.y, this.player.x + Math.cos(H) * b, this.player.y + Math.sin(H) * b, lCol, 3.3), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: this.player.x + Math.cos(H) * b, y2: this.player.y + Math.sin(H) * b, color: lCol, width: 3.3 });
         }
         let x = false;
-        for (let C of [...this.enemies]) Math.hypot(C.x - this.player.x, C.y - this.player.y) <= b + C.radius && (x = true, this.damageEnemy(C, 180 * v, 0, 0, true));
-        x && this.healPlayer(180, "HEAL", "+180 HP (CHI\u1EBEN TH\u1EA6N)"), this.addPlayerShield(500, 10), this.player.stunTimer = 0, this.player.rootTimer = 0, this.player.slowTimer = 0, this.player.slowFactor = 0, this.player.dung_c3_buff_timer = 10, this.addFloatingText(this.player.x, this.player.y - 36, "\u26A1 CHI\u1EBEN TH\u1EA6N 10s! MI\u1EC4N KH\u1ED0NG \xB7 +75% MI\u1EC4N TH\u01AF\u01A0NG \xB7 KHI\xCAN 500", "#FDE047", 15);
+        for (let C of [...this.enemies]) if (Math.hypot(C.x - this.player.x, C.y - this.player.y) <= b + C.radius) {
+          x = true;
+          let hitAng = Math.atan2(C.y - this.player.y, C.x - this.player.x);
+          this.damageEnemy(C, 260 * v, Math.cos(hitAng) * 22, Math.sin(hitAng) * 22, true);
+          this.slashes.push({ x: C.x, y: C.y, angle: hitAng, radius: 74, spread: 1.6, color: "#FDE047", life: 0, maxLife: 0.28, kind: "dung_cerberus_bite" });
+          this.queueVfx("slash", { x: C.x, y: C.y, angle: hitAng, radius: 74, spread: 1.6, color: "#FDE047", maxLife: 0.28, kind: "dung_cerberus_bite" });
+        }
+        let totalC3Heal = dungHeals.c3CastHeal + (x ? dungHeals.c3HitBonusHeal : 0);
+        this.healPlayer(totalC3Heal, "HEAL", `+${totalC3Heal} HP (TAM \u0110\u1EA6U KHUY\u1EC2N)`), this.addPlayerShield(650, DUNG_C3_DURATION), this.player.stunTimer = 0, this.player.rootTimer = 0, this.player.slowTimer = 0, this.player.slowFactor = 0, this.player.dung_c3_buff_timer = DUNG_C3_DURATION, this.addFloatingText(this.player.x, this.player.y - 38, "\u{1F43A} TAM \u0110\u1EA6U KHUY\u1EC2N \xB7 CHI\u1EBEN TH\u1EA6N 10.5s! KHI\xCAN 650", "#FDE047", 15);
       }
     } else if (this.currentHero.id === "tin") {
       let empMult = this.player.tin_empowered ? (this.player.tin_empowered = false, TIN_EMPOWERED_SKILL_MULT) : 1;
@@ -3272,6 +3434,7 @@ export class GameEngine {
     this.thanhGuardSnakes = [];
     this.thanhDevourSerpents = [];
     this.nhiToxicMists = [];
+    this.cerberusUltWaves = [];
     this.lastWaveClearTime = 0;
     this.waveCleared = false;
     this.waitingReward = false;
@@ -3370,7 +3533,7 @@ export class GameEngine {
   }
   startNewGame(s) {
     this.stopCoopMode();
-    s && (this.currentHero = s, this.selectedHeroId = s.id), this.playerCoins = 100, this.inventory = [], this.heroGear = um(), this.duccong_pads = [null, null, null], this.saveGame(), this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.syncMusicState(), this.onStateChange && this.onStateChange();
+    s && (this.currentHero = s, this.selectedHeroId = s.id), this.playerCoins = 100, this.inventory = [], this.heroGear = um(), this.duccong_pads = [null, null, null], this.saveGame(), this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.syncMusicState(), this.onStateChange && this.onStateChange();
   }
   update(s) {
     if (this.gameState !== "PLAYING") return;
@@ -3446,9 +3609,15 @@ export class GameEngine {
       gRegen.hpRegen > 0 && this.player.hp > 0 && this.player.hp < this.player.maxHp && this.healPlayer(Math.max(1, Math.round(this.player.maxHp * (gRegen.hpRegen / 500))), "REGEN_QUIET");
     }
     if (this.player.weaponSkillTimer > 0 && (this.player.weaponSkillTimer = Math.max(0, this.player.weaponSkillTimer - a)), this.player.weaponCritTimer > 0 && (this.player.weaponCritTimer = Math.max(0, this.player.weaponCritTimer - a)), this.player.bowRecoilTimer > 0 && (this.player.bowRecoilTimer = Math.max(0, this.player.bowRecoilTimer - a)), this.player.attackTimer > 0 && (this.player.attackTimer = Math.max(0, this.player.attackTimer - a)), this.player.attackAnimTimer > 0 && (this.player.attackAnimTimer = Math.max(0, this.player.attackAnimTimer - a)), this.player.hitFlash > 0 && (this.player.hitFlash = Math.max(0, this.player.hitFlash - a)), this.shakeTimer > 0 && (this.shakeTimer = Math.max(0, this.shakeTimer - a), this.shakeTimer === 0 && (this.shakeMagnitude = 0)), this.screenFlashWhite > 0 && (this.screenFlashWhite = Math.max(0, this.screenFlashWhite - a)), this.player.berserkTimer > 0 && (this.player.berserkTimer = Math.max(0, this.player.berserkTimer - a), this.player.berserkTimer === 0 && this.currentHero.id === "dung")) {
-      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 95, spread: Math.PI * 2, color: "#F59E0B", life: 0, maxLife: 0.28, kind: "shockwave" });
-      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 95, spread: Math.PI * 2, color: "#F59E0B", maxLife: 0.28, kind: "shockwave" });
-      for (let m of [...this.enemies]) Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 95 + m.radius && this.damageEnemy(m, 45, 0, 0, true);
+      let dungBurstDmg = Math.round(95 * (this.getEffectiveDamage() / Math.max(1, this.currentHero.stats.damage)));
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 132, spread: Math.PI * 2, color: "#F59E0B", life: 0, maxLife: 0.32, kind: "dung_c2_awaken" });
+      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 132, spread: Math.PI * 2, color: "#F59E0B", maxLife: 0.32, kind: "dung_c2_awaken" });
+      for (let bi = 0; bi < 4; bi++) {
+        let ba = Math.PI / 2 * bi;
+        this.createBranchingLightning(this.player.x, this.player.y, this.player.x + Math.cos(ba) * 125, this.player.y + Math.sin(ba) * 125, "#FDE047", 2.5);
+        this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: this.player.x + Math.cos(ba) * 125, y2: this.player.y + Math.sin(ba) * 125, color: "#FDE047", width: 2.5 });
+      }
+      for (let m of [...this.enemies]) Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 125 + m.radius && this.damageEnemy(m, dungBurstDmg, 0, 0, true);
     }
     if (this.player.dung_c3_buff_timer > 0 && (this.player.dung_c3_buff_timer = Math.max(0, this.player.dung_c3_buff_timer - a)), this.player.kin_asBuffTimer > 0 && (this.player.kin_asBuffTimer = Math.max(0, this.player.kin_asBuffTimer - a)), this.player.kin_c2_lifestealTimer > 0 && (this.player.kin_c2_lifestealTimer = Math.max(0, this.player.kin_c2_lifestealTimer - a)), this.player.longhoi_msBuffTimer > 0 && (this.player.longhoi_msBuffTimer = Math.max(0, this.player.longhoi_msBuffTimer - a)), this.player.dashBuffAsTimer > 0 && (this.player.dashBuffAsTimer = Math.max(0, this.player.dashBuffAsTimer - a)), this.player.autoShield20Timer > 0 && (this.player.autoShield20Timer = Math.max(0, this.player.autoShield20Timer - a)), this.player.autoShield30Timer > 0 && (this.player.autoShield30Timer = Math.max(0, this.player.autoShield30Timer - a)), this.player.ccResistTimer > 0 && (this.player.ccResistTimer = Math.max(0, this.player.ccResistTimer - a)), this.player.stunTimer > 0 && (this.player.stunTimer = Math.max(0, this.player.stunTimer - a), this.player.dashActive = false, this.player.dashKind = "none"), this.player.rootTimer > 0 && (this.player.rootTimer = Math.max(0, this.player.rootTimer - a), this.player.dashActive && (this.player.dashActive = false, this.player.dashKind = "none")), this.player.slowTimer > 0 && (this.player.slowTimer = Math.max(0, this.player.slowTimer - a), this.player.slowTimer === 0 && (this.player.slowFactor = 0)), this.player.burnTimer > 0 && (this.player.burnTimer = Math.max(0, this.player.burnTimer - a), this.player.burnTickTimer += a, Math.random() < 0.28 && this.spawnFlameParticles(this.player.x, this.player.y, "red", 1, 20, 55), this.player.burnTickTimer >= 0.5 && (this.player.burnTickTimer -= 0.5, this.damagePlayer(Math.max(4, Math.round(this.player.burnDps * 0.5)))), this.player.burnTimer === 0 && (this.player.burnDps = 0, this.player.burnTickTimer = 0)), this.player.shieldTimer > 0 && (this.player.shieldTimer = Math.max(0, this.player.shieldTimer - a), this.player.shieldTimer === 0 && this.player.shield > 0 && (this.player.shield = 0, this.player.shieldExplodeDmg > 0 && this.player.shieldExplodeRadius > 0 && this.triggerShieldExplosion())), this.comboManager.update(a), this.currentHero.id === "gau") {
       if (this.player.hp > 0 && this.player.hp < this.player.maxHp) {
@@ -3784,7 +3953,7 @@ export class GameEngine {
         for (let g of [...this.enemies]) if (!this.player.dashHitIds.has(g.id) && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= this.player.radius + g.radius + 20) {
           this.player.dashHitIds.add(g.id);
           let p = Math.atan2(this.player.dashVy, this.player.dashVx), h = this.player.dashDamage, hadMark = !!g.tin_hasMark;
-          this.player.dashKind === "tin_c1" && hadMark && (h += Math.round(34 * (this.getEffectiveDamage() / this.currentHero.stats.damage)), g.tin_hasMark = false), this.damageEnemy(g, h, this.player.dashKind === "dung_c1" ? Math.cos(p) * 32 : this.player.dashKind === "duy_c2" ? Math.cos(p) * 20 : 0, this.player.dashKind === "dung_c1" ? Math.sin(p) * 32 : this.player.dashKind === "duy_c2" ? Math.sin(p) * 20 : 0, true), this.player.dashKind === "dung_c1" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, 0.5)), this.player.dashKind === "duy_c2" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, DUY_C2_STUN_DUR), this.spawnDuyHealOrb(g.x, g.y, Math.max(18, Math.round(this.player.maxHp * 0.025)), 1)), this.player.dashKind === "tin_c1" && hadMark && !this.player.tin_c1_refunded_c2 && (this.player.tin_c1_refunded_c2 = true, this.player.cooldowns[1] *= 0.55, this.grantTinResonance(1, false), this.addFloatingText(this.player.x, this.player.y - 34, "⚡ PHÁ ẤN -45% C2!", "#FB7185", 15));
+          this.player.dashKind === "tin_c1" && hadMark && (h += Math.round(34 * (this.getEffectiveDamage() / this.currentHero.stats.damage)), g.tin_hasMark = false), this.damageEnemy(g, h, this.player.dashKind === "dung_c1" ? Math.cos(p) * 32 : this.player.dashKind === "duy_c2" ? Math.cos(p) * 20 : 0, this.player.dashKind === "dung_c1" ? Math.sin(p) * 32 : this.player.dashKind === "duy_c2" ? Math.sin(p) * 20 : 0, true), this.player.dashKind === "dung_c1" && (this.slashes.push({ x: g.x, y: g.y, angle: p, radius: 66, spread: 1.5, color: "#38BDF8", life: 0, maxLife: 0.25, kind: "dung_cerberus_bite" }), this.queueVfx("slash", { x: g.x, y: g.y, angle: p, radius: 66, spread: 1.5, color: "#38BDF8", maxLife: 0.25, kind: "dung_cerberus_bite" }), this.spawnImpactBurst(g.x, g.y, "#38BDF8", true, p), (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, 0.6)), !this.player.dung_c1_healed && ((() => { this.player.dung_c1_healed = true; let dh = computeDungHealValues({ maxHp: this.player.maxHp, c3Active: this.player.dung_c3_buff_timer > 0 }).c1HitHeal; this.healPlayer(dh, "HEAL", `+${dh} HP (XUNG PHONG)`); })())), this.player.dashKind === "duy_c2" && (this.isBossImmune(g) ? this.notifyBossImmune(g, "MIỄN NHIỄM CHOÁNG") : g.stunTimer = Math.max(g.stunTimer, DUY_C2_STUN_DUR), this.spawnDuyHealOrb(g.x, g.y, Math.max(18, Math.round(this.player.maxHp * 0.025)), 1)), this.player.dashKind === "tin_c1" && hadMark && !this.player.tin_c1_refunded_c2 && (this.player.tin_c1_refunded_c2 = true, this.player.cooldowns[1] *= 0.55, this.grantTinResonance(1, false), this.addFloatingText(this.player.x, this.player.y - 34, "⚡ PHÁ ẤN -45% C2!", "#FB7185", 15));
         }
       }
       if (this.player.dashTimer <= 0) {
@@ -4989,32 +5158,41 @@ export class GameEngine {
       }
     }
     if (this.isCoopHost()) {
-      for (let a = 0; a < this.enemies.length; a++) for (let l = a + 1; l < this.enemies.length; l++) {
-        let m = this.enemies[a], c = this.enemies[l], g = c.x - m.x, p = c.y - m.y, h = Math.hypot(g, p) || 0.01, f = m.radius + c.radius;
-        if (h < f) {
-          let v = (f - h) * 0.35, T = g / h, b = p / h;
-          m.x -= T * v, m.y -= b * v, c.x += T * v, c.y += b * v;
+      for (let a = 0; a < this.enemies.length; a++) {
+        let m = this.enemies[a];
+        for (let l = a + 1; l < this.enemies.length; l++) {
+          let c = this.enemies[l], g = c.x - m.x, p = c.y - m.y, f = m.radius + c.radius;
+          if (Math.abs(g) >= f || Math.abs(p) >= f) continue;
+          let h = Math.hypot(g, p) || 0.01;
+          if (h < f) {
+            let v = (f - h) * 0.35, T = g / h, b = p / h;
+            m.x -= T * v, m.y -= b * v, c.x += T * v, c.y += b * v;
+          }
         }
       }
     }
   }
   updateVFX(s) {
+    let prof = this.getPerformanceProfile();
+    while (this.scorchMarks.length > prof.maxScorch) swapRemoveAt(this.scorchMarks, 0);
+    while (this.slashes.length > prof.maxSlashes) swapRemoveAt(this.slashes, 0);
+    while (this.afterimages.length > prof.maxAfterimages) swapRemoveAt(this.afterimages, 0);
     for (let a = this.redCrystals.length - 1; a >= 0; a--) {
       let l = this.redCrystals[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.92, l.vy *= 0.92, l.rot += l.rotSpd * s, l.life >= l.maxLife && this.redCrystals.splice(a, 1);
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.92, l.vy *= 0.92, l.rot += l.rotSpd * s, l.life >= l.maxLife && swapRemoveAt(this.redCrystals, a);
     }
     for (let a = this.flameParticles.length - 1; a >= 0; a--) {
       let l = this.flameParticles[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius *= 0.96, l.life >= l.maxLife && this.flameParticles.splice(a, 1);
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius *= 0.96, l.life >= l.maxLife && swapRemoveAt(this.flameParticles, a);
     }
     for (let a = this.smokePuffs.length - 1; a >= 0; a--) {
       let l = this.smokePuffs[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius += 18 * s, l.life >= l.maxLife && this.smokePuffs.splice(a, 1);
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius += 18 * s, l.life >= l.maxLife && swapRemoveAt(this.smokePuffs, a);
     }
-    for (let a = this.scorchMarks.length - 1; a >= 0; a--) this.scorchMarks[a].life += s, this.scorchMarks[a].life >= this.scorchMarks[a].maxLife && this.scorchMarks.splice(a, 1);
-    for (let a = this.frostTracks.length - 1; a >= 0; a--) this.frostTracks[a].life += s, this.frostTracks[a].life >= this.frostTracks[a].maxLife && this.frostTracks.splice(a, 1);
-    for (let a = this.spatialTears.length - 1; a >= 0; a--) this.spatialTears[a].life += s, this.spatialTears[a].life >= this.spatialTears[a].maxLife && this.spatialTears.splice(a, 1);
-    for (let a = this.groundCracks.length - 1; a >= 0; a--) this.groundCracks[a].life += s, this.groundCracks[a].life >= this.groundCracks[a].maxLife && this.groundCracks.splice(a, 1);
+    for (let a = this.scorchMarks.length - 1; a >= 0; a--) this.scorchMarks[a].life += s, this.scorchMarks[a].life >= this.scorchMarks[a].maxLife && swapRemoveAt(this.scorchMarks, a);
+    for (let a = this.frostTracks.length - 1; a >= 0; a--) this.frostTracks[a].life += s, this.frostTracks[a].life >= this.frostTracks[a].maxLife && swapRemoveAt(this.frostTracks, a);
+    for (let a = this.spatialTears.length - 1; a >= 0; a--) this.spatialTears[a].life += s, this.spatialTears[a].life >= this.spatialTears[a].maxLife && swapRemoveAt(this.spatialTears, a);
+    for (let a = this.groundCracks.length - 1; a >= 0; a--) this.groundCracks[a].life += s, this.groundCracks[a].life >= this.groundCracks[a].maxLife && swapRemoveAt(this.groundCracks, a);
     for (let a = this.rocketProjectiles.length - 1; a >= 0; a--) {
       let l = this.rocketProjectiles[a], m = Math.hypot(l.vx * s, l.vy * s);
       if (l.x += l.vx * s, l.y += l.vy * s, l.distanceTraveled += m, l.smokeTimer += s, l.smokeTimer >= 0.03) {
@@ -5185,18 +5363,27 @@ export class GameEngine {
       }
       l.timer >= l.duration + 0.45 && this.skyDragons.splice(a, 1);
     }
-    for (let a = this.deadCorpses.length - 1; a >= 0; a--) this.deadCorpses[a].timer += s, this.deadCorpses[a].timer >= this.deadCorpses[a].maxLife && this.deadCorpses.splice(a, 1);
+    for (let a = this.cerberusUltWaves.length - 1; a >= 0; a--) {
+      let cb = this.cerberusUltWaves[a];
+      cb.life += s;
+      if (prof.effectiveTier !== "saver" && cb.life < 0.65 && Math.random() < 0.45) {
+        let ra = Math.random() * Math.PI * 2, rr = (cb.radius || 185) * (0.25 + Math.random() * 0.65);
+        this.spawnParticles(cb.x + Math.cos(ra) * rr, cb.y + Math.sin(ra) * rr, Math.random() < 0.5 ? "#FDE047" : "#38BDF8", 2, 45, 160, 2.8, 0.35);
+      }
+      cb.life >= cb.maxLife && swapRemoveAt(this.cerberusUltWaves, a);
+    }
+    for (let a = this.deadCorpses.length - 1; a >= 0; a--) this.deadCorpses[a].timer += s, this.deadCorpses[a].timer >= this.deadCorpses[a].maxLife && swapRemoveAt(this.deadCorpses, a);
     for (let a = this.bloodParticles.length - 1; a >= 0; a--) {
       let l = this.bloodParticles[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vy += l.gravity * s, l.vx *= 0.92, l.vy *= 0.92, l.life >= l.maxLife && this.bloodParticles.splice(a, 1);
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vy += l.gravity * s, l.vx *= 0.92, l.vy *= 0.92, l.life >= l.maxLife && swapRemoveAt(this.bloodParticles, a);
     }
-    for (let a = this.afterimages.length - 1; a >= 0; a--) this.afterimages[a].life += s, this.afterimages[a].life >= this.afterimages[a].maxLife && this.afterimages.splice(a, 1);
-    for (let a = this.lightnings.length - 1; a >= 0; a--) this.lightnings[a].life += s, this.lightnings[a].life >= this.lightnings[a].maxLife && this.lightnings.splice(a, 1);
-    for (let a = this.slashes.length - 1; a >= 0; a--) this.slashes[a].life += s, this.slashes[a].life >= this.slashes[a].maxLife && this.slashes.splice(a, 1);
-    for (let a = this.impactBursts.length - 1; a >= 0; a--) this.impactBursts[a].life += s, this.impactBursts[a].life >= this.impactBursts[a].maxLife && this.impactBursts.splice(a, 1);
+    for (let a = this.afterimages.length - 1; a >= 0; a--) this.afterimages[a].life += s, this.afterimages[a].life >= this.afterimages[a].maxLife && swapRemoveAt(this.afterimages, a);
+    for (let a = this.lightnings.length - 1; a >= 0; a--) this.lightnings[a].life += s, this.lightnings[a].life >= this.lightnings[a].maxLife && swapRemoveAt(this.lightnings, a);
+    for (let a = this.slashes.length - 1; a >= 0; a--) this.slashes[a].life += s, this.slashes[a].life >= this.slashes[a].maxLife && swapRemoveAt(this.slashes, a);
+    for (let a = this.impactBursts.length - 1; a >= 0; a--) this.impactBursts[a].life += s, this.impactBursts[a].life >= this.impactBursts[a].maxLife && swapRemoveAt(this.impactBursts, a);
     for (let a = this.particles.length - 1; a >= 0; a--) {
       let l = this.particles[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.94, l.vy *= 0.94, l.life >= l.maxLife && this.particles.splice(a, 1);
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.94, l.vy *= 0.94, l.life >= l.maxLife && swapRemoveAt(this.particles, a);
     }
     for (let a = this.floatingTexts.length - 1; a >= 0; a--) {
       let l = this.floatingTexts[a];
@@ -5288,43 +5475,57 @@ export class GameEngine {
     a.restore();
   }
   render() {
-    let s = Math.min(window.devicePixelRatio || 1, 2), a = this.ctx;
+    let prof = this.getPerformanceProfile(), s = this.currentDpr || Math.min(window.devicePixelRatio || 1, prof.maxDpr || 1.75), a = this.ctx;
     a.save(), a.setTransform(s, 0, 0, s, 0, 0), a.fillStyle = "#070B14", a.fillRect(0, 0, this.viewW, this.viewH);
     let l = this.shakeTimer > 0 ? (Math.random() - 0.5) * this.shakeMagnitude * 2 : 0, m = this.shakeTimer > 0 ? (Math.random() - 0.5) * this.shakeMagnitude * 2 : 0;
     let vp = this.getCameraViewport();
+    let viewBounds = computeWorldViewBounds(this.camera.x, this.camera.y, vp, 160);
     a.translate(Math.round(vp.focusX + l), Math.round(vp.focusY + m));
     if (vp.zoom !== 1) a.scale(vp.zoom, vp.zoom);
     a.translate(-this.camera.x, -this.camera.y);
     let c = this.player.tin_monochrome_realm_timer > 0;
+    let gs = prof.gridStepPx || 100;
+    let gxStart = Math.max(0, Math.floor(viewBounds.minX / gs) * gs), gxEnd = Math.min(Se, Math.ceil(viewBounds.maxX / gs) * gs);
+    let gyStart = Math.max(0, Math.floor(viewBounds.minY / gs) * gs), gyEnd = Math.min(Ce, Math.ceil(viewBounds.maxY / gs) * gs);
     a.fillStyle = c ? "#FFFFFF" : "#0F172A", a.fillRect(0, 0, Se, Ce), a.strokeStyle = c ? "rgba(0, 0, 0, 0.25)" : "rgba(148, 163, 184, 0.07)", a.lineWidth = 1, a.beginPath();
-    for (let h = 0; h <= Se; h += 100) a.moveTo(h, 0), a.lineTo(h, Ce);
-    for (let h = 0; h <= Ce; h += 100) a.moveTo(0, h), a.lineTo(Se, h);
+    for (let h = gxStart; h <= gxEnd; h += gs) a.moveTo(h, gyStart), a.lineTo(h, gyEnd);
+    for (let h = gyStart; h <= gyEnd; h += gs) a.moveTo(gxStart, h), a.lineTo(gxEnd, h);
     a.stroke();
     let g = Se / 2, p = Ce / 2;
     a.strokeStyle = c ? "rgba(0, 0, 0, 0.35)" : "rgba(245, 158, 11, 0.18)", a.lineWidth = 2, a.beginPath(), a.arc(g, p, 240, 0, Math.PI * 2), a.stroke(), a.strokeStyle = c ? "#000000" : "#F59E0B", a.lineWidth = 4, a.strokeRect(8, 8, Se - 16, Ce - 16);
     for (let h of this.scorchMarks) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.len || 100) + 30, viewBounds)) continue;
       let f = Math.max(0, 1 - h.life / h.maxLife);
       a.save(), a.globalAlpha = f * 0.7, a.translate(h.x, h.y), a.rotate(h.angle), a.fillStyle = "#1C1917", a.fillRect(0, -12, h.len, 24), a.strokeStyle = "#F97316", a.lineWidth = 2, a.strokeRect(0, -12, h.len, 24), a.restore();
     }
-    for (let h of this.groundCracks) drawGroundCrack(a, h, this.elapsedTime, c);
+    for (let h of this.groundCracks) if (isCircleInViewBounds(h.x, h.y, (h.len || 120) + 40, viewBounds)) drawGroundCrack(a, h, this.elapsedTime, c);
     for (let h of this.lavaPools) {
+      if (!isCircleInViewBounds(h.x, h.y, h.radius + 20, viewBounds)) continue;
       let fade = Math.min(1, (h.duration - h.timer) / 0.5);
       let pulse = 0.88 + 0.12 * Math.sin(this.elapsedTime * 7 + h.x * 0.05);
       a.save(), a.globalAlpha = fade, a.translate(h.x, h.y);
-      let f = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-      f.addColorStop(0, "#FEF08A"), f.addColorStop(0.32, "#F97316"), f.addColorStop(0.72, "#DC2626"), f.addColorStop(1, "rgba(69, 26, 3, 0)");
-      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = f, a.fill();
+      if (prof.enableRadialGlows) {
+        let f = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
+        f.addColorStop(0, "#FEF08A"), f.addColorStop(0.32, "#F97316"), f.addColorStop(0.72, "#DC2626"), f.addColorStop(1, "rgba(69, 26, 3, 0)");
+        a.fillStyle = f;
+      } else {
+        a.fillStyle = "rgba(220, 38, 38, 0.35)";
+      }
+      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
       a.strokeStyle = "#EA580C", a.lineWidth = 2.8, a.stroke();
       a.strokeStyle = "rgba(254, 240, 138, 0.55)", a.lineWidth = 1.8, a.setLineDash([10, 8]);
       a.beginPath(), a.arc(0, 0, h.radius * 0.65 * pulse, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-      for (let bi = 0; bi < 4; bi++) {
-        let ba = this.elapsedTime * 1.4 + (Math.PI / 2) * bi + h.y * 0.03;
-        let br = h.radius * (0.3 + 0.38 * ((this.elapsedTime * 0.6 + bi * 0.25) % 1));
-        a.fillStyle = "#FEF08A", a.beginPath(), a.arc(Math.cos(ba) * br, Math.sin(ba) * br, 3.2, 0, Math.PI * 2), a.fill();
+      if (prof.effectiveTier !== "saver") {
+        for (let bi = 0; bi < 4; bi++) {
+          let ba = this.elapsedTime * 1.4 + (Math.PI / 2) * bi + h.y * 0.03;
+          let br = h.radius * (0.3 + 0.38 * ((this.elapsedTime * 0.6 + bi * 0.25) % 1));
+          a.fillStyle = "#FEF08A", a.beginPath(), a.arc(Math.cos(ba) * br, Math.sin(ba) * br, 3.2, 0, Math.PI * 2), a.fill();
+        }
       }
       a.restore();
     }
     for (let h of this.icePillars) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.size || 20) * 3.5, viewBounds)) continue;
       a.save();
       let f = h.x, v = h.y, T = 1, b = h.rot;
       if (h.state === "rising") T = Math.max(0.08, h.riseProgress);
@@ -5346,6 +5547,7 @@ export class GameEngine {
       a.fillStyle = c ? "#333333" : "#0284C7", a.beginPath(), a.moveTo(0, -h.size * 2.2), a.lineTo(-h.size * 0.7, -h.size * 0.2), a.lineTo(-h.size * 0.5, h.size * 0.6), a.lineTo(0, h.size * 0.8), a.closePath(), a.fill(), a.fillStyle = c ? "#111111" : "#38BDF8", a.beginPath(), a.moveTo(0, -h.size * 2.2), a.lineTo(h.size * 0.7, -h.size * 0.2), a.lineTo(h.size * 0.5, h.size * 0.6), a.lineTo(0, h.size * 0.8), a.closePath(), a.fill(), a.fillStyle = c ? "#555555" : "#7DD3FC", a.beginPath(), a.moveTo(0, -h.size * 2.2), a.lineTo(h.size * 0.25, -h.size * 0.1), a.lineTo(0, h.size * 0.8), a.lineTo(-h.size * 0.25, -h.size * 0.1), a.closePath(), a.fill(), a.strokeStyle = c ? "#000000" : "#E0F2FE", a.lineWidth = 1.8, a.beginPath(), a.moveTo(0, -h.size * 2.2), a.lineTo(h.size * 0.7, -h.size * 0.2), a.lineTo(h.size * 0.5, h.size * 0.6), a.lineTo(0, h.size * 0.8), a.lineTo(-h.size * 0.5, h.size * 0.6), a.lineTo(-h.size * 0.7, -h.size * 0.2), a.closePath(), a.stroke(), a.strokeStyle = "#FFFFFF", a.lineWidth = 1.5, a.beginPath(), a.moveTo(0, -h.size * 2.2), a.lineTo(0, h.size * 0.8), a.stroke(), a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(0, -h.size * 2.2, 2.5, 0, Math.PI * 2), a.fill(), a.restore();
     }
     for (let h of this.spatialTears) {
+      if (!isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, 40, viewBounds)) continue;
       let f = Math.max(0, 1 - h.life / h.maxLife);
       a.save(), a.globalAlpha = f;
       let v = h.x2 - h.x1, T = h.y2 - h.y1, b = Math.atan2(T, v), x = -Math.sin(b), C = Math.cos(b), H = h.offsets && h.offsets.length > 0 ? h.offsets : [-6, 9, -12, 8, -4], D = H.length;
@@ -5375,7 +5577,7 @@ export class GameEngine {
       }
       a.restore();
     }
-    for (let h of this.luanRifts) drawLuanRift(a, h, c);
+    for (let h of this.luanRifts) if (isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, 40, viewBounds)) drawLuanRift(a, h, c);
     if (this.luanPortals.length > 1) {
       a.save();
       a.strokeStyle = c ? "rgba(0,0,0,0.45)" : "rgba(192, 132, 252, 0.35)";
@@ -5390,12 +5592,18 @@ export class GameEngine {
       a.setLineDash([]);
       a.restore();
     }
-    for (let h of this.luanPortals) drawLuanPortal(a, h, this.elapsedTime, c);
+    for (let h of this.luanPortals) if (isCircleInViewBounds(h.x, h.y, (h.radius || 54) + 30, viewBounds)) drawLuanPortal(a, h, this.elapsedTime, c);
     for (let h of this.tinCrystals) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 44) + 30, viewBounds)) continue;
       let f = Math.min(1, (h.maxLife - h.life) / 1.2), v = Math.sin(h.pulse) * 4, T = h.radius + Math.sin(h.pulse * 1.5) * 4;
       a.save(), a.globalAlpha = f, a.translate(h.x, h.y);
-      let b = a.createRadialGradient(0, 0, 6, 0, 0, T);
-      b.addColorStop(0, c ? "rgba(0,0,0,0.28)" : "rgba(244, 63, 94, 0.42)"), b.addColorStop(0.7, c ? "rgba(0,0,0,0.12)" : "rgba(225, 29, 72, 0.18)"), b.addColorStop(1, "rgba(244, 63, 94, 0)"), a.fillStyle = b, a.beginPath(), a.arc(0, 0, T, 0, Math.PI * 2), a.fill();
+      if (prof.enableRadialGlows) {
+        let b = a.createRadialGradient(0, 0, 6, 0, 0, T);
+        b.addColorStop(0, c ? "rgba(0,0,0,0.28)" : "rgba(244, 63, 94, 0.42)"), b.addColorStop(0.7, c ? "rgba(0,0,0,0.12)" : "rgba(225, 29, 72, 0.18)"), b.addColorStop(1, "rgba(244, 63, 94, 0)"), a.fillStyle = b;
+      } else {
+        a.fillStyle = c ? "rgba(0,0,0,0.18)" : "rgba(225, 29, 72, 0.24)";
+      }
+      a.beginPath(), a.arc(0, 0, T, 0, Math.PI * 2), a.fill();
       a.save(), a.rotate(this.elapsedTime * 1.6), a.strokeStyle = c ? "#000000" : "rgba(251, 113, 133, 0.85)", a.lineWidth = 2, a.setLineDash([7, 5]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
       a.strokeStyle = c ? "#444444" : "rgba(254, 205, 211, 0.45)", a.lineWidth = 1.4, a.beginPath();
       for (let hi = 0; hi < 6; hi++) {
@@ -5414,11 +5622,16 @@ export class GameEngine {
       a.beginPath(), a.moveTo(0, -20), a.lineTo(0, 10), a.strokeStyle = "#FFFFFF", a.lineWidth = 1.6, a.stroke(), a.restore();
     }
     for (let h of this.frostBarrages) {
+      if (!isCircleInViewBounds(h.x, h.y, h.radius + 20, viewBounds)) continue;
       let alpha = Math.min(1, (h.duration - h.timer) / 0.5), et = this.elapsedTime;
       a.save(), a.globalAlpha = alpha, a.translate(h.x, h.y);
-      let fg = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-      fg.addColorStop(0, "rgba(224, 242, 254, 0.34)"), fg.addColorStop(0.55, "rgba(56, 189, 248, 0.24)"), fg.addColorStop(1, "rgba(14, 165, 233, 0)");
-      a.fillStyle = fg, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
+      if (prof.enableRadialGlows) {
+        let fg = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
+        fg.addColorStop(0, "rgba(224, 242, 254, 0.34)"), fg.addColorStop(0.55, "rgba(56, 189, 248, 0.24)"), fg.addColorStop(1, "rgba(14, 165, 233, 0)"), a.fillStyle = fg;
+      } else {
+        a.fillStyle = "rgba(56, 189, 248, 0.2)";
+      }
+      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
       a.save(), a.rotate(et * 2.4), a.strokeStyle = "#38BDF8", a.lineWidth = 2.6, a.setLineDash([10, 7]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
       a.strokeStyle = "rgba(186, 230, 253, 0.65)", a.lineWidth = 1.6;
       for (let si = 0; si < 6; si++) {
@@ -5427,7 +5640,7 @@ export class GameEngine {
       }
       a.restore();
       let step = Math.floor(et * 18);
-      for (let ii = 0; ii < 10; ii++) {
+      for (let ii = 0; ii < (prof.effectiveTier === "saver" ? 5 : 10); ii++) {
         let ix = Math.sin(step + ii * 31) * 0.78 * h.radius, iy = Math.cos(step * 1.3 + ii * 19) * 0.78 * h.radius;
         a.strokeStyle = "#E0F2FE", a.lineWidth = 2.6, a.beginPath(), a.moveTo(ix - 10, iy - 34), a.lineTo(ix, iy), a.stroke();
         a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(ix, iy, 3, 0, Math.PI * 2), a.fill();
@@ -5436,37 +5649,49 @@ export class GameEngine {
     }
     this.tapRipple && (a.save(), a.beginPath(), a.arc(this.tapRipple.x, this.tapRipple.y, this.tapRipple.radius, 0, Math.PI * 2), a.strokeStyle = `rgba(52, 211, 153, ${Math.max(0, this.tapRipple.alpha)})`, a.lineWidth = 2.5, a.stroke(), a.restore(), this.tapRipple.radius += 2.2, this.tapRipple.alpha -= 0.04, this.tapRipple.alpha <= 0 && (this.tapRipple = null));
     for (let h of this.deadCorpses) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.splatRadius || h.radius || 24) * 1.5, viewBounds)) continue;
       let f = Math.min(1, h.timer / 0.2), v = Math.max(0, 1 - h.timer / h.maxLife);
       a.save(), a.translate(h.x, h.y), a.globalAlpha = v, a.beginPath(), a.ellipse(0, 3, h.splatRadius * (0.6 + f * 0.65), h.splatRadius * (0.28 + f * 0.32), 0, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.splatColor, a.fill(), a.scale(1 + f * 0.58, Math.max(0.14, 1 - f * 0.86)), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#111111" : h.color, a.fill(), a.strokeStyle = "#000000", a.lineWidth = 2.5, a.stroke(), a.restore();
     }
-    for (let h of this.bloodParticles) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
+    for (let h of this.bloodParticles) if (isCircleInViewBounds(h.x, h.y, (h.radius || 4) + 10, viewBounds)) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
     for (let h of this.redCrystals) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.size || 8) * 2, viewBounds)) continue;
       let f = Math.max(0, 1 - h.life / h.maxLife);
       a.save(), a.translate(h.x, h.y), a.rotate(h.rot), a.globalAlpha = f, a.beginPath(), a.moveTo(0, -h.size), a.lineTo(h.size * 0.7, 0), a.lineTo(0, h.size * 1.3), a.lineTo(-h.size * 0.7, 0), a.closePath(), a.fillStyle = c ? "#000000" : "#EF4444", a.fill(), a.strokeStyle = c ? "#333333" : "#FCA5A5", a.lineWidth = 1.2, a.stroke(), a.restore();
     }
     for (let h of this.flameParticles) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 6) + 10, viewBounds)) continue;
       let f = Math.max(0, 1 - h.life / h.maxLife);
       a.save(), a.globalAlpha = f, a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.colorMode === "blue" ? h.life < h.maxLife * 0.4 ? "#BAE6FD" : "#0284C7" : h.life < h.maxLife * 0.4 ? "#FEF08A" : "#EA580C", a.fill(), a.restore();
     }
     for (let h of this.smokePuffs) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 16) + 10, viewBounds)) continue;
       let f = Math.max(0, 0.4 * (1 - h.life / h.maxLife));
       a.save(), a.globalAlpha = f, a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = h.color, a.fill(), a.restore();
     }
     for (let h of this.galaxyVortices) {
+      if (!isCircleInViewBounds(h.x, h.y, h.radius + 30, viewBounds)) continue;
       a.save(), a.translate(h.x, h.y), a.rotate(h.rotation);
-      let f = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-      f.addColorStop(0, "rgba(15, 23, 42, 0.96)"), f.addColorStop(0.28, h.isGalaxy ? "rgba(192, 132, 252, 0.42)" : "rgba(147, 51, 234, 0.38)"), f.addColorStop(0.68, h.isGalaxy ? "rgba(56, 189, 248, 0.28)" : "rgba(88, 28, 135, 0.25)"), f.addColorStop(1, "rgba(15, 23, 42, 0)"), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = f, a.fill();
+      if (prof.enableRadialGlows) {
+        let f = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
+        f.addColorStop(0, "rgba(15, 23, 42, 0.96)"), f.addColorStop(0.28, h.isGalaxy ? "rgba(192, 132, 252, 0.42)" : "rgba(147, 51, 234, 0.38)"), f.addColorStop(0.68, h.isGalaxy ? "rgba(56, 189, 248, 0.28)" : "rgba(88, 28, 135, 0.25)"), f.addColorStop(1, "rgba(15, 23, 42, 0)"), a.fillStyle = f;
+      } else {
+        a.fillStyle = h.isGalaxy ? "rgba(147, 51, 234, 0.26)" : "rgba(88, 28, 135, 0.24)";
+      }
+      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
       a.strokeStyle = h.isGalaxy ? "rgba(244, 114, 182, 0.65)" : "rgba(192, 132, 252, 0.55)", a.lineWidth = 2.2, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.92, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
       let v = h.isGalaxy ? 5 : 3;
       for (let T = 0; T < v; T++) a.save(), a.rotate(Math.PI * 2 / v * T), a.beginPath(), a.moveTo(0, 0), a.bezierCurveTo(h.radius * 0.4, h.radius * 0.3, h.radius * 0.7, -h.radius * 0.2, h.radius * 0.95, h.radius * 0.1), a.strokeStyle = T % 2 == 0 ? "#E9D5FF" : "#38BDF8", a.lineWidth = h.isGalaxy ? 3.5 : 2.6, a.stroke(), a.restore();
-      for (let T of h.stars) {
-        let b = h.radius * T.distRatio, x = T.angle + h.rotation * 0.6, C = Math.cos(x) * b, H = Math.sin(x) * b;
+      let starStep = prof.effectiveTier === "saver" ? 2 : 1;
+      for (let si = 0; si < h.stars.length; si += starStep) {
+        let T = h.stars[si], b = h.radius * T.distRatio, x = T.angle + h.rotation * 0.6, C = Math.cos(x) * b, H = Math.sin(x) * b;
         a.beginPath(), a.arc(C, H, T.size, 0, Math.PI * 2), a.fillStyle = T.color, a.fill();
       }
       a.beginPath(), a.arc(0, 0, 21, 0, Math.PI * 2), a.fillStyle = "#030712", a.fill(), a.strokeStyle = h.isGalaxy ? "#F472B6" : "#C084FC", a.lineWidth = 2.8, a.stroke();
       a.beginPath(), a.arc(0, 0, 26, 0.3, 2.3), a.strokeStyle = "#67E8F9", a.lineWidth = 1.6, a.stroke(), a.restore();
     }
     for (let h of this.zones) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 140) + 40, viewBounds)) continue;
       if (a.save(), a.globalAlpha = Math.min(1, (h.duration - h.timer) / 0.5), h.kind === "arrow_rain") {
         let f = this.elapsedTime;
         a.save(), a.translate(h.x, h.y);
@@ -5658,8 +5883,8 @@ export class GameEngine {
     drawNhiToxicMist(a, this.nhiToxicMists, this.elapsedTime, c);
     let nhiZonesVis = this.zones.filter((z) => z.kind === "nhi_poison_zone");
     if (nhiZonesVis.length >= 2) drawNhiPoisonTethers(a, nhiZonesVis, computeNhiPoisonZoneTethers(nhiZonesVis, NHI_C2_TETHER_RANGE), this.elapsedTime, c);
-    for (let h of this.nguyenSanctuaryFields) drawNguyenSanctuaryField(a, h, this.elapsedTime, c);
-    for (let h of this.taiduCarpetStrikes) drawTaiDuCarpetStrike(a, h, this.elapsedTime, c);
+    for (let h of this.nguyenSanctuaryFields) if (isCircleInViewBounds(h.x, h.y, (h.radius || 140) + 40, viewBounds)) drawNguyenSanctuaryField(a, h, this.elapsedTime, c);
+    for (let h of this.taiduCarpetStrikes) if (isCircleInViewBounds(h.x, h.y, (h.radius || 140) + 40, viewBounds)) drawTaiDuCarpetStrike(a, h, this.elapsedTime, c);
     drawThienTimeZone(a, this.thienTimeZones, this.elapsedTime, c);
     drawThienSpatialPortal(a, this.thienPortals, this.elapsedTime, c);
     if (this.duccong_pads) for (let m of [1, 2]) {
@@ -5683,6 +5908,7 @@ export class GameEngine {
       a.font = '800 10px "JetBrains Mono", monospace', a.textAlign = "center", a.fillStyle = "#F5D0FE", a.fillText(ready ? `D\u1ECACH C${m + 1}` : `${pad.teleportCd.toFixed(1)}s`, 0, -pad.radius - 6), a.restore();
     }
     for (let h of this.bossWarnings) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 80) + 30, viewBounds)) continue;
       let f = Math.min(1, h.timer / h.duration), v = 0.55 + 0.35 * Math.sin(h.timer * 20), T = h.color || "#EF4444";
       a.save();
       a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
@@ -5702,10 +5928,12 @@ export class GameEngine {
       a.strokeStyle = T, a.lineWidth = 1.6, a.beginPath(), a.moveTo(h.x - 16, h.y), a.lineTo(h.x + 16, h.y), a.moveTo(h.x, h.y - 16), a.lineTo(h.x, h.y + 16), a.stroke(), a.restore();
     }
     for (let h of this.bossShockRings) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.currentRadius || 60) + 30, viewBounds)) continue;
       let f = Math.max(0.15, 1 - h.currentRadius / h.maxRadius);
       a.save(), a.globalAlpha = f, a.beginPath(), a.arc(h.x, h.y, h.currentRadius, 0, Math.PI * 2), a.strokeStyle = h.color, a.lineWidth = h.ringWidth * 0.75, a.stroke(), a.beginPath(), a.arc(h.x, h.y, Math.max(4, h.currentRadius - 6), 0, Math.PI * 2), a.strokeStyle = h.accentColor, a.lineWidth = 4, a.stroke(), a.restore();
     }
     for (let h of this.bossBeams) {
+      if (!isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, (h.width || 30) + 20, viewBounds)) continue;
       if (a.save(), h.triggered) {
         let f = Math.max(0, h.fadeTimer / 0.38);
         a.globalAlpha = f, a.lineCap = "round", a.strokeStyle = h.color, a.lineWidth = h.width * (0.85 + 0.45 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke(), a.strokeStyle = h.glowColor, a.lineWidth = h.width * 0.55 * f, a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke(), a.strokeStyle = "#FFFFFF", a.lineWidth = Math.max(3, h.width * 0.22 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
@@ -5715,10 +5943,11 @@ export class GameEngine {
       }
       a.restore();
     }
-    for (let h of this.xpOrbs) a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = "#2DD4BF", a.fill(), a.strokeStyle = "#CCFBF1", a.lineWidth = 1.5, a.stroke();
+    for (let h of this.xpOrbs) if (isCircleInViewBounds(h.x, h.y, (h.radius || 8) + 12, viewBounds)) a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = "#2DD4BF", a.fill(), a.strokeStyle = "#CCFBF1", a.lineWidth = 1.5, a.stroke();
     this.aimState.active && this.drawAimIndicator();
-    for (let h of this.afterimages) a.save(), a.globalAlpha = h.alpha * (1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
+    for (let h of this.afterimages) if (isCircleInViewBounds(h.x, h.y, (h.radius || 22) + 12, viewBounds)) a.save(), a.globalAlpha = h.alpha * (1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
     for (let h of this.enemies) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 22) * 2.2 + 40, viewBounds)) continue;
       if (h.kind === "boss" ? this.drawBossEntity(h) : drawMonsterEntity(a, h, this.elapsedTime, c), h.eohyenAuraSlow && h.eohyenAuraSlow > 0.15 && (!h.frozenTimer || h.frozenTimer <= 0) && (a.save(), a.strokeStyle = "rgba(125, 211, 252, 0.55)", a.lineWidth = 2, a.beginPath(), a.ellipse(h.x, h.y + h.radius * 0.55, h.radius * 1.15, h.radius * 0.5, 0, 0, Math.PI * 2), a.stroke(), a.restore()), h.frozenTimer && h.frozenTimer > 0) {
         a.save();
         let f = h.kind === "boss", v = f ? 1.55 : 1.35, T = h.radius * v, b = h.frozenTimer < 0.45 ? (Math.random() - 0.5) * 4 : 0;
@@ -5782,7 +6011,7 @@ export class GameEngine {
       }
     }
     for (let h of this.shadowClones) {
-      if (h.delay > 0) continue;
+      if (h.delay > 0 || !isCircleInViewBounds(h.x, h.y, 60, viewBounds)) continue;
       let f = Math.min(1, h.life / 0.1), v = Math.max(0, 1 - Math.max(0, h.life - (h.maxLife - 0.16)) / 0.16), T = f * v;
       a.save(), a.globalAlpha = T * 0.9, a.translate(h.x, h.y), a.rotate(h.facing), a.scale(0.85 + f * 0.15, 0.85 + f * 0.15);
       // Flowing phantom cloak behind Bao's shadow clone
@@ -5797,16 +6026,20 @@ export class GameEngine {
       for (let x of [-1, 1]) a.save(), a.translate(10, x * 15), a.rotate(x * (0.38 + b)), drawBaoDagger(a, x, true, h.struck ? 0.65 : 0.25, 0, c), a.restore();
       a.restore();
     }
-    for (let h of this.taiduTurrets) drawTaiDuTurret(a, h, this.elapsedTime, c);
-    for (let h of this.duyDecoys) drawDuyDecoy(a, h, this.elapsedTime, c);
-    for (let h of this.phongIllusions) drawPhongIllusion(a, h, this.elapsedTime, c);
-    this.multiplayer.active && this.drawRemotePlayers();
+    for (let h of this.taiduTurrets) if (isCircleInViewBounds(h.x, h.y, 70, viewBounds)) drawTaiDuTurret(a, h, this.elapsedTime, c);
+    for (let h of this.duyDecoys) if (isCircleInViewBounds(h.x, h.y, 80, viewBounds)) drawDuyDecoy(a, h, this.elapsedTime, c);
+    for (let h of this.phongIllusions) if (isCircleInViewBounds(h.x, h.y, 70, viewBounds)) drawPhongIllusion(a, h, this.elapsedTime, c);
+    this.multiplayer.active && this.drawRemotePlayers(viewBounds, prof);
     this.drawPlayer();
     drawThienSwords(a, this.thienSwords, this.elapsedTime, c);
     drawThienSunJudgement(a, this.thienSunJudgements, this.elapsedTime, c);
     drawThanhDevourSerpents(a, this.thanhDevourSerpents, this.elapsedTime, c);
     drawThanhSpiritSnakes(a, this.thanhGuardSnakes, this.elapsedTime, c);
+    if (this.cerberusUltWaves.length > 0) {
+      drawDungCerberusUlt(a, this.cerberusUltWaves.filter((cb) => isCircleInViewBounds(cb.x, cb.y, (cb.radius || 185) + 120, viewBounds)), this.elapsedTime, c);
+    }
     for (let h of this.dragonWaves) {
+      if (!isCircleInViewBounds(h.x, h.y, 160, viewBounds)) continue;
       a.save(), a.translate(h.x, h.y), a.rotate(h.angle);
       let f = h.empowered ? 1.38 : 1.05;
       a.scale(f, f);
@@ -5826,6 +6059,7 @@ export class GameEngine {
       a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(13, -6, 3.2, 0, Math.PI * 2), a.arc(13, 6, 3.2, 0, Math.PI * 2), a.fill(), a.restore();
     }
     for (let h of this.skyDragons) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 90) + 120, viewBounds)) continue;
       let f = Math.min(1, h.timer / h.duration), v = h.y - Math.pow(1 - f, 1.4) * 420, T = h.empowered ? "#FBBF24" : "#EF4444", b = Math.max(0, 1 - Math.max(0, h.timer - h.duration) / 0.45);
       a.save(), a.globalAlpha = b;
       a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = h.empowered ? "rgba(251, 191, 36, 0.2)" : "rgba(220, 38, 38, 0.18)", a.fill(), a.strokeStyle = T, a.lineWidth = 3, a.stroke();
@@ -5850,8 +6084,9 @@ export class GameEngine {
       }
       a.restore();
     }
-    for (let h of this.rocketProjectiles) a.save(), a.translate(h.x, h.y), a.rotate(h.angle), a.fillStyle = "#334155", a.fillRect(-12, -4, 20, 8), a.fillStyle = h.color, a.beginPath(), a.moveTo(8, -4), a.lineTo(16, 0), a.lineTo(8, 4), a.fill(), a.fillStyle = "#FEF08A", a.beginPath(), a.moveTo(-12, -3), a.lineTo(-19, 0), a.lineTo(-12, 3), a.fill(), a.restore();
+    for (let h of this.rocketProjectiles) if (isCircleInViewBounds(h.x, h.y, 40, viewBounds)) a.save(), a.translate(h.x, h.y), a.rotate(h.angle), a.fillStyle = "#334155", a.fillRect(-12, -4, 20, 8), a.fillStyle = h.color, a.beginPath(), a.moveTo(8, -4), a.lineTo(16, 0), a.lineTo(8, 4), a.fill(), a.fillStyle = "#FEF08A", a.beginPath(), a.moveTo(-12, -3), a.lineTo(-19, 0), a.lineTo(-12, 3), a.fill(), a.restore();
     for (let h of this.giantMeteors) {
+      if (!isCircleInViewBounds(h.currentX, h.currentY, (h.meteorSize || 50) + 180, viewBounds)) continue;
       a.save(), a.translate(h.currentX, h.currentY);
       let f = Math.atan2(h.targetY - h.startY, h.targetX - h.startX);
       a.rotate(f);
@@ -5859,12 +6094,13 @@ export class GameEngine {
       v.addColorStop(0, "rgba(249, 115, 22, 0)"), v.addColorStop(0.6, "rgba(239, 68, 68, 0.45)"), v.addColorStop(1, "#FEF08A"), a.fillStyle = v, a.beginPath(), a.moveTo(0, -h.meteorSize * 0.7), a.lineTo(-220, 0), a.lineTo(0, h.meteorSize * 0.7), a.closePath(), a.fill(), a.beginPath(), a.arc(0, 0, h.meteorSize, 0, Math.PI * 2), a.fillStyle = "#451A03", a.fill(), a.strokeStyle = "#F97316", a.lineWidth = 4, a.stroke(), a.restore();
     }
     for (let h of this.cataclysmicExplosions) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 90) + 20, viewBounds)) continue;
       let f = h.life / h.maxLife;
       a.save(), a.globalAlpha = Math.max(0, 1 - f), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.strokeStyle = h.color, a.lineWidth = 5 * (1 - f) + 1, a.stroke(), a.beginPath(), a.arc(h.x, h.y, h.radius * 0.65, 0, Math.PI * 2), a.fillStyle = f < 0.3 ? "#FEF08A" : f < 0.6 ? "#F97316" : "#7F1D1D", a.fill(), a.restore();
     }
-    for (let h of this.luanBeams) drawLuanBeam(a, h, c);
-    for (let h of this.nguyenSanctuaryWaves) drawNguyenSanctuaryWave(a, h, c);
-    for (let h of this.duyHealOrbs) drawDuyHealOrb(a, h, this.elapsedTime, c);
+    for (let h of this.luanBeams) if (isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, (h.width || 52) + 40, viewBounds)) drawLuanBeam(a, h, c);
+    for (let h of this.nguyenSanctuaryWaves) if (isCircleInViewBounds(h.x, h.y, (h.maxRadius || 210) + 30, viewBounds)) drawNguyenSanctuaryWave(a, h, c);
+    for (let h of this.duyHealOrbs) if (isCircleInViewBounds(h.x, h.y, 40, viewBounds)) drawDuyHealOrb(a, h, this.elapsedTime, c);
     if (this.currentHero.id === "luan" && this.player.luan_c3Charge) {
       let ch = this.player.luan_c3Charge, prog = Math.min(1, 1 - ch.timer / Math.max(0.05, ch.maxTimer)), bLen = this.currentHero.skills[2]?.range || 520;
       let ex = this.player.x + Math.cos(ch.angle) * bLen, ey = this.player.y + Math.sin(ch.angle) * bLen;
@@ -5878,21 +6114,26 @@ export class GameEngine {
       a.restore();
     }
     for (let h of this.projectiles) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 18) + 45, viewBounds)) continue;
       a.save(), a.translate(h.x, h.y), a.rotate(h.angle);
       drawUpgradedProjectile(a, h, this.elapsedTime, c);
       a.restore();
     }
     for (let h of this.slashes) {
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 140) + 30, viewBounds)) continue;
       let f = h.life / h.maxLife;
       a.save(), a.globalAlpha = Math.max(0, 1 - f);
       drawUpgradedSlash(a, h, f, c);
       a.restore();
     }
-    for (let h of this.lightnings) drawCurvedLightning(a, h, c);
-    for (let h of this.impactBursts) drawImpactBurst(a, h, c);
-    for (let h of this.particles) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
+    for (let h of this.lightnings) {
+      if (h.points?.length >= 2 && !isSegmentInViewBounds(h.points[0].x, h.points[0].y, h.points[h.points.length - 1].x, h.points[h.points.length - 1].y, 120, viewBounds)) continue;
+      drawCurvedLightning(a, h, c);
+    }
+    for (let h of this.impactBursts) if (isCircleInViewBounds(h.x, h.y, (h.radius || 34) + 20, viewBounds)) drawImpactBurst(a, h, c);
+    for (let h of this.particles) if (isCircleInViewBounds(h.x, h.y, (h.radius || 6) + 12, viewBounds)) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
     a.textAlign = "center", a.textBaseline = "middle";
-    for (let h of this.floatingTexts) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.font = `800 ${h.size}px "JetBrains Mono", monospace`, a.fillStyle = "#070B14", a.fillText(h.text, h.x + 1, h.y + 1), a.fillStyle = c ? "#000000" : h.color, a.fillText(h.text, h.x, h.y), a.restore();
+    for (let h of this.floatingTexts) if (isCircleInViewBounds(h.x, h.y, 110, viewBounds)) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.font = `800 ${h.size}px "JetBrains Mono", monospace`, a.fillStyle = "#070B14", a.fillText(h.text, h.x + 1, h.y + 1), a.fillStyle = c ? "#000000" : h.color, a.fillText(h.text, h.x, h.y), a.restore();
     this.screenFlashWhite > 0 && (a.save(), a.setTransform(1, 0, 0, 1, 0, 0), a.fillStyle = `rgba(255, 255, 255, ${Math.min(0.65, this.screenFlashWhite * 2)})`, a.fillRect(0, 0, this.canvas.width, this.canvas.height), a.restore());
     if (this.gameState === "PLAYING") {
       a.save();
@@ -6006,23 +6247,22 @@ export class GameEngine {
       s.restore();
     }
     if (hid === "dung" && this.player.dung_c3_buff_timer > 0) {
-      s.save(), s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 3.5), s.strokeStyle = "#FDE047", s.lineWidth = 2.8, s.setLineDash([10, 6]), s.beginPath(), s.arc(0, 0, this.player.radius + 16, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-      s.strokeStyle = "rgba(56, 189, 248, 0.55)", s.lineWidth = 1.5, s.beginPath();
-      for (let hi = 0; hi < 4; hi++) {
-        let ha = (Math.PI / 2) * hi, hx = Math.cos(ha) * (this.player.radius + 12), hy = Math.sin(ha) * (this.player.radius + 12);
-        hi === 0 ? s.moveTo(hx, hy) : s.lineTo(hx, hy);
-      }
-      s.closePath(), s.stroke();
-      for (let f = 0; f < 4; f++) {
-        let v = Math.PI / 2 * f;
-        s.fillStyle = "#38BDF8", s.beginPath(), s.arc(Math.cos(v) * (this.player.radius + 16), Math.sin(v) * (this.player.radius + 16), 3.6, 0, Math.PI * 2), s.fill();
-      }
-      s.restore();
+      drawDungCerberusForm(s, vx, vy, this.player.radius, this.player.facing, this.elapsedTime, {
+        atkActive: this.player.attackAnimTimer > 0,
+        skillActive: this.player.weaponSkillTimer > 0,
+        berserkActive: this.player.berserkTimer > 0,
+        ratio: Math.min(1, this.player.dung_c3_buff_timer / DUNG_C3_DURATION)
+      }, a);
     }
     if (hid === "eohyen") {
       s.save();
-      let f = s.createRadialGradient(this.player.x, this.player.y, 40, this.player.x, this.player.y, 260);
-      f.addColorStop(0, "rgba(56, 189, 248, 0.11)"), f.addColorStop(0.65, "rgba(186, 230, 253, 0.06)"), f.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = f, s.beginPath(), s.arc(this.player.x, this.player.y, 260, 0, Math.PI * 2), s.fill();
+      if (this.getPerformanceProfile().enableRadialGlows) {
+        let f = s.createRadialGradient(this.player.x, this.player.y, 40, this.player.x, this.player.y, 260);
+        f.addColorStop(0, "rgba(56, 189, 248, 0.11)"), f.addColorStop(0.65, "rgba(186, 230, 253, 0.06)"), f.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = f;
+      } else {
+        s.fillStyle = "rgba(56, 189, 248, 0.065)";
+      }
+      s.beginPath(), s.arc(this.player.x, this.player.y, 260, 0, Math.PI * 2), s.fill();
       s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 1.1);
       s.strokeStyle = "rgba(125, 211, 252, 0.25)", s.lineWidth = 1.6, s.setLineDash([12, 10]), s.beginPath(), s.arc(0, 0, 56, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
       s.restore();
@@ -6220,10 +6460,12 @@ export class GameEngine {
       if (rp.moveSpeedFactor > 0.05) rp.walkCyclePhase = (rp.walkCyclePhase || 0) + 11 * dt * rp.moveSpeedFactor;
     }
   }
-  drawRemotePlayers() {
+  drawRemotePlayers(viewBounds = null, prof = null) {
     let s = this.ctx, a = this.player.tin_monochrome_realm_timer > 0;
+    let activeProf = prof || this.getPerformanceProfile();
     for (let rp of this.multiplayer.remotePlayers.values()) {
       if (!rp) continue;
+      if (viewBounds && !isCircleInViewBounds(rp.x, rp.y, 120, viewBounds)) continue;
       let heroObj = Mi.find((h) => h.id === rp.heroId) || Mi[0];
       let radius = 22, vx = rp.x, vy = rp.y, downed = !rp.alive || rp.hp <= 0;
       let bodyAlpha = downed ? 0.34 : rp.buffs?.bao_stealth ? 0.32 : 1;
@@ -6241,12 +6483,25 @@ export class GameEngine {
       s.beginPath(), s.arc(vx, drawY, radius + 6, 0, Math.PI * 2), s.strokeStyle = downed ? "rgba(248, 113, 113, 0.55)" : heroObj.id === "gau" && rp.buffs?.gau_cuong ? "#F97316" : "#38BDF8", s.lineWidth = 2, s.setLineDash([6, 4]), s.stroke(), s.setLineDash([]);
       if (!downed && heroObj.id === "eohyen") {
         s.save();
-        let fg = s.createRadialGradient(vx, drawY, 40, vx, drawY, 260);
-        fg.addColorStop(0, "rgba(56, 189, 248, 0.1)"), fg.addColorStop(0.65, "rgba(186, 230, 253, 0.05)"), fg.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = fg, s.beginPath(), s.arc(vx, drawY, 260, 0, Math.PI * 2), s.fill();
+        if (activeProf.enableRadialGlows) {
+          let fg = s.createRadialGradient(vx, drawY, 40, vx, drawY, 260);
+          fg.addColorStop(0, "rgba(56, 189, 248, 0.1)"), fg.addColorStop(0.65, "rgba(186, 230, 253, 0.05)"), fg.addColorStop(1, "rgba(56, 189, 248, 0)"), s.fillStyle = fg;
+        } else {
+          s.fillStyle = "rgba(56, 189, 248, 0.06)";
+        }
+        s.beginPath(), s.arc(vx, drawY, 260, 0, Math.PI * 2), s.fill();
         s.translate(vx, drawY), s.rotate(this.elapsedTime * 1.1), s.strokeStyle = "rgba(125, 211, 252, 0.24)", s.lineWidth = 1.5, s.setLineDash([12, 10]), s.beginPath(), s.arc(0, 0, 56, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
       }
       if (!downed && rp.buffs?.dung_berserk) {
         s.save(), s.translate(vx, drawY), s.rotate(-this.elapsedTime * 4), s.strokeStyle = "#F97316", s.lineWidth = 2.4, s.setLineDash([8, 6]), s.beginPath(), s.arc(0, 0, radius + 12, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+      }
+      if (!downed && heroObj.id === "dung" && rp.buffs?.dung_c3) {
+        drawDungCerberusForm(s, vx, drawY, radius, rp.facing || 0, this.elapsedTime, {
+          atkActive: (rp.attackAnimTimer || 0) > 0,
+          skillActive: (rp.weaponSkillTimer || 0) > 0,
+          berserkActive: Boolean(rp.buffs?.dung_berserk),
+          ratio: 1
+        }, a);
       }
       if (!downed && rp.buffs?.tin_mono) {
         s.save(), s.translate(vx, drawY), s.strokeStyle = "#F43F5E", s.lineWidth = 2.6, s.beginPath(), s.arc(0, 0, radius + 14 + Math.sin(this.elapsedTime * 10) * 2, 0, Math.PI * 2), s.stroke(), s.restore();
@@ -6412,7 +6667,9 @@ export class GameEngine {
   }
   syncMultiplayerState(dt) {
     if (!this.multiplayer.active || !mpClient.isConnected()) return;
-    let isP2P = mpClient.transportMode === "p2p_host" || mpClient.transportMode === "p2p_peer";
+    if (this.multiplayer.seenBossHazardIds && this.multiplayer.seenBossHazardIds.size > 260) {
+      this.multiplayer.seenBossHazardIds.clear();
+    }
     let isRelayMode = Boolean(
       mpClient.p2pRelayActive ||
       mpClient.transportMode === "http" ||
@@ -6426,9 +6683,14 @@ export class GameEngine {
       (this.player.weaponSkillTimer || 0) > 0 ||
       Boolean(this.player.chargeState?.active) ||
       Boolean(this.player.luan_c3Charge);
-    let playerInterval = isRelayMode ? (isActing ? 0.055 : 0.095) : isP2P ? (isActing ? 0.033 : 0.075) : (isActing ? 0.04 : 0.08);
-    let worldInterval = isRelayMode ? 0.06 : 0.04;
-    let vfxInterval = isRelayMode ? 0.04 : 0.025;
+    let netStats = typeof mpClient.getNetworkStats === "function" ? mpClient.getNetworkStats() : null;
+    let { playerInterval, worldInterval, vfxInterval } = computeAdaptiveSyncIntervals({
+      transportMode: mpClient.transportMode,
+      isRelayMode,
+      isActing,
+      rttMs: netStats?.rttMs || 0,
+      networkEffectiveType: netStats?.effectiveType || "",
+    });
 
     this.multiplayer.playerSyncTimer += dt;
     if (this.multiplayer.playerSyncTimer >= playerInterval) {
@@ -6846,7 +7108,7 @@ export class GameEngine {
     for (let ev of events) {
       if (!ev || !ev.type) continue;
       if (ev.type === "slash") {
-        this.slashes.push({ x: ev.x, y: ev.y, angle: ev.angle || 0, radius: ev.radius || 80, spread: ev.spread || 1.2, dir: ev.dir || 1, step: ev.step, comboStep: ev.comboStep, empowered: ev.empowered, crossed: ev.crossed, heavy: ev.heavy, color: ev.color || "#38BDF8", accentColor: ev.accentColor, life: 0, maxLife: ev.maxLife || 0.24, kind: ev.kind || "slash" });
+        this.slashes.push({ x: ev.x, y: ev.y, angle: ev.angle || 0, radius: ev.radius || 80, spread: ev.spread || 1.2, dir: ev.dir || 1, step: ev.step, comboStep: ev.comboStep, empowered: ev.empowered, cerberus: Boolean(ev.cerberus), crossed: ev.crossed, heavy: ev.heavy, color: ev.color || "#38BDF8", accentColor: ev.accentColor, life: 0, maxLife: ev.maxLife || 0.24, kind: ev.kind || "slash" });
       } else if (ev.type === "lightning") {
         this.createBranchingLightning(ev.x1, ev.y1, ev.x2, ev.y2, ev.color || "#38BDF8", ev.width || 3);
       } else if (ev.type === "tear") {
@@ -6967,6 +7229,8 @@ export class GameEngine {
         this.thanhDevourSerpents.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, radius: ev.radius || 145, life: 0, maxLife: ev.maxLife || 0.72 });
       } else if (ev.type === "nhi_mist_vis") {
         this.nhiToxicMists.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, radius: ev.radius || 165, timer: 0, maxLife: ev.maxLife || 4.0, tickTimer: 0, elixir: ev.elixir || "purple" });
+      } else if (ev.type === "dung_cerberus_vis") {
+        this.cerberusUltWaves.push({ id: this.nextEntityId++, visualOnly: true, x: ev.x, y: ev.y, angle: ev.angle || 0, radius: ev.radius || 185, life: 0, maxLife: ev.maxLife || 1.35 });
       } else if (ev.type === "enemy_proj") {
         this.projectiles.push({ id: this.nextEntityId++, kind: ev.kind || "enemy_orb", fromPlayer: false, isHoming: Boolean(ev.isHoming), x: ev.x, y: ev.y, vx: ev.vx, vy: ev.vy, radius: ev.radius || 9, damage: ev.damage || 25, color: ev.color || "#C084FC", angle: ev.angle || 0, distanceTraveled: 0, maxDistance: ev.maxDistance || 460, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set(), ccType: ev.ccType, ccDur: ev.ccDur, ccFactor: ev.ccFactor });
       } else if (ev.type === "enemy_zone") {
@@ -7155,6 +7419,15 @@ export class GameEngine {
       let prof = getNhiAmmoProfile(s.nhi_ammoType || "purple");
       let parts = [`\u{1F3F9} \u0110\u1EA0N: ${prof.labelVi.toUpperCase()}`];
       parts.push(s.nhi_passiveCd > 0 ? `\u2697\uFE0F D\u01AF\u1EE2C PH\u1EA8M ${s.nhi_passiveCd.toFixed(0)}s` : "\u2697\uFE0F SINH T\u1ED2N S\u1EB4N S\xC0NG");
+      l = parts.join(" \xB7 ");
+    } else if (this.currentHero.id === "dung") {
+      let parts = [];
+      (s.dung_c3_buff_timer || 0) > 0 && parts.push(`\u{1F43A} TAM \u0110\u1EA6U KHUY\u1EC2N ${s.dung_c3_buff_timer.toFixed(1)}s`);
+      (s.berserkTimer || 0) > 0 && parts.push(`\u{1F525} CU\u1ED2NG CHI\u1EBEN ${s.berserkTimer.toFixed(1)}s`);
+      (s.dung_c3_buff_timer || 0) <= 0 && parts.push(`\u26A1 CHI\u1EBEN \xDD ${s.dung_passive || 0}/5`);
+      if ((s.berserkTimer || 0) > 0 || (s.dung_c3_buff_timer || 0) > 0) {
+        for (let i = 0; i < 3; i++) a[i] === "ready" && (a[i] = "empowered");
+      }
       l = parts.join(" \xB7 ");
     }
     let thienState = this.currentHero.id === "thien" ? {

@@ -61,9 +61,21 @@ class MultiplayerClient {
     this.connected = false;
     this.listeners = new Set();
     this.pingTimer = null;
+    this.rttMs = 0;
     this.connectPromise = null;
     this.founderToken = "";
     this.founderUnlocked = false;
+  }
+
+  getNetworkStats() {
+    const conn =
+      typeof navigator !== "undefined"
+        ? navigator.connection || navigator.mozConnection || navigator.webkitConnection
+        : null;
+    return {
+      rttMs: this.rttMs || (typeof conn?.rtt === "number" ? conn.rtt : 0),
+      effectiveType: typeof conn?.effectiveType === "string" ? conn.effectiveType : "",
+    };
   }
 
   setFounderAuth(unlocked, token = "") {
@@ -322,6 +334,14 @@ class MultiplayerClient {
   _handleIncomingMessage(msg) {
     if (!msg || !msg.type) return;
 
+    if (msg.type === "PONG") {
+      if (typeof msg.pingTs === "number" && msg.pingTs > 0) {
+        const sample = Math.max(0, Math.min(2000, Date.now() - msg.pingTs));
+        this.rttMs = this.rttMs > 0 ? Math.round(this.rttMs * 0.65 + sample * 0.35) : sample;
+      }
+      return;
+    }
+
     if (msg.type === "CONNECTED") {
       this.playerId = msg.playerId || this.playerId;
     } else if (msg.type === "ROOM_JOINED") {
@@ -497,8 +517,14 @@ class MultiplayerClient {
       const abortCtrl = typeof AbortController !== "undefined" ? new AbortController() : null;
       this.httpPollAbort = abortCtrl;
       try {
+        const isHidden = typeof document !== "undefined" && document.hidden;
+        if (isHidden) {
+          await new Promise((r) => setTimeout(r, 900));
+          if (!this.httpActive || this.transportMode !== "http") break;
+        }
+        const pollWait = isHidden ? 3500 : 1800;
         const res = await fetch(
-          `${this.httpBaseUrl}/api/coop/poll?playerId=${encodeURIComponent(this.playerId)}&wait=1800`,
+          `${this.httpBaseUrl}/api/coop/poll?playerId=${encodeURIComponent(this.playerId)}&wait=${pollWait}`,
           {
             method: "GET",
             credentials: this._isCrossOriginHttp() ? "omit" : "same-origin",
@@ -661,7 +687,8 @@ class MultiplayerClient {
     this.stopHeartbeat();
     this.pingTimer = setInterval(() => {
       if (this.transportMode === "ws") {
-        this.send({ type: "PING" });
+        if (typeof document !== "undefined" && document.hidden) return;
+        this.send({ type: "PING", pingTs: Date.now() });
       }
     }, 15000);
   }
@@ -1283,6 +1310,7 @@ class MultiplayerClient {
     let inFlight = false;
     this.p2pAnswerPollTimer = setInterval(async () => {
       if (inFlight || this.transportMode !== "p2p_host" || !this.p2pHost) return;
+      if (typeof document !== "undefined" && document.hidden) return;
       if (this.p2pHost.room.players.size >= 4) return;
       const httpRes = this.getHttpBaseResult();
       if (!httpRes.ok || !httpRes.baseUrl) return;
@@ -1423,7 +1451,12 @@ class MultiplayerClient {
       const abortCtrl = typeof AbortController !== "undefined" ? new AbortController() : null;
       this.p2pRelayPollAbort = abortCtrl;
       try {
-        const waitMs = host.hasRelayPeers() ? 1200 : 1800;
+        const isHidden = typeof document !== "undefined" && document.hidden;
+        if (isHidden) {
+          await new Promise((r) => setTimeout(r, 900));
+          if (!this.p2pRelayActive || this.p2pHost !== host) break;
+        }
+        const waitMs = isHidden ? 3500 : host.hasRelayPeers() ? 1200 : 1800;
         const res = await fetch(
           `${baseUrl}/api/p2p/relay/${encodeURIComponent(roomCode)}/poll?role=host&peerId=${encodeURIComponent(host.hostId)}&wait=${waitMs}`,
           {
@@ -1680,8 +1713,14 @@ class MultiplayerClient {
       const abortCtrl = typeof AbortController !== "undefined" ? new AbortController() : null;
       this.p2pRelayPollAbort = abortCtrl;
       try {
+        const isHidden = typeof document !== "undefined" && document.hidden;
+        if (isHidden) {
+          await new Promise((r) => setTimeout(r, 900));
+          if (!this.p2pRelayActive || this.p2pPeer !== peer || peer.destroyed) break;
+        }
+        const waitMs = isHidden ? 3500 : 1500;
         const res = await fetch(
-          `${baseUrl}/api/p2p/relay/${encodeURIComponent(roomCode)}/poll?role=peer&peerId=${encodeURIComponent(peer.playerId)}&wait=1500`,
+          `${baseUrl}/api/p2p/relay/${encodeURIComponent(roomCode)}/poll?role=peer&peerId=${encodeURIComponent(peer.playerId)}&wait=${waitMs}`,
           {
             method: "GET",
             credentials: this._isCrossOriginUrl(baseUrl) ? "omit" : "same-origin",

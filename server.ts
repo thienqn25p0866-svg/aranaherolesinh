@@ -808,7 +808,11 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
   session.lastSeen = Date.now();
 
   if (msg.type === "PING") {
-    sendToPlayer(playerId, { type: "PONG", ts: Date.now() });
+    sendToPlayer(playerId, {
+      type: "PONG",
+      ts: Date.now(),
+      ...(typeof msg.pingTs === "number" ? { pingTs: msg.pingTs } : {}),
+    });
     return;
   }
 

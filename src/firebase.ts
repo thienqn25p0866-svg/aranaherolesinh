@@ -436,6 +436,7 @@ export function handleFirestoreError(
 
 async function testConnection() {
   if (isLocalFileProtocolEnv()) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   try {
     await getDocFromServer(doc(db, "test", "connection"));
   } catch (error) {
@@ -446,7 +447,9 @@ async function testConnection() {
 }
 
 if (typeof window !== "undefined") {
-  void testConnection();
+  if (typeof document === "undefined" || !document.hidden) {
+    void testConnection();
+  }
   if (isLocalFileProtocolEnv()) {
     void probeReachableBridgeOrigin();
   }

@@ -1601,4 +1601,493 @@ export function computeNhiC3BoundedHeal({
   return Math.min(rem, heal);
 }
 
+// =========================================================================
+// PERFORMANCE, THERMAL STABILITY, FRUSTUM CULLING & ADAPTIVE SYNC HELPERS
+// =========================================================================
+
+export type QualityMode = "auto" | "high" | "balanced" | "saver";
+export type FpsCapMode = "auto" | "60" | "45" | "30";
+export type EffectivePerformanceTier = "high" | "balanced" | "saver";
+
+export interface DeviceHardwareProfile {
+  tier: EffectivePerformanceTier;
+  isMobile: boolean;
+  isInAppBrowser: boolean;
+  isIOS: boolean;
+  cores: number;
+  memoryGb: number;
+  reducedMotion: boolean;
+}
+
+export interface PerformanceProfile {
+  effectiveTier: EffectivePerformanceTier;
+  targetFps: number;
+  maxDpr: number;
+  maxCanvasDim: number;
+  particleBudgetScale: number;
+  maxParticles: number;
+  maxFlames: number;
+  maxBlood: number;
+  maxCrystals: number;
+  maxSmoke: number;
+  maxFloatingTexts: number;
+  maxCracks: number;
+  maxScorch: number;
+  maxCorpses: number;
+  maxAfterimages: number;
+  maxSlashes: number;
+  maxLightnings: number;
+  maxExplosions: number;
+  maxImpactBursts: number;
+  maxXpOrbs: number;
+  enableRadialGlows: boolean;
+  enableSecondaryGradients: boolean;
+  gridStepPx: number;
+  hudIntervalMs: number;
+  audioMaxVoices: number;
+  audioLowPower: boolean;
+}
+
+export interface WorldViewBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+export function normalizeQualityMode(raw: unknown): QualityMode {
+  if (raw === "high" || raw === "balanced" || raw === "saver" || raw === "auto") {
+    return raw;
+  }
+  return "auto";
+}
+
+export function normalizeFpsCapMode(raw: unknown): FpsCapMode {
+  if (raw === "60" || raw === "45" || raw === "30" || raw === "auto") {
+    return raw;
+  }
+  return "auto";
+}
+
+export function detectDeviceHardwareTier(env?: {
+  userAgent?: string;
+  cores?: number;
+  memoryGb?: number;
+  devicePixelRatio?: number;
+  reducedMotion?: boolean;
+}): DeviceHardwareProfile {
+  const ua =
+    typeof env?.userAgent === "string"
+      ? env.userAgent
+      : typeof navigator !== "undefined" && typeof navigator.userAgent === "string"
+      ? navigator.userAgent
+      : "";
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isMobile = isIOS || /Android|Mobile|Silk|Kindle|BlackBerry|Opera Mini|IEMobile/i.test(ua);
+  const isInAppBrowser = /Zalo|FBAN|FBAV|Messenger|Instagram|Line|MicroMessenger|WebView/i.test(ua);
+
+  const coresRaw =
+    typeof env?.cores === "number"
+      ? env.cores
+      : typeof navigator !== "undefined" && typeof navigator.hardwareConcurrency === "number"
+      ? navigator.hardwareConcurrency
+      : 4;
+  const cores = Math.max(1, Math.round(coresRaw || 4));
+
+  const memRaw =
+    typeof env?.memoryGb === "number"
+      ? env.memoryGb
+      : typeof navigator !== "undefined" &&
+        typeof (navigator as unknown as { deviceMemory?: unknown }).deviceMemory === "number"
+      ? Number((navigator as unknown as { deviceMemory: number }).deviceMemory)
+      : isMobile
+      ? 4
+      : 8;
+  const memoryGb = Math.max(0.5, memRaw || (isMobile ? 4 : 8));
+
+  const reducedMotion =
+    typeof env?.reducedMotion === "boolean"
+      ? env.reducedMotion
+      : typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        Boolean(window.matchMedia("(prefers-reduced-motion: reduce)")?.matches);
+
+  let tier: EffectivePerformanceTier = "balanced";
+  if (reducedMotion || cores <= 2 || memoryGb <= 2 || (isInAppBrowser && isMobile)) {
+    tier = "saver";
+  } else if (!isMobile && cores >= 6 && memoryGb >= 4) {
+    tier = "high";
+  } else if (isMobile && cores >= 6 && memoryGb >= 6 && !isInAppBrowser) {
+    tier = "balanced";
+  } else if (isMobile && (cores <= 4 || memoryGb <= 3)) {
+    tier = "saver";
+  }
+
+  return {
+    tier,
+    isMobile,
+    isInAppBrowser,
+    isIOS,
+    cores,
+    memoryGb,
+    reducedMotion,
+  };
+}
+
+export function resolvePerformanceProfile({
+  qualityMode = "auto",
+  fpsCapMode = "auto",
+  hardware,
+  adaptiveStep = 0,
+  hidden = false,
+}: {
+  qualityMode?: QualityMode;
+  fpsCapMode?: FpsCapMode;
+  hardware?: DeviceHardwareProfile;
+  adaptiveStep?: number;
+  hidden?: boolean;
+} = {}): PerformanceProfile {
+  const hw = hardware || detectDeviceHardwareTier();
+  const qMode = normalizeQualityMode(qualityMode);
+  const fMode = normalizeFpsCapMode(fpsCapMode);
+
+  let effectiveTier: EffectivePerformanceTier = qMode === "auto" ? hw.tier : qMode;
+
+  if (qMode === "auto" && adaptiveStep > 0) {
+    if (adaptiveStep >= 2) {
+      effectiveTier = "saver";
+    } else if (effectiveTier === "high") {
+      effectiveTier = "balanced";
+    } else {
+      effectiveTier = "saver";
+    }
+  }
+
+  // Never exceed 60 FPS even on 120Hz ProMotion screens in auto mode so devices stay cool.
+  let targetFps = 60;
+  if (hidden) {
+    targetFps = 10;
+  } else if (fMode === "30") {
+    targetFps = 30;
+  } else if (fMode === "45") {
+    targetFps = 45;
+  } else if (fMode === "60") {
+    targetFps = 60;
+  } else {
+    // auto fps cap
+    if (effectiveTier === "saver") {
+      targetFps = hw.isMobile ? 45 : 60;
+    } else if (hw.isMobile && effectiveTier === "balanced") {
+      targetFps = adaptiveStep >= 1 ? 45 : 60;
+    } else {
+      targetFps = 60;
+    }
+  }
+
+  if (effectiveTier === "saver") {
+    return {
+      effectiveTier,
+      targetFps,
+      maxDpr: hw.isIOS ? 1.25 : 1.15,
+      maxCanvasDim: hw.isMobile ? 1600 : 1920,
+      particleBudgetScale: 0.4,
+      maxParticles: 56,
+      maxFlames: 32,
+      maxBlood: 32,
+      maxCrystals: 28,
+      maxSmoke: 24,
+      maxFloatingTexts: 28,
+      maxCracks: 16,
+      maxScorch: 16,
+      maxCorpses: 18,
+      maxAfterimages: 16,
+      maxSlashes: 24,
+      maxLightnings: 18,
+      maxExplosions: 10,
+      maxImpactBursts: 14,
+      maxXpOrbs: 90,
+      enableRadialGlows: false,
+      enableSecondaryGradients: false,
+      gridStepPx: 200,
+      hudIntervalMs: 110,
+      audioMaxVoices: 14,
+      audioLowPower: true,
+    };
+  }
+
+  if (effectiveTier === "balanced") {
+    return {
+      effectiveTier,
+      targetFps,
+      maxDpr: hw.isMobile ? 1.5 : 1.65,
+      maxCanvasDim: hw.isIOS ? 2048 : 2560,
+      particleBudgetScale: 0.7,
+      maxParticles: 95,
+      maxFlames: 56,
+      maxBlood: 52,
+      maxCrystals: 44,
+      maxSmoke: 36,
+      maxFloatingTexts: 42,
+      maxCracks: 28,
+      maxScorch: 24,
+      maxCorpses: 28,
+      maxAfterimages: 24,
+      maxSlashes: 36,
+      maxLightnings: 28,
+      maxExplosions: 16,
+      maxImpactBursts: 18,
+      maxXpOrbs: 140,
+      enableRadialGlows: true,
+      enableSecondaryGradients: !hw.isMobile,
+      gridStepPx: 100,
+      hudIntervalMs: 85,
+      audioMaxVoices: 20,
+      audioLowPower: hw.isMobile,
+    };
+  }
+
+  // high tier
+  return {
+    effectiveTier,
+    targetFps,
+    maxDpr: hw.isMobile ? 1.75 : 2,
+    maxCanvasDim: 2880,
+    particleBudgetScale: 1,
+    maxParticles: 140,
+    maxFlames: 90,
+    maxBlood: 84,
+    maxCrystals: 68,
+    maxSmoke: 54,
+    maxFloatingTexts: 64,
+    maxCracks: 42,
+    maxScorch: 34,
+    maxCorpses: 40,
+    maxAfterimages: 36,
+    maxSlashes: 50,
+    maxLightnings: 38,
+    maxExplosions: 24,
+    maxImpactBursts: 24,
+    maxXpOrbs: 200,
+    enableRadialGlows: true,
+    enableSecondaryGradients: true,
+    gridStepPx: 100,
+    hudIntervalMs: 65,
+    audioMaxVoices: 26,
+    audioLowPower: false,
+  };
+}
+
+export function stepAdaptiveQualityGovernor({
+  frameTimeEmaMs,
+  currentStep,
+  cooldownSec,
+  dtSec,
+}: {
+  frameTimeEmaMs: number;
+  currentStep: number;
+  cooldownSec: number;
+  dtSec: number;
+}): { nextStep: number; nextCooldownSec: number; changed: boolean } {
+  const safeCooldown = Math.max(0, cooldownSec - Math.max(0, dtSec));
+  if (safeCooldown > 0) {
+    return { nextStep: currentStep, nextCooldownSec: safeCooldown, changed: false };
+  }
+  if (frameTimeEmaMs > 23 && currentStep < 2) {
+    return { nextStep: currentStep + 1, nextCooldownSec: 3.0, changed: true };
+  }
+  if (frameTimeEmaMs < 11.5 && currentStep > 0) {
+    return { nextStep: currentStep - 1, nextCooldownSec: 5.0, changed: true };
+  }
+  return { nextStep: currentStep, nextCooldownSec: 0, changed: false };
+}
+
+export function computeWorldViewBounds(
+  cameraX: number,
+  cameraY: number,
+  viewport: { visibleWorldW?: number; visibleWorldH?: number; viewW?: number; viewH?: number; zoom?: number },
+  padding = 140
+): WorldViewBounds {
+  const zoom = Math.max(0.2, Number(viewport?.zoom) || 1);
+  const w = Number(viewport?.visibleWorldW) || (Number(viewport?.viewW) || 1280) / zoom;
+  const h = Number(viewport?.visibleWorldH) || (Number(viewport?.viewH) || 720) / zoom;
+  const halfW = w * 0.5 + padding;
+  const halfH = h * 0.5 + padding;
+  return {
+    minX: cameraX - halfW,
+    maxX: cameraX + halfW,
+    minY: cameraY - halfH,
+    maxY: cameraY + halfH,
+  };
+}
+
+export function isCircleInViewBounds(
+  x: number,
+  y: number,
+  radius: number,
+  bounds: WorldViewBounds | null | undefined
+): boolean {
+  if (!bounds) return true;
+  const r = Math.max(0, radius || 0);
+  return (
+    x + r >= bounds.minX &&
+    x - r <= bounds.maxX &&
+    y + r >= bounds.minY &&
+    y - r <= bounds.maxY
+  );
+}
+
+export function isSegmentInViewBounds(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  padding: number,
+  bounds: WorldViewBounds | null | undefined
+): boolean {
+  if (!bounds) return true;
+  const minSegX = Math.min(x1, x2) - padding;
+  const maxSegX = Math.max(x1, x2) + padding;
+  const minSegY = Math.min(y1, y2) - padding;
+  const maxSegY = Math.max(y1, y2) + padding;
+  return (
+    maxSegX >= bounds.minX &&
+    minSegX <= bounds.maxX &&
+    maxSegY >= bounds.minY &&
+    minSegY <= bounds.maxY
+  );
+}
+
+export function swapRemoveAt<T>(arr: T[], index: number): void {
+  const last = arr.length - 1;
+  if (index < 0 || index > last) return;
+  if (index !== last) {
+    arr[index] = arr[last];
+  }
+  arr.pop();
+}
+
+export function computeAdaptiveSyncIntervals({
+  transportMode,
+  isRelayMode,
+  isActing,
+  rttMs = 0,
+  networkEffectiveType = "",
+}: {
+  transportMode: string | null | undefined;
+  isRelayMode: boolean;
+  isActing: boolean;
+  rttMs?: number;
+  networkEffectiveType?: string;
+}): { playerInterval: number; worldInterval: number; vfxInterval: number } {
+  const isSlowNet = networkEffectiveType === "slow-2g" || networkEffectiveType === "2g" || rttMs > 260;
+  const isModerateNet = networkEffectiveType === "3g" || (rttMs > 140 && rttMs <= 260);
+  const isP2P = transportMode === "p2p_host" || transportMode === "p2p_peer";
+
+  let playerInterval = isRelayMode
+    ? isActing
+      ? 0.055
+      : 0.1
+    : isP2P
+    ? isActing
+      ? 0.033
+      : 0.08
+    : isActing
+    ? 0.04
+    : 0.085;
+  let worldInterval = isRelayMode ? 0.06 : isP2P ? 0.038 : 0.042;
+  let vfxInterval = isRelayMode ? 0.045 : 0.028;
+
+  if (isSlowNet) {
+    playerInterval = Math.min(0.16, playerInterval * 1.45);
+    worldInterval = Math.min(0.11, worldInterval * 1.45);
+    vfxInterval = Math.min(0.08, vfxInterval * 1.4);
+  } else if (isModerateNet) {
+    playerInterval = Math.min(0.13, playerInterval * 1.2);
+    worldInterval = Math.min(0.08, worldInterval * 1.2);
+    vfxInterval = Math.min(0.06, vfxInterval * 1.2);
+  }
+
+  return { playerInterval, worldInterval, vfxInterval };
+}
+
+// =====================================================================
+// DŨNG YÊU SANY (CHIẾN THẦN SẤM SÉT) BUFF CONSTANTS & HELPERS
+// =====================================================================
+
+export const DUNG_BASE_CRIT = 0.28;
+export const DUNG_MAX_CRIT = 0.80;
+export const DUNG_BUFFED_MAX_CRIT = 0.95;
+export const DUNG_BASE_CRIT_DMG_RATIO = 2.05;
+export const DUNG_BASE_LIFESTEAL = 0.12;
+export const DUNG_C1_COOLDOWN = 4.2;
+export const DUNG_C2_COOLDOWN = 10.5;
+export const DUNG_C3_COOLDOWN = 21.0;
+export const DUNG_C2_DURATION = 6.5;
+export const DUNG_C3_DURATION = 10.5;
+export const DUNG_C2_CRIT_BONUS = 0.10;
+export const DUNG_C2_CRIT_DMG_BONUS = 0.20;
+export const DUNG_C3_CRIT_BONUS = 0.18;
+export const DUNG_C3_CRIT_DMG_BONUS = 0.35;
+export const DUNG_C3_BOSS_DMG_MULT = 1.30;
+
+export function computeDungCritProfile({
+  baseAndGearCrit = DUNG_BASE_CRIT,
+  berserkActive = false,
+  c3Active = false,
+}: {
+  baseAndGearCrit?: number;
+  berserkActive?: boolean;
+  c3Active?: boolean;
+}): {
+  critChance: number;
+  critDmgRatio: number;
+} {
+  const safeBaseGear = Math.min(DUNG_MAX_CRIT, Math.max(DUNG_BASE_CRIT, Number.isFinite(baseAndGearCrit) ? baseAndGearCrit : DUNG_BASE_CRIT));
+  const bonusCrit = (berserkActive ? DUNG_C2_CRIT_BONUS : 0) + (c3Active ? DUNG_C3_CRIT_BONUS : 0);
+  const maxAllowed = bonusCrit > 0 ? DUNG_BUFFED_MAX_CRIT : DUNG_MAX_CRIT;
+  const critChance = Math.min(maxAllowed, Number((safeBaseGear + bonusCrit).toFixed(4)));
+  const critDmgRatio = Number(
+    (
+      DUNG_BASE_CRIT_DMG_RATIO +
+      (berserkActive ? DUNG_C2_CRIT_DMG_BONUS : 0) +
+      (c3Active ? DUNG_C3_CRIT_DMG_BONUS : 0)
+    ).toFixed(4)
+  );
+  return { critChance, critDmgRatio };
+}
+
+export function computeDungHealValues({
+  maxHp,
+  c3Active = false,
+}: {
+  maxHp: number;
+  c3Active?: boolean;
+}): {
+  passiveHeal: number;
+  c1HitHeal: number;
+  c2CastHeal: number;
+  c2HitHeal: number;
+  c3CastHeal: number;
+  c3HitBonusHeal: number;
+} {
+  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1280);
+  const passiveHeal = c3Active
+    ? Math.round(260 + safeMaxHp * 0.065)
+    : Math.round(85 + safeMaxHp * 0.045);
+  const c1HitHeal = Math.round(45 + safeMaxHp * 0.03);
+  const c2CastHeal = Math.round(80 + safeMaxHp * 0.06);
+  const c2HitHeal = Math.round((45 + safeMaxHp * 0.035) * (c3Active ? 2 : 1));
+  const c3CastHeal = Math.round(240 + safeMaxHp * 0.14);
+  const c3HitBonusHeal = Math.round(100 + safeMaxHp * 0.04);
+  return {
+    passiveHeal,
+    c1HitHeal,
+    c2CastHeal,
+    c2HitHeal,
+    c3CastHeal,
+    c3HitBonusHeal,
+  };
+}
+
+
 

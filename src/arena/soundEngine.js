@@ -21,10 +21,15 @@ class SoundEngine {
     this.stepIndex = 0;
     this.unlocked = false;
     this.lastCooldowns = new Map();
+    this.activeVoices = 0;
+    this.maxVoices = 22;
+    this.lowPowerAudio = false;
+    this._pageHidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
 
     if (typeof window !== "undefined") {
       const unlockHandler = () => {
         this.unlocked = true;
+        if (this._pageHidden) return;
         const ctx = this.ensureContext(true);
         if (ctx && this.musicEnabled && this.musicMode !== "off" && this.musicMode !== "paused" && !this.bgmTimerId) {
           this.startMusicLoop();
@@ -33,13 +38,75 @@ class SoundEngine {
       window.addEventListener("pointerdown", unlockHandler, { passive: true });
       window.addEventListener("keydown", unlockHandler, { passive: true });
       window.addEventListener("touchstart", unlockHandler, { passive: true });
+
+      const onVisibility = () => {
+        const hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
+        this._pageHidden = hidden;
+        if (hidden) {
+          this.stopMusicLoop();
+          if (this.ctx && this.ctx.state === "running" && typeof this.ctx.suspend === "function") {
+            this.ctx.suspend().catch(() => {});
+          }
+        } else {
+          if (this.ctx && this.ctx.state === "suspended" && typeof this.ctx.resume === "function" && (this.enabled || this.musicEnabled)) {
+            this.ctx.resume().catch(() => {});
+          }
+          if (this.unlocked && this.musicEnabled && this.musicMode !== "off" && this.musicMode !== "paused") {
+            this.startMusicLoop();
+          }
+        }
+      };
+      if (typeof document !== "undefined") {
+        document.addEventListener("visibilitychange", onVisibility);
+      }
+      window.addEventListener("pagehide", () => {
+        this._pageHidden = true;
+        this.stopMusicLoop();
+        if (this.ctx && this.ctx.state === "running" && typeof this.ctx.suspend === "function") {
+          this.ctx.suspend().catch(() => {});
+        }
+      });
     }
+  }
+
+  setPerformanceProfile({ maxVoices, lowPowerAudio } = {}) {
+    if (typeof maxVoices === "number" && Number.isFinite(maxVoices)) {
+      this.maxVoices = Math.max(8, Math.min(36, Math.round(maxVoices)));
+    }
+    if (typeof lowPowerAudio === "boolean") {
+      this.lowPowerAudio = lowPowerAudio;
+    }
+  }
+
+  _canSpawnVoice(isCritical = false) {
+    if (this._pageHidden) return false;
+    const cap = isCritical ? this.maxVoices + 4 : this.maxVoices;
+    return this.activeVoices < cap;
+  }
+
+  _trackVoice(node, durationSec = 0.25) {
+    this.activeVoices += 1;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      this.activeVoices = Math.max(0, this.activeVoices - 1);
+    };
+    try {
+      node.onended = release;
+    } catch {
+    }
+    const fallbackMs = Math.max(80, Math.min(5000, Math.round((durationSec + 0.12) * 1000)));
+    setTimeout(release, fallbackMs);
   }
 
   canThrottle(key, minGapMs = 60) {
     const now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const prev = this.lastCooldowns.get(key) || 0;
     if (now - prev < minGapMs) return true;
+    if (this.lastCooldowns.size > 160) {
+      this.lastCooldowns.clear();
+    }
     this.lastCooldowns.set(key, now);
     return false;
   }
@@ -222,7 +289,8 @@ class SoundEngine {
   }
 
   playMusicNote(freq, time, dur, type = "triangle", gainAmt = 0.12, filterFreq = 2200, pan = 0) {
-    if (!this.ctx || !this.masterBgmGain || !this.musicEnabled) return;
+    if (!this.ctx || !this.masterBgmGain || !this.musicEnabled || this._pageHidden) return;
+    if (!this._canSpawnVoice(false)) return;
     try {
       const osc = this.ctx.createOscillator();
       const filter = this.ctx.createBiquadFilter();
@@ -236,7 +304,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
       osc.connect(filter);
       filter.connect(gain);
-      if (pan !== 0 && typeof this.ctx.createStereoPanner === "function") {
+      if (!this.lowPowerAudio && pan !== 0 && typeof this.ctx.createStereoPanner === "function") {
         const panner = this.ctx.createStereoPanner();
         panner.pan.setValueAtTime(Math.max(-0.8, Math.min(0.8, pan)), time);
         gain.connect(panner);
@@ -244,6 +312,7 @@ class SoundEngine {
       } else {
         gain.connect(this.masterBgmGain);
       }
+      this._trackVoice(osc, Math.max(0.05, time - this.ctx.currentTime + dur));
       osc.start(time);
       osc.stop(time + dur + 0.025);
     } catch {
@@ -252,7 +321,8 @@ class SoundEngine {
   }
 
   playMusicDrum(kind, time) {
-    if (!this.ctx || !this.masterBgmGain || !this.musicEnabled) return;
+    if (!this.ctx || !this.masterBgmGain || !this.musicEnabled || this._pageHidden) return;
+    if (!this._canSpawnVoice(false)) return;
     try {
       if (kind === "kick") {
         const osc = this.ctx.createOscillator();
@@ -264,6 +334,7 @@ class SoundEngine {
         gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
         osc.connect(gain);
         gain.connect(this.masterBgmGain);
+        this._trackVoice(osc, Math.max(0.05, time - this.ctx.currentTime + 0.18));
         osc.start(time);
         osc.stop(time + 0.18);
       } else if (kind === "timpani") {
@@ -276,6 +347,7 @@ class SoundEngine {
         gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.32);
         osc.connect(gain);
         gain.connect(this.masterBgmGain);
+        this._trackVoice(osc, Math.max(0.05, time - this.ctx.currentTime + 0.34));
         osc.start(time);
         osc.stop(time + 0.34);
       } else if (kind === "snare" && this.noiseBuffer) {
@@ -291,6 +363,7 @@ class SoundEngine {
         src.connect(filter);
         filter.connect(gain);
         gain.connect(this.masterBgmGain);
+        this._trackVoice(src, Math.max(0.05, time - this.ctx.currentTime + 0.13));
         src.start(time, 0, 0.13);
       } else if (kind === "hat" && this.noiseBuffer) {
         const src = this.ctx.createBufferSource();
@@ -304,6 +377,7 @@ class SoundEngine {
         src.connect(filter);
         filter.connect(gain);
         gain.connect(this.masterBgmGain);
+        this._trackVoice(src, Math.max(0.05, time - this.ctx.currentTime + 0.05));
         src.start(time, 0, 0.05);
       } else if (kind === "crash" && this.noiseBuffer) {
         const src = this.ctx.createBufferSource();
@@ -319,6 +393,7 @@ class SoundEngine {
         src.connect(filter);
         filter.connect(gain);
         gain.connect(this.masterBgmGain);
+        this._trackVoice(src, Math.max(0.05, time - this.ctx.currentTime + 0.68));
         src.start(time, 0, 0.68);
       }
     } catch {
@@ -327,7 +402,7 @@ class SoundEngine {
   }
 
   scheduleMusicSteps() {
-    if (!this.ctx || !this.musicEnabled) return;
+    if (!this.ctx || !this.musicEnabled || this._pageHidden) return;
     if (this.musicMode === "off" || this.musicMode === "paused") return;
     if (this.ctx.state !== "running") return;
 
@@ -524,6 +599,7 @@ class SoundEngine {
   playTone(startFreq, endFreq, duration, type = "sine", vol = 0.25, delay = 0) {
     const ctx = this.ensureContext();
     if (!ctx || !this.masterSfxGain) return;
+    if (!this._canSpawnVoice(false)) return;
     try {
       const now = ctx.currentTime + delay;
       const osc = ctx.createOscillator();
@@ -537,6 +613,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       osc.connect(gain);
       gain.connect(this.masterSfxGain);
+      this._trackVoice(osc, delay + duration + 0.03);
       osc.start(now);
       osc.stop(now + duration + 0.025);
     } catch {
@@ -559,6 +636,7 @@ class SoundEngine {
     detune = 0,
     attack = 0.012,
   } = {}) {
+    if (!this._canSpawnVoice(true)) return;
     const ctx = this.ensureContext();
     if (!ctx || !this.masterSfxGain) return;
     try {
@@ -583,17 +661,19 @@ class SoundEngine {
       osc.connect(filter);
       filter.connect(gain);
 
-      if (pan !== 0 && typeof ctx.createStereoPanner === "function") {
+      const useAmbiance = sendAmbiance && this.sfxAmbianceSend && !this.lowPowerAudio && this.activeVoices < this.maxVoices * 0.75;
+      if (!this.lowPowerAudio && pan !== 0 && typeof ctx.createStereoPanner === "function") {
         const panner = ctx.createStereoPanner();
         panner.pan.setValueAtTime(Math.max(-0.9, Math.min(0.9, pan)), now);
         gain.connect(panner);
         panner.connect(this.masterSfxGain);
-        if (sendAmbiance && this.sfxAmbianceSend) panner.connect(this.sfxAmbianceSend);
+        if (useAmbiance) panner.connect(this.sfxAmbianceSend);
       } else {
         gain.connect(this.masterSfxGain);
-        if (sendAmbiance && this.sfxAmbianceSend) gain.connect(this.sfxAmbianceSend);
+        if (useAmbiance) gain.connect(this.sfxAmbianceSend);
       }
 
+      this._trackVoice(osc, delay + duration);
       osc.start(now);
       osc.stop(now + duration + 0.03);
     } catch {
@@ -609,8 +689,9 @@ class SoundEngine {
     filterFreq = 3200,
     sendAmbiance = true,
   } = {}) {
-    freqs.forEach((f, idx) => {
-      const pan = freqs.length > 1 ? ((idx / (freqs.length - 1)) - 0.5) * 0.5 : 0;
+    const notes = this.lowPowerAudio && freqs.length > 3 ? [freqs[0], freqs[1], freqs[freqs.length - 1]] : freqs;
+    notes.forEach((f, idx) => {
+      const pan = !this.lowPowerAudio && notes.length > 1 ? ((idx / (notes.length - 1)) - 0.5) * 0.5 : 0;
       this.playLayerTone({
         startFreq: f,
         endFreq: f * 1.003,
@@ -626,7 +707,7 @@ class SoundEngine {
   }
 
   playMetallicClang(baseFreq = 720, duration = 0.18, vol = 0.13, delay = 0, pan = 0) {
-    const ratios = [1, 1.48, 2.13, 2.89];
+    const ratios = this.lowPowerAudio || this.activeVoices > this.maxVoices * 0.7 ? [1, 1.48] : [1, 1.48, 2.13, 2.89];
     ratios.forEach((r, idx) => {
       this.playLayerTone({
         startFreq: baseFreq * r,
@@ -668,6 +749,7 @@ class SoundEngine {
     pan = 0,
     sendAmbiance = false,
   } = {}) {
+    if (!this._canSpawnVoice(true)) return;
     const ctx = this.ensureContext();
     if (!ctx || !this.masterSfxGain || !this.noiseBuffer) return;
     try {
@@ -685,17 +767,19 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       src.connect(filter);
       filter.connect(gain);
-      if (pan !== 0 && typeof ctx.createStereoPanner === "function") {
+      const useAmbiance = sendAmbiance && this.sfxAmbianceSend && !this.lowPowerAudio && this.activeVoices < this.maxVoices * 0.75;
+      if (!this.lowPowerAudio && pan !== 0 && typeof ctx.createStereoPanner === "function") {
         const panner = ctx.createStereoPanner();
         panner.pan.setValueAtTime(Math.max(-0.9, Math.min(0.9, pan)), now);
         gain.connect(panner);
         panner.connect(this.masterSfxGain);
-        if (sendAmbiance && this.sfxAmbianceSend) panner.connect(this.sfxAmbianceSend);
+        if (useAmbiance) panner.connect(this.sfxAmbianceSend);
       } else {
         gain.connect(this.masterSfxGain);
-        if (sendAmbiance && this.sfxAmbianceSend) gain.connect(this.sfxAmbianceSend);
+        if (useAmbiance) gain.connect(this.sfxAmbianceSend);
       }
       const offset = Math.random() * 0.5;
+      this._trackVoice(src, delay + duration);
       src.start(now, offset, duration + 0.03);
     } catch {
       // Ignore
@@ -1853,6 +1937,17 @@ class SoundEngine {
     this.playSubPunch(145, 42, 0.26, 0.28);
     this.playLayerTone({ startFreq: 1120, endFreq: 340, duration: 0.26, type: "sawtooth", vol: 0.16, filterFreq: 2800, sendAmbiance: true });
     this.playFilteredNoise({ duration: 0.24, filterType: "bandpass", freqStart: 2600, freqEnd: 780, q: 1.4, gainPeak: 0.22, sendAmbiance: true });
+  }
+
+  playCerberusRoar() {
+    if (this.canThrottle("cerberusRoar", 140)) return;
+    // Deep seismic bass slam + 3 staggered demonic hound growls + lightning snap
+    this.playSubPunch(110, 26, 0.58, 0.36);
+    this.playLayerTone({ startFreq: 145, endFreq: 54, duration: 0.44, type: "sawtooth", vol: 0.18, filterFreq: 920, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 192, endFreq: 68, duration: 0.48, type: "sawtooth", vol: 0.15, filterFreq: 1200, delay: 0.045, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 235, endFreq: 86, duration: 0.52, type: "sawtooth", vol: 0.14, filterFreq: 1450, delay: 0.09, sendAmbiance: true });
+    this.playChord([293.66, 440, 587.33, 880], 0.42, { type: "triangle", vol: 0.11, delay: 0.02, stagger: 0.03, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.46, filterType: "bandpass", freqStart: 2200, freqEnd: 340, q: 1.4, gainPeak: 0.26, sendAmbiance: true });
   }
 }
 
