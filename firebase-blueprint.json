@@ -79,6 +79,226 @@
         }
       },
       "required": ["uid", "eventType", "heroId", "source", "createdAt"]
+    },
+    "PlayerPrivateSave": {
+      "title": "PlayerPrivateSave",
+      "description": "Owner-only cloud save and lifetime career progress for a player.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "coins": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "currentWave": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 27
+        },
+        "highestWave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27
+        },
+        "selectedHeroId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "lifetimeKills": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "matchesPlayed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "victories": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "dailyCheckInDate": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "unlockedTitles": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "type": "string" }
+        },
+        "inventoryItemIds": {
+          "type": "array",
+          "maxItems": 250,
+          "items": { "type": "string" }
+        },
+        "heroGearEntries": {
+          "type": "array",
+          "maxItems": 110,
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "coins",
+        "currentWave",
+        "highestWave",
+        "selectedHeroId",
+        "lifetimeKills",
+        "matchesPlayed",
+        "victories",
+        "dailyCheckInDate",
+        "unlockedTitles",
+        "inventoryItemIds",
+        "heroGearEntries",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PublicPlayerProfile": {
+      "title": "PublicPlayerProfile",
+      "description": "PII-free public warrior card for friend search, avatar display, and leaderboard.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "friendCode": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "displayNameLower": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "avatarType": {
+          "type": "string",
+          "enum": ["hero", "crest", "google"]
+        },
+        "avatarValue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "avatarFrame": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "titleBadge": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "bio": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "favoriteHeroId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "highestWave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 27
+        },
+        "lifetimeKills": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "victories": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "isFounderBadge": { "type": "boolean" },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "friendCode",
+        "displayName",
+        "displayNameLower",
+        "avatarType",
+        "avatarValue",
+        "avatarFrame",
+        "titleBadge",
+        "bio",
+        "favoriteHeroId",
+        "highestWave",
+        "lifetimeKills",
+        "victories",
+        "isFounderBadge",
+        "isPublic",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "Deterministic friend invitation and friendship edge between two players.",
+      "type": "object",
+      "properties": {
+        "fromUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "toUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "fromName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "toName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "fromFriendCode": { "type": "string", "minLength": 4, "maxLength": 16 },
+        "toFriendCode": { "type": "string", "minLength": 4, "maxLength": 16 },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "declined"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "fromUid",
+        "toUid",
+        "fromName",
+        "toName",
+        "fromFriendCode",
+        "toFriendCode",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -89,6 +309,18 @@
     "/founder_profiles/{userId}/audit_logs/{logId}": {
       "schema": { "$ref": "#/entities/FounderAuditLog" },
       "description": "Immutable audit trail of Founder unlock and secret-hero sessions."
+    },
+    "/player_saves/{userId}": {
+      "schema": { "$ref": "#/entities/PlayerPrivateSave" },
+      "description": "Owner-only cloud progress and lifetime player save."
+    },
+    "/public_players/{userId}": {
+      "schema": { "$ref": "#/entities/PublicPlayerProfile" },
+      "description": "Public warrior profile directory for friend search and leaderboard."
+    },
+    "/friend_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend requests and accepted friendships between players."
     }
   }
 }

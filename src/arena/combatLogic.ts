@@ -936,12 +936,14 @@ export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
   bao: 'assassin',
   duy: 'assassin',
   phong: 'assassin',
-  kin: 'marksman',
-  longhoi: 'marksman',
-  taidu: 'marksman',
   trung: 'mage',
   duccong: 'mage',
   luan: 'mage',
+  thanh: 'mage',
+  kin: 'marksman',
+  longhoi: 'marksman',
+  taidu: 'marksman',
+  nhi: 'marksman',
   gau: 'tank',
   nguyen: 'tank',
 };
@@ -1183,4 +1185,407 @@ export function computeThienDamageBreakdownTotal(breakdown: Partial<Record<'atk'
     Math.max(0, Math.round(breakdown.c4 || 0))
   );
 }
+
+// =====================================================================
+// THANH (PHÁP SƯ MÃNG XÀ) & NHI (XẠ THỦ ĐỘC DƯỢC) COMBAT HELPERS
+// =====================================================================
+
+export const THANH_ECHO_DELAY = 0.8;
+export const THANH_ECHO_DMG_RATIO = 0.35;
+export const THANH_ECHO_MAX_QUEUE = 6;
+export const THANH_PASSIVE_BURST_WINDOW = 1.5;
+export const THANH_PASSIVE_BURST_THRESHOLD_RATIO = 0.16;
+export const THANH_PASSIVE_SHIELD_RATIO = 0.12;
+export const THANH_PASSIVE_HEAL_RATIO = 0.06;
+export const THANH_PASSIVE_CD = 18;
+export const THANH_C1_POISON_DURATION = 2.0;
+export const THANH_C1_MULTI_HIT_BONUS = 0.4;
+export const THANH_C1_HEAL_MAX_RATIO = 0.09;
+export const THANH_C2_MAX_SWALLOW_PER_CAST = 4;
+export const THANH_C2_ZONE_DURATION = 5.0;
+export const THANH_C2_ZONE_SLOW = 0.3;
+export const THANH_C2_HEAL_RATIO_PER_TICK = 0.028;
+export const THANH_C3_GUARD_COUNT = 4;
+export const THANH_C3_GUARD_DURATION = 7.0;
+export const THANH_C3_GUARD_DR = 0.22;
+export const THANH_C3_SACRIFICE_HP_THRESHOLD = 0.35;
+export const THANH_C3_SACRIFICE_SHIELD_RATIO = 0.1;
+export const THANH_C3_SACRIFICE_HEAL_RATIO = 0.08;
+export const THANH_C3_SACRIFICE_ICD = 2.5;
+
+export function evaluateThanhBurstPassive({
+  events,
+  now,
+  incomingDamage,
+  maxHp,
+  passiveCd,
+}: {
+  events: ReadonlyArray<{ time: number; amount: number }>;
+  now: number;
+  incomingDamage: number;
+  maxHp: number;
+  passiveCd: number;
+}): {
+  recentEvents: Array<{ time: number; amount: number }>;
+  burstSum: number;
+  triggered: boolean;
+  shield: number;
+  heal: number;
+  nextCooldown: number;
+} {
+  const safeMaxHp = Math.max(1, maxHp || 1050);
+  const safeNow = Number.isFinite(now) ? now : 0;
+  const cutoff = safeNow - THANH_PASSIVE_BURST_WINDOW;
+  const recentEvents = Array.isArray(events)
+    ? events.filter((ev) => ev && ev.time >= cutoff && ev.amount > 0).map((ev) => ({ time: ev.time, amount: ev.amount }))
+    : [];
+  const dmg = Math.max(0, Number.isFinite(incomingDamage) ? incomingDamage : 0);
+  if (dmg > 0) recentEvents.push({ time: safeNow, amount: dmg });
+  if (recentEvents.length > 24) recentEvents.splice(0, recentEvents.length - 24);
+  const burstSum = recentEvents.reduce((acc, ev) => acc + ev.amount, 0);
+  const threshold = Math.max(1, Math.round(safeMaxHp * THANH_PASSIVE_BURST_THRESHOLD_RATIO));
+  const cd = Math.max(0, Number.isFinite(passiveCd) ? passiveCd : 0);
+  if (cd <= 0 && burstSum >= threshold) {
+    return {
+      recentEvents: [],
+      burstSum,
+      triggered: true,
+      shield: Math.max(1, Math.round(safeMaxHp * THANH_PASSIVE_SHIELD_RATIO)),
+      heal: Math.max(1, Math.round(safeMaxHp * THANH_PASSIVE_HEAL_RATIO)),
+      nextCooldown: THANH_PASSIVE_CD,
+    };
+  }
+  return {
+    recentEvents,
+    burstSum,
+    triggered: false,
+    shield: 0,
+    heal: 0,
+    nextCooldown: cd,
+  };
+}
+
+export function computeThanhC1SnakeDamage({
+  ap,
+  atk,
+  priorHitsOnTarget = 0,
+  isEcho = false,
+}: {
+  ap: number;
+  atk: number;
+  priorHitsOnTarget?: number;
+  isEcho?: boolean;
+}): number {
+  const safeAp = Math.max(0, ap || 0);
+  const safeAtk = Math.max(0, atk || 0);
+  const base = 54 + safeAp * 0.92 + safeAtk * 0.35;
+  const repeatMult = priorHitsOnTarget > 0 ? 1 + THANH_C1_MULTI_HIT_BONUS : 1;
+  const echoMult = isEcho ? THANH_ECHO_DMG_RATIO : 1;
+  return Math.max(1, Math.round(base * repeatMult * echoMult));
+}
+
+export function computeThanhC1BoundedHeal({
+  maxHp,
+  ap,
+  alreadyHealed,
+  isEcho = false,
+}: {
+  maxHp: number;
+  ap: number;
+  alreadyHealed: number;
+  isEcho?: boolean;
+}): number {
+  const safeMax = Math.max(1, maxHp || 1050);
+  const safeAp = Math.max(0, ap || 0);
+  const capRatio = isEcho ? THANH_C1_HEAL_MAX_RATIO * THANH_ECHO_DMG_RATIO : THANH_C1_HEAL_MAX_RATIO;
+  const cap = Math.max(10, Math.round(safeMax * capRatio + safeAp * (isEcho ? 0.16 : 0.45)));
+  const remaining = Math.max(0, cap - Math.max(0, alreadyHealed || 0));
+  if (remaining <= 0) return 0;
+  const stepHeal = Math.max(6, Math.round((safeMax * 0.022 + safeAp * 0.14) * (isEcho ? THANH_ECHO_DMG_RATIO : 1)));
+  return Math.min(remaining, stepHeal);
+}
+
+const THANH_LARGE_MONSTER_KINDS = new Set(['brute', 'shield_knight', 'boss']);
+
+export function isThanhC2SwallowEligible({
+  kind,
+  radius = 16,
+  isMiniBoss = false,
+  swallowedCount = 0,
+  isEcho = false,
+}: {
+  kind: string;
+  radius?: number;
+  isMiniBoss?: boolean;
+  swallowedCount?: number;
+  isEcho?: boolean;
+}): boolean {
+  if (isEcho) return false;
+  if (!kind || kind === 'boss' || isMiniBoss || THANH_LARGE_MONSTER_KINDS.has(kind)) return false;
+  if ((radius || 0) > 21) return false;
+  return (swallowedCount || 0) < THANH_C2_MAX_SWALLOW_PER_CAST;
+}
+
+export function computeThanhC2Damage({
+  ap,
+  atk,
+  isLargeOrBoss = false,
+  isEcho = false,
+}: {
+  ap: number;
+  atk: number;
+  isLargeOrBoss?: boolean;
+  isEcho?: boolean;
+}): number {
+  const safeAp = Math.max(0, ap || 0);
+  const safeAtk = Math.max(0, atk || 0);
+  const base = isLargeOrBoss ? 128 + safeAp * 1.95 + safeAtk * 0.65 : 88 + safeAp * 1.35 + safeAtk * 0.45;
+  return Math.max(1, Math.round(base * (isEcho ? THANH_ECHO_DMG_RATIO : 1)));
+}
+
+export function computeThanhC3Sacrifice({
+  currentHp,
+  maxHp,
+  guardCount,
+  sacrificeIcd,
+  hitDamage,
+}: {
+  currentHp: number;
+  maxHp: number;
+  guardCount: number;
+  sacrificeIcd: number;
+  hitDamage: number;
+}): {
+  shouldSacrifice: boolean;
+  shield: number;
+  heal: number;
+  nextIcd: number;
+} {
+  const safeMax = Math.max(1, maxHp || 1050);
+  const safeHp = Math.max(0, currentHp || 0);
+  const inDanger =
+    safeHp > 0 &&
+    (safeHp <= safeMax * THANH_C3_SACRIFICE_HP_THRESHOLD || hitDamage >= safeMax * 0.14);
+  if ((guardCount || 0) > 0 && (sacrificeIcd || 0) <= 0 && inDanger) {
+    return {
+      shouldSacrifice: true,
+      shield: Math.max(1, Math.round(safeMax * THANH_C3_SACRIFICE_SHIELD_RATIO)),
+      heal: Math.max(1, Math.round(safeMax * THANH_C3_SACRIFICE_HEAL_RATIO)),
+      nextIcd: THANH_C3_SACRIFICE_ICD,
+    };
+  }
+  return {
+    shouldSacrifice: false,
+    shield: 0,
+    heal: 0,
+    nextIcd: Math.max(0, sacrificeIcd || 0),
+  };
+}
+
+export type NhiAmmoType = 'purple' | 'green' | 'life';
+export const NHI_AMMO_TYPES: readonly NhiAmmoType[] = ['purple', 'green', 'life'] as const;
+
+export const NHI_PASSIVE_HP_THRESHOLD = 0.5;
+export const NHI_PASSIVE_HEAL_RATIO = 0.12;
+export const NHI_PASSIVE_MIST_DURATION = 4.0;
+export const NHI_PASSIVE_SLOW = 0.3;
+export const NHI_PASSIVE_CD = 24;
+export const NHI_C2_MAX_ZONES = 6;
+export const NHI_C2_ZONE_DURATION = 5.0;
+export const NHI_C2_TETHER_RANGE = 260;
+export const NHI_C2_HEAL_INTERVAL = 0.5;
+export const NHI_C2_HEAL_RATIO_PER_TICK = 0.026;
+export const NHI_C3_FIRST_HIT_MULT = 1.35;
+export const NHI_C3_BOSS_CURRENT_HP_PCT = 0.05;
+export const NHI_C3_BOSS_PCT_CAP = 340;
+export const NHI_C3_HEAL_RATIO = 0.18;
+export const NHI_C3_HEAL_MAX_RATIO = 0.16;
+
+export function cycleNhiAmmoType(current: NhiAmmoType | string = 'purple'): NhiAmmoType {
+  const idx = NHI_AMMO_TYPES.indexOf(current as NhiAmmoType);
+  if (idx < 0) return 'green';
+  return NHI_AMMO_TYPES[(idx + 1) % NHI_AMMO_TYPES.length];
+}
+
+export function getNhiAmmoProfile(ammo: NhiAmmoType | string = 'purple'): {
+  id: NhiAmmoType;
+  labelVi: string;
+  labelEn: string;
+  color: string;
+  dmgMult: number;
+  pierceLeft: number;
+  aoeRadius: number;
+  slowFactor: number;
+  slowDur: number;
+  poisonDur: number;
+  poisonMult: number;
+  healRatio: number;
+} {
+  if (ammo === 'green') {
+    return {
+      id: 'green',
+      labelVi: 'Lục Dược',
+      labelEn: 'Green Venom',
+      color: '#22C55E',
+      dmgMult: 0.96,
+      pierceLeft: 1,
+      aoeRadius: 88,
+      slowFactor: 0.3,
+      slowDur: 2.0,
+      poisonDur: 1.5,
+      poisonMult: 0.65,
+      healRatio: 0,
+    };
+  }
+  if (ammo === 'life') {
+    return {
+      id: 'life',
+      labelVi: 'Sinh Dược',
+      labelEn: 'Vital Tonic',
+      color: '#34D399',
+      dmgMult: 0.92,
+      pierceLeft: 3,
+      aoeRadius: 0,
+      slowFactor: 0,
+      slowDur: 0,
+      poisonDur: 1.5,
+      poisonMult: 0.6,
+      healRatio: 0.15,
+    };
+  }
+  return {
+    id: 'purple',
+    labelVi: 'Tử Dược',
+    labelEn: 'Purple Toxin',
+    color: '#A855F7',
+    dmgMult: 1.04,
+    pierceLeft: 1,
+    aoeRadius: 0,
+    slowFactor: 0,
+    slowDur: 0,
+    poisonDur: 3.0,
+    poisonMult: 1.35,
+    healRatio: 0,
+  };
+}
+
+export function computeNhiPoisonDps({
+  stacks,
+  ap,
+  atk,
+  isBoss = false,
+}: {
+  stacks: number;
+  ap: number;
+  atk: number;
+  isBoss?: boolean;
+}): number {
+  const safeStacks = Math.max(1, Math.min(5, Math.floor(stacks || 1)));
+  const safeAp = Math.max(0, ap || 0);
+  const safeAtk = Math.max(0, atk || 0);
+  const raw = (14 + safeAp * 0.42 + safeAtk * 0.2) * (1 + (safeStacks - 1) * 0.25);
+  return Math.max(6, Math.round(isBoss ? Math.min(220, raw * 0.85) : raw));
+}
+
+export function computeNhiC1LifeHeal({
+  damageDealt,
+  maxHp,
+  alreadyHealed,
+  isSkillShot = false,
+}: {
+  damageDealt: number;
+  maxHp: number;
+  alreadyHealed: number;
+  isSkillShot?: boolean;
+}): number {
+  const safeMax = Math.max(1, maxHp || 900);
+  const cap = Math.max(14, Math.round(safeMax * (isSkillShot ? 0.08 : 0.045)));
+  const rem = Math.max(0, cap - Math.max(0, alreadyHealed || 0));
+  if (rem <= 0) return 0;
+  const rawHeal = Math.max(4, Math.round(Math.max(0, damageDealt || 0) * 0.15));
+  return Math.min(rem, rawHeal);
+}
+
+export function computeNhiPoisonZoneTethers<T extends { id: number; x: number; y: number }>(
+  zones: readonly T[],
+  maxRange: number = NHI_C2_TETHER_RANGE
+): Array<{ a: T; b: T }> {
+  const res: Array<{ a: T; b: T }> = [];
+  if (!Array.isArray(zones) || zones.length < 2) return res;
+  const r2 = maxRange * maxRange;
+  for (let i = 0; i < zones.length; i++) {
+    for (let j = i + 1; j < zones.length; j++) {
+      const dx = zones[j].x - zones[i].x;
+      const dy = zones[j].y - zones[i].y;
+      if (dx * dx + dy * dy <= r2) {
+        res.push({ a: zones[i], b: zones[j] });
+        if (res.length >= 12) return res;
+      }
+    }
+  }
+  return res;
+}
+
+export function selectHighestHpTarget<T extends { id: number; x: number; y: number; hp: number; radius?: number }>(
+  enemies: readonly T[],
+  originX: number,
+  originY: number,
+  maxRange: number = 640
+): T | null {
+  if (!Array.isArray(enemies) || enemies.length === 0) return null;
+  let best: T | null = null;
+  let bestHp = -1;
+  let bestDist = Infinity;
+  for (const e of enemies) {
+    if (!e || (e.hp || 0) <= 0) continue;
+    const dist = Math.hypot(e.x - originX, e.y - originY) - (e.radius || 0);
+    if (dist > maxRange) continue;
+    if (e.hp > bestHp + 0.5 || (Math.abs(e.hp - bestHp) <= 0.5 && dist < bestDist)) {
+      best = e;
+      bestHp = e.hp;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+export function computeNhiC3ArrowDamage({
+  atk,
+  ap,
+  targetCurrentHp,
+  isFirstHit = false,
+  isBoss = false,
+}: {
+  atk: number;
+  ap: number;
+  targetCurrentHp: number;
+  isFirstHit?: boolean;
+  isBoss?: boolean;
+}): number {
+  const safeAtk = Math.max(0, atk || 0);
+  const safeAp = Math.max(0, ap || 0);
+  const base = 105 + safeAtk * 1.45 + safeAp * 1.05;
+  const mult = isFirstHit ? NHI_C3_FIRST_HIT_MULT : 1.0;
+  const bossPctRaw = isBoss ? Math.round(Math.max(0, targetCurrentHp || 0) * NHI_C3_BOSS_CURRENT_HP_PCT) : 0;
+  const bossBonus = isBoss ? Math.min(NHI_C3_BOSS_PCT_CAP, bossPctRaw) : 0;
+  return Math.max(1, Math.round(base * mult + bossBonus));
+}
+
+export function computeNhiC3BoundedHeal({
+  damageDealt,
+  maxHp,
+  alreadyHealed,
+}: {
+  damageDealt: number;
+  maxHp: number;
+  alreadyHealed: number;
+}): number {
+  const safeMax = Math.max(1, maxHp || 900);
+  const cap = Math.max(24, Math.round(safeMax * NHI_C3_HEAL_MAX_RATIO));
+  const rem = Math.max(0, cap - Math.max(0, alreadyHealed || 0));
+  if (rem <= 0) return 0;
+  const heal = Math.max(6, Math.round(Math.max(0, damageDealt || 0) * NHI_C3_HEAL_RATIO));
+  return Math.min(rem, heal);
+}
+
 

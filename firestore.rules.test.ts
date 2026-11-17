@@ -12,14 +12,20 @@ test("Firestore rules include all required Eight Pillars protections", () => {
   assert.match(rulesSrc, /thien\.qn25p0866@gmail\.com/);
   assert.match(rulesSrc, /isValidFounderProfile/);
   assert.match(rulesSrc, /isValidFounderAuditLog/);
+  assert.match(rulesSrc, /isValidPlayerSave/);
+  assert.match(rulesSrc, /isValidPublicPlayerProfile/);
+  assert.match(rulesSrc, /isValidFriendRequest/);
   assert.match(rulesSrc, /affectedKeys\(\)\.hasOnly/);
   assert.match(rulesSrc, /request\.time/);
   assert.match(rulesSrc, /exists\(\/databases\/\$\(database\)\/documents\/founder_profiles\/\$\(userId\)\)/);
   assert.match(rulesSrc, /existing\(\)\.uid == request\.auth\.uid/);
+  assert.match(rulesSrc, /existing\(\)\.isPublic == true/);
+  assert.match(rulesSrc, /data\.selectedHeroId != "thien" \|\| isBootstrappedFounder\(\)/);
+  assert.match(rulesSrc, /!data\.isFounderBadge \|\| isBootstrappedFounder\(\)/);
 });
 
-test("Dirty Dozen adversarial payloads violate documented invariants", () => {
-  const dirtyDozen = [
+test("Dirty Dozen + social adversarial payloads violate documented invariants", () => {
+  const adversarialCases = [
     { name: "1. Unauth profile read", auth: null, op: "get", path: "/founder_profiles/uid1" },
     { name: "2. Unauth profile create", auth: null, op: "create", path: "/founder_profiles/uid1" },
     { name: "3. Non-founder email", auth: { uid: "u2", email: "user@example.com", email_verified: true } },
@@ -32,8 +38,18 @@ test("Dirty Dozen adversarial payloads violate documented invariants", () => {
     { name: "10. Blanket list scraping", auth: { uid: "u2", email: "user@example.com", email_verified: true }, op: "list" },
     { name: "11. Orphaned audit log without parent profile", parentExists: false },
     { name: "12. Update immutable audit log", op: "update", path: "/founder_profiles/u1/audit_logs/l1" },
+    { name: "13. Cross-user private save access", auth: { uid: "u2" }, path: "/player_saves/u1" },
+    { name: "14. Non-founder selects secret hero thien in save", payload: { selectedHeroId: "thien" } },
+    { name: "15. Sender self-accepts friend request", auth: { uid: "u1" }, fromUid: "u1", status: "accepted" },
+    { name: "16. Public directory never exposes email", forbiddenField: "email" },
   ];
-  assert.equal(dirtyDozen.length, 12);
+  assert.equal(adversarialCases.length, 16);
   // Ensure no plaintext founder password appears in rules or tests
   assert.equal(rulesSrc.includes("68920111"), false);
+  // Ensure public_players validator never accepts email PII field
+  const publicSection = rulesSrc.slice(
+    rulesSrc.indexOf("function isValidPublicPlayerProfile"),
+    rulesSrc.indexOf("function isValidFriendRequest")
+  );
+  assert.equal(publicSection.includes("'email'"), false);
 });

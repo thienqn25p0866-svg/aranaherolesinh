@@ -1135,8 +1135,9 @@ body:-webkit-full-screen {
 .screen.moba-hero-select-screen {
   justify-content: flex-start;
   background:
-    radial-gradient(ellipse at 28% 22%, rgba(245, 158, 11, 0.08) 0%, transparent 55%),
-    radial-gradient(ellipse at 78% 72%, rgba(6, 182, 212, 0.07) 0%, transparent 52%),
+    radial-gradient(ellipse at 24% 18%, rgba(245, 158, 11, 0.11) 0%, transparent 55%),
+    radial-gradient(ellipse at 82% 76%, rgba(56, 189, 248, 0.09) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 48%),
     #070b14;
 }
 
@@ -1144,7 +1145,7 @@ body:-webkit-full-screen {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 4px 2px 10px;
   border-bottom: 1px solid rgba(51, 65, 85, 0.72);
   flex-shrink: 0;
@@ -1161,28 +1162,49 @@ body:-webkit-full-screen {
 
 .moba-showcase-panel,
 .moba-command-dock {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(10, 15, 28, 0.94) 100%);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(9, 14, 27, 0.96) 100%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48);
 }
 
 .moba-showcase-panel {
-  border: 1px solid rgba(200, 155, 60, 0.34);
+  border: 1px solid rgba(200, 155, 60, 0.36);
 }
 
 .moba-command-dock {
-  border: 1px solid rgba(51, 65, 85, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.24);
 }
 
 .moba-stage-canvas-wrap {
-  min-height: 184px;
-  box-shadow: inset 0 0 36px rgba(2, 6, 23, 0.85);
+  min-height: 188px;
+  background:
+    radial-gradient(circle at 50% 54%, rgba(56, 189, 248, 0.12) 0%, rgba(15, 23, 42, 0.55) 56%, rgba(3, 7, 18, 0.92) 100%);
+  box-shadow: inset 0 0 40px rgba(2, 6, 23, 0.88);
+}
+
+.moba-hero-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.4) rgba(15, 23, 42, 0.4);
+}
+
+.moba-hero-strip::-webkit-scrollbar {
+  height: 5px;
+}
+
+.moba-hero-strip::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.4);
+  border-radius: 999px;
 }
 
 @media (min-width: 1024px) {
@@ -1197,6 +1219,7 @@ body:-webkit-full-screen {
   .moba-showcase-panel {
     grid-column: span 7 / span 7;
     padding: 16px 18px;
+    overflow-y: auto;
   }
 
   .moba-command-dock {
@@ -1206,7 +1229,7 @@ body:-webkit-full-screen {
   }
 
   .moba-stage-canvas-wrap {
-    min-height: 220px;
+    min-height: 224px;
   }
 }
 
@@ -1223,7 +1246,7 @@ body:-webkit-full-screen {
   }
 
   .moba-stage-canvas-wrap {
-    min-height: 156px;
+    min-height: 160px;
   }
 }
 
@@ -1257,5 +1280,85 @@ body:-webkit-full-screen {
     min-height: 132px;
   }
 }
+
+/* Thiên Nhãn (Founder Heavenly Eye Telemetry HUD) */
+.thien-eye-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: min(260px, 68vw);
+}
+
+.thien-eye-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(8, 25, 56, 0.9));
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  color: #fef08a;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 12px rgba(56, 189, 248, 0.18);
+  cursor: pointer;
+}
+
+.thien-eye-panel {
+  width: min(252px, 66vw);
+  background: rgba(7, 11, 22, 0.84);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.48);
+  border-radius: 11px;
+  padding: 6px 8px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), inset 0 0 12px rgba(250, 204, 21, 0.08);
+}
+
+.thien-eye-panel.thien-eye-compact {
+  width: min(228px, 60vw);
+  padding: 5px 7px;
+  font-size: 9.5px;
+  gap: 2px;
+}
+
+.thien-eye-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.thien-eye-skills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: #bae6fd;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-height: 580px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape) and (max-height: 640px) {
+  .thien-eye-panel {
+    width: min(210px, 34vw);
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+  .thien-eye-skills {
+    font-size: 8.5px;
+  }
+}
+
 
 

@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import HeroPreviewCanvas from "./HeroPreviewCanvas.jsx";
+import PlayerAvatarBadge from "./PlayerAvatarBadge.jsx";
+import { DAILY_CHECKIN_REWARD } from "./playerAccount.ts";
 import { R } from "./soundEngine.js";
 import {
   HERO_ROLE_LABELS,
@@ -36,9 +38,17 @@ export function MobaLobbyMenu({
   onToggleLang,
   founderUnlocked = false,
   onRequireFounderAuth,
+  playerProfile,
+  googleUser = null,
+  highestWave = 0,
+  canDailyCheckIn = false,
+  onClaimDailyCheckIn,
+  onOpenAccountModal,
+  onSignInGoogle,
 }) {
   const [attackTrigger, setAttackTrigger] = useState(0);
   const [previewSkillKey, setPreviewSkillKey] = useState("c3");
+  const isVi = lang === "vi";
 
   const currentIdx = Math.max(
     0,
@@ -48,24 +58,24 @@ export function MobaLobbyMenu({
   const isHeroLocked = Boolean(hero?.isSecretFounder && !founderUnlocked);
   const heroShortName = (hero?.name || "").split("(")[0].trim();
   const roleLabel = HERO_ROLE_LABELS[lang]?.[getHeroRoleKey(hero.id)] || hero.role?.[lang] || "";
+  const effectiveBestWave = Math.max(Number(highestWave) || 0, Number(playerProfile?.highestWave) || 0);
 
   const skillEntries = useMemo(() => {
     if (!hero) return [];
     return [
       {
         key: "passive",
-        label: lang === "vi" ? "Nội tại" : "Passive",
-        name: lang === "vi" ? "Nội Tại" : "Passive",
+        label: isVi ? "Nội tại" : "Passive",
+        name: isVi ? "Nội Tại" : "Passive",
         desc: hero.passive?.[lang] || "",
       },
       {
         key: "atk",
-        label: lang === "vi" ? "Đánh" : "ATK",
-        name: hero.weapon?.[lang] || (lang === "vi" ? "Đánh Thường" : "Basic Attack"),
-        desc:
-          lang === "vi"
-            ? `Tầm ${hero.stats.range}px · ${(1 / hero.stats.attackInterval).toFixed(2)} đòn/s · Chí mạng ${Math.round((hero.baseCrit || 0.1) * 100)}%`
-            : `Range ${hero.stats.range}px · ${(1 / hero.stats.attackInterval).toFixed(2)} hits/s · Crit ${Math.round((hero.baseCrit || 0.1) * 100)}%`,
+        label: isVi ? "Đánh" : "ATK",
+        name: hero.weapon?.[lang] || (isVi ? "Đánh Thường" : "Basic Attack"),
+        desc: isVi
+          ? `Tầm ${hero.stats.range}px · ${(1 / hero.stats.attackInterval).toFixed(2)} đòn/s · Chí mạng ${Math.round((hero.baseCrit || 0.1) * 100)}%`
+          : `Range ${hero.stats.range}px · ${(1 / hero.stats.attackInterval).toFixed(2)} hits/s · Crit ${Math.round((hero.baseCrit || 0.1) * 100)}%`,
       },
       ...(hero.skills || []).map((sk) => ({
         key: sk.key,
@@ -75,18 +85,22 @@ export function MobaLobbyMenu({
         cooldown: sk.cooldown,
       })),
     ];
-  }, [hero, lang]);
+  }, [hero, lang, isVi]);
 
   const activeSkill =
     skillEntries.find((s) => s.key === previewSkillKey) || skillEntries[skillEntries.length - 1];
 
+  const selectHeroWithPreview = (targetHero) => {
+    if (!targetHero) return;
+    R.playHeroSelect(targetHero.id);
+    setAttackTrigger((n) => n + 1);
+    onSelectHero(targetHero);
+  };
+
   const cycleHero = (delta) => {
     if (!heroes.length) return;
     const nextIdx = (currentIdx + delta + heroes.length) % heroes.length;
-    const nextHero = heroes[nextIdx];
-    R.playHeroSelect(nextHero.id);
-    setAttackTrigger((n) => n + 1);
-    onSelectHero(nextHero);
+    selectHeroWithPreview(heroes[nextIdx]);
   };
 
   const handlePreviewSkill = (key) => {
@@ -99,7 +113,7 @@ export function MobaLobbyMenu({
     <div className="screen moba-lobby-screen">
       <div className="bg-radial-glow" />
 
-      {/* Top MOBA Command Bar (3 balanced zones) */}
+      {/* Top MOBA Command Bar */}
       <header className="moba-topbar relative z-10">
         <div className="flex items-center gap-2.5 min-w-0 shrink-0">
           <div className="w-9 h-9 rounded-lg bg-slate-900 border border-amber-500/50 flex items-center justify-center shrink-0">
@@ -112,7 +126,51 @@ export function MobaLobbyMenu({
           </span>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-300">
+        <nav className="hidden xl:flex items-center gap-5 text-sm font-semibold text-slate-300">
+          <button
+            type="button"
+            onClick={() => {
+              R.playTabSwitch();
+              onOpenHeroSelect();
+            }}
+            onMouseEnter={() => R.playHover()}
+            className="hover:text-amber-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            {isVi ? `Tướng (${heroes.length})` : `Heroes (${heroes.length})`}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              R.playModalOpen();
+              onOpenShop();
+            }}
+            onMouseEnter={() => R.playHover()}
+            className="hover:text-amber-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            {isVi ? "Kho Trang Bị" : "Armory"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              R.playModalOpen();
+              onOpenAccountModal?.("friends");
+            }}
+            onMouseEnter={() => R.playHover()}
+            className="hover:text-cyan-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            {isVi ? "Bạn Bè" : "Friends"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              R.playModalOpen();
+              onOpenAccountModal?.("leaderboard");
+            }}
+            onMouseEnter={() => R.playHover()}
+            className="hover:text-amber-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            {isVi ? "Xếp Hạng" : "Leaderboard"}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -122,44 +180,45 @@ export function MobaLobbyMenu({
             onMouseEnter={() => R.playHover()}
             className="hover:text-amber-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            {lang === "vi" ? "Bản Cập Nhật 11.8" : "Patch 11.8"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              R.playModalOpen();
-              onOpenShop();
-            }}
-            onMouseEnter={() => R.playHover()}
-            className="hover:text-amber-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            {lang === "vi" ? "Kho Trang Bị" : "Armory"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              R.playModalOpen();
-              onOpenGuide();
-            }}
-            onMouseEnter={() => R.playHover()}
-            className="hover:text-cyan-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            {strings.guide}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              R.playModalOpen();
-              onOpenSettings();
-            }}
-            onMouseEnter={() => R.playHover()}
-            className="hover:text-cyan-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            {strings.settings}
+            {isVi ? "Bản 11.8" : "Patch 11.8"}
           </button>
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+          {/* Player Profile & Sync Hub Button */}
+          <button
+            type="button"
+            onClick={() => {
+              R.playModalOpen();
+              onOpenAccountModal?.("profile");
+            }}
+            className="min-h-[40px] pl-1.5 pr-3 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/45 flex items-center gap-2 cursor-pointer transition-colors shrink-0"
+            title={isVi ? "Mở Hồ Sơ, Lưu Trữ & Bạn Bè" : "Open Profile, Save & Friends"}
+          >
+            <PlayerAvatarBadge
+              avatarType={playerProfile?.avatarType || "hero"}
+              avatarValue={playerProfile?.avatarValue || hero.id}
+              avatarFrame={playerProfile?.avatarFrame || "bronze_recruit"}
+              displayName={playerProfile?.displayName || "Chiến Binh"}
+              heroes={heroes}
+              size={30}
+            />
+            <div className="text-left leading-tight hidden sm:block max-w-[120px]">
+              <div className="font-moba text-xs font-extrabold text-white truncate">
+                {playerProfile?.displayName || "Chiến Binh"}
+              </div>
+              <div className="text-[10px] font-semibold text-cyan-300 truncate">
+                {googleUser
+                  ? isVi
+                    ? "Google Cloud"
+                    : "Cloud Synced"
+                  : isVi
+                  ? "Lưu Trình Duyệt"
+                  : "Browser Save"}
+              </div>
+            </div>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -167,7 +226,7 @@ export function MobaLobbyMenu({
               onOpenShop();
             }}
             className="btn-secondary min-h-[40px] px-2.5 sm:px-3 text-xs font-mono-numbers font-bold text-amber-300 border-amber-500/40 whitespace-nowrap shrink-0"
-            title={lang === "vi" ? "Mở Kho Trang Bị" : "Open Armory"}
+            title={isVi ? "Mở Kho Trang Bị" : "Open Armory"}
           >
             <span className="tabular-nums">{coins.toLocaleString()} Xu</span>
           </button>
@@ -181,7 +240,7 @@ export function MobaLobbyMenu({
             className={`btn-secondary min-h-[40px] px-2 sm:px-2.5 text-xs whitespace-nowrap shrink-0 ${
               sfxEnabled ? "text-emerald-300 border-emerald-500/40" : "text-slate-400"
             }`}
-            title={lang === "vi" ? "Bật/Tắt Hiệu Ứng Âm Thanh" : "Toggle SFX"}
+            title={isVi ? "Bật/Tắt Hiệu Ứng Âm Thanh" : "Toggle SFX"}
           >
             {sfxEnabled ? "SFX ON" : "SFX OFF"}
           </button>
@@ -195,7 +254,7 @@ export function MobaLobbyMenu({
             className={`btn-secondary min-h-[40px] px-2 sm:px-2.5 text-xs whitespace-nowrap shrink-0 ${
               musicEnabled ? "text-cyan-300 border-cyan-500/40" : "text-slate-400"
             }`}
-            title={lang === "vi" ? "Bật/Tắt Nhạc Nền" : "Toggle Music"}
+            title={isVi ? "Bật/Tắt Nhạc Nền" : "Toggle Music"}
           >
             {musicEnabled ? "BGM ON" : "BGM OFF"}
           </button>
@@ -203,15 +262,15 @@ export function MobaLobbyMenu({
           <button
             type="button"
             onClick={onToggleFullscreen}
-            aria-label={isFullscreen ? (lang === "vi" ? "Thu nhỏ màn hình" : "Exit fullscreen") : (lang === "vi" ? "Phóng to màn hình" : "Fullscreen")}
-            title={isFullscreen ? (lang === "vi" ? "Thu nhỏ màn hình" : "Exit fullscreen") : (lang === "vi" ? "Phóng to màn hình" : "Fullscreen")}
+            aria-label={isFullscreen ? (isVi ? "Thu nhỏ màn hình" : "Exit fullscreen") : (isVi ? "Phóng to màn hình" : "Fullscreen")}
+            title={isFullscreen ? (isVi ? "Thu nhỏ màn hình" : "Exit fullscreen") : (isVi ? "Phóng to màn hình" : "Fullscreen")}
             className="btn-secondary min-h-[40px] px-2.5 text-xs font-moba font-bold text-emerald-200 border-emerald-500/50 bg-emerald-950/35 hover:bg-emerald-900/50 whitespace-nowrap shrink-0 inline-flex"
           >
             {isFullscreen
-              ? lang === "vi"
+              ? isVi
                 ? "⤢ Thu Nhỏ"
                 : "⤢ Exit Full"
-              : lang === "vi"
+              : isVi
               ? "⛶ Phóng To"
               : "⛶ Fullscreen"}
           </button>
@@ -224,18 +283,18 @@ export function MobaLobbyMenu({
             }}
             className="btn-secondary min-h-[40px] px-2.5 text-xs whitespace-nowrap shrink-0"
           >
-            {lang === "vi" ? "VI" : "EN"}
+            {isVi ? "VI" : "EN"}
           </button>
         </div>
       </header>
 
       {/* Main MOBA Command Hall Body */}
       <main className="moba-lobby-grid relative z-10 flex-1 min-h-0 overflow-y-auto">
-        {/* Left/Center: Live Animated Hero Showcase Stage */}
+        {/* Left/Center: Live Animated Hero Showcase Stage + Animated 17-Hero Strip */}
         <section className="moba-showcase-panel">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs font-medium text-slate-400 truncate">
+              <div className="text-xs font-medium text-amber-300/90 truncate">
                 {roleLabel} · {hero.title?.[lang]} · {hero.weapon?.[lang]}
               </div>
               <h1 className="font-title text-2xl sm:text-3xl font-black text-white mt-0.5 leading-tight truncate">
@@ -248,7 +307,7 @@ export function MobaLobbyMenu({
                 type="button"
                 onClick={() => cycleHero(-1)}
                 className="btn-secondary min-h-[40px] w-10 px-0 text-base font-bold"
-                aria-label={lang === "vi" ? "Tướng trước" : "Previous hero"}
+                aria-label={isVi ? "Tướng trước" : "Previous hero"}
               >
                 ‹
               </button>
@@ -259,7 +318,7 @@ export function MobaLobbyMenu({
                 type="button"
                 onClick={() => cycleHero(1)}
                 className="btn-secondary min-h-[40px] w-10 px-0 text-base font-bold"
-                aria-label={lang === "vi" ? "Tướng tiếp theo" : "Next hero"}
+                aria-label={isVi ? "Tướng tiếp theo" : "Next hero"}
               >
                 ›
               </button>
@@ -267,7 +326,7 @@ export function MobaLobbyMenu({
           </div>
 
           {/* Live Animated Hero Canvas */}
-          <div className="moba-stage-canvas-wrap relative flex-1 min-h-[168px] my-2 rounded-xl border border-slate-800/80 bg-slate-950/65 overflow-hidden">
+          <div className="moba-stage-canvas-wrap relative flex-1 min-h-[160px] my-2 rounded-xl border border-slate-800/80 overflow-hidden">
             <HeroPreviewCanvas
               hero={hero}
               attackTrigger={attackTrigger}
@@ -275,18 +334,77 @@ export function MobaLobbyMenu({
               onPreviewStrike={() => {}}
             />
             {isHeroLocked && (
-              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-slate-950/88 border border-amber-400/60 text-amber-300 text-[11px] font-moba font-bold flex items-center gap-1.5">
+              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-slate-950/90 border border-amber-400/60 text-amber-300 text-[11px] font-moba font-bold flex items-center gap-1.5">
                 <span>🔒</span>
-                <span>{lang === "vi" ? "Tướng Bí Mật · Nhà Sáng Lập" : "Secret Founder Hero"}</span>
+                <span>{isVi ? "Tướng Bí Mật · Nhà Sáng Lập" : "Secret Founder Hero"}</span>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => handlePreviewSkill("atk")}
-              className="btn-secondary absolute bottom-2.5 right-2.5 min-h-[36px] px-3 text-[11px] text-amber-200 border-amber-500/40 bg-slate-900/85"
-            >
-              {lang === "vi" ? "Thử Đánh" : "Test Strike"}
-            </button>
+            <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handlePreviewSkill(hero.skills?.length >= 4 ? "c4" : "c3")}
+                className="btn-secondary min-h-[36px] px-3 text-[11px] text-cyan-200 border-cyan-500/40 bg-slate-900/90"
+              >
+                {isVi ? "Thử Chiêu Cuối" : "Ultimate SFX"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePreviewSkill("atk")}
+                className="btn-secondary min-h-[36px] px-3 text-[11px] text-amber-200 border-amber-500/40 bg-slate-900/90"
+              >
+                {isVi ? "Thử Đánh" : "Test Strike"}
+              </button>
+            </div>
+          </div>
+
+          {/* Animated Hero Portraits Quick-Carousel */}
+          <div className="mb-2">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1 px-0.5">
+              <span className="font-moba font-bold text-slate-300">
+                {isVi ? "Chọn Nhanh Tướng Động" : "Animated Champions"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  R.playTabSwitch();
+                  onOpenHeroSelect();
+                }}
+                className="text-amber-300 hover:text-amber-200 font-moba font-bold cursor-pointer"
+              >
+                {isVi ? "Xem chi tiết cả 17 →" : "Full Roster →"}
+              </button>
+            </div>
+
+            <div className="moba-hero-strip">
+              {heroes.map((candidate) => {
+                const active = candidate.id === hero.id;
+                const locked = Boolean(candidate.isSecretFounder && !founderUnlocked);
+                const short = candidate.name.split("(")[0].trim();
+                return (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    onClick={() => selectHeroWithPreview(candidate)}
+                    className={`w-[72px] shrink-0 rounded-xl p-1.5 border flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                      active
+                        ? "bg-[#16294E] border-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.22)]"
+                        : "bg-slate-950/75 border-slate-800/90 hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="w-[54px] h-[54px] rounded-lg overflow-hidden bg-[#060B16] relative">
+                      <HeroPreviewCanvas hero={candidate} compact interactive={false} locked={locked} />
+                    </div>
+                    <span
+                      className={`text-[10px] font-moba font-bold truncate w-full text-center ${
+                        active ? "text-amber-200" : "text-slate-300"
+                      }`}
+                    >
+                      {locked ? `🔒 ${short}` : short}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Stat Strip + Interactive 5-Skill Preview Bar */}
@@ -300,9 +418,7 @@ export function MobaLobbyMenu({
               <div className="text-sm font-bold text-rose-400">{hero.stats.damage}</div>
             </div>
             <div>
-              <div className="text-[11px] text-slate-400">
-                {hero.stats.ap > 0 ? "AP" : strings.range}
-              </div>
+              <div className="text-[11px] text-slate-400">{hero.stats.ap > 0 ? "AP" : strings.range}</div>
               <div className="text-sm font-bold text-violet-300">
                 {hero.stats.ap > 0 ? hero.stats.ap : hero.stats.range}
               </div>
@@ -323,16 +439,14 @@ export function MobaLobbyMenu({
                     type="button"
                     onClick={() => handlePreviewSkill(sk.key)}
                     onMouseEnter={() => R.playHover()}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors shrink-0 min-h-[42px] cursor-pointer ${
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors shrink-0 min-h-[40px] cursor-pointer ${
                       isSelected
                         ? "bg-slate-800/95 border-amber-400/80 text-white"
                         : "bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-600"
                     }`}
                   >
-                    <SkillIcon heroId={hero.id} skillId={sk.key} size={28} roundedClass="rounded-md" />
-                    <span className="font-mono-numbers text-xs font-bold whitespace-nowrap">
-                      {sk.label}
-                    </span>
+                    <SkillIcon heroId={hero.id} skillId={sk.key} size={26} roundedClass="rounded-md" />
+                    <span className="font-mono-numbers text-xs font-bold whitespace-nowrap">{sk.label}</span>
                   </button>
                 );
               })}
@@ -351,17 +465,110 @@ export function MobaLobbyMenu({
           </div>
         </section>
 
-        {/* Right: MOBA Battle Command Dock */}
+        {/* Right: MOBA Battle Command Dock + Player Account Hub */}
         <aside className="moba-command-dock">
-          <div className="border-b border-slate-800/90 pb-3">
-            <h2 className="font-title text-lg sm:text-xl font-extrabold text-white">
-              {lang === "vi" ? "Sảnh Chiến Đấu" : "Battle Command"}
-            </h2>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              {lang === "vi"
-                ? "Đấu trường 27 màn sinh tồn · 9 chủng quái · 9 Đại Trùm độc bản"
-                : "27 survival waves · 9 monster classes · 9 unique major bosses"}
-            </p>
+          {/* Player Account & Career Summary Card */}
+          <div className="rounded-2xl border border-slate-700/80 bg-[#0A1328]/90 p-3 space-y-2.5">
+            <div className="flex items-center justify-between gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  R.playModalOpen();
+                  onOpenAccountModal?.("profile");
+                }}
+                className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer group"
+              >
+                <PlayerAvatarBadge
+                  avatarType={playerProfile?.avatarType || "hero"}
+                  avatarValue={playerProfile?.avatarValue || hero.id}
+                  avatarFrame={playerProfile?.avatarFrame || "bronze_recruit"}
+                  displayName={playerProfile?.displayName || "Chiến Binh"}
+                  heroes={heroes}
+                  size={48}
+                  animated={playerProfile?.avatarType === "hero"}
+                />
+                <div className="min-w-0">
+                  <div className="font-moba text-sm font-black text-white truncate group-hover:text-amber-300 transition-colors">
+                    {playerProfile?.displayName || "Chiến Binh"}
+                  </div>
+                  <div className="text-[11px] font-semibold text-amber-300 truncate">
+                    {playerProfile?.titleBadge || "Tân Binh Đấu Trường"}
+                  </div>
+                  <div className="text-[10px] font-mono-numbers text-slate-400 truncate">
+                    {playerProfile?.friendCode} · {isVi ? `Màn ${effectiveBestWave}/27` : `Wave ${effectiveBestWave}/27`} ·{" "}
+                    {(playerProfile?.lifetimeKills || 0).toLocaleString()} {isVi ? "quái" : "kills"}
+                  </div>
+                </div>
+              </button>
+
+              {canDailyCheckIn ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playCoinPickup();
+                    onClaimDailyCheckIn?.();
+                  }}
+                  className="moba-bronze-btn min-h-[38px] px-3 rounded-xl font-moba text-[11px] font-black shrink-0"
+                >
+                  +{DAILY_CHECKIN_REWARD} Xu
+                </button>
+              ) : !googleUser ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playClick();
+                    onSignInGoogle?.();
+                  }}
+                  className="btn-secondary min-h-[38px] px-3 text-[11px] font-moba font-bold border-cyan-500/50 text-cyan-200 shrink-0"
+                >
+                  {isVi ? "Đăng nhập Google" : "Google Sign-In"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playModalOpen();
+                    onOpenAccountModal?.("friends");
+                  }}
+                  className="btn-secondary min-h-[38px] px-3 text-[11px] font-moba font-bold border-cyan-500/45 text-cyan-200 shrink-0"
+                >
+                  {isVi ? "Bạn Bè" : "Friends"}
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  R.playModalOpen();
+                  onOpenAccountModal?.("profile");
+                }}
+                className="min-h-[34px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-[11px] font-moba font-bold text-slate-200 cursor-pointer"
+              >
+                {isVi ? "Đổi Tên / Avatar" : "Name & Avatar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  R.playModalOpen();
+                  onOpenAccountModal?.("storage");
+                }}
+                className="min-h-[34px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-[11px] font-moba font-bold text-cyan-200 cursor-pointer"
+              >
+                {isVi ? "Lưu & Google" : "Save & Sync"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  R.playModalOpen();
+                  onOpenAccountModal?.("friends");
+                }}
+                className="min-h-[34px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-[11px] font-moba font-bold text-amber-200 cursor-pointer"
+              >
+                {isVi ? "Tìm Bạn & Top" : "Friends & Top"}
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2.5 my-3">
@@ -384,7 +591,7 @@ export function MobaLobbyMenu({
               {isHeroLocked ? (
                 <span>
                   🔒{" "}
-                  {lang === "vi"
+                  {isVi
                     ? `MỞ KHÓA · ${heroShortName.toUpperCase()}`
                     : `UNLOCK · ${heroShortName.toUpperCase()}`}
                 </span>
@@ -394,7 +601,7 @@ export function MobaLobbyMenu({
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
                   <span>
-                    {lang === "vi"
+                    {isVi
                       ? `VÀO TRẬN · ${heroShortName.toUpperCase()}`
                       : `ENTER ARENA · ${heroShortName.toUpperCase()}`}
                   </span>
@@ -409,10 +616,10 @@ export function MobaLobbyMenu({
                 onOpenHeroSelect();
               }}
               onMouseEnter={() => R.playHover()}
-              className="btn-secondary min-h-[46px] text-sm font-moba font-bold border-amber-500/45 text-amber-200 hover:border-amber-400"
+              className="btn-secondary min-h-[44px] text-sm font-moba font-bold border-amber-500/45 text-amber-200 hover:border-amber-400"
             >
               <span>
-                {lang === "vi"
+                {isVi
                   ? `Chọn Anh Hùng (${heroes.length} Vị Tướng)`
                   : `Champion Select (${heroes.length} Heroes)`}
               </span>
@@ -425,12 +632,12 @@ export function MobaLobbyMenu({
                 onOpenCoop();
               }}
               onMouseEnter={() => R.playHover()}
-              className="btn-secondary min-h-[46px] text-sm font-moba font-bold border-cyan-500/50 bg-cyan-950/35 text-cyan-200 hover:bg-cyan-900/50"
+              className="btn-secondary min-h-[44px] text-sm font-moba font-bold border-cyan-500/50 bg-cyan-950/35 text-cyan-200 hover:bg-cyan-900/50"
             >
               <span>
                 {mpRoom
-                  ? `${lang === "vi" ? "Phòng Co-op" : "Co-op Room"} ${mpRoom.roomId} · ${mpRoom.playerCount}/4`
-                  : lang === "vi"
+                  ? `${isVi ? "Phòng Co-op" : "Co-op Room"} ${mpRoom.roomId} · ${mpRoom.playerCount}/4`
+                  : isVi
                   ? "Tổ Đội Co-op 4 Người"
                   : "4-Player Co-op Squad"}
               </span>
@@ -446,10 +653,24 @@ export function MobaLobbyMenu({
                 onOpenShop();
               }}
               onMouseEnter={() => R.playHover()}
-              className="btn-secondary min-h-[44px] text-xs font-bold border-amber-500/35 text-amber-100"
+              className="btn-secondary min-h-[42px] text-xs font-bold border-amber-500/35 text-amber-100"
             >
-              {lang === "vi" ? "Kho Trang Bị (220)" : "Armory (220)"}
+              {isVi ? "Kho Trang Bị (220)" : "Armory (220)"}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                R.playModalOpen();
+                onOpenAccountModal?.("leaderboard");
+              }}
+              onMouseEnter={() => R.playHover()}
+              className="btn-secondary min-h-[42px] text-xs font-bold border-violet-500/40 text-violet-200"
+            >
+              {isVi ? "Bảng Xếp Hạng" : "Leaderboard"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 mt-2">
             <button
               type="button"
               onClick={() => {
@@ -457,13 +678,10 @@ export function MobaLobbyMenu({
                 onOpenGuide();
               }}
               onMouseEnter={() => R.playHover()}
-              className="btn-secondary min-h-[44px] text-xs font-bold"
+              className="btn-secondary min-h-[40px] text-xs font-bold"
             >
               {strings.guide}
             </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5 mt-2.5">
             <button
               type="button"
               onClick={() => {
@@ -471,38 +689,40 @@ export function MobaLobbyMenu({
                 onOpenSettings();
               }}
               onMouseEnter={() => R.playHover()}
-              className="btn-secondary min-h-[42px] text-xs"
+              className="btn-secondary min-h-[40px] text-xs"
             >
               {strings.settings}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 mt-2">
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              onMouseEnter={() => R.playHover()}
+              className="btn-secondary min-h-[40px] text-xs font-moba font-bold border-emerald-500/50 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/45"
+            >
+              {isFullscreen
+                ? isVi
+                  ? "⤢ Thu Nhỏ"
+                  : "⤢ Exit Full"
+                : isVi
+                ? "⛶ Phóng To"
+                : "⛶ Fullscreen"}
             </button>
             <button
               type="button"
               onClick={onDownloadOrShare}
               onMouseEnter={() => R.playHover()}
-              className="btn-secondary min-h-[42px] text-xs border-sky-500/40 text-sky-200"
+              className="btn-secondary min-h-[40px] text-xs border-sky-500/40 text-sky-200"
             >
               {envInfo?.isInAppBrowser || envInfo?.isIOS
-                ? lang === "vi"
+                ? isVi
                   ? "Mở Safari / Chia sẻ"
                   : "Safari / Share"
                 : strings.downloadHtml}
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={onToggleFullscreen}
-            onMouseEnter={() => R.playHover()}
-            className="btn-secondary min-h-[42px] w-full mt-2.5 text-xs font-moba font-bold border-emerald-500/50 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/45"
-          >
-            {isFullscreen
-              ? lang === "vi"
-                ? "⤢ Thu Nhỏ Màn Hình"
-                : "⤢ Exit Fullscreen"
-              : lang === "vi"
-              ? "⛶ Phóng To Màn Hình"
-              : "⛶ Fullscreen Mode"}
-          </button>
 
           <div className="mt-auto pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-400">
             <button
@@ -513,7 +733,7 @@ export function MobaLobbyMenu({
               }}
               className="hover:text-amber-300 transition-colors py-1 cursor-pointer"
             >
-              {lang === "vi" ? "Chi tiết bản 11.8" : "Patch 11.8 Notes"}
+              {isVi ? "Chi tiết bản 11.8" : "Patch 11.8 Notes"}
             </button>
             {!(envInfo?.isInAppBrowser || envInfo?.isIOS) && (
               <button
@@ -524,7 +744,7 @@ export function MobaLobbyMenu({
                 }}
                 className="hover:text-cyan-300 transition-colors py-1 cursor-pointer"
               >
-                {lang === "vi" ? "Hướng dẫn Zalo / iOS" : "Mobile / iOS Guide"}
+                {isVi ? "Hướng dẫn Zalo / iOS" : "Mobile / iOS Guide"}
               </button>
             )}
           </div>
@@ -669,8 +889,8 @@ export function MobaHeroSelect({
 
       {/* Main 2-column Champion Roster & Live Stage */}
       <div className="flex-1 min-h-0 overflow-y-auto py-3 flex flex-col lg:grid lg:grid-cols-12 gap-3.5">
-        {/* Roster Grid (5 cols desktop) */}
-        <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2 max-h-[34dvh] lg:max-h-full overflow-y-auto pr-1 content-start">
+        {/* Roster Grid (5 cols desktop) with Animated Portrait Thumbnails */}
+        <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2 max-h-[36dvh] lg:max-h-full overflow-y-auto pr-1 content-start">
           {filteredHeroes.map((candidate) => {
             const isSel = candidate.id === hero.id;
             const cName = candidate.name.split("(")[0].trim();
@@ -692,21 +912,8 @@ export function MobaHeroSelect({
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="relative shrink-0">
-                    <SkillIcon
-                      heroId={candidate.id}
-                      skillId={candidate.skills?.length >= 4 ? "c4" : "c3"}
-                      size={36}
-                      roundedClass="rounded-lg"
-                    />
-                    {isLocked && (
-                      <span
-                        title={lang === "vi" ? "Yêu cầu mật khẩu Nhà Sáng Lập" : "Founder password required"}
-                        className="absolute inset-0 rounded-lg bg-slate-950/75 border border-amber-400/70 flex items-center justify-center text-sm"
-                      >
-                        🔒
-                      </span>
-                    )}
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#060B16] border border-slate-700/70 shrink-0">
+                    <HeroPreviewCanvas hero={candidate} compact interactive={false} locked={isLocked} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
@@ -826,7 +1033,7 @@ export function MobaHeroSelect({
               </div>
             </div>
 
-            {/* Passive + Basic + 3 Skills (clickable for SFX preview) */}
+            {/* Passive + Basic + Skills */}
             <div className="mt-3 flex flex-col gap-2">
               <button
                 type="button"

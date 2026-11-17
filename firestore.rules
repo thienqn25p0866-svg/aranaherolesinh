@@ -32,6 +32,10 @@ service cloud.firestore {
       return isBootstrappedFounder() && request.auth.uid == userId;
     }
 
+    function isPlayerOwner(userId) {
+      return isEmailVerified() && request.auth.uid == userId;
+    }
+
     function isValidFounderProfile(data, userId) {
       return data.keys().hasAll([
           'uid',
@@ -87,6 +91,212 @@ service cloud.firestore {
         data.createdAt is timestamp;
     }
 
+    function isValidStringList(val, maxLen) {
+      return val is list &&
+        val.size() <= maxLen &&
+        (val.size() == 0 || val[0] is string);
+    }
+
+    function isValidPlayerSave(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'coins',
+          'currentWave',
+          'highestWave',
+          'selectedHeroId',
+          'lifetimeKills',
+          'matchesPlayed',
+          'victories',
+          'dailyCheckInDate',
+          'unlockedTitles',
+          'inventoryItemIds',
+          'heroGearEntries',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'coins',
+          'currentWave',
+          'highestWave',
+          'selectedHeroId',
+          'lifetimeKills',
+          'matchesPlayed',
+          'victories',
+          'dailyCheckInDate',
+          'unlockedTitles',
+          'inventoryItemIds',
+          'heroGearEntries',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.uid is string &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.coins is int &&
+        data.coins >= 0 &&
+        data.coins <= 10000000 &&
+        data.currentWave is int &&
+        data.currentWave >= 1 &&
+        data.currentWave <= 27 &&
+        data.highestWave is int &&
+        data.highestWave >= 0 &&
+        data.highestWave <= 27 &&
+        data.selectedHeroId is string &&
+        data.selectedHeroId.size() >= 1 &&
+        data.selectedHeroId.size() <= 24 &&
+        (data.selectedHeroId != "thien" || isBootstrappedFounder()) &&
+        data.lifetimeKills is int &&
+        data.lifetimeKills >= 0 &&
+        data.lifetimeKills <= 100000000 &&
+        data.matchesPlayed is int &&
+        data.matchesPlayed >= 0 &&
+        data.matchesPlayed <= 1000000 &&
+        data.victories is int &&
+        data.victories >= 0 &&
+        data.victories <= 1000000 &&
+        data.dailyCheckInDate is string &&
+        data.dailyCheckInDate.size() <= 16 &&
+        isValidStringList(data.unlockedTitles, 32) &&
+        isValidStringList(data.inventoryItemIds, 250) &&
+        isValidStringList(data.heroGearEntries, 110) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPublicPlayerProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'friendCode',
+          'displayName',
+          'displayNameLower',
+          'avatarType',
+          'avatarValue',
+          'avatarFrame',
+          'titleBadge',
+          'bio',
+          'favoriteHeroId',
+          'highestWave',
+          'lifetimeKills',
+          'victories',
+          'isFounderBadge',
+          'isPublic',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid',
+          'friendCode',
+          'displayName',
+          'displayNameLower',
+          'avatarType',
+          'avatarValue',
+          'avatarFrame',
+          'titleBadge',
+          'bio',
+          'favoriteHeroId',
+          'highestWave',
+          'lifetimeKills',
+          'victories',
+          'isFounderBadge',
+          'isPublic',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.uid is string &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.friendCode is string &&
+        data.friendCode.size() >= 4 &&
+        data.friendCode.size() <= 16 &&
+        data.friendCode.matches('^[A-Z0-9\\-]+$') &&
+        data.displayName is string &&
+        data.displayName.size() >= 1 &&
+        data.displayName.size() <= 32 &&
+        data.displayNameLower is string &&
+        data.displayNameLower.size() >= 1 &&
+        data.displayNameLower.size() <= 32 &&
+        data.avatarType is string &&
+        data.avatarType in ['hero', 'crest', 'google'] &&
+        data.avatarValue is string &&
+        data.avatarValue.size() >= 1 &&
+        data.avatarValue.size() <= 300 &&
+        data.avatarFrame is string &&
+        data.avatarFrame.size() >= 1 &&
+        data.avatarFrame.size() <= 32 &&
+        data.titleBadge is string &&
+        data.titleBadge.size() >= 1 &&
+        data.titleBadge.size() <= 48 &&
+        data.bio is string &&
+        data.bio.size() <= 120 &&
+        data.favoriteHeroId is string &&
+        data.favoriteHeroId.size() >= 1 &&
+        data.favoriteHeroId.size() <= 24 &&
+        (data.favoriteHeroId != "thien" || isBootstrappedFounder()) &&
+        data.highestWave is int &&
+        data.highestWave >= 0 &&
+        data.highestWave <= 27 &&
+        data.lifetimeKills is int &&
+        data.lifetimeKills >= 0 &&
+        data.lifetimeKills <= 100000000 &&
+        data.victories is int &&
+        data.victories >= 0 &&
+        data.victories <= 1000000 &&
+        data.isFounderBadge is bool &&
+        (!data.isFounderBadge || isBootstrappedFounder()) &&
+        data.isPublic is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasAll([
+          'fromUid',
+          'toUid',
+          'fromName',
+          'toName',
+          'fromFriendCode',
+          'toFriendCode',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'fromUid',
+          'toUid',
+          'fromName',
+          'toName',
+          'fromFriendCode',
+          'toFriendCode',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.fromUid is string &&
+        isValidId(data.fromUid) &&
+        data.toUid is string &&
+        isValidId(data.toUid) &&
+        data.fromUid != data.toUid &&
+        data.fromName is string &&
+        data.fromName.size() >= 1 &&
+        data.fromName.size() <= 32 &&
+        data.toName is string &&
+        data.toName.size() >= 1 &&
+        data.toName.size() <= 32 &&
+        data.fromFriendCode is string &&
+        data.fromFriendCode.size() >= 4 &&
+        data.fromFriendCode.size() <= 16 &&
+        data.toFriendCode is string &&
+        data.toFriendCode.size() >= 4 &&
+        data.toFriendCode.size() <= 16 &&
+        data.status is string &&
+        data.status in ['pending', 'accepted', 'declined'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
@@ -131,6 +341,116 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if false;
       }
+    }
+
+    match /player_saves/{userId} {
+      allow get: if isValidId(userId) && isPlayerOwner(userId);
+      allow list: if isEmailVerified() && existing().uid == request.auth.uid;
+
+      allow create: if isValidId(userId) &&
+        isPlayerOwner(userId) &&
+        isValidPlayerSave(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isPlayerOwner(userId) &&
+        isValidPlayerSave(incoming(), userId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'coins',
+          'currentWave',
+          'highestWave',
+          'selectedHeroId',
+          'lifetimeKills',
+          'matchesPlayed',
+          'victories',
+          'dailyCheckInDate',
+          'unlockedTitles',
+          'inventoryItemIds',
+          'heroGearEntries',
+          'updatedAt'
+        ]) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /public_players/{userId} {
+      allow get: if isValidId(userId) &&
+        isSignedIn() &&
+        (existing().isPublic == true || request.auth.uid == userId);
+
+      allow list: if isSignedIn() && existing().isPublic == true;
+
+      allow create: if isValidId(userId) &&
+        isPlayerOwner(userId) &&
+        isValidPublicPlayerProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isPlayerOwner(userId) &&
+        isValidPublicPlayerProfile(incoming(), userId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'displayNameLower',
+          'avatarType',
+          'avatarValue',
+          'avatarFrame',
+          'titleBadge',
+          'bio',
+          'favoriteHeroId',
+          'highestWave',
+          'lifetimeKills',
+          'victories',
+          'isFounderBadge',
+          'isPublic',
+          'updatedAt'
+        ]) &&
+        incoming().uid == existing().uid &&
+        incoming().friendCode == existing().friendCode &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /friend_requests/{requestId} {
+      allow get: if isValidId(requestId) &&
+        isSignedIn() &&
+        (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+
+      allow list: if isSignedIn() &&
+        (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+
+      allow create: if isValidId(requestId) &&
+        isEmailVerified() &&
+        isValidFriendRequest(incoming()) &&
+        incoming().fromUid == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/public_players/$(incoming().fromUid)) &&
+        exists(/databases/$(database)/documents/public_players/$(incoming().toUid));
+
+      allow update: if isValidId(requestId) &&
+        isEmailVerified() &&
+        isValidFriendRequest(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+        incoming().fromUid == existing().fromUid &&
+        incoming().toUid == existing().toUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (existing().status == 'pending' && request.auth.uid == existing().toUid && incoming().status in ['accepted', 'declined']) ||
+          (existing().status == 'declined' && request.auth.uid == existing().fromUid && incoming().status == 'pending')
+        );
+
+      allow delete: if isValidId(requestId) &&
+        isEmailVerified() &&
+        (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
     }
   }
 }

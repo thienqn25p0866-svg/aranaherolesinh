@@ -59,7 +59,38 @@ import {
   DANG_C3_AS_DURATION,
   computeDangRageGain,
   computeDangC1WaveHeal,
+  THIEN_ENERGY_MAX,
+  THIEN_ASCENDED_DURATION,
+  THIEN_GOD_MODE_CDR_MULT,
+  THIEN_GOD_MODE_DMG_MULT,
+  THIEN_GOD_MODE_REGEN_PER_SEC,
+  THIEN_C1_SWORD_COUNT,
+  computeThienPassiveGain,
+  computeThienCooldownTickRate,
+  computeThienAscendedModifiers,
+  computeThienC1SwordDamage,
+  computeThienC2Detonation,
+  computeThienC4JudgementDamage,
+  computeThienDamageBreakdownTotal,
 } from './combatLogic.ts';
+import {
+  DAILY_CHECKIN_REWARD,
+  VALID_GEAR_SLOTS,
+  AVATAR_FRAMES,
+  AVATAR_CRESTS,
+  PLAYER_TITLES,
+  canClaimDailyCheckIn,
+  computeUnlockedTitles,
+  deserializeHeroGearEntries,
+  generateFriendCode,
+  isFrameUnlocked,
+  mergeLocalAndCloudProgress,
+  normalizeDisplayName,
+  parseSavePackageJson,
+  sanitizeGooglePhotoUrl,
+  sanitizePlayerProfile,
+  serializeHeroGearEntries,
+} from './playerAccount.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
   const w3p1 = getBossCcDuration(0.85, 3, 1, 'stun');
@@ -543,16 +574,35 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (16 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (16 standard + 1 secret Founder = 17 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 16, 'Must preserve all 14 existing heroes + add Phong & Dang');
+  assert.equal(Mi.length, 17, 'Must preserve all 16 standard heroes + secret Founder hero Thien');
+  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 16, 'Standard unlocked roster must remain 16 heroes');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 16);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang']) {
+  assert.equal(heroIds.size, 17);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thien']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
+
+  const thien = Mi.find((h: any) => h.id === 'thien');
+  assert.ok(thien);
+  assert.equal(thien.isSecretFounder, true);
+  assert.equal(thien.stats.hp, 5000);
+  assert.equal(thien.stats.damage, 180);
+  assert.equal(thien.stats.ap, 250);
+  assert.equal(thien.skills.length, 4);
+  assert.deepEqual(thien.skills.map((s: any) => s.key), ['c1', 'c2', 'c3', 'c4']);
+  assert.ok(
+    HERO_SKILL_ICONS.thien?.atk &&
+    HERO_SKILL_ICONS.thien?.passive &&
+    HERO_SKILL_ICONS.thien?.c1 &&
+    HERO_SKILL_ICONS.thien?.c2 &&
+    HERO_SKILL_ICONS.thien?.c3 &&
+    HERO_SKILL_ICONS.thien?.c4
+  );
+  assert.ok(Ff.thien && Ff.thien.length >= 2);
 
   const tin = Mi.find((h: any) => h.id === 'tin');
   assert.ok(tin);
@@ -1402,9 +1452,9 @@ test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/ani
   }
 });
 
-test('MOBA hero role classification & filtering covers all 16 champions accurately', async () => {
+test('MOBA hero role classification & filtering covers all 17 champions accurately', async () => {
   const { Mi } = await import('./gameData.js');
-  assert.equal(Mi.length, 16);
+  assert.equal(Mi.length, 17);
   assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
 
   const allFiltered = filterHeroesByRole(Mi, 'all');
@@ -1429,7 +1479,7 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
   const prevWindow = (globalThis as any).window;
 
   const invokeAllSounds = () => {
-    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang'];
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thien'];
     for (const id of heroIds) {
       R.lastCooldowns.clear();
       R.playHeroSelect(id);
@@ -1437,6 +1487,17 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
       R.playHeroSkillPreview(id, 'atk');
       R.playHeroSkillPreview(id, 'c3');
     }
+    R.lastCooldowns.clear();
+    R.playHeroSkillPreview('thien', 'c1');
+    R.playHeroSkillPreview('thien', 'c2');
+    R.playHeroSkillPreview('thien', 'c4');
+    R.playThienBasic();
+    R.playThienSwords();
+    R.playThienTimeZone();
+    R.playThienPortal();
+    R.playThienSunUlt();
+    R.playThienAscend();
+    R.playThienGodMode();
     R.lastCooldowns.clear();
     R.playPhongDash();
     R.playPhongIllusionSpawn();
@@ -2292,6 +2353,493 @@ test('Phong and Dang weaponRenderer routines draw cleanly with zero shadowBlur',
 
   assert.equal(maxShadowBlurUsed, 0, 'Phong and Dang renderers must never set non-zero ctx.shadowBlur');
 });
+
+test('Thien (Dang Sang The) combatLogic formulas compute passive ascension, C1/C2/C4, God Mode & breakdown accurately', () => {
+  assert.equal(THIEN_ENERGY_MAX, 100);
+  assert.equal(THIEN_ASCENDED_DURATION, 7.0);
+  assert.equal(THIEN_C1_SWORD_COUNT, 12);
+
+  const step1 = computeThienPassiveGain({ currentEnergy: 80, amount: 15, isAscended: false });
+  assert.equal(step1.nextEnergy, 95);
+  assert.equal(step1.triggeredAscension, false);
+
+  const step2 = computeThienPassiveGain({ currentEnergy: 95, amount: 10, isAscended: false });
+  assert.equal(step2.nextEnergy, 100);
+  assert.equal(step2.triggeredAscension, true);
+
+  const whileAscended = computeThienPassiveGain({ currentEnergy: 60, amount: 25, isAscended: true });
+  assert.equal(whileAscended.nextEnergy, 100);
+  assert.equal(whileAscended.triggeredAscension, false);
+
+  const baseRate = computeThienCooldownTickRate({ baseCdr: 0, isAscended: false, godMode: false });
+  const ascRate = computeThienCooldownTickRate({ baseCdr: 0, isAscended: true, godMode: false });
+  const godRate = computeThienCooldownTickRate({ baseCdr: 0, isAscended: true, godMode: true });
+  assert.equal(baseRate, 1);
+  assert.equal(ascRate, 1.45);
+  assert.equal(godRate, Number((1.45 * THIEN_GOD_MODE_CDR_MULT).toFixed(4)));
+
+  const godMods = computeThienAscendedModifiers({ isAscended: true, godMode: true });
+  assert.equal(godMods.dmgMult, Number((1.38 * THIEN_GOD_MODE_DMG_MULT).toFixed(4)));
+  assert.equal(godMods.regenPerSec, 160 + THIEN_GOD_MODE_REGEN_PER_SEC);
+
+  const swordMob = computeThienC1SwordDamage({ atk: 180, ap: 250, isBoss: false });
+  const swordBoss = computeThienC1SwordDamage({ atk: 180, ap: 250, isBoss: true });
+  assert.ok(swordBoss > swordMob);
+
+  const c2Low = computeThienC2Detonation({ storedDamage: 0, atk: 180, ap: 250, maxHp: 5000 });
+  const c2High = computeThienC2Detonation({ storedDamage: 800, atk: 180, ap: 250, maxHp: 5000 });
+  assert.ok(c2High.damage > c2Low.damage);
+  assert.ok(c2High.heal > c2Low.heal);
+  assert.ok(c2High.shield > c2Low.shield);
+
+  const mobUlt = computeThienC4JudgementDamage({ atk: 180, ap: 250, targetMaxHp: 600, isBoss: false });
+  const bossUlt = computeThienC4JudgementDamage({ atk: 180, ap: 250, targetMaxHp: 20000, isBoss: true });
+  assert.equal(mobUlt.executeRegular, true);
+  assert.ok(mobUlt.damage >= 600);
+  assert.equal(bossUlt.executeRegular, false);
+  assert.equal(bossUlt.damage, 820 + Math.round(180 * 2.4 + 250 * 3.4));
+
+  assert.equal(computeThienDamageBreakdownTotal({ atk: 100, c1: 200, c2: 300, c3: 400, c4: 500 }), 1500);
+});
+
+test('Thien (Dang Sang The) full kit, God Mode, Thien Nhan HUD & Founder lock behave accurately in GameEngine', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    const store = new Map<string, string>();
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, v); },
+      removeItem: (k: string) => { store.delete(k); },
+    };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { Mi, cm } = await import('./gameData.js');
+    const { mpClient } = await import('./multiplayerClient.js');
+
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ({
+        save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+        beginPath() {}, closePath() {}, arc() {}, ellipse() {}, rect() {},
+        moveTo() {}, lineTo() {}, quadraticCurveTo() {}, bezierCurveTo() {},
+        fill() {}, stroke() {}, fillRect() {}, strokeRect() {},
+        fillText() {}, strokeText() {}, setLineDash() {}, clip() {}, roundRect() {},
+        createLinearGradient: () => ({ addColorStop() {} }),
+        createRadialGradient: () => ({ addColorStop() {} }),
+        measureText: () => ({ width: 20 }),
+      }),
+    };
+
+    // 1. Founder lock: saved selectedHeroId='thien' must be rejected when founder auth is locked
+    store.set(cm, JSON.stringify({ selectedHeroId: 'thien', coins: 200 }));
+    mpClient.setFounderAuth(false, '');
+    const lockedEngine = new GameEngine(mockCanvas);
+    assert.notEqual(lockedEngine.currentHero.id, 'thien', 'Locked Founder cannot restore Thien from localStorage');
+
+    // Unlocked Founder restores Thien cleanly
+    mpClient.setFounderAuth(true, 'mock.founder.token');
+    const engine = new GameEngine(mockCanvas);
+    assert.equal(engine.currentHero.id, 'thien', 'Verified Founder can restore Thien');
+
+    const thienHero = Mi.find((h: any) => h.id === 'thien');
+    engine.startNewGame(thienHero);
+    const player = engine.player!;
+    player.x = 1200;
+    player.y = 1200;
+
+    // 2. Passive energy builds to 100 and triggers Genesis State (Sang The)
+    engine.applyThienEnergy(90);
+    assert.equal(player.thien_energy, 90);
+    assert.equal(player.thien_ascendedTimer, 0);
+    engine.applyThienEnergy(15);
+    assert.ok(player.thien_ascendedTimer > 6.5, 'Reaching 100 energy triggers 7s Sang The ascension');
+    player.thien_ascendedTimer = 0;
+    player.thien_energy = 0;
+
+    const regularMob: any = {
+      id: 901, kind: 'minion', name: 'ShadowMinion', radius: 18,
+      x: 1290, y: 1200, hp: 500, maxHp: 500, speed: 60, damage: 120,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    const boss: any = {
+      id: 902, kind: 'boss', bossWave: 27, phase: 2, name: 'Lucifer Test', radius: 56,
+      x: 1360, y: 1200, hp: 25000, maxHp: 25000, speed: 100, damage: 220,
+      facing: Math.PI, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies.push(regularMob, boss);
+
+    // 3. C1 Van Kiem Khai Thien spawns 12 divine swords, seeks targets & heals HP
+    player.hp = 3500;
+    engine.castSkill(0, 0, boss.x, boss.y);
+    assert.equal(engine.thienSwords.length, 12, 'C1 must summon 12 divine swords');
+    for (let i = 0; i < 16; i++) engine.updateThienSystems(0.05);
+    assert.ok(boss.hp < 25000, 'C1 divine swords must damage Boss');
+    assert.ok(player.hp > 3500, 'C1 divine swords must heal Thien');
+    assert.ok(player.thien_damageBreakdown.c1 > 0, 'C1 damage must be recorded in breakdown');
+
+    // 4. C2 Thien Menh Dao Chieu slows enemies (-60%), stores damage, and recast detonates + heals + shields
+    player.hp = 3200;
+    player.shield = 0;
+    engine.castSkill(1, 0, player.x, player.y);
+    assert.ok(player.thien_c2ZoneId !== null, 'C2 creates active time zone');
+    engine.damagePlayer(300, { x: boss.x, y: boss.y } as any);
+    assert.ok(engine.thienTimeZones[0].storedDamage >= 300, 'C2 stores incoming damage');
+    player.thien_c2RecastLock = 0;
+    const bossHpBeforeC2Boom = boss.hp;
+    assert.equal(engine.canActivateSkill(1), true, 'C2 recast must be allowed while time zone is active');
+    engine.castSkill(1, 0, player.x, player.y);
+    assert.equal(player.thien_c2ZoneId, null, 'Recasting C2 consumes time zone');
+    assert.ok(boss.hp < bossHpBeforeC2Boom, 'C2 detonation damages enemies');
+    assert.ok(player.hp > 3200, 'C2 detonation heals Thien');
+    assert.ok(player.shield > 0, 'C2 detonation grants shield');
+    assert.ok(player.thien_damageBreakdown.c2 > 0, 'C2 damage must be recorded in breakdown');
+
+    // 5. C3 Van Gioi Du Hanh blinks via portal & recasts return blast
+    player.cooldowns[2] = 0;
+    const origX = player.x;
+    const origY = player.y;
+    engine.castSkill(2, 0, origX + 260, origY);
+    assert.ok(player.x > origX + 150, 'C3 blinks Thien toward target');
+    assert.ok(player.thien_c3PortalTimer > 3.5, 'C3 opens return portal window');
+    assert.equal(engine.thienPortals.length, 2, 'C3 creates origin and exit portals');
+    player.thien_c3RecastLock = 0;
+    boss.x = origX + 60;
+    boss.y = origY;
+    assert.equal(engine.canActivateSkill(2), true, 'C3 return recast must be allowed');
+    engine.castSkill(2, 0, player.x, player.y);
+    assert.ok(Math.hypot(player.x - origX, player.y - origY) < 25, 'C3 recast returns Thien to origin portal');
+    assert.ok(player.thien_damageBreakdown.c3 > 0, 'C3 damage must be recorded in breakdown');
+
+    // 6. C4 Phan Quyet Sang The executes regular mob, heavily damages Boss, heals 28% MaxHP, activates Sang The
+    player.hp = 2500;
+    player.thien_ascendedTimer = 0;
+    player.cooldowns[3] = 0;
+    regularMob.hp = 500;
+    regularMob.x = player.x + 80;
+    regularMob.y = player.y;
+    boss.x = player.x + 120;
+    boss.y = player.y;
+    const bossHpBeforeC4 = boss.hp;
+    engine.castSkill(3, 0, player.x, player.y);
+    assert.equal(engine.thienSunJudgements.length, 1, 'C4 summons Energy Sun orbital beam');
+    assert.ok(regularMob.hp <= 0, 'C4 executes regular monster');
+    assert.ok(boss.hp < bossHpBeforeC4 - 1500, 'C4 deals massive damage to Boss');
+    assert.ok(player.hp >= 2500 + Math.round(player.maxHp * 0.28), 'C4 heals 28% Max HP');
+    assert.ok(player.thien_ascendedTimer > 6.5, 'C4 activates Sang The state');
+    assert.ok(player.thien_damageBreakdown.c4 > 0, 'C4 damage must be recorded in breakdown');
+
+    // 7. Founder God Mode (Che do Than Quyen) grants invulnerability, CC immunity, and faster cooldowns
+    const hpBeforeGod = player.hp;
+    const isGodOn = engine.toggleThienGodMode();
+    assert.equal(isGodOn, true);
+    assert.equal(player.hp, player.maxHp, 'Activating God Mode restores full HP');
+    engine.damagePlayer(99999);
+    assert.equal(player.hp, player.maxHp, 'God Mode grants invulnerability to damage');
+    engine.applyPlayerCC('stun', 2.0);
+    assert.equal(player.stunTimer, 0, 'God Mode grants CC immunity');
+    assert.ok(hpBeforeGod <= player.maxHp);
+
+    // 8. Thien Nhan HUD snapshot includes 4 skills, breakdown, boss live HP/phase, kills, and timer
+    engine.waveElapsedTime = 18.4;
+    const hud = engine.getHudSnapshot();
+    assert.equal(hud.skillStates.length, 4);
+    assert.ok(hud.thienState);
+    assert.equal(hud.thienState.godMode, true);
+    assert.equal(hud.thienState.bosses.length, 1);
+    assert.equal(hud.thienState.bosses[0].phase, 2);
+    assert.ok(hud.thienState.totalDamage > 0);
+    assert.equal(hud.thienState.waveElapsedTime, 18.4);
+    assert.ok(hud.thienState.totalKilled >= 1);
+
+    mpClient.setFounderAuth(false, '');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Thien celestial renderer routines draw cleanly with zero shadowBlur and security invariants hold', async () => {
+  const {
+    drawHeroBody,
+    drawHeroWeapon,
+    drawThienSwords,
+    drawThienTimeZone,
+    drawThienSpatialPortal,
+    drawThienSunJudgement,
+  } = await import('./weaponRenderer.js');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+
+  let maxShadowBlurUsed = 0;
+  const gradient = { addColorStop() {} };
+  const noop = () => {};
+  const ctx: any = {
+    save: noop, restore: noop, translate: noop, rotate: noop, scale: noop,
+    beginPath: noop, closePath: noop, arc: noop, ellipse: noop, rect: noop,
+    moveTo: noop, lineTo: noop, quadraticCurveTo: noop, bezierCurveTo: noop,
+    fill: noop, stroke: noop, fillRect: noop, strokeRect: noop,
+    fillText: noop, strokeText: noop, setLineDash: noop, clip: noop, roundRect: noop,
+    createLinearGradient: () => gradient,
+    createRadialGradient: () => gradient,
+    measureText: () => ({ width: 20 }),
+    fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1,
+    _shadowBlur: 0,
+    get shadowBlur() { return this._shadowBlur; },
+    set shadowBlur(v: number) {
+      this._shadowBlur = v;
+      if (v > maxShadowBlurUsed) maxShadowBlurUsed = v;
+    },
+    shadowColor: '#000', font: '12px sans-serif', textAlign: 'center', textBaseline: 'middle', lineCap: 'round', lineJoin: 'round',
+  };
+
+  for (const isMono of [false, true]) {
+    assert.doesNotThrow(() =>
+      drawHeroBody(ctx, { heroId: 'thien', radius: 22, facing: 0.4, color: '#F8FAFC', accentColor: '#FACC15', isMono, isUlt: true, elapsedTime: 3.4, moveSpeedFactor: 0.8, walkCyclePhase: 1.2 })
+    );
+    assert.doesNotThrow(() =>
+      drawHeroWeapon(ctx, 'thien', { x: 100, y: 100, facing: 0.4, attackAnimTimer: 0.2, weaponAttackDuration: 0.22, attackSwingParity: 1, thien_ascendedTimer: 4, thien_godMode: true }, 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawThienSwords(ctx, [{ x: 140, y: 110, angle: 0.5, phase: 'seek', trail: [{ x: 120, y: 100 }, { x: 140, y: 110 }] }], 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawThienTimeZone(ctx, [{ x: 200, y: 200, radius: 220, life: 2.5, maxLife: 3.5, storedDamage: 450 }], 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawThienSpatialPortal(ctx, [{ x: 250, y: 180, radius: 46 }], 3.4, isMono)
+    );
+    assert.doesNotThrow(() =>
+      drawThienSunJudgement(ctx, [{ x: 300, y: 240, radius: 340, life: 1.2, maxLife: 1.65 }], 3.4, isMono)
+    );
+  }
+  assert.equal(maxShadowBlurUsed, 0, 'Thien renderer routines must never set non-zero ctx.shadowBlur');
+
+  // Verify Founder PIN is never hardcoded in client src/**
+  const srcFiles = fs.readdirSync(path.join(process.cwd(), 'src'), { recursive: true }) as string[];
+  const forbiddenPin = ['6892', '0111'].join('');
+  for (const rel of srcFiles) {
+    if (!/\.(ts|tsx|js|jsx|css)$/.test(rel)) continue;
+    if (rel.endsWith('combatLogic.test.ts')) continue;
+    const full = path.join(process.cwd(), 'src', rel);
+    const content = fs.readFileSync(full, 'utf8');
+    assert.equal(content.includes(forbiddenPin), false, `Client file src/${rel} must never hardcode Founder PIN`);
+  }
+});
+
+test('PlayerAccount gear slot serialization preserves all 6 GameEngine slots including gloves and necklace', () => {
+  assert.deepEqual([...VALID_GEAR_SLOTS], ['weapon', 'armor', 'boots', 'gloves', 'necklace', 'relic']);
+
+  const baseFactory = () => ({
+    eohyen: { weapon: null, armor: null, boots: null, gloves: null, necklace: null, relic: null },
+    thien: { weapon: null, armor: null, boots: null, gloves: null, necklace: null, relic: null },
+  });
+
+  const sampleGear = {
+    eohyen: {
+      weapon: { uid: 1, itemId: 'sword_of_dawn' },
+      armor: { uid: 2, itemId: 'plate_aegis' },
+      boots: { uid: 3, itemId: 'swift_greaves' },
+      gloves: { uid: 4, itemId: 'gauntlet_fury' },
+      necklace: { uid: 5, itemId: 'pendant_mana' },
+      relic: { uid: 6, itemId: 'orb_eternity' },
+    },
+  };
+
+  const serialized = serializeHeroGearEntries(sampleGear);
+  assert.equal(serialized.length, 6);
+  assert.ok(serialized.includes('eohyen:gloves:gauntlet_fury'));
+  assert.ok(serialized.includes('eohyen:necklace:pendant_mana'));
+
+  const validItems = new Set(['sword_of_dawn', 'plate_aegis', 'swift_greaves', 'gauntlet_fury', 'pendant_mana', 'orb_eternity']);
+  const { heroGear, nextUid } = deserializeHeroGearEntries(
+    [...serialized, 'eohyen:gloves:invalid_item_id', 'bad_entry', 'unknownhero:weapon:sword_of_dawn'],
+    baseFactory,
+    10,
+    validItems
+  );
+  assert.equal(nextUid, 16);
+  assert.equal(heroGear.eohyen.gloves?.itemId, 'gauntlet_fury');
+  assert.equal(heroGear.eohyen.necklace?.itemId, 'pendant_mana');
+  assert.equal(heroGear.eohyen.weapon?.uid, 10);
+});
+
+test('PlayerAccount friend code generation, daily check-in, and display name normalization behave safely', () => {
+  const codeA1 = generateFriendCode('uid-alpha-1234');
+  const codeA2 = generateFriendCode('uid-alpha-1234');
+  const codeB = generateFriendCode('uid-beta-5678');
+  assert.match(codeA1, /^AH-[23456789A-HJ-NP-Z]{6}$/);
+  assert.equal(codeA1, codeA2);
+  assert.notEqual(codeA1, codeB);
+
+  const randomCode = generateFriendCode();
+  assert.match(randomCode, /^AH-[23456789A-HJ-NP-Z]{6}$/);
+
+  assert.equal(DAILY_CHECKIN_REWARD, 350);
+  assert.equal(canClaimDailyCheckIn('', '2026-11-16'), true);
+  assert.equal(canClaimDailyCheckIn('2026-11-15', '2026-11-16'), true);
+  assert.equal(canClaimDailyCheckIn('2026-11-16', '2026-11-16'), false);
+
+  assert.equal(normalizeDisplayName('  Anh   Hùng\n\tMới  '), 'Anh Hùng Mới');
+  assert.equal(normalizeDisplayName('   ', 'Khách'), 'Khách');
+  assert.equal(normalizeDisplayName('X'.repeat(50)).length, 32);
+
+  assert.equal(sanitizeGooglePhotoUrl('https://lh3.googleusercontent.com/a/photo.png'), 'https://lh3.googleusercontent.com/a/photo.png');
+  assert.equal(sanitizeGooglePhotoUrl('http://insecure.example.com/a.png'), '');
+  assert.equal(sanitizeGooglePhotoUrl('javascript:alert(1)'), '');
+});
+
+test('PlayerAccount profile sanitization enforces wave-gated unlocks and Founder lock', () => {
+  assert.equal(isFrameUnlocked('bronze_recruit', 0, false), true);
+  assert.equal(isFrameUnlocked('void_eclipse', 10, false), false);
+  assert.equal(isFrameUnlocked('void_eclipse', 15, false), true);
+  assert.equal(isFrameUnlocked('founder_genesis', 27, false), false);
+  assert.equal(isFrameUnlocked('founder_genesis', 0, true), true);
+
+  const nonFounderTitles = computeUnlockedTitles(9, false);
+  assert.ok(nonFounderTitles.includes('Tân Binh Đấu Trường'));
+  assert.ok(nonFounderTitles.includes('Thợ Săn Băng Hỏa'));
+  assert.equal(nonFounderTitles.includes('Đấng Sáng Thế'), false);
+
+  const founderTitles = computeUnlockedTitles(0, true);
+  assert.ok(founderTitles.includes('Đấng Sáng Thế'));
+
+  const sanitizedNonFounder = sanitizePlayerProfile(
+    {
+      displayName: '   ',
+      favoriteHeroId: 'thien',
+      avatarType: 'hero',
+      avatarValue: 'thien',
+      avatarFrame: 'founder_genesis',
+      titleBadge: 'Đấng Sáng Thế',
+      highestWave: 5,
+      googlePhotoUrl: 'http://evil.local/pic.png',
+    },
+    { founderUnlocked: false }
+  );
+  assert.equal(sanitizedNonFounder.favoriteHeroId, 'eohyen');
+  assert.equal(sanitizedNonFounder.avatarValue, 'eohyen');
+  assert.equal(sanitizedNonFounder.avatarFrame, 'bronze_recruit');
+  assert.notEqual(sanitizedNonFounder.titleBadge, 'Đấng Sáng Thế');
+  assert.equal(sanitizedNonFounder.googlePhotoUrl, '');
+
+  const sanitizedInvalidGoogleAvatar = sanitizePlayerProfile(
+    {
+      avatarType: 'google',
+      avatarValue: 'http://bad.url/x.jpg',
+      favoriteHeroId: 'kin',
+    },
+    { founderUnlocked: false }
+  );
+  assert.equal(sanitizedInvalidGoogleAvatar.avatarType, 'hero');
+  assert.equal(sanitizedInvalidGoogleAvatar.avatarValue, 'kin');
+
+  const sanitizedCrest = sanitizePlayerProfile(
+    {
+      avatarType: 'crest',
+      avatarValue: 'not_a_real_crest',
+    },
+    { founderUnlocked: false }
+  );
+  assert.equal(sanitizedCrest.avatarValue, AVATAR_CRESTS[0].id);
+
+  assert.ok(AVATAR_FRAMES.some((f) => f.id === 'celestial_legend' && f.minWave === 27));
+  assert.ok(PLAYER_TITLES.some((t) => t.id === 'Huyền Thoại 27 Màn' && t.minWave === 27));
+});
+
+test('PlayerAccount cloud merge and JSON save parser preserve max stats and strip locked Founder hero', () => {
+  const localSnap = {
+    coins: 1200,
+    currentWave: 8,
+    highestWave: 12,
+    selectedHeroId: 'thien',
+    inventoryItemIds: ['item_a'],
+    heroGearEntries: ['eohyen:weapon:item_a'],
+    lifetimeKills: 450,
+    matchesPlayed: 5,
+    victories: 1,
+    dailyCheckInDate: '2026-11-15',
+    unlockedTitles: ['Tân Binh Đấu Trường'],
+  };
+  const cloudSnap = {
+    coins: 2400,
+    currentWave: 16,
+    highestWave: 18,
+    selectedHeroId: 'thien',
+    inventoryItemIds: ['item_a', 'item_b'],
+    heroGearEntries: ['eohyen:gloves:item_b'],
+    lifetimeKills: 300,
+    matchesPlayed: 8,
+    victories: 2,
+    dailyCheckInDate: '2026-11-16',
+    unlockedTitles: [],
+  };
+
+  const mergedLocked = mergeLocalAndCloudProgress(localSnap, cloudSnap, false);
+  assert.equal(mergedLocked.highestWave, 18);
+  assert.equal(mergedLocked.coins, 2400);
+  assert.equal(mergedLocked.lifetimeKills, 450);
+  assert.equal(mergedLocked.matchesPlayed, 8);
+  assert.equal(mergedLocked.victories, 2);
+  assert.equal(mergedLocked.dailyCheckInDate, '2026-11-16');
+  assert.equal(mergedLocked.selectedHeroId, 'eohyen');
+  assert.equal(mergedLocked.unlockedTitles.includes('Đấng Sáng Thế'), false);
+
+  const mergedFounder = mergeLocalAndCloudProgress(localSnap, cloudSnap, true);
+  assert.equal(mergedFounder.selectedHeroId, 'thien');
+  assert.equal(mergedFounder.unlockedTitles.includes('Đấng Sáng Thế'), true);
+
+  const badJson = parseSavePackageJson('{not-json', false);
+  assert.equal(badJson.ok, false);
+
+  const exportedPackage = JSON.stringify({
+    profile: {
+      displayName: 'Nhà Sáng Lập',
+      avatarFrame: 'founder_genesis',
+      titleBadge: 'Đấng Sáng Thế',
+      favoriteHeroId: 'thien',
+    },
+    progress: {
+      coins: 5000,
+      currentWave: 20,
+      highestWave: 22,
+      selectedHeroId: 'thien',
+      inventoryItemIds: ['sword_of_dawn'],
+      heroGearEntries: ['eohyen:necklace:pendant_mana'],
+      lifetimeKills: 999,
+      matchesPlayed: 12,
+      victories: 3,
+      dailyCheckInDate: '2026-11-16',
+    },
+  });
+
+  const parsedLocked = parseSavePackageJson(exportedPackage, false);
+  assert.equal(parsedLocked.ok, true);
+  if (parsedLocked.ok) {
+    assert.equal(parsedLocked.progress.selectedHeroId, 'eohyen');
+    assert.equal(parsedLocked.progress.coins, 5000);
+    assert.equal(parsedLocked.profile.favoriteHeroId, 'eohyen');
+    assert.equal(parsedLocked.profile.avatarFrame, 'inferno_dragon'.includes('not') ? 'bronze_recruit' : 'bronze_recruit');
+    assert.notEqual(parsedLocked.profile.titleBadge, 'Đấng Sáng Thế');
+  }
+});
+
+
 
 
 

@@ -1,12 +1,41 @@
 import * as ie from "react";
 import * as u from "react/jsx-runtime";
-import { Mi, zr, Si, Ff, Ef, R } from "./gameData";
+import { Mi, zr, Si, Ff, Ef, R, um } from "./gameData";
 import { GameEngine as Hf } from "./GameEngine";
 import { SKILL_ICON_DATA_URLS, HERO_SKILL_ICONS } from "./skillIcons";
 import { mpClient } from "./multiplayerClient";
 import { MultiplayerLobbyModal } from "./MultiplayerLobbyModal";
 import { detectClientEnvironment, isPrivateOrDevOrigin, classifyJoinCode, sortItemsByRarityAsc, sortItemsByRarityDesc, isSixDigitCode, computeCameraViewportConfig, computeJoystickDragRadius, DUY_DECOY_REFLECT_RATIO } from "./combatLogic";
 import { MobaLobbyMenu, MobaHeroSelect } from "./MobaLobbyViews";
+import PlayerAccountModal from "./PlayerAccountModal";
+import {
+  DAILY_CHECKIN_REWARD,
+  canClaimDailyCheckIn,
+  computeUnlockedTitles,
+  deserializeHeroGearEntries,
+  getTodayDateKey,
+  loadLocalPlayerProfile,
+  mergeLocalAndCloudProgress,
+  normalizeDisplayName,
+  parseSavePackageJson,
+  sanitizeGooglePhotoUrl,
+  saveLocalPlayerProfile,
+  serializeHeroGearEntries,
+} from "./playerAccount";
+import {
+  FOUNDER_EMAIL,
+  fetchOwnPublicProfile,
+  fetchPrivatePlayerSave,
+  logFounderAuditEvent,
+  savePrivatePlayerSave,
+  signInFounderWithGoogle,
+  signInPlayerWithGoogle,
+  signOutFounderAuth,
+  signOutPlayer,
+  subscribeToAuthChanges,
+  syncFounderUnlockToFirestore,
+  upsertPublicPlayerProfile,
+} from "../firebase";
 var Df = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(), If = (s) => s.replace(/^([A-Z])|[\s-_]+(\w)/g, (a, l, m) => m ? m.toUpperCase() : l.toLowerCase()), dm = (s) => {
   let a = If(s);
   return a.charAt(0).toUpperCase() + a.slice(1);
@@ -169,7 +198,7 @@ function ShopItemIcon({ item: s, sizeClass: a = "w-14 h-14", showActiveMark: mAc
 }
 var pl = ShopItemIcon;
 var SHOP_SLOT_SHORT = { weapon: "V.Khí", armor: "Giáp", boots: "Giày", gloves: "Găng", necklace: "T.Sức", relic: "T.Vật" };
-var Jf = ({ engine: s, coins: a, shopHeroId: l, buildRevision: m = 0, onChangeHero: c, onClose: g, onOpenBuilds: p, onCoinsChange: h, onShowToast: f }) => {
+var Jf = ({ engine: s, coins: a, shopHeroId: l, buildRevision: m = 0, founderUnlocked = false, onChangeHero: c, onClose: g, onOpenBuilds: p, onCoinsChange: h, onShowToast: f }) => {
   let [v, T] = (0, ie.useState)("all"),
     [b, x] = (0, ie.useState)("all"),
     [C, H] = (0, ie.useState)(""),
@@ -643,7 +672,7 @@ var Jf = ({ engine: s, coins: a, shopHeroId: l, buildRevision: m = 0, onChangeHe
                 >
                   {Mi.map((A) => (
                     <option key={A.id} value={A.id} className="bg-[#081022] text-white">
-                      {A.name.split("(")[0].trim()}
+                      {A.isSecretFounder && !founderUnlocked ? `🔒 ${A.name.split("(")[0].trim()}` : A.name.split("(")[0].trim()}
                     </option>
                   ))}
                 </select>
@@ -1061,7 +1090,7 @@ function Bt(s, a, l, m = false) {
 function At(s, a) {
   return s === "gau" ? a === "atk" ? Bt("#431407", "#F59E0B", '<path d="M18 40 L22 24 L30 20 L38 22 L46 28 L44 42 L24 46 Z" fill="#D97706" stroke="#FEF08A" stroke-width="2"/><path d="M22 28 L42 30 M20 35 L43 37" stroke="#78350F" stroke-width="2.4"/><path d="M13 18 C22 10 42 10 51 18" fill="none" stroke="#FBBF24" stroke-width="2.8" stroke-linecap="round"/>') : a === "passive" ? Bt("#450A0A", "#F97316", '<circle cx="32" cy="34" r="18" fill="none" stroke="#F97316" stroke-width="2.5" stroke-dasharray="6 4"/><path d="M32 11 C38 20 46 25 45 36 C44 45 38 51 32 52 C26 51 20 45 19 36 C18 25 26 20 32 11 Z" fill="#EA580C" stroke="#FEF08A" stroke-width="2"/><path d="M32 22 C36 28 38 35 32 45 C26 35 28 28 32 22 Z" fill="#FDE047"/>') : a === "c1" ? Bt("#431407", "#FBBF24", '<path d="M14 44 L26 32 L18 24" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/><path d="M25 38 L37 26 L29 18" fill="none" stroke="#FBBF24" stroke-width="3.2" stroke-linecap="round"/><path d="M34 46 L50 28 L41 18" fill="none" stroke="#FEF08A" stroke-width="3.8" stroke-linecap="round"/><circle cx="48" cy="24" r="5" fill="#FFFFFF" opacity="0.85"/>') : a === "c2" ? Bt("#1E293B", "#F59E0B", '<path d="M32 11 L49 18 V33 C49 44 41 51 32 54 C23 51 15 44 15 33 V18 Z" fill="#78350F" stroke="#FBBF24" stroke-width="2.8"/><path d="M32 17 L43 22 V33 C43 40 38 45 32 48 C26 45 21 40 21 33 V22 Z" fill="#B45309"/><path d="M24 31 L32 24 L40 31 L32 39 Z" fill="#FEF08A"/>') : Bt("#450A0A", "#F59E0B", '<ellipse cx="32" cy="46" rx="21" ry="7" fill="none" stroke="#F97316" stroke-width="2.6"/><path d="M21 15 L32 38 L43 15" fill="none" stroke="#FDE047" stroke-width="3.5" stroke-linecap="round"/><path d="M14 44 L26 40 L32 51 L38 40 L50 44" fill="none" stroke="#FEF08A" stroke-width="2.5"/><circle cx="32" cy="36" r="7" fill="#EF4444" stroke="#FEF08A" stroke-width="2"/>', true) : s === "bao" ? a === "atk" ? Bt("#2E1065", "#C084FC", '<path d="M14 46 Q30 28 48 14 L50 22 Q34 36 18 50 Z" fill="#E9D5FF" stroke="#A855F7" stroke-width="1.8"/><path d="M18 16 Q34 30 48 48 L41 50 Q28 34 14 22 Z" fill="#C084FC" stroke="#F5D0FE" stroke-width="1.6"/>') : a === "passive" ? Bt("#3B0764", "#E879F9", '<circle cx="32" cy="32" r="18" fill="none" stroke="#A855F7" stroke-width="2" stroke-dasharray="4 4"/><polygon points="32,12 46,32 32,52 18,32" fill="#7E22CE" stroke="#F0ABFC" stroke-width="2.4"/><circle cx="32" cy="32" r="5" fill="#F43F5E" stroke="#FFFFFF" stroke-width="1.5"/>') : a === "c1" ? Bt("#2E1065", "#38BDF8", '<path d="M13 42 C24 38 30 22 44 16" fill="none" stroke="#7E22CE" stroke-width="5" stroke-linecap="round"/><path d="M18 48 C30 42 36 26 51 20" fill="none" stroke="#E879F9" stroke-width="3" stroke-linecap="round"/><polygon points="48,14 54,22 44,24" fill="#E0F2FE"/>') : a === "c2" ? Bt("#1E1B4B", "#A855F7", '<circle cx="24" cy="36" r="10" fill="rgba(168,85,247,0.45)"/><circle cx="37" cy="30" r="12" fill="rgba(192,132,252,0.5)"/><circle cx="42" cy="40" r="9" fill="rgba(126,34,206,0.65)"/><path d="M22 22 L42 42 M42 22 L22 42" stroke="#F0ABFC" stroke-width="2.6" stroke-linecap="round"/>') : Bt("#3B0764", "#F43F5E", '<polygon points="22,18 28,28 22,38 16,28" fill="#A855F7" opacity="0.75"/><polygon points="42,18 48,28 42,38 36,28" fill="#A855F7" opacity="0.75"/><polygon points="32,10 40,26 32,48 24,26" fill="#F43F5E" stroke="#FEF08A" stroke-width="2"/><path d="M12 46 L52 18" stroke="#E879F9" stroke-width="2.8" stroke-linecap="round"/>', true) : a === "atk" ? Bt("#450A0A", "#EF4444", '<path d="M15 49 L44 14 L51 15 L50 22 L21 51 Z" fill="#E2E8F0" stroke="#EF4444" stroke-width="2"/><path d="M14 40 L24 50" stroke="#F59E0B" stroke-width="3.6" stroke-linecap="round"/><path d="M26 36 L44 18" stroke="#F87171" stroke-width="2"/>') : a === "passive" ? Bt("#431407", "#F59E0B", '<polygon points="32,12 50,45 14,45" fill="none" stroke="#F59E0B" stroke-width="2.6"/><circle cx="32" cy="14" r="4" fill="#38BDF8"/><circle cx="16" cy="44" r="4" fill="#F59E0B"/><circle cx="48" cy="44" r="4" fill="#EF4444"/><circle cx="32" cy="33" r="6" fill="#FEF08A"/>') : a === "c1" ? Bt("#450A0A", "#F97316", '<path d="M14 44 C26 42 36 32 48 16" fill="none" stroke="#F97316" stroke-width="4.5" stroke-linecap="round"/><path d="M16 50 C30 48 40 38 52 24" fill="none" stroke="#FEF08A" stroke-width="2.4" stroke-linecap="round"/><path d="M36 14 L50 14 L46 28 Z" fill="#EF4444"/>') : a === "c2" ? Bt("#450A0A", "#EF4444", '<path d="M13 38 C22 20 36 18 49 26 C44 33 44 40 50 46 C36 46 24 46 13 38 Z" fill="#DC2626" stroke="#FEF08A" stroke-width="2"/><circle cx="42" cy="29" r="3" fill="#FEF08A"/><path d="M18 32 L34 32" stroke="#FDE047" stroke-width="2.5" stroke-linecap="round"/>') : Bt("#450A0A", "#F59E0B", '<path d="M32 10 L39 26 L53 32 L39 38 L32 54 L25 38 L11 32 L25 26 Z" fill="#DC2626" stroke="#FEF08A" stroke-width="2.2"/><path d="M22 18 C28 12 38 12 43 20 C38 25 35 32 32 44 C29 32 26 25 22 18 Z" fill="#F97316" stroke="#FFFFFF" stroke-width="1.5"/>', true);
 }
-var me = (s, a, l, m, c, g, p, h) => ({ id: `${s}_${a}`, heroId: s, skillId: a, category: l, elementColor: m, bgDark: c, png512: `/assets/skills/${s}_${a}.png`, png128: `/assets/skills/128/${s}_${a}.png`, svgDataUrl: h, concept: { vi: g, en: p } }), bm = { dung: { atk: me("dung", "atk", "basic", "#38BDF8", "#0B3A5C", "L\xF4i Long Th\u01B0\u01A1ng ph\xF3ng tia s\xE9t ch\xE9m d\u1ECDc", "Thunder spear thrust with electric arc"), passive: me("dung", "passive", "passive", "#FDE047", "#0A2E4D", "L\xF5i s\u1EA5m s\xE9t ph\xE2n nh\xE1nh 5 tia \u0111i\u1EC7n quang", "5-branch chain lightning core"), c1: me("dung", "c1", "movement", "#38BDF8", "#0D3B66", "Chi\u1EBFn th\u1EA7n ch\u1ED1ng th\u01B0\u01A1ng l\u01B0\u1EDBt b\u1ECDc s\xE9t c\u1EF1c quang", "Aurora lightning spear dash leaving scorch"), c2: me("dung", "c2", "defense", "#F59E0B", "#45120A", "Cu\u1ED3ng chi\u1EBFn huy\u1EBFt m\u1EA1ch b\xF9ng ch\xE1y s\u1EA5m l\u1EEDa", "Crimson rage & lightning vitality crest"), c3: me("dung", "c3", "ultimate", "#FDE047", "#083D6E", "C\u1ED9t s\xE9t c\u1EF1c quang gi\xE1ng th\u1EB3ng xu\u1ED1ng \u0111\u1EA5u tr\u01B0\u1EDDng", "God of War sky lightning pillar impact") }, tin: { atk: me("tin", "atk", "basic", "#F43F5E", "#4C0519", "Song \u0111ao h\u01B0 kh\xF4ng ch\xE9m ch\xE9o ch\u1EEF X \u0111\u1ECF r\u1EF1c", "Void dual blades crossing in crimson tear"), passive: me("tin", "passive", "passive", "#FB7185", "#3B0718", "V\u1EBFt r\xE1ch kh\xF4ng gian c\xF9ng 3 \u1EA5n k\xFD huy\u1EBFt \u1EA3nh", "Floating spatial rift & 3 blood marks"), c1: me("tin", "c1", "movement", "#F43F5E", "#450A1F", "Hai b\xF3ng \u1EA3nh s\xE1t th\u1EE7 l\u01B0\u1EDBt x\xE9 kh\xF4ng gian", "Two-charge shadow phantom dash trails"), c2: me("tin", "c2", "active", "#FB7185", "#4C0519", "Tinh th\u1EC3 \u0111\u1ECF r\u1EF1c ghim ch\u1EB7t t\u1ECFa v\xF2ng t\u1EEB tr\u01B0\u1EDDng", "Pinned crimson crystal radiating pulse ring"), c3: me("tin", "c3", "ultimate", "#F43F5E", "#18181B", "L\xE3nh \u0111\u1ECBa \u0111\u1EA3o s\u1EAFc Tr\u1EAFng-\u0110en v\u1EDBi nh\xE1t ch\xE9m x\xE9 m\xE0n", "Monochrome Sumi-e realm razor slashes") }, kin: { atk: me("kin", "atk", "basic", "#34D399", "#064E3B", "M\u0169i t\xEAn phong th\u1EA7n xanh ng\u1ECDc mang lu\u1ED3ng gi\xF3 xo\xE1y", "Jade wind arrow cutting with slipstream"), passive: me("kin", "passive", "passive", "#6EE7B7", "#064E3B", "M\u0169i t\xEAn xuy\xEAn t\xE2m cu\u1ED9n trong c\u01A1n l\u1ED1c xo\xE1y nhi\u1EC1u t\u1EA7ng", "Giant arrow wrapped in layered tornado vortex"), c1: me("kin", "c1", "active", "#34D399", "#065F46", "Cung th\u1EA7n b\u1EAFn ra 3 m\u0169i t\xEAn b\xE3o t\u1ED1 x\u1EBFp qu\u1EA1t", "Triple skybreaker arrows fanning outward"), c2: me("kin", "c2", "movement", "#6EE7B7", "#044E3C", "\u0110\xF4i c\xE1nh gi\xF3 phong linh tung lu\u1ED3ng kh\xED tho\xE1i b\u1ED9", "Radiant jade wind wings vaulting backward"), c3: me("kin", "c3", "ultimate", "#FDE047", "#064E3B", "C\u01A1n b\xE3o l\u1ED1c xo\xE1y kh\u1ED5ng l\u1ED3 tr\xFAt v\u1EA1n m\u0169i t\xEAn gi\xF3", "Colossal tornado storm raining wind arrows") }, trung: { atk: me("trung", "atk", "basic", "#818CF8", "#1E1B4B", "Qu\u1EA3 c\u1EA7u tinh v\xE2n tr\u1ECDng l\u1EF1c xoay v\xF2ng \xE1nh s\xE1ng", "Cosmic gravity orb with planetary ring"), passive: me("trung", "passive", "passive", "#A5B4FC", "#1E1B4B", "Tam gi\xE1c 3 \u1EA5n ma l\u1EF1c h\u1ED9i t\u1EE5 ph\xE1t n\u1ED5 trung t\xE2m", "3-node arcane triangle converging star burst"), c1: me("trung", "c1", "active", "#38BDF8", "#0C3B5E", "Tinh c\u1EA7u b\u0103ng ng\u1ECDc b\u1ED9c ph\xE1 tinh th\u1EC3 lam-t\xEDm", "Glacial jade orb shattering in frost spikes"), c2: me("trung", "c2", "defense", "#A5B4FC", "#1E1B4B", "Khi\xEAn h\u1ED9 v\u1EC7 c\xF9ng 6 c\u1EA7u ma ph\xE1p xoay tr\xF2n quanh t\xE2m", "Guardian shield encircled by 6 revolving orbs"), c3: me("trung", "c3", "ultimate", "#F97316", "#4A1206", "\u0110\u1EA1i thi\xEAn th\u1EA1ch r\u1EF1c l\u1EEDa lao xu\u1ED1ng h\u1ED1 dung nham", "Flaming meteor crashing into molten crater") }, eohyen: { atk: me("eohyen", "atk", "basic", "#38BDF8", "#083358", "B\u0103ng Nguy\u1EC7t Ki\u1EBFm vung nh\xE1t tr\u0103ng khuy\u1EBFt h\xE0n b\u0103ng", "Glacial blade crescent frost slash"), passive: me("eohyen", "passive", "passive", "#BAE6FD", "#063B59", "B\xF4ng tuy\u1EBFt h\xE0n kh\xED t\u1ECFa v\xF2ng s\u01B0\u01A1ng & l\xF5i h\u1ED3i ph\u1EE5c", "Frost snowflake chill aura & emerald core"), c1: me("eohyen", "c1", "active", "#38BDF8", "#08375C", "Nguy\u1EC7t tr\u1EA3m ghim 3 c\u1ECDc b\u0103ng nh\u1ECDn xu\u1ED1ng m\u1EB7t \u0111\u1EA5t", "Crescent slash pinning 3 sharp ice spikes"), c2: me("eohyen", "c2", "defense", "#7DD3FC", "#07365B", "Gi\xE1p l\u1EE5c gi\xE1c b\u0103ng t\xE2m ph\xF3ng 6 c\u1ECDc b\u0103ng h\u1ED9 th\u1EC3", "Hexagonal frost heart barrier & 6 radial spikes"), c3: me("eohyen", "c3", "ultimate", "#E0F2FE", "#06325C", "M\u01B0a c\u1ECDc b\u0103ng d\u1ED3n d\u1EADp & kh\u1ED1i pha l\xEA \u0111\xF3ng b\u0103ng c\u1EE9ng", "Icicle barrage encasing target in ice prison") }, longhoi: { atk: me("longhoi", "atk", "basic", "#F97316", "#451205", "M\u0169i t\xEAn h\u1ECFa h\u1ED3 b\xF9ng ch\xE1y \u0111u\xF4i l\u1EEDa cam-\u0111\u1ECF", "Blazing fox fire arrow with flame plume"), passive: me("longhoi", "passive", "passive", "#EF4444", "#4C0D07", "H\u1ECFa h\u1ED3 r\u1EF1c ch\xE1y v\u1EDBi v\xF2ng h\xFAt m\xE1u & thi\xEAu \u0111\u1ED1t", "Inferno fox crest with lifesteal flame ring"), c1: me("longhoi", "c1", "active", "#F97316", "#450F06", "H\u1ED3 H\u1ECFa Cung b\u1EAFn 3 m\u0169i h\u1ECFa ti\u1EC5n thi\xEAu \u0111\u1ED1t song song", "Triple flaming fox fire arrows volley"), c2: me("longhoi", "c2", "movement", "#FB923C", "#4A0B0A", "\u1EA2o \u1EA3nh h\u1ED3 ly 9 \u0111u\xF4i r\u1EF1c l\u1EEDa l\u01B0\u1EDBt x\xE9 gi\xF3", "Nine-tailed blazing fox phantom dash"), c3: me("longhoi", "c3", "ultimate", "#FEF08A", "#450A05", "T\xEAn l\u1EEDa h\u1ECFa h\u1ED3 bay ziczac t\u1EA1o bi\u1EC3n l\u1EEDa li\u1EC7t di\u1EC5m", "Zigzag fox missiles diving into inferno sea") }, duccong: { atk: me("duccong", "atk", "basic", "#A78BFA", "#2E1065", "Tr\u01B0\u1EE3ng h\u1ED1 \u0111en b\u1EAFn tia n\u0103ng l\u01B0\u1EE3ng tinh v\xE2n t\xEDm", "Nebula black hole staff firing void ray"), passive: me("duccong", "passive", "passive", "#C084FC", "#270E59", "Ch\xF2m sao tinh t\xFA h\u1ED9i t\u1EE5 c\xF9ng l\xF5i sinh m\u1EC7nh l\u1EE5c-t\xEDm", "3-star cosmic constellation & life core"), c1: me("duccong", "c1", "active", "#A78BFA", "#2B0D61", "Tinh c\u1EA7u sao ch\u1ED5i t\xEDm truy k\xEDch xuy\xEAn m\u1EE5c ti\xEAu", "Piercing violet cosmic comet orb"), c2: me("duccong", "c2", "active", "#C084FC", "#240954", "H\u1ED1 \u0111en ch\xE2n tr\u1EDDi s\u1EF1 ki\u1EC7n h\xFAt xo\xE1y c\u1EF1c m\u1EA1nh v\xE0o t\xE2m", "Event horizon black hole pulling inward"), c3: me("duccong", "c3", "ultimate", "#FDE047", "#2E0A5E", "D\u1EA3i ng\xE2n h\xE0 xo\xE1y tr\xF2n s\u1EE5p \u0111\u1ED5 b\xF9ng n\u1ED5 b\u1EE5i sao t\xEDm", "Spiral galaxy collapsing in stardust explosion") }, gau: { atk: me("gau", "atk", "basic", "#F59E0B", "#431407", "Thi\u1EBFt quy\u1EC1n chi\u1EBFn gi\xE1p tung li\xEAn ho\xE0n 3 c\xFA \u0111\u1EA5m", "Iron bear gauntlet 3-punch chain", At("gau", "atk")), passive: me("gau", "passive", "passive", "#F97316", "#450A0A", "L\u1EEDa Cu\u1ED3ng H\xF9ng b\xF9ng ch\xE1y khi \u0111\u1EA1t 100 \u0111i\u1EC3m N\u1ED9", "Berserk Bear flame core at 100 Rage", At("gau", "passive")), c1: me("gau", "c1", "active", "#FBBF24", "#431407", "H\xF9ng Quy\u1EC1n Li\xEAn K\xEDch 3 nh\u1ECBp ch\u1EA5n \u0111\u1ED9ng m\u1EB7t \u0111\u1EA5t", "3-step Bear Combo smashing ground", At("gau", "c1")), c2: me("gau", "c2", "defense", "#F59E0B", "#1E293B", "Khi\xEAn Thi\u1EBFt B\xEDch ph\u1EA3n ch\u1EA5n 4 t\u1EA7ng s\u1EE9c m\u1EA1nh", "Iron Bastion guard & counter slam", At("gau", "c2")), c3: me("gau", "c3", "ultimate", "#EF4444", "#450A0A", "Cu\u1ED3ng H\xF9ng Gi\xE1ng L\xE2m nh\u1EA3y \u0111\u1EADp v\u1EE1 \u0111\u1ECBa ch\u1EA5n", "Meteor bear leap slamming seismic field", At("gau", "c3")) }, bao: { atk: me("bao", "atk", "basic", "#C084FC", "#2E1065", "Song \u0111ao nguy\u1EC7t \u1EA3nh kh\u1EAFc d\u1EA5u \u1EA2nh \u1EA4n", "Twin shadow daggers carving Shadow Marks", At("bao", "atk")), passive: me("bao", "passive", "passive", "#E879F9", "#3B0764", "\u1EA2nh \u1EA4n 5 t\u1EA7ng k\xEDch n\u1ED5 T\u1EED \u1EA4n & h\u1ED3i 40% C1", "5-stack Shadow Mark Death Seal trigger", At("bao", "passive")), c1: me("bao", "c1", "movement", "#38BDF8", "#2E1065", "\u1EA2nh B\u1ED9 Tam Tr\u1EA3m l\u01B0\u1EDBt ch\xE9m 3 nh\xE1t + Ho\xE1n V\u1ECB", "Shadow 3-slash dash with quick recast", At("bao", "c1")), c2: me("bao", "c2", "active", "#A855F7", "#1E1B4B", "V\xF4 \u1EA2nh Ho\xE1n V\u1ECB kh\xF3i t\xEDm t\xE0ng h\xECnh 1.5s t\u1EADp k\xEDch", "Purple smoke 1.5s stealth backstab", At("bao", "c2")), c3: me("bao", "c3", "ultimate", "#F43F5E", "#3B0764", "V\u1EA1n \u1EA2nh T\xE0n S\xE1t g\u1ECDi 4 ph\xE2n th\xE2n k\u1EBFt li\u1EC5u", "Four shadow clones finishing Death Seal", At("bao", "c3")) }, danh: { atk: me("danh", "atk", "basic", "#EF4444", "#450A0A", "Tr\u1ECDng ki\u1EBFm Long H\u1ED3n ch\xE9m 3 nh\xE1t r\u1ED9ng", "Dragon greatsword 3-hit wide cleave", At("danh", "atk")), passive: me("danh", "passive", "passive", "#F59E0B", "#431407", "Tam Ki\u1EBFm Th\u1EBF: Khai S\u01A1n, Long Ng\xE2m, Thi\xEAn Ph\u1EA1t", "Three Sword Stances chain emblem", At("danh", "passive")), c1: me("danh", "c1", "active", "#F97316", "#450A0A", "Ph\xE1 S\u01A1n Tam Tr\u1EA3m t\u1EE5 l\u1EF1c b\u1EAFn Ki\u1EBFm Kh\xED xa", "3-step cleave with hold-charged aura wave", At("danh", "c1")), c2: me("danh", "c2", "movement", "#EF4444", "#450A0A", "Long H\u1ED3n Ph\xE1 Tr\u1EADn t\u1EE5 l\u1EF1c ph\xF3ng R\u1ED3ng \u0110\u1ECF", "Hold-to-charge Red Dragon breakthrough", At("danh", "c2")), c3: me("danh", "c3", "ultimate", "#FEF08A", "#450A0A", "H\xF3a R\u1ED3ng (Ch\xE2n Long Gi\xE1ng Th\u1EBF) kh\u1EA1t l\u1EEDa & mi\u1EC5n kh\u1ED1ng", "Dragon Ascension transforming attacks into fire breath", HERO_SKILL_ICONS.danh.c3) }, luan: { atk: me("luan", "atk", "basic", "#C084FC", "#2E1065", "L\xF5i C\u1EA7u H\u1EE7y Di\u1EC7t ph\xF3ng c\u1EA7u ph\xE9p & kh\u1EAFc v\u1EBFt n\u1EE9t", "Void orb firing & carving spatial rifts", HERO_SKILL_ICONS.luan.atk), passive: me("luan", "passive", "passive", "#E879F9", "#3B0764", "V\u1EBFt N\u1EE9t Kh\xF4ng Gian k\u1EBFt n\u1ED1i & H\xFAt 18% s\xE1t th\u01B0\u01A1ng ph\xE9p", "Connected rifts & 18% magic spell vamp", HERO_SKILL_ICONS.luan.passive), c1: me("luan", "c1", "active", "#E879F9", "#2E1065", "B\u1EAFn 5 M\u1EA3nh V\u1EE1 Kh\xF4ng Gian xuy\xEAn qu\xE1i & t\xE1ch lu\u1ED3ng qua c\u1ED5ng", "5-shard piercing arcane fan splitting through portals", HERO_SKILL_ICONS.luan.c1), c2: me("luan", "c2", "active", "#67E8F9", "#1E1B4B", "M\u1EDF 3 C\u1ED5ng G\u01B0\u01A1ng Kh\xF4ng Gian d\u1ECBch chuy\u1EC3n & t\xE1i k\xEDch n\u1ED5", "3 linked spatial portals warping foes & recast detonation", HERO_SKILL_ICONS.luan.c2), c3: me("luan", "c3", "ultimate", "#67E8F9", "#2E1065", "Tia H\u1EE7y Di\u1EC7t Ph\xE2n Nh\xE1nh xuy\xEAn c\u1ED5ng qu\xE9t to\xE0n \u0111\u1EA5u tr\u01B0\u1EDDng", "Annihilation laser branching across all portals", HERO_SKILL_ICONS.luan.c3) }, taidu: { atk: me("taidu", "atk", "basic", "#F59E0B", "#2B1806", "Li\xEAn thanh ph\xE1o c\u01A1 gi\u1EDBi x\u1EA3 \u0111\u1EA1n li\xEAn t\u1EE5c", "Rapid rotary twin cannon barrage", HERO_SKILL_ICONS.taidu.atk), passive: me("taidu", "passive", "passive", "#38BDF8", "#0C2D48", "3 Drone V\u1EC7 Tinh: T\u1EA5n C\xF4ng, B\u1EA3o V\u1EC7, Truy S\xE1t", "Triple tactical drones cycling modes", HERO_SKILL_ICONS.taidu.passive), c1: me("taidu", "c1", "active", "#38BDF8", "#082F49", "Ph\xE1o T\u1EF1 \u0110\u1ED9ng chuy\u1EC3n ch\u1EBF \u0111\u1ED9 Drone \u0111a n\u0103ng", "Switch tactical drone mode & auto-turret", HERO_SKILL_ICONS.taidu.c1), c2: me("taidu", "c2", "active", "#F97316", "#431407", "Tam T\xEAn L\u1EEDa T\u1EA7m Nhi\u1EC7t truy \u0111u\u1ED5i m\u1EE5c ti\xEAu", "Triple homing heat-seeking missiles", HERO_SKILL_ICONS.taidu.c2), c3: me("taidu", "c3", "ultimate", "#EF4444", "#450A0A", "M\u01B0a T\xEAn L\u1EEDa Oanh T\u1EA1c r\u1EA3i th\u1EA3m h\u1EE7y di\u1EC7t", "Carpet missile strike across target lane", HERO_SKILL_ICONS.taidu.c3) }, nguyen: { atk: me("nguyen", "atk", "basic", "#34D399", "#064E3B", "Tr\u01B0\u1EE3ng sinh m\u1EC7nh qu\u1EA9t s\xF3ng l\u1EE5c quang", "Emerald life staff wave strike", HERO_SKILL_ICONS.nguyen.atk), passive: me("nguyen", "passive", "passive", "#6EE7B7", "#044E3C", "Chuy\u1EC3n 100% h\u1ED3i m\xE1u d\u01B0 th\xE0nh l\xE1 ch\u1EAFn +60% khi th\u1EA5p m\xE1u", "100% overheal shield & +60% low-HP heal amp", HERO_SKILL_ICONS.nguyen.passive), c1: me("nguyen", "c1", "active", "#34D399", "#064E3B", "S\xF3ng Sinh M\u1EC7nh h\u1ED3i m\xE1u \u0111\u1ED3ng minh & s\xE1t th\u01B0\u01A1ng qu\xE1i", "Life wave healing allies & damaging enemies", HERO_SKILL_ICONS.nguyen.c1), c2: me("nguyen", "c2", "defense", "#6EE7B7", "#065F46", "Tam V\u1EC7 Tinh H\u1ED9 M\u1EC7nh xoay quanh h\u1ED3i ph\u1EE5c", "Three orbiting healing guardian satellites", HERO_SKILL_ICONS.nguyen.c2), c3: me("nguyen", "c3", "ultimate", "#FDE047", "#064E3B", "\u0110\u1EA1i H\u1ED3i Ph\u1EE5c b\xF9ng n\u1ED5 v\xF2ng th\xE1nh quang t\u1EA1o khi\xEAn", "Grand restorative field & AoE blast", HERO_SKILL_ICONS.nguyen.c3) }, phong: { atk: me("phong", "atk", "basic", "#22D3EE", "#082F49", "Song ki\u1EBFm n\u0103ng l\u01B0\u1EE3ng xanh ch\xE9m b\xF3ng \u1EA3nh t\u1ED1c \u0111\u1ED9", "Twin azure energy blades speed slash", HERO_SKILL_ICONS.phong.atk), passive: me("phong", "passive", "passive", "#0EA5E9", "#082F49", "\u1EA2nh \u1EA3o xanh t\u1EF1 \u0111\u1ED9ng t\u1EA5n c\xF4ng & h\u1ED3i m\xE1u gi\u1EA3m h\u1ED3i chi\xEAu khi h\u1EA1 g\u1EE5c", "Autonomous cyan illusion & kill heal/CD refund", HERO_SKILL_ICONS.phong.passive), c1: me("phong", "c1", "movement", "#22D3EE", "#082F49", "Tam \u1EA2nh Tr\u1EA3m l\u01B0\u1EDBt ch\xE9m 3 l\u1EA7n v\u1EDBi nh\xE1t cu\u1ED1i ch\xED m\u1EA1ng", "Triple dash slash with guaranteed final crit", HERO_SKILL_ICONS.phong.c1), c2: me("phong", "c2", "movement", "#38BDF8", "#0C4A6E", "Ho\xE1n \u1EA2nh \u0111\u1ED5i v\u1ECB tr\xED v\u1EDBi \u1EA3nh \u1EA3o b\xF9ng n\u1ED5 s\xE1t th\u01B0\u01A1ng", "Swap with nearest shadow illusion & AoE burst", HERO_SKILL_ICONS.phong.c2), c3: me("phong", "c3", "ultimate", "#F43F5E", "#082F49", "T\u1EED Th\u1EA7n Gi\xE1ng L\xE2m \u0111\xE1nh d\u1EA5u & k\u1EBFt li\u1EC5u theo m\xE1u \u0111\xE3 m\u1EA5t", "Mark & execute flurry scaling by missing HP", HERO_SKILL_ICONS.phong.c3) }, dang: { atk: me("dang", "atk", "basic", "#F8FAFC", "#18181B", "Song quy\u1EC1n h\u1ED5 kh\xED tr\u1EAFng \u0111en t\u1EA5n c\xF4ng c\u1EADn chi\u1EBFn", "Yin-Yang tiger energy gauntlets strike", HERO_SKILL_ICONS.dang.atk), passive: me("dang", "passive", "passive", "#F8FAFC", "#09090B", "H\u1ED5 Ph\xE1ch Cu\u1ED3ng Quy\u1EC1n t\xEDch n\u1ED9 tung H\u1ED5 Quy\u1EC1n di\u1EC7n r\u1ED9ng", "Rage-fueled empowered AoE Tiger Fist & heal", HERO_SKILL_ICONS.dang.passive), c1: me("dang", "c1", "active", "#F8FAFC", "#18181B", "B\u1EA1ch H\u1ED5 Ph\xE1 S\u01A1n ph\xF3ng 3 s\xF3ng quy\u1EC1n kh\xED h\u00ECnh h\u1ED5", "Triple tiger-qi waves healing per target hit", HERO_SKILL_ICONS.dang.c1), c2: me("dang", "c2", "defense", "#CBD5E1", "#09090B", "H\u1EAFc H\u1ED5 H\u1ED9 Th\u1EC3 gi\xE1p kh\xED gi\u1EA3m s\xE1t th\u01B0\u01A1ng & ph\u1EA3n \u0111\xF2n", "Black-white qi armor DR, counter & knockback boom", HERO_SKILL_ICONS.dang.c2), c3: me("dang", "c3", "ultimate", "#F8FAFC", "#09090B", "H\u1ED5 Quy\u1EC1n Di\u1EC7t Th\u1EBF 5 quy\u1EC1n li\xEAn ho\xE0n & \u0111\u1EA7u h\u1ED5 kh\u1ED5ng l\u1ED3", "5-punch flurry summoning giant roaring tiger head", HERO_SKILL_ICONS.dang.c3) } };
+var me = (s, a, l, m, c, g, p, h) => ({ id: `${s}_${a}`, heroId: s, skillId: a, category: l, elementColor: m, bgDark: c, png512: `/assets/skills/${s}_${a}.png`, png128: `/assets/skills/128/${s}_${a}.png`, svgDataUrl: h, concept: { vi: g, en: p } }), bm = { dung: { atk: me("dung", "atk", "basic", "#38BDF8", "#0B3A5C", "L\xF4i Long Th\u01B0\u01A1ng ph\xF3ng tia s\xE9t ch\xE9m d\u1ECDc", "Thunder spear thrust with electric arc"), passive: me("dung", "passive", "passive", "#FDE047", "#0A2E4D", "L\xF5i s\u1EA5m s\xE9t ph\xE2n nh\xE1nh 5 tia \u0111i\u1EC7n quang", "5-branch chain lightning core"), c1: me("dung", "c1", "movement", "#38BDF8", "#0D3B66", "Chi\u1EBFn th\u1EA7n ch\u1ED1ng th\u01B0\u01A1ng l\u01B0\u1EDBt b\u1ECDc s\xE9t c\u1EF1c quang", "Aurora lightning spear dash leaving scorch"), c2: me("dung", "c2", "defense", "#F59E0B", "#45120A", "Cu\u1ED3ng chi\u1EBFn huy\u1EBFt m\u1EA1ch b\xF9ng ch\xE1y s\u1EA5m l\u1EEDa", "Crimson rage & lightning vitality crest"), c3: me("dung", "c3", "ultimate", "#FDE047", "#083D6E", "C\u1ED9t s\xE9t c\u1EF1c quang gi\xE1ng th\u1EB3ng xu\u1ED1ng \u0111\u1EA5u tr\u01B0\u1EDDng", "God of War sky lightning pillar impact") }, tin: { atk: me("tin", "atk", "basic", "#F43F5E", "#4C0519", "Song \u0111ao h\u01B0 kh\xF4ng ch\xE9m ch\xE9o ch\u1EEF X \u0111\u1ECF r\u1EF1c", "Void dual blades crossing in crimson tear"), passive: me("tin", "passive", "passive", "#FB7185", "#3B0718", "V\u1EBFt r\xE1ch kh\xF4ng gian c\xF9ng 3 \u1EA5n k\xFD huy\u1EBFt \u1EA3nh", "Floating spatial rift & 3 blood marks"), c1: me("tin", "c1", "movement", "#F43F5E", "#450A1F", "Hai b\xF3ng \u1EA3nh s\xE1t th\u1EE7 l\u01B0\u1EDBt x\xE9 kh\xF4ng gian", "Two-charge shadow phantom dash trails"), c2: me("tin", "c2", "active", "#FB7185", "#4C0519", "Tinh th\u1EC3 \u0111\u1ECF r\u1EF1c ghim ch\u1EB7t t\u1ECFa v\xF2ng t\u1EEB tr\u01B0\u1EDDng", "Pinned crimson crystal radiating pulse ring"), c3: me("tin", "c3", "ultimate", "#F43F5E", "#18181B", "L\xE3nh \u0111\u1ECBa \u0111\u1EA3o s\u1EAFc Tr\u1EAFng-\u0110en v\u1EDBi nh\xE1t ch\xE9m x\xE9 m\xE0n", "Monochrome Sumi-e realm razor slashes") }, kin: { atk: me("kin", "atk", "basic", "#34D399", "#064E3B", "M\u0169i t\xEAn phong th\u1EA7n xanh ng\u1ECDc mang lu\u1ED3ng gi\xF3 xo\xE1y", "Jade wind arrow cutting with slipstream"), passive: me("kin", "passive", "passive", "#6EE7B7", "#064E3B", "M\u0169i t\xEAn xuy\xEAn t\xE2m cu\u1ED9n trong c\u01A1n l\u1ED1c xo\xE1y nhi\u1EC1u t\u1EA7ng", "Giant arrow wrapped in layered tornado vortex"), c1: me("kin", "c1", "active", "#34D399", "#065F46", "Cung th\u1EA7n b\u1EAFn ra 3 m\u0169i t\xEAn b\xE3o t\u1ED1 x\u1EBFp qu\u1EA1t", "Triple skybreaker arrows fanning outward"), c2: me("kin", "c2", "movement", "#6EE7B7", "#044E3C", "\u0110\xF4i c\xE1nh gi\xF3 phong linh tung lu\u1ED3ng kh\xED tho\xE1i b\u1ED9", "Radiant jade wind wings vaulting backward"), c3: me("kin", "c3", "ultimate", "#FDE047", "#064E3B", "C\u01A1n b\xE3o l\u1ED1c xo\xE1y kh\u1ED5ng l\u1ED3 tr\xFAt v\u1EA1n m\u0169i t\xEAn gi\xF3", "Colossal tornado storm raining wind arrows") }, trung: { atk: me("trung", "atk", "basic", "#818CF8", "#1E1B4B", "Qu\u1EA3 c\u1EA7u tinh v\xE2n tr\u1ECDng l\u1EF1c xoay v\xF2ng \xE1nh s\xE1ng", "Cosmic gravity orb with planetary ring"), passive: me("trung", "passive", "passive", "#A5B4FC", "#1E1B4B", "Tam gi\xE1c 3 \u1EA5n ma l\u1EF1c h\u1ED9i t\u1EE5 ph\xE1t n\u1ED5 trung t\xE2m", "3-node arcane triangle converging star burst"), c1: me("trung", "c1", "active", "#38BDF8", "#0C3B5E", "Tinh c\u1EA7u b\u0103ng ng\u1ECDc b\u1ED9c ph\xE1 tinh th\u1EC3 lam-t\xEDm", "Glacial jade orb shattering in frost spikes"), c2: me("trung", "c2", "defense", "#A5B4FC", "#1E1B4B", "Khi\xEAn h\u1ED9 v\u1EC7 c\xF9ng 6 c\u1EA7u ma ph\xE1p xoay tr\xF2n quanh t\xE2m", "Guardian shield encircled by 6 revolving orbs"), c3: me("trung", "c3", "ultimate", "#F97316", "#4A1206", "\u0110\u1EA1i thi\xEAn th\u1EA1ch r\u1EF1c l\u1EEDa lao xu\u1ED1ng h\u1ED1 dung nham", "Flaming meteor crashing into molten crater") }, eohyen: { atk: me("eohyen", "atk", "basic", "#38BDF8", "#083358", "B\u0103ng Nguy\u1EC7t Ki\u1EBFm vung nh\xE1t tr\u0103ng khuy\u1EBFt h\xE0n b\u0103ng", "Glacial blade crescent frost slash"), passive: me("eohyen", "passive", "passive", "#BAE6FD", "#063B59", "B\xF4ng tuy\u1EBFt h\xE0n kh\xED t\u1ECFa v\xF2ng s\u01B0\u01A1ng & l\xF5i h\u1ED3i ph\u1EE5c", "Frost snowflake chill aura & emerald core"), c1: me("eohyen", "c1", "active", "#38BDF8", "#08375C", "Nguy\u1EC7t tr\u1EA3m ghim 3 c\u1ECDc b\u0103ng nh\u1ECDn xu\u1ED1ng m\u1EB7t \u0111\u1EA5t", "Crescent slash pinning 3 sharp ice spikes"), c2: me("eohyen", "c2", "defense", "#7DD3FC", "#07365B", "Gi\xE1p l\u1EE5c gi\xE1c b\u0103ng t\xE2m ph\xF3ng 6 c\u1ECDc b\u0103ng h\u1ED9 th\u1EC3", "Hexagonal frost heart barrier & 6 radial spikes"), c3: me("eohyen", "c3", "ultimate", "#E0F2FE", "#06325C", "M\u01B0a c\u1ECDc b\u0103ng d\u1ED3n d\u1EADp & kh\u1ED1i pha l\xEA \u0111\xF3ng b\u0103ng c\u1EE9ng", "Icicle barrage encasing target in ice prison") }, longhoi: { atk: me("longhoi", "atk", "basic", "#F97316", "#451205", "M\u0169i t\xEAn h\u1ECFa h\u1ED3 b\xF9ng ch\xE1y \u0111u\xF4i l\u1EEDa cam-\u0111\u1ECF", "Blazing fox fire arrow with flame plume"), passive: me("longhoi", "passive", "passive", "#EF4444", "#4C0D07", "H\u1ECFa h\u1ED3 r\u1EF1c ch\xE1y v\u1EDBi v\xF2ng h\xFAt m\xE1u & thi\xEAu \u0111\u1ED1t", "Inferno fox crest with lifesteal flame ring"), c1: me("longhoi", "c1", "active", "#F97316", "#450F06", "H\u1ED3 H\u1ECFa Cung b\u1EAFn 3 m\u0169i h\u1ECFa ti\u1EC5n thi\xEAu \u0111\u1ED1t song song", "Triple flaming fox fire arrows volley"), c2: me("longhoi", "c2", "movement", "#FB923C", "#4A0B0A", "\u1EA2o \u1EA3nh h\u1ED3 ly 9 \u0111u\xF4i r\u1EF1c l\u1EEDa l\u01B0\u1EDBt x\xE9 gi\xF3", "Nine-tailed blazing fox phantom dash"), c3: me("longhoi", "c3", "ultimate", "#FEF08A", "#450A05", "T\xEAn l\u1EEDa h\u1ECFa h\u1ED3 bay ziczac t\u1EA1o bi\u1EC3n l\u1EEDa li\u1EC7t di\u1EC5m", "Zigzag fox missiles diving into inferno sea") }, duccong: { atk: me("duccong", "atk", "basic", "#A78BFA", "#2E1065", "Tr\u01B0\u1EE3ng h\u1ED1 \u0111en b\u1EAFn tia n\u0103ng l\u01B0\u1EE3ng tinh v\xE2n t\xEDm", "Nebula black hole staff firing void ray"), passive: me("duccong", "passive", "passive", "#C084FC", "#270E59", "Ch\xF2m sao tinh t\xFA h\u1ED9i t\u1EE5 c\xF9ng l\xF5i sinh m\u1EC7nh l\u1EE5c-t\xEDm", "3-star cosmic constellation & life core"), c1: me("duccong", "c1", "active", "#A78BFA", "#2B0D61", "Tinh c\u1EA7u sao ch\u1ED5i t\xEDm truy k\xEDch xuy\xEAn m\u1EE5c ti\xEAu", "Piercing violet cosmic comet orb"), c2: me("duccong", "c2", "active", "#C084FC", "#240954", "H\u1ED1 \u0111en ch\xE2n tr\u1EDDi s\u1EF1 ki\u1EC7n h\xFAt xo\xE1y c\u1EF1c m\u1EA1nh v\xE0o t\xE2m", "Event horizon black hole pulling inward"), c3: me("duccong", "c3", "ultimate", "#FDE047", "#2E0A5E", "D\u1EA3i ng\xE2n h\xE0 xo\xE1y tr\xF2n s\u1EE5p \u0111\u1ED5 b\xF9ng n\u1ED5 b\u1EE5i sao t\xEDm", "Spiral galaxy collapsing in stardust explosion") }, gau: { atk: me("gau", "atk", "basic", "#F59E0B", "#431407", "Thi\u1EBFt quy\u1EC1n chi\u1EBFn gi\xE1p tung li\xEAn ho\xE0n 3 c\xFA \u0111\u1EA5m", "Iron bear gauntlet 3-punch chain", At("gau", "atk")), passive: me("gau", "passive", "passive", "#F97316", "#450A0A", "L\u1EEDa Cu\u1ED3ng H\xF9ng b\xF9ng ch\xE1y khi \u0111\u1EA1t 100 \u0111i\u1EC3m N\u1ED9", "Berserk Bear flame core at 100 Rage", At("gau", "passive")), c1: me("gau", "c1", "active", "#FBBF24", "#431407", "H\xF9ng Quy\u1EC1n Li\xEAn K\xEDch 3 nh\u1ECBp ch\u1EA5n \u0111\u1ED9ng m\u1EB7t \u0111\u1EA5t", "3-step Bear Combo smashing ground", At("gau", "c1")), c2: me("gau", "c2", "defense", "#F59E0B", "#1E293B", "Khi\xEAn Thi\u1EBFt B\xEDch ph\u1EA3n ch\u1EA5n 4 t\u1EA7ng s\u1EE9c m\u1EA1nh", "Iron Bastion guard & counter slam", At("gau", "c2")), c3: me("gau", "c3", "ultimate", "#EF4444", "#450A0A", "Cu\u1ED3ng H\xF9ng Gi\xE1ng L\xE2m nh\u1EA3y \u0111\u1EADp v\u1EE1 \u0111\u1ECBa ch\u1EA5n", "Meteor bear leap slamming seismic field", At("gau", "c3")) }, bao: { atk: me("bao", "atk", "basic", "#C084FC", "#2E1065", "Song \u0111ao nguy\u1EC7t \u1EA3nh kh\u1EAFc d\u1EA5u \u1EA2nh \u1EA4n", "Twin shadow daggers carving Shadow Marks", At("bao", "atk")), passive: me("bao", "passive", "passive", "#E879F9", "#3B0764", "\u1EA2nh \u1EA4n 5 t\u1EA7ng k\xEDch n\u1ED5 T\u1EED \u1EA4n & h\u1ED3i 40% C1", "5-stack Shadow Mark Death Seal trigger", At("bao", "passive")), c1: me("bao", "c1", "movement", "#38BDF8", "#2E1065", "\u1EA2nh B\u1ED9 Tam Tr\u1EA3m l\u01B0\u1EDBt ch\xE9m 3 nh\xE1t + Ho\xE1n V\u1ECB", "Shadow 3-slash dash with quick recast", At("bao", "c1")), c2: me("bao", "c2", "active", "#A855F7", "#1E1B4B", "V\xF4 \u1EA2nh Ho\xE1n V\u1ECB kh\xF3i t\xEDm t\xE0ng h\xECnh 1.5s t\u1EADp k\xEDch", "Purple smoke 1.5s stealth backstab", At("bao", "c2")), c3: me("bao", "c3", "ultimate", "#F43F5E", "#3B0764", "V\u1EA1n \u1EA2nh T\xE0n S\xE1t g\u1ECDi 4 ph\xE2n th\xE2n k\u1EBFt li\u1EC5u", "Four shadow clones finishing Death Seal", At("bao", "c3")) }, danh: { atk: me("danh", "atk", "basic", "#EF4444", "#450A0A", "Tr\u1ECDng ki\u1EBFm Long H\u1ED3n ch\xE9m 3 nh\xE1t r\u1ED9ng", "Dragon greatsword 3-hit wide cleave", At("danh", "atk")), passive: me("danh", "passive", "passive", "#F59E0B", "#431407", "Tam Ki\u1EBFm Th\u1EBF: Khai S\u01A1n, Long Ng\xE2m, Thi\xEAn Ph\u1EA1t", "Three Sword Stances chain emblem", At("danh", "passive")), c1: me("danh", "c1", "active", "#F97316", "#450A0A", "Ph\xE1 S\u01A1n Tam Tr\u1EA3m t\u1EE5 l\u1EF1c b\u1EAFn Ki\u1EBFm Kh\xED xa", "3-step cleave with hold-charged aura wave", At("danh", "c1")), c2: me("danh", "c2", "movement", "#EF4444", "#450A0A", "Long H\u1ED3n Ph\xE1 Tr\u1EADn t\u1EE5 l\u1EF1c ph\xF3ng R\u1ED3ng \u0110\u1ECF", "Hold-to-charge Red Dragon breakthrough", At("danh", "c2")), c3: me("danh", "c3", "ultimate", "#FEF08A", "#450A0A", "H\xF3a R\u1ED3ng (Ch\xE2n Long Gi\xE1ng Th\u1EBF) kh\u1EA1t l\u1EEDa & mi\u1EC5n kh\u1ED1ng", "Dragon Ascension transforming attacks into fire breath", HERO_SKILL_ICONS.danh.c3) }, luan: { atk: me("luan", "atk", "basic", "#C084FC", "#2E1065", "L\xF5i C\u1EA7u H\u1EE7y Di\u1EC7t ph\xF3ng c\u1EA7u ph\xE9p & kh\u1EAFc v\u1EBFt n\u1EE9t", "Void orb firing & carving spatial rifts", HERO_SKILL_ICONS.luan.atk), passive: me("luan", "passive", "passive", "#E879F9", "#3B0764", "V\u1EBFt N\u1EE9t Kh\xF4ng Gian k\u1EBFt n\u1ED1i & H\xFAt 18% s\xE1t th\u01B0\u01A1ng ph\xE9p", "Connected rifts & 18% magic spell vamp", HERO_SKILL_ICONS.luan.passive), c1: me("luan", "c1", "active", "#E879F9", "#2E1065", "B\u1EAFn 5 M\u1EA3nh V\u1EE1 Kh\xF4ng Gian xuy\xEAn qu\xE1i & t\xE1ch lu\u1ED3ng qua c\u1ED5ng", "5-shard piercing arcane fan splitting through portals", HERO_SKILL_ICONS.luan.c1), c2: me("luan", "c2", "active", "#67E8F9", "#1E1B4B", "M\u1EDF 3 C\u1ED5ng G\u01B0\u01A1ng Kh\xF4ng Gian d\u1ECBch chuy\u1EC3n & t\xE1i k\xEDch n\u1ED5", "3 linked spatial portals warping foes & recast detonation", HERO_SKILL_ICONS.luan.c2), c3: me("luan", "c3", "ultimate", "#67E8F9", "#2E1065", "Tia H\u1EE7y Di\u1EC7t Ph\xE2n Nh\xE1nh xuy\xEAn c\u1ED5ng qu\xE9t to\xE0n \u0111\u1EA5u tr\u01B0\u1EDDng", "Annihilation laser branching across all portals", HERO_SKILL_ICONS.luan.c3) }, taidu: { atk: me("taidu", "atk", "basic", "#F59E0B", "#2B1806", "Li\xEAn thanh ph\xE1o c\u01A1 gi\u1EDBi x\u1EA3 \u0111\u1EA1n li\xEAn t\u1EE5c", "Rapid rotary twin cannon barrage", HERO_SKILL_ICONS.taidu.atk), passive: me("taidu", "passive", "passive", "#38BDF8", "#0C2D48", "3 Drone V\u1EC7 Tinh: T\u1EA5n C\xF4ng, B\u1EA3o V\u1EC7, Truy S\xE1t", "Triple tactical drones cycling modes", HERO_SKILL_ICONS.taidu.passive), c1: me("taidu", "c1", "active", "#38BDF8", "#082F49", "Ph\xE1o T\u1EF1 \u0110\u1ED9ng chuy\u1EC3n ch\u1EBF \u0111\u1ED9 Drone \u0111a n\u0103ng", "Switch tactical drone mode & auto-turret", HERO_SKILL_ICONS.taidu.c1), c2: me("taidu", "c2", "active", "#F97316", "#431407", "Tam T\xEAn L\u1EEDa T\u1EA7m Nhi\u1EC7t truy \u0111u\u1ED5i m\u1EE5c ti\xEAu", "Triple homing heat-seeking missiles", HERO_SKILL_ICONS.taidu.c2), c3: me("taidu", "c3", "ultimate", "#EF4444", "#450A0A", "M\u01B0a T\xEAn L\u1EEDa Oanh T\u1EA1c r\u1EA3i th\u1EA3m h\u1EE7y di\u1EC7t", "Carpet missile strike across target lane", HERO_SKILL_ICONS.taidu.c3) }, nguyen: { atk: me("nguyen", "atk", "basic", "#34D399", "#064E3B", "Tr\u01B0\u1EE3ng sinh m\u1EC7nh qu\u1EA9t s\xF3ng l\u1EE5c quang", "Emerald life staff wave strike", HERO_SKILL_ICONS.nguyen.atk), passive: me("nguyen", "passive", "passive", "#6EE7B7", "#044E3C", "Chuy\u1EC3n 100% h\u1ED3i m\xE1u d\u01B0 th\xE0nh l\xE1 ch\u1EAFn +60% khi th\u1EA5p m\xE1u", "100% overheal shield & +60% low-HP heal amp", HERO_SKILL_ICONS.nguyen.passive), c1: me("nguyen", "c1", "active", "#34D399", "#064E3B", "S\xF3ng Sinh M\u1EC7nh h\u1ED3i m\xE1u \u0111\u1ED3ng minh & s\xE1t th\u01B0\u01A1ng qu\xE1i", "Life wave healing allies & damaging enemies", HERO_SKILL_ICONS.nguyen.c1), c2: me("nguyen", "c2", "defense", "#6EE7B7", "#065F46", "Tam V\u1EC7 Tinh H\u1ED9 M\u1EC7nh xoay quanh h\u1ED3i ph\u1EE5c", "Three orbiting healing guardian satellites", HERO_SKILL_ICONS.nguyen.c2), c3: me("nguyen", "c3", "ultimate", "#FDE047", "#064E3B", "\u0110\u1EA1i H\u1ED3i Ph\u1EE5c b\xF9ng n\u1ED5 v\xF2ng th\xE1nh quang t\u1EA1o khi\xEAn", "Grand restorative field & AoE blast", HERO_SKILL_ICONS.nguyen.c3) }, phong: { atk: me("phong", "atk", "basic", "#22D3EE", "#082F49", "Song ki\u1EBFm n\u0103ng l\u01B0\u1EE3ng xanh ch\xE9m b\xF3ng \u1EA3nh t\u1ED1c \u0111\u1ED9", "Twin azure energy blades speed slash", HERO_SKILL_ICONS.phong.atk), passive: me("phong", "passive", "passive", "#0EA5E9", "#082F49", "\u1EA2nh \u1EA3o xanh t\u1EF1 \u0111\u1ED9ng t\u1EA5n c\xF4ng & h\u1ED3i m\xE1u gi\u1EA3m h\u1ED3i chi\xEAu khi h\u1EA1 g\u1EE5c", "Autonomous cyan illusion & kill heal/CD refund", HERO_SKILL_ICONS.phong.passive), c1: me("phong", "c1", "movement", "#22D3EE", "#082F49", "Tam \u1EA2nh Tr\u1EA3m l\u01B0\u1EDBt ch\xE9m 3 l\u1EA7n v\u1EDBi nh\xE1t cu\u1ED1i ch\xED m\u1EA1ng", "Triple dash slash with guaranteed final crit", HERO_SKILL_ICONS.phong.c1), c2: me("phong", "c2", "movement", "#38BDF8", "#0C4A6E", "Ho\xE1n \u1EA2nh \u0111\u1ED5i v\u1ECB tr\xED v\u1EDBi \u1EA3nh \u1EA3o b\xF9ng n\u1ED5 s\xE1t th\u01B0\u01A1ng", "Swap with nearest shadow illusion & AoE burst", HERO_SKILL_ICONS.phong.c2), c3: me("phong", "c3", "ultimate", "#F43F5E", "#082F49", "T\u1EED Th\u1EA7n Gi\xE1ng L\xE2m \u0111\xE1nh d\u1EA5u & k\u1EBFt li\u1EC5u theo m\xE1u \u0111\xE3 m\u1EA5t", "Mark & execute flurry scaling by missing HP", HERO_SKILL_ICONS.phong.c3) }, dang: { atk: me("dang", "atk", "basic", "#F8FAFC", "#18181B", "Song quy\u1EC1n h\u1ED5 kh\xED tr\u1EAFng \u0111en t\u1EA5n c\xF4ng c\u1EADn chi\u1EBFn", "Yin-Yang tiger energy gauntlets strike", HERO_SKILL_ICONS.dang.atk), passive: me("dang", "passive", "passive", "#F8FAFC", "#09090B", "H\u1ED5 Ph\xE1ch Cu\u1ED3ng Quy\u1EC1n t\xEDch n\u1ED9 tung H\u1ED5 Quy\u1EC1n di\u1EC7n r\u1ED9ng", "Rage-fueled empowered AoE Tiger Fist & heal", HERO_SKILL_ICONS.dang.passive), c1: me("dang", "c1", "active", "#F8FAFC", "#18181B", "B\u1EA1ch H\u1ED5 Ph\xE1 S\u01A1n ph\xF3ng 3 s\xF3ng quy\u1EC1n kh\xED h\xECnh h\u1ED5", "Triple tiger-qi waves healing per target hit", HERO_SKILL_ICONS.dang.c1), c2: me("dang", "c2", "defense", "#CBD5E1", "#09090B", "H\u1EAFc H\u1ED5 H\u1ED9 Th\u1EC3 gi\xE1p kh\xED gi\u1EA3m s\xE1t th\u01B0\u01A1ng & ph\u1EA3n \u0111\xF2n", "Black-white qi armor DR, counter & knockback boom", HERO_SKILL_ICONS.dang.c2), c3: me("dang", "c3", "ultimate", "#F8FAFC", "#09090B", "H\u1ED5 Quy\u1EC1n Di\u1EC7t Th\u1EBF 5 quy\u1EC1n li\xEAn ho\xE0n & \u0111\u1EA7u h\u1ED5 kh\u1ED5ng l\u1ED3", "5-punch flurry summoning giant roaring tiger head", HERO_SKILL_ICONS.dang.c3) }, thien: { atk: me("thien", "atk", "basic", "#FACC15", "#091428", "Thi\xEAn Ki\u1EBFm Th\xE1nh Quang vung lu\u1ED3ng s\xE1ng tr\u1EAFng - v\xE0ng - thi\xEAn h\xE0", "Celestial blade arc in white, gold & galaxy blue", HERO_SKILL_ICONS.thien?.atk), passive: me("thien", "passive", "passive", "#38BDF8", "#0A1733", "Quy\u1EC1n N\u0103ng Kh\u1EDFi Nguy\xEAn t\xEDch Nguy\xEAn L\u1EF1c k\xEDch ho\u1EA1t S\xE1ng Th\u1EBF", "Primordial Core building energy into Genesis State", HERO_SKILL_ICONS.thien?.passive), c1: me("thien", "c1", "active", "#38BDF8", "#071429", "V\u1EA1n Ki\u1EBFm Khai Thi\xEAn tri\u1EC7u h\u1ED3i 12 th\u1EA7n ki\u1EBFm truy \u0111u\u1ED5i & h\u1ED3i m\xE1u", "Twelve divine swords orbiting, homing & healing", HERO_SKILL_ICONS.thien?.c1), c2: me("thien", "c2", "defense", "#FDE047", "#0F172A", "Thi\xEAn M\u1EC7nh \u0110\u1EA3o Chi\u1EC1u v\xF9ng th\u1EDDi gian l\xE0m ch\u1EADm & t\xE1i k\xEDch n\u1ED5 khi\xEAn", "Chronosphere slow & recast explosion with heal/shield", HERO_SKILL_ICONS.thien?.c2), c3: me("thien", "c3", "movement", "#7DD3FC", "#081226", "V\u1EA1n Gi\u1EDBi Du H\xE0nh m\u1EDF c\u1ED5ng kh\xF4ng gian & t\xE1i k\xEDch quay v\u1EC1", "Cosmic portal warp with 4s return blast", HERO_SKILL_ICONS.thien?.c3), c4: me("thien", "c4", "ultimate", "#FACC15", "#1A1204", "Ph\xE1n Quy\u1EBFt S\xE1ng Th\u1EBF tri\u1EC7u h\u1ED3i M\u1EB7t Tr\u1EDDi N\u0103ng L\u01B0\u1EE3ng h\u1EE7y di\u1EC7t", "Genesis Judgement Solar Beam executing & blasting", HERO_SKILL_ICONS.thien?.c4) } };
 function gl(s, a) {
   return bm[s]?.[a] || bm.dung.atk;
 }
@@ -1079,8 +1108,8 @@ function vm(s, a, l) {
 function iy(s, a) {
   let l = gl(s, a);
   if (l.svgDataUrl) return l.svgDataUrl;
-  let m = l.elementColor, c = l.bgDark, g = a === "c3" ? "#F59E0B" : m, p = `<circle cx="32" cy="32" r="14" fill="${m}" opacity="0.85"/><circle cx="32" cy="32" r="6" fill="#FFFFFF"/>`;
-  a === "atk" ? p = `<path d="M16 48 L46 14 L50 18 L20 52 Z" fill="${m}" stroke="#FFF" stroke-width="1.5"/><path d="M14 40 L24 50" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>` : a === "passive" ? p = `<polygon points="32,12 48,32 32,52 16,32" fill="none" stroke="${m}" stroke-width="3"/><circle cx="32" cy="32" r="7" fill="#FFF"/>` : a === "c3" && (p = `<polygon points="32,8 38,24 56,32 38,40 32,56 26,40 8,32 26,24" fill="${m}" stroke="#FEF08A" stroke-width="1.8"/><circle cx="32" cy="32" r="6" fill="#FFF"/>`);
+  let m = l.elementColor, c = l.bgDark, isUlt = a === "c3" || a === "c4", g = isUlt ? "#F59E0B" : m, p = `<circle cx="32" cy="32" r="14" fill="${m}" opacity="0.85"/><circle cx="32" cy="32" r="6" fill="#FFFFFF"/>`;
+  a === "atk" ? p = `<path d="M16 48 L46 14 L50 18 L20 52 Z" fill="${m}" stroke="#FFF" stroke-width="1.5"/><path d="M14 40 L24 50" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>` : a === "passive" ? p = `<polygon points="32,12 48,32 32,52 16,32" fill="none" stroke="${m}" stroke-width="3"/><circle cx="32" cy="32" r="7" fill="#FFF"/>` : isUlt && (p = `<polygon points="32,8 38,24 56,32 38,40 32,56 26,40 8,32 26,24" fill="${m}" stroke="#FEF08A" stroke-width="1.8"/><circle cx="32" cy="32" r="6" fill="#FFF"/>`);
   let h = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><radialGradient id="g" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="${c}"/><stop offset="100%" stop-color="#050811"/></radialGradient></defs><rect x="1" y="1" width="62" height="62" rx="11" fill="url(#g)" stroke="${g}" stroke-width="2.5"/>${p}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(h)}`;
 }
@@ -1089,12 +1118,18 @@ var Wt = ({ heroId: s, skillId: a, size: l = 48, hiRes: m = false, roundedClass:
   (0, ie.useEffect)(() => {
     x(T);
   }, [T]);
-  let C = a === "c3";
+  let C = a === "c3" || a === "c4";
   return (0, u.jsx)("div", { className: `relative shrink-0 overflow-hidden select-none bg-[#0f172a] ${c} ${g}`, style: { width: l, height: l, boxShadow: C ? `0 0 18px ${h.elementColor}88, inset 0 0 0 1.5px rgba(251, 191, 36, 0.72)` : `0 0 12px ${h.elementColor}55, inset 0 0 0 1px rgba(255, 255, 255, 0.16)` }, "aria-label": p || void 0, children: (0, u.jsx)("img", { src: b, alt: "", width: l, height: l, referrerPolicy: "no-referrer", draggable: false, className: `w-full h-full object-contain block ${c === "rounded-full" ? "scale-[1.14]" : ""}`, onError: () => {
     let H = iy(s, a);
     f && b !== f ? x(f) : b !== H && x(H);
   } }) });
 };
+function formatWaveClock(sec) {
+  let s = Math.max(0, Number(sec) || 0);
+  let m = Math.floor(s / 60);
+  let r = s - m * 60;
+  return `${String(m).padStart(2, "0")}:${r < 10 ? "0" : ""}${r.toFixed(1)}`;
+}
 function ny() {
   let s = (0, ie.useRef)(null), a = (0, ie.useRef)(null), [l, m] = (0, ie.useState)("MENU"), [c, g] = (0, ie.useState)("vi"), [p, h] = (0, ie.useState)(Mi[4]), [f, v] = (0, ie.useState)(100), [T, b] = (0, ie.useState)(false), [x, C] = (0, ie.useState)(false), [H, D] = (0, ie.useState)(false), [P, N] = (0, ie.useState)(false), [W, V] = (0, ie.useState)(false), [oe, ye] = (0, ie.useState)(false), [De, nt] = (0, ie.useState)(false), [ce, Me] = (0, ie.useState)(null), [ht, je] = (0, ie.useState)("eohyen"), [qe, bt] = (0, ie.useState)(0), [Ft, Nt] = (0, ie.useState)(true), [U, pe] = (0, ie.useState)(0.45), [musicOn, setMusicOn] = (0, ie.useState)(true), [musicVol, setMusicVol] = (0, ie.useState)(0.35), [ne, _e] = (0, ie.useState)(true), [Z, tt] = (0, ie.useState)(true), [layoutMode, setLayoutMode] = (0, ie.useState)(() => {
     try {
@@ -1119,10 +1154,48 @@ function ny() {
     } catch {
       return "";
     }
-  }), [mpJoinCode, setMpJoinCode] = (0, ie.useState)(""), [mpBusy, setMpBusy] = (0, ie.useState)(false), [mpError, setMpError] = (0, ie.useState)(""), [mpCopied, setMpCopied] = (0, ie.useState)(false), [mpMenuOpen, setMpMenuOpen] = (0, ie.useState)(false), [mpMatchResult, setMpMatchResult] = (0, ie.useState)(null), [p2pInviteCode, setP2pInviteCode] = (0, ie.useState)(""), [p2pManualOfferCode, setP2pManualOfferCode] = (0, ie.useState)(""), [p2pHasServerSignal, setP2pHasServerSignal] = (0, ie.useState)(false), [p2pAnswerCode, setP2pAnswerCode] = (0, ie.useState)(""), [p2pAutoPaired, setP2pAutoPaired] = (0, ie.useState)(false), [p2pIncomingOffer, setP2pIncomingOffer] = (0, ie.useState)(""), [p2pIncomingAnswer, setP2pIncomingAnswer] = (0, ie.useState)(""), [p2pBusy, setP2pBusy] = (0, ie.useState)(false), [customServerUrl, setCustomServerUrl] = (0, ie.useState)(() => mpClient.getCustomServerUrl()), [lanUrls, setLanUrls] = (0, ie.useState)([]), [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, buffsText: "", resourceText: "", droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0], padTeleportCds: [0, 0, 0], skillStates: ["ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null }), [mt, S] = (0, ie.useState)(null), selectedHeroRef = (0, ie.useRef)(p), mpBusyTimerRef = (0, ie.useRef)(null), G = (0, ie.useCallback)((w) => {
-    S(w), setTimeout(() => {
-      S((j) => j === w ? null : j);
-    }, 2400);
+  }), [mpJoinCode, setMpJoinCode] = (0, ie.useState)(""), [mpBusy, setMpBusy] = (0, ie.useState)(false), [mpError, setMpError] = (0, ie.useState)(""), [mpCopied, setMpCopied] = (0, ie.useState)(false), [mpMenuOpen, setMpMenuOpen] = (0, ie.useState)(false), [mpMatchResult, setMpMatchResult] = (0, ie.useState)(null), [p2pInviteCode, setP2pInviteCode] = (0, ie.useState)(""), [p2pManualOfferCode, setP2pManualOfferCode] = (0, ie.useState)(""), [p2pHasServerSignal, setP2pHasServerSignal] = (0, ie.useState)(false), [p2pAnswerCode, setP2pAnswerCode] = (0, ie.useState)(""), [p2pAutoPaired, setP2pAutoPaired] = (0, ie.useState)(false), [p2pIncomingOffer, setP2pIncomingOffer] = (0, ie.useState)(""), [p2pIncomingAnswer, setP2pIncomingAnswer] = (0, ie.useState)(""), [p2pBusy, setP2pBusy] = (0, ie.useState)(false), [customServerUrl, setCustomServerUrl] = (0, ie.useState)(() => mpClient.getCustomServerUrl()), [lanUrls, setLanUrls] = (0, ie.useState)([]),
+    [founderUnlocked, setFounderUnlocked] = (0, ie.useState)(false),
+    [founderToken, setFounderToken] = (0, ie.useState)(""),
+    [founderAuthSource, setFounderAuthSource] = (0, ie.useState)(""),
+    [founderModalOpen, setFounderModalOpen] = (0, ie.useState)(false),
+    [founderPinInput, setFounderPinInput] = (0, ie.useState)(""),
+    [founderAuthBusy, setFounderAuthBusy] = (0, ie.useState)(false),
+    [founderAuthError, setFounderAuthError] = (0, ie.useState)(""),
+    [thienEyeOpen, setThienEyeOpen] = (0, ie.useState)(true),
+    [accountModalOpen, setAccountModalOpen] = (0, ie.useState)(false),
+    [accountModalTab, setAccountModalTab] = (0, ie.useState)("profile"),
+    [googleUser, setGoogleUser] = (0, ie.useState)(null),
+    [playerProfile, setPlayerProfile] = (0, ie.useState)(() => loadLocalPlayerProfile()),
+    [accountSyncBusy, setAccountSyncBusy] = (0, ie.useState)(false),
+    [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null }),
+    [mt, S] = (0, ie.useState)(null),
+    selectedHeroRef = (0, ie.useRef)(p),
+    founderUnlockedRef = (0, ie.useRef)(false),
+    founderPendingActionRef = (0, ie.useRef)(null),
+    mpBusyTimerRef = (0, ie.useRef)(null),
+    googleUserRef = (0, ie.useRef)(null),
+    playerProfileRef = (0, ie.useRef)(playerProfile),
+    lastTrackedMatchKillsRef = (0, ie.useRef)(0),
+    syncedBootUidRef = (0, ie.useRef)(null),
+    G = (0, ie.useCallback)((w) => {
+      S(w), setTimeout(() => {
+        S((j) => j === w ? null : j);
+      }, 2400);
+    }, []);
+  founderUnlockedRef.current = founderUnlocked;
+  googleUserRef.current = googleUser;
+  playerProfileRef.current = playerProfile;
+  let requireFounderUnlock = (0, ie.useCallback)((onSuccessAction) => {
+    if (founderUnlockedRef.current) {
+      onSuccessAction?.();
+      return true;
+    }
+    founderPendingActionRef.current = onSuccessAction || null;
+    setFounderAuthError("");
+    setFounderPinInput("");
+    setFounderModalOpen(true);
+    return false;
   }, []);
   let envInfo = (0, ie.useMemo)(() => {
     if (typeof window === "undefined") {
@@ -1140,6 +1213,38 @@ function ny() {
   }, []);
   selectedHeroRef.current = p;
   (0, ie.useEffect)(() => {
+    let active = true;
+    const base = mpClient.getHttpBaseResult().baseUrl || "";
+    const canFetchServer = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+    if (!canFetchServer) {
+      mpClient.setFounderAuth(false, "");
+      return () => { active = false; };
+    }
+    fetch(`${base}/api/founder/status`, { cache: "no-store", credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active) return;
+        const unlocked = Boolean(data?.unlocked);
+        const token = unlocked ? (data?.founderToken || data?.token || "") : "";
+        setFounderUnlocked(unlocked);
+        setFounderToken(token);
+        setFounderAuthSource(data?.source || "");
+        mpClient.setFounderAuth(unlocked, token);
+        if (!unlocked && (selectedHeroRef.current?.isSecretFounder || a.current?.currentHero?.isSecretFounder)) {
+          const fallbackHero = Mi[4];
+          h(fallbackHero);
+          if (a.current) {
+            a.current.currentHero = fallbackHero;
+            a.current.selectedHeroId = fallbackHero.id;
+          }
+        }
+      })
+      .catch(() => {
+        if (active) mpClient.setFounderAuth(false, "");
+      });
+    return () => { active = false; };
+  }, []);
+  (0, ie.useEffect)(() => {
     const stateMap = { MENU: "title", HERO_SELECT: "title", PLAYING: "playing", PAUSED: "paused", GAME_OVER: "gameover", VICTORY: "gameover" };
     document.body.dataset.state = stateMap[l] || "title";
   }, [l]);
@@ -1148,21 +1253,94 @@ function ny() {
     let w = new Hf(s.current);
     a.current = w, w.onToast = G, w.onStateChange = () => {
       m(w.gameState), v(w.playerCoins);
-    }, w.onWaveReward = (le) => {
+    };
+    const recordCareerProgress = (waveReached, isMatchEnd, victory) => {
+      const totalKilledNow = Number(w.totalKilled) || 0;
+      if (totalKilledNow < lastTrackedMatchKillsRef.current) {
+        lastTrackedMatchKillsRef.current = 0;
+      }
+      const deltaKills = Math.max(0, totalKilledNow - lastTrackedMatchKillsRef.current);
+      lastTrackedMatchKillsRef.current = isMatchEnd ? 0 : totalKilledNow;
+
+      const curProf = playerProfileRef.current || loadLocalPlayerProfile();
+      const nextHighestWave = Math.max(curProf.highestWave || 0, w.highestWaveCleared || 0, waveReached || 0);
+      const saved = saveLocalPlayerProfile(
+        {
+          ...curProf,
+          highestWave: nextHighestWave,
+          lifetimeKills: (curProf.lifetimeKills || 0) + deltaKills,
+          matchesPlayed: (curProf.matchesPlayed || 0) + (isMatchEnd ? 1 : 0),
+          victories: (curProf.victories || 0) + (isMatchEnd && victory ? 1 : 0),
+          unlockedTitles: computeUnlockedTitles(nextHighestWave, founderUnlockedRef.current),
+        },
+        { founderUnlocked: founderUnlockedRef.current, minHighestWave: nextHighestWave }
+      );
+      setPlayerProfile(saved);
+      const signedUser = googleUserRef.current;
+      if (signedUser?.uid) {
+        const snapshot = {
+          coins: Math.max(0, Math.floor(Number(w.playerCoins) || 0)),
+          currentWave: Math.max(1, Math.min(27, Math.floor(Number(w.currentWaveNumber || w.wave) || 1))),
+          highestWave: nextHighestWave,
+          selectedHeroId:
+            w.selectedHeroId === "thien" && !founderUnlockedRef.current ? "eohyen" : w.selectedHeroId || "eohyen",
+          inventoryItemIds: (w.inventory || [])
+            .map((it) => it?.itemId)
+            .filter((id) => typeof id === "string" && Boolean(Si[id]))
+            .slice(0, 250),
+          heroGearEntries: serializeHeroGearEntries(w.heroGear),
+          lifetimeKills: saved.lifetimeKills,
+          matchesPlayed: saved.matchesPlayed,
+          victories: saved.victories,
+          dailyCheckInDate: saved.dailyCheckInDate || "",
+          unlockedTitles: saved.unlockedTitles || [],
+        };
+        Promise.allSettled([
+          savePrivatePlayerSave(signedUser.uid, snapshot, founderUnlockedRef.current),
+          upsertPublicPlayerProfile(signedUser.uid, { ...saved, uid: signedUser.uid }, founderUnlockedRef.current),
+        ]).catch(() => {});
+      }
+    };
+    if ((w.highestWaveCleared || 0) > (playerProfileRef.current?.highestWave || 0)) {
+      const syncedLocal = saveLocalPlayerProfile(
+        { ...playerProfileRef.current, highestWave: w.highestWaveCleared },
+        { founderUnlocked: founderUnlockedRef.current, minHighestWave: w.highestWaveCleared }
+      );
+      setPlayerProfile(syncedLocal);
+    }
+    v(w.playerCoins);
+    if (w.currentHero && !(w.currentHero.isSecretFounder && !founderUnlockedRef.current)) {
+      h(w.currentHero);
+    }
+    w.onWaveReward = (le) => {
       Me(le), v(le.currentBalance), nt(true);
+      recordCareerProgress(le?.wave || w.wave, false, false);
     }, w.onGameOver = (victory, extra) => {
       extra && setMpMatchResult(extra);
       m(w.gameState);
+      recordCareerProgress(w.wave, true, Boolean(victory));
     }, w.start();
     try {
       const sp = new URLSearchParams(window.location.search);
       if (sp.get("autostart") === "1") {
         const heroParam = sp.get("hero");
-        const autoHero = (heroParam && Mi.find((hr) => hr.id === heroParam)) || selectedHeroRef.current || Mi[4];
-        h(autoHero);
-        w.startNewGame(autoHero);
-        m("PLAYING");
-        v(w.playerCoins);
+        const requestedHero = (heroParam && Mi.find((hr) => hr.id === heroParam)) || selectedHeroRef.current || Mi[4];
+        if (requestedHero?.isSecretFounder && !founderUnlockedRef.current) {
+          const safeHero = Mi[4];
+          h(safeHero);
+          founderPendingActionRef.current = () => {
+            h(requestedHero);
+            w.startNewGame(requestedHero);
+            m("PLAYING");
+            v(w.playerCoins);
+          };
+          setFounderModalOpen(true);
+        } else {
+          h(requestedHero);
+          w.startNewGame(requestedHero);
+          m("PLAYING");
+          v(w.playerCoins);
+        }
       }
     } catch {
     }
@@ -1182,7 +1360,7 @@ function ny() {
             mates.push({ id: mem.id, name: mem.name, heroId: rp?.heroId || mem.heroId, isHost: mem.isHost, hp: Math.max(0, Math.ceil(mHp)), maxHp: Math.max(1, Math.ceil(mMaxHp)), level: rp?.level || mem.level || 1, alive: mAlive });
           }
         }
-        vt({ heroName: w.currentHero.name.split("(")[0].trim(), level: w.player.level, hp: Math.ceil(w.player.hp), maxHp: w.player.maxHp, shield: Math.ceil(w.player.shield), xpPct: Math.min(100, w.player.xp / w.player.xpToNext * 100), wave: w.wave, kills: w.waveKilled, waveTotal: w.waveTotal, buffsText: X.join(" \xB7 "), resourceText: we.resourceText, droneMode: we.droneMode || "attack", droneLabel: we.droneLabel || "T\u1EA5n C\xF4ng", droneColor: we.droneColor || "#38BDF8", cooldowns: [...w.player.cooldowns], padTeleportCds: we.padTeleportCds || [0, 0, 0], skillStates: we.skillStates, chargeActive: we.chargeActive, chargeProgress: we.chargeProgress, chargeLabel: we.chargeLabel, combo: we.combo, coopActive: Boolean(w.multiplayer?.active), localDowned: Boolean(w.multiplayer?.localDowned), powerMultiplier: w.multiplayer?.powerMultiplier || 1, teammates: mates, boss: le && le.hp > 0 ? { name: le.name, hp: Math.ceil(le.hp), maxHp: le.maxHp, immune: false, phase: le.phase || 1 } : null }), v(w.playerCoins);
+        vt({ heroName: w.currentHero.name.split("(")[0].trim(), level: w.player.level, hp: Math.ceil(w.player.hp), maxHp: w.player.maxHp, shield: Math.ceil(w.player.shield), xpPct: Math.min(100, w.player.xp / w.player.xpToNext * 100), wave: w.wave, kills: w.waveKilled, waveTotal: w.waveTotal, totalKilled: w.totalKilled || 0, totalDamage: Math.round(w.player.totalDamage || 0), waveElapsedTime: w.waveElapsedTime || 0, lastWaveClearTime: w.lastWaveClearTime || 0, buffsText: X.join(" \xB7 "), resourceText: we.resourceText, thienState: we.thienState || null, droneMode: we.droneMode || "attack", droneLabel: we.droneLabel || "T\u1EA5n C\xF4ng", droneColor: we.droneColor || "#38BDF8", cooldowns: [...w.player.cooldowns], padTeleportCds: we.padTeleportCds || [0, 0, 0, 0], skillStates: we.skillStates, chargeActive: we.chargeActive, chargeProgress: we.chargeProgress, chargeLabel: we.chargeLabel, combo: we.combo, coopActive: Boolean(w.multiplayer?.active), localDowned: Boolean(w.multiplayer?.localDowned), powerMultiplier: w.multiplayer?.powerMultiplier || 1, teammates: mates, boss: le && le.hp > 0 ? { name: le.name, hp: Math.ceil(le.hp), maxHp: le.maxHp, immune: false, phase: le.phase || 1 } : null }), v(w.playerCoins);
       }
     }, 60), ee = () => w.resizeCanvas();
     window.addEventListener("resize", ee);
@@ -1211,6 +1389,7 @@ function ny() {
           setMpMatchResult(null);
           let myMem = msg.room?.members?.find((mem) => mem.id === mpClient.playerId);
           let chosen = (myMem && Mi.find((hr) => hr.id === myMem.heroId)) || selectedHeroRef.current || Mi[4];
+          if (chosen?.isSecretFounder && !founderUnlockedRef.current) chosen = Mi[4];
           h(chosen);
           a.current.startCoopMatch(chosen, msg.room, msg.spawns || {});
           a.current.multiplayer.matchNonce = msg.matchNonce || null;
@@ -1265,6 +1444,13 @@ function ny() {
         setMpBusy(false);
         setP2pBusy(false);
         let errTxt = msg.message || "L\u1ED7i k\u1EBFt n\u1ED1i ph\xF2ng ch\u01A1i.";
+        if (msg.code === "FOUNDER_LOCKED") {
+          setFounderUnlocked(false);
+          setFounderToken("");
+          mpClient.setFounderAuth(false, "");
+          setFounderAuthError(errTxt);
+          setFounderModalOpen(true);
+        }
         setMpError(errTxt);
         G(errTxt);
       } else if (msg.type === "LEFT_ROOM") {
@@ -1297,6 +1483,7 @@ function ny() {
         }
         let myMem = msg.room?.members?.find((mem) => mem.id === mpClient.playerId);
         let chosen = (myMem && Mi.find((hr) => hr.id === myMem.heroId)) || selectedHeroRef.current || Mi[4];
+        if (chosen?.isSecretFounder && !founderUnlockedRef.current) chosen = Mi[4];
         h(chosen);
         if (a.current) {
           a.current.startCoopMatch(chosen, msg.room, msg.spawns || {});
@@ -1477,19 +1664,555 @@ function ny() {
     };
   }, [mpBusy]);
 
-  let handleMpNameChange = (val) => {
+  let handleVerifyFounderPin = async (e) => {
+    e?.preventDefault?.();
+    const pin = founderPinInput.replace(/\D/g, "").trim();
+    if (!pin) {
+      R.playError();
+      setFounderAuthError("Vui lòng nhập mật khẩu 8 số của Nhà Sáng Lập.");
+      return;
+    }
+    const base = mpClient.getHttpBaseResult().baseUrl || "";
+    const hasHttpBackend = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+    if (!hasHttpBackend) {
+      R.playError();
+      setFounderAuthError("Xác thực mật khẩu yêu cầu kết nối máy chủ backend hoặc đăng nhập Google Nhà Sáng Lập.");
+      return;
+    }
+    setFounderAuthBusy(true);
+    setFounderAuthError("");
+    try {
+      const res = await fetch(`${base}/api/founder/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.unlocked) {
+        R.playError();
+        setFounderAuthError(data?.message || data?.error || "Mật khẩu Nhà Sáng Lập không chính xác.");
+        return;
+      }
+      const token = data?.founderToken || data?.token || "";
+      mpClient.setFounderAuth(true, token);
+      setFounderUnlocked(true);
+      setFounderToken(token);
+      setFounderAuthSource(data.source || "pin");
+      setFounderPinInput("");
+      setFounderModalOpen(false);
+      R.playHeroLockIn();
+      R.playThienAscend();
+      syncFounderUnlockToFirestore("backend_pin").catch(() => {});
+      G("Xác thực thành công! Đã mở khóa THIÊN – ĐẤNG SÁNG THẾ.");
+      const pending = founderPendingActionRef.current;
+      founderPendingActionRef.current = null;
+      pending?.();
+    } catch {
+      R.playError();
+      setFounderAuthError("Không thể kết nối máy chủ xác thực Founder. Hãy thử lại hoặc dùng Google Nhà Sáng Lập.");
+    } finally {
+      setFounderAuthBusy(false);
+    }
+  }, handleVerifyFounderGoogle = async () => {
+    setFounderAuthBusy(true);
+    setFounderAuthError("");
+    try {
+      const authRes = await signInFounderWithGoogle();
+      if (!authRes?.isFounder) {
+        await signOutFounderAuth().catch(() => {});
+        R.playError();
+        setFounderAuthError(`Chỉ tài khoản Nhà Sáng Lập (${FOUNDER_EMAIL}) mới có quyền mở khóa Thiên.`);
+        return;
+      }
+      const base = mpClient.getHttpBaseResult().baseUrl || "";
+      const hasHttpBackend = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+      let token = "";
+      if (hasHttpBackend) {
+        const res = await fetch(`${base}/api/founder/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ firebaseIdToken: authRes.idToken }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.unlocked) {
+          R.playError();
+          setFounderAuthError(data?.message || data?.error || "Backend từ chối xác thực tài khoản Founder.");
+          return;
+        }
+        token = data?.founderToken || data?.token || "";
+      }
+      await syncFounderUnlockToFirestore("firebase_google").catch(() => {});
+      mpClient.setFounderAuth(true, token);
+      setFounderUnlocked(true);
+      setFounderToken(token);
+      setFounderAuthSource("firebase");
+      setFounderPinInput("");
+      setFounderModalOpen(false);
+      R.playHeroLockIn();
+      R.playThienAscend();
+      G("Đã xác thực Nhà Sáng Lập qua Google & Firebase!");
+      const pending = founderPendingActionRef.current;
+      founderPendingActionRef.current = null;
+      pending?.();
+    } catch (err) {
+      R.playError();
+      setFounderAuthError(err?.message || "Đăng nhập Google Nhà Sáng Lập thất bại hoặc đã bị hủy.");
+    } finally {
+      setFounderAuthBusy(false);
+    }
+  }, handleLogoutFounder = async () => {
+    R.playClick();
+    setFounderAuthBusy(true);
+    try {
+      const base = mpClient.getHttpBaseResult().baseUrl || "";
+      if (base || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol))) {
+        await fetch(`${base}/api/founder/logout`, {
+          method: "POST",
+          credentials: "include",
+          headers: founderToken ? { "x-founder-token": founderToken } : {},
+        }).catch(() => {});
+      }
+      await signOutFounderAuth().catch(() => {});
+      mpClient.setFounderAuth(false, "");
+      setFounderUnlocked(false);
+      setFounderToken("");
+      setFounderAuthSource("");
+      setFounderPinInput("");
+      setFounderModalOpen(false);
+      if (selectedHeroRef.current?.isSecretFounder) {
+        const fallbackHero = Mi[4];
+        h(fallbackHero);
+        if (a.current) {
+          a.current.currentHero = fallbackHero;
+          a.current.selectedHeroId = fallbackHero.id;
+          a.current.saveGame();
+        }
+      }
+      G("Đã khóa lại tướng bí mật THIÊN.");
+    } finally {
+      setFounderAuthBusy(false);
+    }
+  }, handleMpNameChange = (val) => {
     setMpName(val);
     try {
       localStorage.setItem("arena_hero_mp_name", val);
     } catch {
     }
-  }, handleCreateRoom = () => {
+  };
+  let buildProgressSnapshot = (0, ie.useCallback)((profileOverride) => {
+    const w = a.current;
+    const prof = profileOverride || playerProfileRef.current || loadLocalPlayerProfile();
+    const highestWave = Math.max(
+      0,
+      Math.min(27, Math.floor(Math.max(w?.highestWaveCleared || 0, prof.highestWave || 0)))
+    );
+    const rawHeroId = w?.selectedHeroId || selectedHeroRef.current?.id || "eohyen";
+    const selectedHeroId = rawHeroId === "thien" && !founderUnlockedRef.current ? "eohyen" : rawHeroId;
+    return {
+      coins: Math.max(0, Math.floor(Number(w?.playerCoins ?? 100) || 0)),
+      currentWave: Math.max(1, Math.min(27, Math.floor(Number(w?.currentWaveNumber || w?.wave) || 1))),
+      highestWave,
+      selectedHeroId,
+      inventoryItemIds: (w?.inventory || [])
+        .map((it) => it?.itemId)
+        .filter((id) => typeof id === "string" && Boolean(Si[id]))
+        .slice(0, 250),
+      heroGearEntries: serializeHeroGearEntries(w?.heroGear),
+      lifetimeKills: Math.max(0, Math.floor(Number(prof.lifetimeKills) || 0)),
+      matchesPlayed: Math.max(0, Math.floor(Number(prof.matchesPlayed) || 0)),
+      victories: Math.max(0, Math.floor(Number(prof.victories) || 0)),
+      dailyCheckInDate: String(prof.dailyCheckInDate || ""),
+      unlockedTitles: computeUnlockedTitles(highestWave, founderUnlockedRef.current),
+    };
+  }, []);
+  let applyProgressSnapshotToEngine = (0, ie.useCallback)((snapshot) => {
+    const w = a.current;
+    if (!w || !snapshot) return;
+    const validIds = new Set(Object.keys(Si));
+    let nextUid = Math.max(w.nextUid || 1, 1);
+    const restoredInv = [];
+    for (const itemId of snapshot.inventoryItemIds || []) {
+      if (validIds.has(itemId)) {
+        restoredInv.push({ uid: nextUid++, itemId });
+      }
+    }
+    const gearRes = deserializeHeroGearEntries(snapshot.heroGearEntries || [], um, nextUid, validIds);
+    w.nextUid = gearRes.nextUid;
+    w.heroGear = gearRes.heroGear;
+    w.inventory = restoredInv;
+    w.playerCoins = Math.max(0, Math.floor(Number(snapshot.coins) || 0));
+    w.currentWaveNumber = Math.max(1, Math.min(27, Math.floor(Number(snapshot.currentWave) || 1)));
+    w.highestWaveCleared = Math.max(w.highestWaveCleared || 0, Number(snapshot.highestWave) || 0);
+    let candidate = Mi.find((hr) => hr.id === snapshot.selectedHeroId) || Mi[4];
+    if (candidate?.isSecretFounder && !founderUnlockedRef.current) {
+      candidate = Mi[4];
+    }
+    w.currentHero = candidate;
+    w.selectedHeroId = candidate.id;
+    h(candidate);
+    w.saveGame();
+    w.computeHeroStats();
+    v(w.playerCoins);
+    bt((n) => n + 1);
+  }, []);
+  let syncCloudProgress = (0, ie.useCallback)(
+    async (userObj, profileOverride, snapshotOverride, notifyOnError = false) => {
+      const targetUser = userObj || googleUserRef.current;
+      const baseProfile = profileOverride || playerProfileRef.current;
+      if (!targetUser?.uid || !baseProfile) return null;
+      const snapshot = snapshotOverride || buildProgressSnapshot(baseProfile);
+      try {
+        await savePrivatePlayerSave(targetUser.uid, snapshot, founderUnlockedRef.current);
+        const pub = await upsertPublicPlayerProfile(
+          targetUser.uid,
+          {
+            ...baseProfile,
+            uid: targetUser.uid,
+            highestWave: snapshot.highestWave,
+            lifetimeKills: snapshot.lifetimeKills,
+            victories: snapshot.victories,
+            unlockedTitles: snapshot.unlockedTitles,
+          },
+          founderUnlockedRef.current
+        );
+        const stamped = saveLocalPlayerProfile(
+          {
+            ...baseProfile,
+            uid: targetUser.uid,
+            friendCode: pub?.friendCode || baseProfile.friendCode,
+            highestWave: snapshot.highestWave,
+            lifetimeKills: snapshot.lifetimeKills,
+            matchesPlayed: snapshot.matchesPlayed,
+            victories: snapshot.victories,
+            dailyCheckInDate: snapshot.dailyCheckInDate,
+            unlockedTitles: snapshot.unlockedTitles,
+            accountSource: "google",
+            googlePhotoUrl: sanitizeGooglePhotoUrl(targetUser.photoURL) || baseProfile.googlePhotoUrl,
+            lastSyncedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+          },
+          { founderUnlocked: founderUnlockedRef.current, minHighestWave: snapshot.highestWave }
+        );
+        setPlayerProfile(stamped);
+        return stamped;
+      } catch (err) {
+        if (notifyOnError) {
+          G("Không thể đồng bộ lên Cloud lúc này — tiến trình vẫn đã được lưu an toàn trên trình duyệt!");
+        }
+        console.warn("Cloud sync error:", err);
+        return null;
+      }
+    },
+    [G, buildProgressSnapshot]
+  );
+  let pullAndMergeCloudSave = (0, ie.useCallback)(
+    async (userObj, explicitAction = false) => {
+      if (!userObj?.uid) return;
+      setAccountSyncBusy(true);
+      try {
+        const [privRes, pubRes] = await Promise.allSettled([
+          fetchPrivatePlayerSave(userObj.uid),
+          fetchOwnPublicProfile(userObj.uid),
+        ]);
+        const cloudPrivate = privRes.status === "fulfilled" ? privRes.value : null;
+        const cloudPublic = pubRes.status === "fulfilled" ? pubRes.value : null;
+        const localProf = playerProfileRef.current || loadLocalPlayerProfile();
+        const localSnapshot = buildProgressSnapshot(localProf);
+        const merged = mergeLocalAndCloudProgress(localSnapshot, cloudPrivate, founderUnlockedRef.current);
+        applyProgressSnapshotToEngine(merged);
+
+        const googlePhoto = sanitizeGooglePhotoUrl(userObj.photoURL);
+        const currentDefaultName = localProf.displayName === "Chiến Binh" || !localProf.displayName;
+        const resolvedName = cloudPublic?.displayName
+          ? cloudPublic.displayName
+          : currentDefaultName && userObj.displayName
+          ? normalizeDisplayName(userObj.displayName, "Chiến Binh")
+          : localProf.displayName;
+
+        const mergedProf = saveLocalPlayerProfile(
+          {
+            ...localProf,
+            uid: userObj.uid,
+            friendCode: cloudPublic?.friendCode || localProf.friendCode,
+            displayName: resolvedName,
+            bio: cloudPublic?.bio ?? localProf.bio,
+            avatarType: cloudPublic?.avatarType || localProf.avatarType,
+            avatarValue: cloudPublic?.avatarValue || localProf.avatarValue,
+            avatarFrame: cloudPublic?.avatarFrame || localProf.avatarFrame,
+            titleBadge: cloudPublic?.titleBadge || localProf.titleBadge,
+            favoriteHeroId: cloudPublic?.favoriteHeroId || localProf.favoriteHeroId,
+            isPublic: cloudPublic ? cloudPublic.isPublic !== false : localProf.isPublic,
+            highestWave: merged.highestWave,
+            lifetimeKills: merged.lifetimeKills,
+            matchesPlayed: merged.matchesPlayed,
+            victories: merged.victories,
+            dailyCheckInDate: merged.dailyCheckInDate,
+            unlockedTitles: merged.unlockedTitles,
+            accountSource: "google",
+            googlePhotoUrl: googlePhoto || localProf.googlePhotoUrl,
+          },
+          { founderUnlocked: founderUnlockedRef.current, minHighestWave: merged.highestWave }
+        );
+        setPlayerProfile(mergedProf);
+        handleMpNameChange(mergedProf.displayName);
+        await syncCloudProgress(userObj, mergedProf, merged, explicitAction);
+        if (explicitAction) {
+          R.playHeroLockIn();
+          G("Đã kết nối Google & đồng bộ tiến trình thành công!");
+        }
+      } catch (err) {
+        console.warn("Pull/merge cloud error:", err);
+        if (explicitAction) {
+          R.playError();
+          G("Đã đăng nhập Google! Dữ liệu trình duyệt vẫn được giữ nguyên.");
+        }
+      } finally {
+        setAccountSyncBusy(false);
+      }
+    },
+    [G, applyProgressSnapshotToEngine, buildProgressSnapshot, syncCloudProgress]
+  );
+  (0, ie.useEffect)(() => {
+    const unsub = subscribeToAuthChanges((fbUser) => {
+      setGoogleUser(fbUser || null);
+      if (fbUser?.uid && syncedBootUidRef.current !== fbUser.uid) {
+        syncedBootUidRef.current = fbUser.uid;
+        void pullAndMergeCloudSave(fbUser, false);
+      } else if (!fbUser) {
+        syncedBootUidRef.current = null;
+      }
+    });
+    return () => unsub();
+  }, [pullAndMergeCloudSave]);
+  let handleOpenAccountModal = (0, ie.useCallback)((tab = "profile") => {
+    setAccountModalTab(tab || "profile");
+    setAccountModalOpen(true);
+  }, []);
+  let handleSaveProfile = async (draft) => {
+    setAccountSyncBusy(true);
+    try {
+      const curSnapshot = buildProgressSnapshot(playerProfileRef.current);
+      const saved = saveLocalPlayerProfile(
+        {
+          ...playerProfileRef.current,
+          ...draft,
+          uid: googleUserRef.current?.uid || playerProfileRef.current?.uid || null,
+          highestWave: curSnapshot.highestWave,
+          accountSource: googleUserRef.current ? "google" : "local",
+        },
+        { founderUnlocked: founderUnlockedRef.current, minHighestWave: curSnapshot.highestWave }
+      );
+      setPlayerProfile(saved);
+      handleMpNameChange(saved.displayName);
+      if (googleUserRef.current?.uid) {
+        await syncCloudProgress(googleUserRef.current, saved, curSnapshot, true);
+        G("Đã lưu hồ sơ & đồng bộ lên Google Cloud!");
+      } else {
+        G("Đã lưu hồ sơ & avatar trên trình duyệt!");
+      }
+    } finally {
+      setAccountSyncBusy(false);
+    }
+  };
+  let handleClaimDailyCheckIn = async () => {
+    const curProf = playerProfileRef.current || loadLocalPlayerProfile();
+    const today = getTodayDateKey();
+    if (!canClaimDailyCheckIn(curProf.dailyCheckInDate, today)) {
+      R.playError();
+      G("Bạn đã điểm danh hôm nay rồi. Hẹn gặp lại ngày mai!");
+      return;
+    }
+    const w = a.current;
+    if (w) {
+      w.playerCoins = (w.playerCoins || 0) + DAILY_CHECKIN_REWARD;
+      w.saveGame();
+      v(w.playerCoins);
+    }
+    const saved = saveLocalPlayerProfile(
+      { ...curProf, dailyCheckInDate: today },
+      { founderUnlocked: founderUnlockedRef.current, minHighestWave: w?.highestWaveCleared || curProf.highestWave }
+    );
+    setPlayerProfile(saved);
+    R.playCoinPickup();
+    G(`Điểm danh thành công! Nhận +${DAILY_CHECKIN_REWARD} Xu thưởng!`);
+    if (googleUserRef.current?.uid) {
+      await syncCloudProgress(googleUserRef.current, saved, null, false);
+    }
+  };
+  let handlePlayerGoogleSignIn = async () => {
+    setAccountSyncBusy(true);
+    try {
+      const authRes = await signInPlayerWithGoogle();
+      setGoogleUser(authRes.user);
+      if (authRes.isFounder) {
+        const base = mpClient.getHttpBaseResult().baseUrl || "";
+        const hasHttpBackend = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+        if (hasHttpBackend) {
+          fetch(`${base}/api/founder/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ firebaseIdToken: authRes.idToken }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.unlocked) {
+                const token = data.founderToken || data.token || "";
+                mpClient.setFounderAuth(true, token);
+                setFounderUnlocked(true);
+                setFounderToken(token);
+                setFounderAuthSource("firebase");
+              }
+            })
+            .catch(() => {});
+        }
+      }
+      syncedBootUidRef.current = authRes.user.uid;
+      await pullAndMergeCloudSave(authRes.user, true);
+    } catch (err) {
+      R.playError();
+      G(err?.message || "Đăng nhập Google đã bị hủy hoặc chưa hoàn tất.");
+    } finally {
+      setAccountSyncBusy(false);
+    }
+  };
+  let handlePlayerGoogleSignOut = async () => {
+    setAccountSyncBusy(true);
+    try {
+      await signOutPlayer().catch(() => {});
+      setGoogleUser(null);
+      syncedBootUidRef.current = null;
+      if (founderAuthSource === "firebase") {
+        const base = mpClient.getHttpBaseResult().baseUrl || "";
+        if (base || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol))) {
+          await fetch(`${base}/api/founder/logout`, {
+            method: "POST",
+            credentials: "include",
+            headers: founderToken ? { "x-founder-token": founderToken } : {},
+          }).catch(() => {});
+        }
+        mpClient.setFounderAuth(false, "");
+        setFounderUnlocked(false);
+        setFounderToken("");
+        setFounderAuthSource("");
+        if (selectedHeroRef.current?.isSecretFounder) {
+          const fallbackHero = Mi[4];
+          h(fallbackHero);
+          if (a.current) {
+            a.current.currentHero = fallbackHero;
+            a.current.selectedHeroId = fallbackHero.id;
+            a.current.saveGame();
+          }
+        }
+      }
+      const downgraded = saveLocalPlayerProfile(
+        {
+          ...playerProfileRef.current,
+          uid: null,
+          accountSource: "local",
+          avatarType: playerProfileRef.current?.avatarType === "google" ? "hero" : playerProfileRef.current?.avatarType,
+          avatarValue:
+            playerProfileRef.current?.avatarType === "google"
+              ? playerProfileRef.current?.favoriteHeroId || "eohyen"
+              : playerProfileRef.current?.avatarValue,
+        },
+        { founderUnlocked: founderUnlockedRef.current }
+      );
+      setPlayerProfile(downgraded);
+      G("Đã đăng xuất Google. Tiến trình chơi trên trình duyệt vẫn được giữ nguyên.");
+    } finally {
+      setAccountSyncBusy(false);
+    }
+  };
+  let handlePushCloudSave = async () => {
+    if (!googleUserRef.current?.uid) return;
+    setAccountSyncBusy(true);
+    try {
+      const res = await syncCloudProgress(googleUserRef.current, playerProfileRef.current, null, true);
+      if (res) {
+        R.playHeroLockIn();
+        G("Đã sao lưu toàn bộ tiến trình lên Google Cloud!");
+      }
+    } finally {
+      setAccountSyncBusy(false);
+    }
+  };
+  let handlePullCloudSave = async () => {
+    if (!googleUserRef.current?.uid) return;
+    await pullAndMergeCloudSave(googleUserRef.current, true);
+  };
+  let handleExportSaveJson = () => {
+    const snapshot = buildProgressSnapshot(playerProfileRef.current);
+    const payload = {
+      version: "11.8",
+      exportedAt: new Date().toISOString(),
+      profile: playerProfileRef.current,
+      progress: snapshot,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `arena_hero_save_${getTodayDateKey()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    G("Đã tải xuống file sao lưu tiến trình (.json)!");
+  };
+  let handleImportSaveJson = async (rawText) => {
+    const parsed = parseSavePackageJson(rawText, founderUnlockedRef.current);
+    if (!parsed.ok) {
+      R.playError();
+      G(parsed.error);
+      return;
+    }
+    const mergedProgress = mergeLocalAndCloudProgress(
+      buildProgressSnapshot(playerProfileRef.current),
+      parsed.progress,
+      founderUnlockedRef.current
+    );
+    applyProgressSnapshotToEngine(mergedProgress);
+    const nextProf = saveLocalPlayerProfile(
+      {
+        ...playerProfileRef.current,
+        ...parsed.profile,
+        uid: googleUserRef.current?.uid || playerProfileRef.current?.uid || null,
+        highestWave: mergedProgress.highestWave,
+        lifetimeKills: mergedProgress.lifetimeKills,
+        matchesPlayed: mergedProgress.matchesPlayed,
+        victories: mergedProgress.victories,
+        dailyCheckInDate: mergedProgress.dailyCheckInDate,
+        unlockedTitles: mergedProgress.unlockedTitles,
+        accountSource: googleUserRef.current ? "google" : "local",
+      },
+      { founderUnlocked: founderUnlockedRef.current, minHighestWave: mergedProgress.highestWave }
+    );
+    setPlayerProfile(nextProf);
+    handleMpNameChange(nextProf.displayName);
+    R.playHeroLockIn();
+    G("Đã khôi phục tiến trình từ file sao lưu!");
+    if (googleUserRef.current?.uid) {
+      await syncCloudProgress(googleUserRef.current, nextProf, mergedProgress, false);
+    }
+  };
+  let handleOpenCoopWithFriend = (friend) => {
+    setAccountModalOpen(false);
+    setMpError("");
+    setMpLobbyOpen(true);
+    if (friend?.displayName) {
+      G(`Tạo phòng Co-op 6 số và gửi mã mời cho ${friend.displayName} (${friend.friendCode || ""})!`);
+    }
+  };
+  let handleCreateRoom = () => {
+    const safeHeroId = p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id;
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
     setP2pAutoPaired(false);
     setMpBusy(true);
-    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", p.id).then((res) => {
+    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", safeHeroId).then((res) => {
       setMpBusy(false);
       if (res?.mode === "p2p") {
         setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
@@ -1508,6 +2231,7 @@ function ny() {
       setMpError(err?.message || "Kh\xF4ng th\u1EC3 t\u1EA1o ph\xF2ng.");
     });
   }, handleJoinRoom = () => {
+    const safeHeroId = p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id;
     let classified = classifyJoinCode(mpJoinCode);
     if (classified.kind === "empty") {
       R.playError();
@@ -1520,7 +2244,7 @@ function ny() {
       setP2pAnswerCode("");
       setP2pAutoPaired(false);
       setP2pBusy(true);
-      mpClient.joinP2PWithOffer(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", p.id).then((res) => {
+      mpClient.joinP2PWithOffer(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", safeHeroId).then((res) => {
         setP2pBusy(false);
         setP2pIncomingOffer(classified.normalized);
         setP2pAnswerCode(res?.answerCode || "");
@@ -1535,7 +2259,7 @@ function ny() {
       return;
     }
     setMpBusy(true);
-    mpClient.joinRoom(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", p.id).then((res) => {
+    mpClient.joinRoom(classified.normalized, mpName.trim() || "Chi\u1EBFn Binh", safeHeroId).then((res) => {
       setMpBusy(false);
       if (res?.mode === "p2p") {
         setP2pIncomingOffer(classified.normalized);
@@ -1591,13 +2315,14 @@ function ny() {
       }
     }
   }, handleStartP2PHost = async () => {
+    const safeHeroId = p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id;
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
     setP2pAutoPaired(false);
     setP2pBusy(true);
     try {
-      const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", p.id);
+      const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", safeHeroId);
       setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
       setP2pManualOfferCode(res.manualOfferCode || "");
       setP2pHasServerSignal(Boolean(res.hasServerSignaling));
@@ -1641,13 +2366,14 @@ function ny() {
       setP2pBusy(false);
     }
   }, handleJoinP2POffer = async () => {
+    const safeHeroId = p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id;
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
     setP2pAutoPaired(false);
     setP2pBusy(true);
     try {
-      const res = await mpClient.joinP2PWithOffer(p2pIncomingOffer, mpName.trim() || "Chiến Binh", p.id);
+      const res = await mpClient.joinP2PWithOffer(p2pIncomingOffer, mpName.trim() || "Chiến Binh", safeHeroId);
       setP2pAnswerCode(res.answerCode || "");
       const autoPaired = Boolean(res?.autoPairedViaServer || res?.autoPairedViaLocal || res?.autoPairedViaMqtt);
       setP2pAutoPaired(autoPaired);
@@ -1697,6 +2423,10 @@ function ny() {
       }
     }
   }, handleMpSelectHero = (hero) => {
+    if (hero?.isSecretFounder && !founderUnlockedRef.current) {
+      requireFounderUnlock(() => handleMpSelectHero(hero));
+      return;
+    }
     h(hero);
     a.current && (a.current.currentHero = hero, a.current.selectedHeroId = hero.id, a.current.saveGame());
     mpClient.selectHero(hero.id);
@@ -1720,7 +2450,13 @@ function ny() {
   }, ae = () => {
     R.playClick(), m("HERO_SELECT");
   }, ke = (w) => {
+    if (w?.isSecretFounder && !founderUnlockedRef.current) {
+      requireFounderUnlock(() => ke(w));
+      return;
+    }
+    lastTrackedMatchKillsRef.current = 0;
     R.playClick(), h(w), a.current && (a.current.startNewGame(w), m("PLAYING"), v(a.current.playerCoins));
+    if (w?.isSecretFounder) logFounderAuditEvent("MATCH_STARTED", "solo").catch(() => {});
   }, ve = (0, ie.useCallback)(() => {
     let w = a.current;
     w && (R.playClick(), w.multiplayer?.active ? setMpMenuOpen((prev) => !prev) : w.gameState === "PLAYING" ? (w.gameState = "PAUSED", w.moveInput = { x: 0, y: 0 }, w.tapDestination = null, w.aimState.active = false, m("PAUSED")) : w.gameState === "PAUSED" && (w.gameState = "PLAYING", m("PLAYING")));
@@ -1881,7 +2617,7 @@ function ny() {
       console.error(w);
     }
     setShareGuideOpen(true);
-  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen, _i = (0, ie.useRef)(Xa);
+  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen, _i = (0, ie.useRef)(Xa);
   (0, ie.useEffect)(() => {
     _i.current = Xa, Xa && (Ci.current.clear(), Da.current.clear(), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.tapDestination = null, a.current.aimState.active = false, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true)));
   }, [Xa]), (0, ie.useEffect)(() => {
@@ -1915,6 +2651,14 @@ function ny() {
       let fe = a.current;
       if (!fe) return;
       if (ue.code === "Escape") {
+        if (founderModalOpen) {
+          setFounderModalOpen(false);
+          return;
+        }
+        if (accountModalOpen) {
+          setAccountModalOpen(false);
+          return;
+        }
         if (mpLobbyOpen) {
           setMpLobbyOpen(false);
           return;
@@ -1958,7 +2702,7 @@ function ny() {
           fe.player.facing = Math.atan2(Qa.y - fe.player.y, Qa.x - fe.player.x);
         }
         fe.triggerBasicAttack();
-      } else ue.repeat || (ue.code === "Digit1" || ue.code === "KeyQ" ? (ue.preventDefault(), X(fe, 0, ue.code)) : ue.code === "Digit2" || ue.code === "KeyE" ? (ue.preventDefault(), X(fe, 1, ue.code)) : ue.code === "Digit3" || ue.code === "KeyR" ? (ue.preventDefault(), X(fe, 2, ue.code)) : ue.code === "KeyT" && fe.currentHero.id === "taidu" && (ue.preventDefault(), fe.toggleTaiDuDroneMode()));
+      } else ue.repeat || (ue.code === "Digit1" || ue.code === "KeyQ" ? (ue.preventDefault(), X(fe, 0, ue.code)) : ue.code === "Digit2" || ue.code === "KeyE" ? (ue.preventDefault(), X(fe, 1, ue.code)) : ue.code === "Digit3" || ue.code === "KeyR" ? (ue.preventDefault(), X(fe, 2, ue.code)) : (ue.code === "Digit4" || ue.code === "KeyF") && fe.currentHero.skills.length >= 4 ? (ue.preventDefault(), X(fe, 3, ue.code)) : ue.code === "KeyG" && fe.currentHero.id === "thien" ? (ue.preventDefault(), (() => { const gVal = fe.toggleThienGodMode(); if (typeof gVal === "boolean") logFounderAuditEvent("GOD_MODE_TOGGLED", gVal ? "god_on" : "god_off").catch(() => {}); })()) : ue.code === "KeyT" && fe.currentHero.id === "taidu" && (ue.preventDefault(), fe.toggleTaiDuDroneMode()));
     }, rt = (ue) => {
       let fe = a.current;
       if (j.has(ue.code)) {
@@ -1974,7 +2718,7 @@ function ny() {
     return window.addEventListener("keydown", we), window.addEventListener("keyup", rt), window.addEventListener("blur", Et), () => {
       window.removeEventListener("keydown", we), window.removeEventListener("keyup", rt), window.removeEventListener("blur", Et);
     };
-  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen]);
+  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen]);
   let ze = Ef[c];
   let fsActive = isFullscreen || isPseudoFullscreen;
   let portraitVp = computeCameraViewportConfig({ viewW: viewportSize.w, viewH: viewportSize.h, layoutMode, fovPreset: portraitFov });
@@ -2000,10 +2744,10 @@ function ny() {
     R.playClick(), je(p.id), N(true);
   }, title: "Cửa Hàng Trang Bị", children: [(0, u.jsx)("span", { children: "🪙" }), (0, u.jsx)("span", { className: "font-mono-numbers tabular-nums", children: f })] }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn border-cyan-500/45 text-cyan-200", onClick: () => {
     R.playClick(), ye(true);
-  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })] }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0)) && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[56vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: re.buffsText || re.resourceText }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
+  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState)) && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "px-1.5 py-0.5 rounded-md bg-slate-950/68 border border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "💀" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
-  }) })] }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: [re.combo.efficiency, "%"] })] })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] })]  }) : (0, u.jsxs)("div", { className: "hud-header", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-hero-card w-[184px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold leading-tight", children: [(0, u.jsx)("span", { className: "text-white font-moba text-xs text-neon-cyan truncate", children: re.heroName }), (0, u.jsxs)("span", { className: "text-[#F59E0B] font-mono-numbers text-[11px] shrink-0", children: ["Lv.", re.level] })] }), (0, u.jsxs)("div", { className: "bar-container h-[7px] mt-1", children: [(0, u.jsx)("div", { className: "bar-fill hp-fill", style: { width: `${re.hp / re.maxHp * 100}%` } }), (0, u.jsx)("div", { className: "shield-fill", style: { width: `${Math.min(100, re.shield / re.maxHp * 100)}%` } })] }), (0, u.jsxs)("div", { className: "flex justify-between text-[9.5px] text-slate-400 mt-0.5 font-mono-numbers leading-tight", children: [(0, u.jsxs)("span", { children: [re.hp, " / ", re.maxHp] }), re.shield > 0 && (0, u.jsxs)("span", { className: "text-[#38BDF8]", children: ["Khi\xEAn: ", re.shield] })] }), re.resourceText && (0, u.jsx)("div", { className: "text-[9.5px] font-mono-numbers font-extrabold text-amber-300 mt-0.5 truncate leading-tight", children: re.resourceText }), re.buffsText && (0, u.jsx)("div", { className: "text-[9.5px] text-[#FDE68A] mt-0.5 truncate font-semibold leading-tight", children: re.buffsText }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill xp-fill", style: { width: `${re.xpPct}%` } }) })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "mt-1 flex flex-col gap-1 w-[152px] sm:w-[178px] pointer-events-none", children: re.teammates.map((mate) => {
+  }) })] }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: [re.combo.efficiency, "%"] })] })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] })]  }) : (0, u.jsxs)("div", { className: "hud-header", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-hero-card w-[184px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold leading-tight", children: [(0, u.jsx)("span", { className: "text-white font-moba text-xs text-neon-cyan truncate", children: re.heroName }), (0, u.jsxs)("span", { className: "text-[#F59E0B] font-mono-numbers text-[11px] shrink-0", children: ["Lv.", re.level] })] }), (0, u.jsxs)("div", { className: "bar-container h-[7px] mt-1", children: [(0, u.jsx)("div", { className: "bar-fill hp-fill", style: { width: `${re.hp / re.maxHp * 100}%` } }), (0, u.jsx)("div", { className: "shield-fill", style: { width: `${Math.min(100, re.shield / re.maxHp * 100)}%` } })] }), (0, u.jsxs)("div", { className: "flex justify-between text-[9.5px] text-slate-400 mt-0.5 font-mono-numbers leading-tight", children: [(0, u.jsxs)("span", { children: [re.hp, " / ", re.maxHp] }), re.shield > 0 && (0, u.jsxs)("span", { className: "text-[#38BDF8]", children: ["Khi\xEAn: ", re.shield] })] }), re.resourceText && (0, u.jsx)("div", { className: "text-[9.5px] font-mono-numbers font-extrabold text-amber-300 mt-0.5 truncate leading-tight", children: re.resourceText }), re.buffsText && (0, u.jsx)("div", { className: "text-[9.5px] text-[#FDE68A] mt-0.5 truncate font-semibold leading-tight", children: re.buffsText }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill xp-fill", style: { width: `${re.xpPct}%` } }) })] }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap mt-1 pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "HP Boss:" : "Boss HP:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name} ${b.hp.toLocaleString()}/${b.maxHp.toLocaleString()}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK: ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1: ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2: ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3: ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4: ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-1 border-t border-sky-500/20", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Tổng ST:" : "Total DMG:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-amber-300 font-black", children: (re.thienState.totalDamage || 0).toLocaleString() })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Quái hạ gục:" : "Kills:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300 font-bold", children: [re.kills, "/", re.waveTotal, " (Tổng ", re.thienState.totalKilled || 0, ")"] })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Hoàn thành màn:" : "Wave Clear:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200 font-bold", children: [formatWaveClock(re.thienState.waveElapsedTime), re.thienState.lastWaveClearTime > 0 ? ` · Trước ${formatWaveClock(re.thienState.lastWaveClearTime)}` : ""] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "mt-1 flex flex-col gap-1 w-[152px] sm:w-[178px] pointer-events-none", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "hud-card py-0.5 px-2 border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9.5px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "\u{1F480} Ng\xE3" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
   }) }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: ["Hi\u1EC7u su\u1EA5t ", re.combo.efficiency, "%"] })] })] }), re.combo.comboName && (0, u.jsx)("div", { className: "text-[9.5px] font-moba font-bold text-cyan-300 mt-0.5 truncate", children: re.combo.comboName }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-center gap-1 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-wave-card text-center px-3 py-1 border-amber-500/50", children: [(0, u.jsxs)("div", { className: "text-xs font-black text-[#F59E0B] font-mono-numbers tracking-wider leading-tight", children: [c === "vi" ? "M\xC0N" : "WAVE", " ", re.wave, " / 27"] }), (0, u.jsxs)("div", { className: "text-[10px] text-slate-300 font-mono-numbers mt-0.5 leading-tight", children: [c === "vi" ? "Ti\xEAu di\u1EC7t" : "Slain", ": ", re.kills, " / ", re.waveTotal] }), re.coopActive && mpRoom && (0, u.jsxs)("div", { className: "text-[9px] font-mono-numbers font-bold text-cyan-300 mt-0.5", children: ["CO-OP ", mpRoom.roomId, " \xB7 Qu\xE1i ", Math.round((re.powerMultiplier || 1) * 100), "%"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-card hud-boss-card w-[228px] text-center py-1 px-2.5 border-red-500/70", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "hud-actions-bar flex items-center gap-1 sm:gap-1.5", children: [(0, u.jsxs)("button", { type: "button", className: "hud-card hud-coin-pill flex items-center gap-1 px-2 py-1 cursor-pointer border-amber-500/40 hover:border-amber-400", onClick: () => {
@@ -2012,33 +2756,44 @@ function ny() {
     R.playClick(), ye(true);
   }, children: "K\u1EF9 N\u0103ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2.5 py-1 border-amber-500/40 text-amber-200", onClick: () => {
     R.playClick(), je(p.id), N(true);
-  }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", children: [[0, 1, 2].map((w) => {
-    let j = p.skills[w], ee = re.cooldowns[w], he = j.cooldown, le = re.skillStates[w], padCd = re.padTeleportCds?.[w] || 0, isPadWaiting = p.id === "duccong" && w > 0 && padCd > 0, X = isPadWaiting || ee > 0 && le !== "recast" && le !== "charging", displayCd = isPadWaiting ? padCd : ee, displayMax = isPadWaiting ? 1.5 : he, we = X ? "state-cooldown" : le === "empowered" ? "state-empowered state-ready" : le === "recast" ? "state-recast state-ready" : le === "charging" ? "state-charging state-ready" : "state-ready";
-    return (0, u.jsxs)("button", { className: `btn-skill c${w + 1} ${we}`, onPointerDown: (rt) => Be(w, rt), onPointerMove: ta, onPointerUp: Ha, onPointerCancel: Ha, onLostPointerCapture: Ha, title: j.name[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: j.key, size: isPortraitHud ? (w === 2 ? 60 : 56) : 84, roundedClass: "rounded-full", className: "pointer-events-none", alt: j.name[c] }), X && (0, u.jsx)("div", { className: "cooldown-overlay", style: { height: `${Math.min(100, displayCd / Math.max(0.1, displayMax) * 100)}%` } }), X && (0, u.jsx)("span", { className: `absolute inset-0 z-10 flex items-center justify-center font-mono-numbers ${isPortraitHud ? "text-xs" : "text-sm"} font-black text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] tabular-nums pointer-events-none`, children: displayCd.toFixed(1) }), (0, u.jsx)("span", { className: `absolute bottom-0.5 inset-x-0 text-center z-10 font-mono-numbers ${isPortraitHud ? "text-[10px]" : "text-[11px]"} font-black text-amber-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] pointer-events-none`, children: p.id === "duccong" && le === "recast" ? "D\u1ECACH" : p.id === "luan" && w === 1 && le === "recast" ? "\u0110\xD3NG" : le === "recast" ? "T\xC1I" : j.label })] }, w);
-  }), p.id === "taidu" && (0, u.jsxs)("button", { className: "btn-drone-mode", style: { borderColor: re.droneColor || "#38BDF8" }, onPointerDown: (w) => {
+  }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", className: p.skills.length >= 4 ? "four-skills" : void 0, children: [p.skills.map((skItem, w) => {
+    let j = skItem, ee = re.cooldowns[w] || 0, he = j.cooldown, le = re.skillStates[w] || "ready", padCd = re.padTeleportCds?.[w] || 0, isPadWaiting = p.id === "duccong" && w > 0 && padCd > 0, X = isPadWaiting || ee > 0 && le !== "recast" && le !== "charging", displayCd = isPadWaiting ? padCd : ee, displayMax = isPadWaiting ? 1.5 : he, we = X ? "state-cooldown" : le === "empowered" ? "state-empowered state-ready" : le === "recast" ? "state-recast state-ready" : le === "charging" ? "state-charging state-ready" : "state-ready";
+    let btnIconSize = isPortraitHud ? (p.skills.length >= 4 ? (w === 3 ? 54 : 50) : (w === 2 ? 60 : 56)) : 84;
+    return (0, u.jsxs)("button", { className: `btn-skill c${w + 1} ${we}`, onPointerDown: (rt) => Be(w, rt), onPointerMove: ta, onPointerUp: Ha, onPointerCancel: Ha, onLostPointerCapture: Ha, title: j.name[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: j.key, size: btnIconSize, roundedClass: "rounded-full", className: "pointer-events-none", alt: j.name[c] }), X && (0, u.jsx)("div", { className: "cooldown-overlay", style: { height: `${Math.min(100, displayCd / Math.max(0.1, displayMax) * 100)}%` } }), X && (0, u.jsx)("span", { className: `absolute inset-0 z-10 flex items-center justify-center font-mono-numbers ${isPortraitHud ? "text-xs" : "text-sm"} font-black text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] tabular-nums pointer-events-none`, children: displayCd.toFixed(1) }), (0, u.jsx)("span", { className: `absolute bottom-0.5 inset-x-0 text-center z-10 font-mono-numbers ${isPortraitHud ? "text-[10px]" : "text-[11px]"} font-black text-amber-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] pointer-events-none`, children: p.id === "duccong" && le === "recast" ? "D\u1ECACH" : p.id === "luan" && w === 1 && le === "recast" ? "\u0110\xD3NG" : le === "recast" ? "T\xC1I" : j.label })] }, w);
+  }), p.id === "thien" && (0, u.jsxs)("button", { type: "button", className: `btn-thien-god ${re.thienState?.godMode ? "active-on" : ""}`, onPointerDown: (w) => {
+    w.preventDefault();
+    w.stopPropagation();
+    const gVal = a.current?.toggleThienGodMode();
+    if (typeof gVal === "boolean") logFounderAuditEvent("GOD_MODE_TOGGLED", gVal ? "god_on" : "god_off").catch(() => {});
+  }, title: c === "vi" ? "Bật/Tắt Chế độ Thần Quyền (Phím G)" : "Toggle God Mode (Key G)", children: [(0, u.jsx)("span", { children: "👑" }), (0, u.jsx)("span", { children: re.thienState?.godMode ? (c === "vi" ? "THẦN QUYỀN: BẬT" : "GOD: ON") : (c === "vi" ? "THẦN QUYỀN" : "GOD MODE") })] }), p.id === "taidu" && (0, u.jsxs)("button", { className: "btn-drone-mode", style: { borderColor: re.droneColor || "#38BDF8" }, onPointerDown: (w) => {
     w.preventDefault(), w.stopPropagation(), a.current?.toggleTaiDuDroneMode();
-  }, title: "\u0110\u1ED5i ch\u1EBF \u0111\u1ED9 Drone (Ph\xEDm T)", children: [(0, u.jsx)(Wt, { heroId: "taidu", skillId: "passive", size: isPortraitHud ? 24 : 36, roundedClass: "rounded-full", className: "pointer-events-none", alt: "Drone" }), (0, u.jsx)("span", { className: `${isPortraitHud ? "text-[11px]" : "text-xs"} font-moba font-black tracking-tight leading-none`, style: { color: re.droneColor || "#38BDF8" }, children: re.droneLabel || "T\u1EA5n C\xF4ng" })] }), (0, u.jsxs)("button", { className: "btn-attack", onPointerDown: (w) => {
+  }, title: "\u0110\u1ED5i ch\u1EBF \u0111\u1ED9 Drone (Ph\xEDm T)", children: [(0, u.jsx)(Wt, { heroId: "taidu", skillId: "passive", size: isPortraitHud ? 24 : 36, roundedClass: "rounded-full", className: "pointer-events-none", alt: "Drone" }), (0, u.jsx)("span", { className: `${isPortraitHud ? "text-[11px]" : "text-xs"} font-moba font-black tracking-tight leading-none`, style: { color: re.droneColor || "#38BDF8" }, children: re.droneLabel || "T\u1EA5n C\xF4ng" })] }), (0, u.jsx)("button", { className: "btn-attack", onPointerDown: (w) => {
     w.preventDefault(), w.stopPropagation(), a.current?.triggerBasicAttack();
-  }, title: p.weapon[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: isPortraitHud ? 76 : 118, roundedClass: "rounded-full", className: "pointer-events-none", alt: p.weapon[c] }), (0, u.jsx)("span", { className: `absolute bottom-1 inset-x-0 text-center font-moba ${isPortraitHud ? "text-[10px]" : "text-xs"} font-black text-amber-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] pointer-events-none`, children: ze.atk })] })] }), (0, u.jsx)("div", { id: "cancelSkillZone", ref: Ye, children: ze.cancelSkill })] }), l === "MENU" && (0, u.jsx)(MobaLobbyMenu, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, sfxEnabled: Ft, musicEnabled: musicOn, isFullscreen: fsActive, mpRoom, envInfo, SkillIcon: Wt, onSelectHero: (w) => {
+  }, title: p.weapon[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: isPortraitHud ? 76 : 118, roundedClass: "rounded-full", className: "pointer-events-none", alt: p.weapon[c] }), (0, u.jsx)("span", { className: `absolute bottom-1 inset-x-0 text-center font-moba ${isPortraitHud ? "text-[10px]" : "text-xs"} font-black text-amber-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] pointer-events-none`, children: ze.atk })] })] }), (0, u.jsx)("div", { id: "cancelSkillZone", ref: Ye, children: ze.cancelSkill })] }), l === "MENU" && (0, u.jsx)(MobaLobbyMenu, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, sfxEnabled: Ft, musicEnabled: musicOn, isFullscreen: fsActive, mpRoom, envInfo, SkillIcon: Wt, founderUnlocked, playerProfile, googleUser, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), canDailyCheckIn: canClaimDailyCheckIn(playerProfile?.dailyCheckInDate || "", getTodayDateKey()), onClaimDailyCheckIn: handleClaimDailyCheckIn, onOpenAccountModal: handleOpenAccountModal, onSignInGoogle: handlePlayerGoogleSignIn, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
     h(w);
-    a.current && (a.current.currentHero = w, a.current.selectedHeroId = w.id, a.current.saveGame());
-  }, onEnterArena: (w) => {
-    h(w);
-    a.current && (a.current.startNewGame(w), m("PLAYING"), v(a.current.playerCoins));
-  }, onOpenHeroSelect: () => m("HERO_SELECT"), onOpenCoop: () => {
+    if (!(w?.isSecretFounder && !founderUnlockedRef.current) && a.current) {
+      a.current.currentHero = w;
+      a.current.selectedHeroId = w.id;
+      a.current.saveGame();
+    }
+  }, onEnterArena: (w) => ke(w), onOpenHeroSelect: () => m("HERO_SELECT"), onOpenCoop: () => {
     setMpError("");
     setMpLobbyOpen(true);
   }, onOpenShop: () => {
-    je(p.id);
+    je(p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id);
     N(true);
-  }, onOpenGuide: () => C(true), onOpenSettings: () => D(true), onOpenPatchNotes: () => b(true), onOpenShareGuide: () => setShareGuideOpen(true), onDownloadOrShare: ba, onToggleSfx: () => Nt((prev) => !prev), onToggleMusic: () => setMusicOn((prev) => !prev), onToggleFullscreen: toggleFullscreen, onToggleLang: J }), l === "HERO_SELECT" && (0, u.jsx)(MobaHeroSelect, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, equippedCount: a.current ? Object.values(a.current.heroGear[p.id] || {}).filter(Boolean).length : 0, isFullscreen: fsActive, SkillIcon: Wt, getSkillAimMeta: vm, onSelectHero: (w) => {
+  }, onOpenGuide: () => C(true), onOpenSettings: () => D(true), onOpenPatchNotes: () => b(true), onOpenShareGuide: () => setShareGuideOpen(true), onDownloadOrShare: ba, onToggleSfx: () => Nt((prev) => !prev), onToggleMusic: () => setMusicOn((prev) => !prev), onToggleFullscreen: toggleFullscreen, onToggleLang: J }), l === "HERO_SELECT" && (0, u.jsx)(MobaHeroSelect, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, equippedCount: a.current ? Object.values(a.current.heroGear[p.id] || {}).filter(Boolean).length : 0, isFullscreen: fsActive, SkillIcon: Wt, getSkillAimMeta: vm, founderUnlocked, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
+    if (w?.isSecretFounder && !founderUnlockedRef.current) {
+      requireFounderUnlock(() => {
+        h(w);
+        a.current && (a.current.currentHero = w, a.current.selectedHeroId = w.id, a.current.saveGame());
+      });
+      return;
+    }
     h(w);
     a.current && (a.current.currentHero = w, a.current.selectedHeroId = w.id, a.current.saveGame());
-  }, onEnterArena: (w) => {
-    h(w);
-    a.current && (a.current.startNewGame(w), m("PLAYING"), v(a.current.playerCoins));
-  }, onOpenShop: () => {
-    je(p.id);
+  }, onEnterArena: (w) => ke(w), onOpenShop: () => {
+    je(p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id);
     N(true);
   }, onBack: () => m("MENU"), onToggleFullscreen: toggleFullscreen }), T && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[680px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-2", children: [(0, u.jsx)("span", { className: "text-2xl", children: "\u{1F4CB}" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white", children: "Arena Hero 11.8 \u2014 C\xE2n B\u1EB1ng Lu\u1EADn, Buff Boss & 27 M\xE0n" }), (0, u.jsx)("span", { className: "text-[11px] text-amber-400 font-bold", children: "NERF LU\u1EACN (V\u1EBET N\u1EE8T & C1) \xB7 T\u0102NG S\u1EE8C M\u1EA0NH 9 BOSS \xB7 27 M\xC0N & 9 CH\u1EE6NG QU\xC1I \xB7 CO-OP 6 S\u1ED0" })] })] }), (0, u.jsx)("button", { className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => {
     R.playModalClose(), b(false);
@@ -2114,8 +2869,17 @@ function ny() {
     m("MENU");
   }, children: "\u{1F3E0} R\u1EDDi Ph\xF2ng V\u1EC1 Menu" })] }) : (0, u.jsxs)(u.Fragment, { children: [(0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
     a.current && a.current.startNewGame(p), m("PLAYING");
-  }, children: ze.restart }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs", onClick: () => m("HERO_SELECT"), children: ze.changeHero }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs text-slate-400", onClick: () => m("MENU"), children: ze.mainMenu })] })] })] }) }), P && (0, u.jsx)(Jf, { engine: a.current, coins: f, shopHeroId: ht, buildRevision: qe, onChangeHero: (w) => je(w), onClose: () => {
+  }, children: ze.restart }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs", onClick: () => m("HERO_SELECT"), children: ze.changeHero }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs text-slate-400", onClick: () => m("MENU"), children: ze.mainMenu })] })] })] })  }), P && (0, u.jsx)(Jf, { engine: a.current, coins: f, shopHeroId: ht, buildRevision: qe, founderUnlocked, onChangeHero: (w) => {
+    if (w === "thien" && !founderUnlockedRef.current) {
+      requireFounderUnlock(() => je("thien"));
+      return;
+    }
+    je(w);
+  }, onClose: () => {
     R.playModalClose(), N(false);
+    if (googleUserRef.current?.uid) {
+      void syncCloudProgress(googleUserRef.current, playerProfileRef.current, null, false);
+    }
   }, onOpenBuilds: () => {
     R.playModalOpen(), V(true);
   }, onCoinsChange: (w) => v(w), onShowToast: G }), W && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 1e4 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[760px] max-h-[85vh] flex flex-col", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center border-b border-slate-800 pb-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white", children: "G\u1EE3i \xDD L\u1ED1i L\xEAn \u0110\u1ED3" }), (0, u.jsx)("p", { className: "text-[11px] text-slate-400", children: "Trang b\u1ECB nhanh c\xE1c m\xF3n \u0111\u1ED3 b\u1EA1n \u0110\xC3 C\xD3 trong kho \u0111\u1ED3 m\xE0 kh\xF4ng t\u1EF1 \u0111\u1ED9ng mua m\xF3n ch\u01B0a s\u1EDF h\u1EEFu." })] }), (0, u.jsx)("button", { className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => {
@@ -2138,17 +2902,21 @@ function ny() {
     if (!ee) return null;
     let he = a.current?.inventory?.some((X) => X.itemId === j), le = a.current?.heroGear[ht] && Object.values(a.current.heroGear[ht]).some((X) => X && X.itemId === j);
     return (0, u.jsxs)("div", { className: "bg-slate-950 p-2 rounded-lg text-center border border-slate-800 flex flex-col items-center gap-1", children: [(0, u.jsx)("img", { src: ee.icon, alt: ee.name, referrerPolicy: "no-referrer", className: "w-9 h-9 rounded-md object-contain bg-[#090D16] border border-slate-700" }), (0, u.jsx)("div", { className: "text-[10px] font-bold text-white truncate w-full", children: ee.name }), (0, u.jsx)("div", { className: "text-[9px]", children: le ? (0, u.jsx)("span", { className: "text-emerald-400", children: "\u0110ang m\u1EB7c" }) : he ? (0, u.jsx)("span", { className: "text-amber-400", children: "C\xF3 trong t\xFAi" }) : (0, u.jsx)("span", { className: "text-slate-500", children: "Ch\u01B0a c\xF3" }) })] }, j);
-  }) })] }, w.id)) })] }) }), oe && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 1e4 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[780px] max-h-[88vh] flex flex-col", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center border-b border-slate-800 pb-3 gap-2", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "c3", size: 44, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsxs)("h3", { className: "font-moba text-lg font-black text-white", children: ["B\u1EA3ng K\u1EF9 N\u0103ng & N\xE2ng C\u1EA5p \xB7 ", p.name.split("(")[0].trim()] }), (0, u.jsxs)("div", { className: "text-xs text-amber-400 font-semibold", children: [p.title[c], " \xB7 C\u1EA5p ", a.current?.player?.level || 1] })] })] }), (0, u.jsx)("button", { className: "btn-secondary px-3 py-1.5 text-sm", onClick: () => {
+  }) })] }, w.id)) })] }) }), oe && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 1e4 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[780px] max-h-[88vh] flex flex-col", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center border-b border-slate-800 pb-3 gap-2", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: p.skills.length >= 4 ? "c4" : "c3", size: 44, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsxs)("h3", { className: "font-moba text-lg font-black text-white", children: ["B\u1EA3ng K\u1EF9 N\u0103ng & N\xE2ng C\u1EA5p \xB7 ", p.name.split("(")[0].trim()] }), (0, u.jsxs)("div", { className: "text-xs text-amber-400 font-semibold", children: [p.title[c], " \xB7 C\u1EA5p ", a.current?.player?.level || 1] })] })] }), (0, u.jsx)("button", { className: "btn-secondary px-3 py-1.5 text-sm", onClick: () => {
     R.playModalClose(), ye(false);
   }, children: "\u2715" })] }), a.current && (() => {
     let w = a.current, j = w.getHeroGearStats(p.id), ee = Math.round(w.getEffectiveDamage()), he = Math.round(w.getEffectiveMoveSpeed()), le = (1 / Math.max(0.09, w.getEffectiveAttackInterval())).toFixed(2), X = Math.round(Math.min(p.maxCrit, p.baseCrit + j.crit) * 100), we = Math.round(Math.min(0.45, j.cdr) * 100);
     return (0, u.jsxs)("div", { className: "grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-center font-mono-numbers tabular-nums", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] text-slate-400", children: "HP T\u1ED1i \u0110a" }), (0, u.jsx)("div", { className: "text-xs font-bold text-emerald-400", children: w.player.maxHp })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] text-slate-400", children: "S\xE1t Th\u01B0\u01A1ng" }), (0, u.jsx)("div", { className: "text-xs font-bold text-rose-400", children: ee })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] text-slate-400", children: "T\u1ED1c \u0110\xE1nh" }), (0, u.jsxs)("div", { className: "text-xs font-bold text-amber-300", children: [le, "/s"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] text-slate-400", children: "T\u1ED1c Ch\u1EA1y" }), (0, u.jsx)("div", { className: "text-xs font-bold text-cyan-300", children: he })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] text-slate-400", children: "Ch\xED M\u1EA1ng" }), (0, u.jsxs)("div", { className: "text-xs font-bold text-orange-400", children: [X, "%"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] text-slate-400", children: "Gi\u1EA3m H\u1ED3i" }), (0, u.jsxs)("div", { className: "text-xs font-bold text-violet-300", children: [we, "%"] })] })] });
   })(), (0, u.jsxs)("div", { className: "flex-1 overflow-y-auto mt-3 flex flex-col gap-2.5 pr-1", children: [(0, u.jsxs)("div", { className: "bg-amber-500/10 border border-amber-500/35 rounded-xl p-3 flex items-start gap-3", children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "passive", size: 56, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { className: "flex-1 min-w-0", children: [(0, u.jsx)("div", { className: "flex items-center gap-2 text-xs", children: (0, u.jsx)("span", { className: "font-bold text-amber-300 font-moba", children: "N\u1ED9i T\u1EA1i (B\u1ECB \u0110\u1ED9ng)" }) }), (0, u.jsx)("p", { className: "text-xs text-slate-200 mt-1 leading-relaxed", children: p.passive[c] })] })] }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start gap-3", children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: 56, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { className: "flex-1 min-w-0", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-xs", children: [(0, u.jsxs)("span", { className: "font-bold text-white font-moba", children: ["\u0110\xE1nh Th\u01B0\u1EDDng \xB7 ", p.weapon[c]] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-slate-400 tabular-nums", children: ["T\u1EA7m ", p.stats.range, "px"] })] }), (0, u.jsx)("p", { className: "text-xs text-slate-300 mt-1 leading-relaxed", children: "\u0110\xF2n \u0111\xE1nh c\u01A1 b\u1EA3n theo v\u0169 kh\xED \u0111\u1EB7c tr\u01B0ng c\u1EE7a t\u01B0\u1EDBng, c\u1ED9ng d\u1ED3n s\xE1t th\u01B0\u01A1ng theo c\u1EA5p \u0111\u1ED9 v\xE0 trang b\u1ECB." })] })] }), p.skills.map((w) => {
-    let j = vm(p.id, w.key, c), ee = a.current ? Math.min(0.45, a.current.getHeroGearStats(p.id).cdr) : 0, he = (w.cooldown * (1 - ee)).toFixed(1);
-    return (0, u.jsxs)("div", { className: `rounded-xl p-3 flex items-start gap-3 border ${w.key === "c3" ? "bg-amber-950/20 border-amber-500/45" : "bg-slate-900 border-slate-800"}`, children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: w.key, size: 56, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { className: "flex-1 min-w-0", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-xs gap-2 flex-wrap", children: [(0, u.jsxs)("div", { className: "flex items-center gap-2", children: [(0, u.jsx)("span", { className: `font-mono-numbers text-[11px] font-black px-1.5 py-0.5 rounded ${w.key === "c3" ? "bg-amber-500 text-slate-950" : "bg-cyan-500 text-slate-950"}`, children: w.label }), (0, u.jsx)("span", { className: "font-bold text-white font-moba text-sm", children: w.name[c] })] }), (0, u.jsxs)("div", { className: "flex items-center gap-2 font-mono-numbers text-[11px] tabular-nums", children: [(0, u.jsx)("span", { style: { color: j.color }, className: "font-semibold", children: j.label }), (0, u.jsx)("span", { className: "text-slate-600", children: "\xB7" }), (0, u.jsxs)("span", { className: "text-slate-300", children: ["H\u1ED3i ", he, "s"] })] })] }), (0, u.jsx)("p", { className: "text-xs text-slate-300 mt-1 leading-relaxed", children: w.description[c] })] })] }, w.key);
-  })] })] }) }), mpLobbyOpen && (0, u.jsx)(MultiplayerLobbyModal, { lang: c, heroes: Mi, selectedHero: p, room: mpRoom, playerId: mpClient.playerId, playerName: mpName, joinCode: mpJoinCode, busy: mpBusy, error: mpError, copied: mpCopied, SkillIcon: Wt, onChangeName: handleMpNameChange, onChangeJoinCode: setMpJoinCode, onCreateRoom: handleCreateRoom, onJoinRoom: handleJoinRoom, onCopyRoomId: handleCopyRoomId, onSelectHero: handleMpSelectHero, onToggleReady: () => {
+    let j = vm(p.id, w.key, c), ee = a.current ? Math.min(0.45, a.current.getHeroGearStats(p.id).cdr) : 0, he = (w.cooldown * (1 - ee)).toFixed(1), isUltSkill = w.key === "c4" || (w.key === "c3" && p.skills.length === 3);
+    return (0, u.jsxs)("div", { className: `rounded-xl p-3 flex items-start gap-3 border ${isUltSkill ? "bg-amber-950/20 border-amber-500/45" : "bg-slate-900 border-slate-800"}`, children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: w.key, size: 56, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { className: "flex-1 min-w-0", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-xs gap-2 flex-wrap", children: [(0, u.jsxs)("div", { className: "flex items-center gap-2", children: [(0, u.jsx)("span", { className: `font-mono-numbers text-[11px] font-black px-1.5 py-0.5 rounded ${isUltSkill ? "bg-amber-500 text-slate-950" : "bg-cyan-500 text-slate-950"}`, children: w.label }), (0, u.jsx)("span", { className: "font-bold text-white font-moba text-sm", children: w.name[c] })] }), (0, u.jsxs)("div", { className: "flex items-center gap-2 font-mono-numbers text-[11px] tabular-nums", children: [(0, u.jsx)("span", { style: { color: j.color }, className: "font-semibold", children: j.label }), (0, u.jsx)("span", { className: "text-slate-600", children: "\xB7" }), (0, u.jsxs)("span", { className: "text-slate-300", children: ["H\u1ED3i ", he, "s"] })] })] }), (0, u.jsx)("p", { className: "text-xs text-slate-300 mt-1 leading-relaxed", children: w.description[c] })] })] }, w.key);
+  })] })] }) }), mpLobbyOpen && (0, u.jsx)(MultiplayerLobbyModal, { lang: c, heroes: Mi, selectedHero: p, room: mpRoom, playerId: mpClient.playerId, playerName: mpName, joinCode: mpJoinCode, busy: mpBusy, error: mpError, copied: mpCopied, SkillIcon: Wt, founderUnlocked, onRequireFounderAuth: (hr) => requireFounderUnlock(() => handleMpSelectHero(hr || Mi.find((xHero) => xHero.id === "thien"))), onChangeName: handleMpNameChange, onChangeJoinCode: setMpJoinCode, onCreateRoom: handleCreateRoom, onJoinRoom: handleJoinRoom, onCopyRoomId: handleCopyRoomId, onSelectHero: handleMpSelectHero, onToggleReady: () => {
     mpClient.toggleReady();
   }, onStartMatch: () => {
+    if (p.isSecretFounder && !founderUnlockedRef.current) {
+      requireFounderUnlock(() => { setMpError(""); mpClient.startMatch(); });
+      return;
+    }
     setMpError("");
     mpClient.startMatch();
   }, onLeaveRoom: () => {
@@ -2156,6 +2924,6 @@ function ny() {
     handleLeaveRoom();
   }, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pManualOfferCode, p2pHasServerSignal, p2pAnswerCode, p2pAutoPaired, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, lanUrls, isFullscreen: fsActive, onToggleFullscreen: toggleFullscreen, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
     setMpLobbyOpen(false);
-  } }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
+  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)("div", { className: "rounded-xl bg-rose-950/70 border border-rose-500/60 px-3 py-2 text-rose-200 font-semibold leading-relaxed", children: founderAuthError }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
 }
 export default ny;

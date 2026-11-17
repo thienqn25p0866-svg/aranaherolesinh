@@ -194,13 +194,14 @@ function getFirebaseApiKey(): string {
     const cfgPath = path.join(__dirname, "firebase-applet-config.json");
     if (fs.existsSync(cfgPath)) {
       const parsed = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
-      cachedFirebaseApiKey = typeof parsed?.apiKey === "string" ? parsed.apiKey : "";
-      return cachedFirebaseApiKey;
+      const key = typeof parsed?.apiKey === "string" ? parsed.apiKey : "";
+      cachedFirebaseApiKey = key;
+      return key;
     }
   } catch {
   }
   cachedFirebaseApiKey = "";
-  return cachedFirebaseApiKey;
+  return "";
 }
 
 function verifyFounderPin(rawPin: unknown): boolean {
@@ -1486,7 +1487,7 @@ async function createApp() {
     res.setHeader("Cache-Control", "no-store");
     const token = extractFounderTokenFromReq(req);
     const unlocked = verifyFounderToken(token);
-    res.json({ ok: true, unlocked });
+    res.json({ ok: true, unlocked, founderToken: unlocked ? token : "" });
   });
 
   app.post("/api/founder/verify", async (req, res) => {
