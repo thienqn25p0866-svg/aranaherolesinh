@@ -318,15 +318,21 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
 
   if (heroId === "thanh") {
     ctx.save();
-    const a = t * 2.1 * activeBoost;
-    for (let s = 0; s < 5; s++) {
-      const sa = a - s * 0.24;
-      const sx = Math.cos(sa) * auraR * 1.06;
-      const sy = Math.sin(sa) * auraR * 1.06;
-      ctx.fillStyle = s === 0 ? "#A7F3D0" : "rgba(16, 185, 129, 0.72)";
-      ctx.beginPath();
-      ctx.arc(sx, sy, Math.max(2, 4.6 - s * 0.55), 0, Math.PI * 2);
-      ctx.fill();
+    // Twin counter-orbiting spirit serpents (jade emerald & abyssal amethyst)
+    for (let pair = 0; pair < 2; pair++) {
+      const baseAng = t * (2.25 * activeBoost) + pair * Math.PI;
+      const orbR = auraR * (pair === 0 ? 1.08 : 0.96);
+      for (let s = 0; s < 6; s++) {
+        const sa = baseAng - s * 0.21;
+        const sx = Math.cos(sa) * orbR;
+        const sy = Math.sin(sa) * orbR;
+        ctx.fillStyle = s === 0
+          ? (pair === 0 ? "#A7F3D0" : "#F3E8FF")
+          : (pair === 0 ? "rgba(16, 185, 129, 0.78)" : "rgba(168, 85, 247, 0.72)");
+        ctx.beginPath();
+        ctx.arc(sx, sy, Math.max(1.8, 4.6 - s * 0.48), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.restore();
     return;
@@ -334,18 +340,101 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
 
   if (heroId === "nhi") {
     ctx.save();
-    const cols = ["#A855F7", "#22C55E", "#34D399"];
+    // Tri-elixir orbiting reagent ring + corked mini-flasks
+    ctx.strokeStyle = "rgba(192, 132, 252, 0.4)";
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 1.06, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const cols = ["#E879F9", "#4ADE80", "#2DD4BF"];
     for (let i = 0; i < 3; i++) {
-      const a = t * 1.85 * activeBoost + (Math.PI * 2 * i) / 3;
-      const vx = Math.cos(a) * auraR * 1.04;
-      const vy = Math.sin(a) * auraR * 1.04;
+      const a = t * 1.9 * activeBoost + (Math.PI * 2 * i) / 3;
+      const vx = Math.cos(a) * auraR * 1.06;
+      const vy = Math.sin(a) * auraR * 1.06;
       ctx.fillStyle = cols[i];
       ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.3;
       ctx.beginPath();
-      ctx.arc(vx, vy, 3.8, 0, Math.PI * 2);
+      ctx.arc(vx, vy, 4.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      ctx.fillStyle = "#F59E0B";
+      ctx.fillRect(vx - 1.5, vy - 6.0, 3, 2.2);
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "minh") {
+    ctx.save();
+    // Counter-rotating Sacred Celestial Astrolabe Seal Rings
+    ctx.save();
+    ctx.rotate(t * 1.25 * activeBoost);
+    ctx.strokeStyle = "#FACC15";
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([8, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 1.12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 2) * i;
+      const sx = Math.cos(a) * auraR * 1.12;
+      const sy = Math.sin(a) * auraR * 1.12;
+      ctx.fillStyle = i % 2 === 0 ? "#FDE047" : "#38BDF8";
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - 4.8);
+      ctx.lineTo(sx + 4.8, sy);
+      ctx.lineTo(sx, sy + 4.8);
+      ctx.lineTo(sx - 4.8, sy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.rotate(-t * 1.45 * activeBoost);
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 0.94, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "ducanh") {
+    ctx.save();
+    // Interlocking Orbiting Siege Riot Shields + Molten Gear Ring
+    ctx.rotate(-t * 1.55 * activeBoost);
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.55)";
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([10, 6]);
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 1.05, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 2) * i;
+      ctx.save();
+      ctx.rotate(a);
+      ctx.fillStyle = "#334155";
+      ctx.strokeStyle = "#FBBF24";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.roundRect(auraR * 0.94, -7.5, 7.2, 15, 2.5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#F97316";
+      ctx.beginPath();
+      ctx.arc(auraR * 0.94 + 3.6, 0, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -563,6 +652,7 @@ export default function HeroPreviewCanvas({
         st.pointerAngle !== null ? st.pointerAngle : -0.22 + Math.sin(t * 1.45) * 0.24;
       const hoverBob = Math.sin(t * 2.9) * (compact ? 1.8 : 3.5);
       const breatheScale = 1 + Math.sin(t * 2.9) * (compact ? 0.015 : 0.024);
+      const previewNhiAmmo = hero.id === "nhi" ? ["purple", "green", "life"][Math.floor(t / 2.2) % 3] : "purple";
       const fakePlayer = {
         x: 0,
         y: 0,
@@ -583,6 +673,8 @@ export default function HeroPreviewCanvas({
         dang_c2_timer: 0,
         dang_c3_asTimer: hero.id === "dang" && st.skillTimer > 0 ? 1 : 0,
         dung_c3_buff_timer: hero.id === "dung" && st.skillTimer > 0 ? 1 : 0,
+        thanh_c3Timer: hero.id === "thanh" && st.skillTimer > 0 ? 1 : 0,
+        nhi_ammoType: previewNhiAmmo,
       };
 
       ctx.save();
@@ -611,6 +703,7 @@ export default function HeroPreviewCanvas({
           facing: idleFacing,
           color: mainCol,
           accentColor: accentCol,
+          nhiAmmoType: previewNhiAmmo,
           isMono: false,
           hitFlash: false,
           isUlt: hero.id === "thien" || st.skillTimer > 0,

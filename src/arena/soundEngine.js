@@ -987,6 +987,14 @@ class SoundEngine {
         this.playNhiAmmoSwitch(0);
         this.playFilteredNoise({ duration: 0.14, filterType: "bandpass", freqStart: 1200, freqEnd: 2600, q: 1.8, gainPeak: 0.11, sendAmbiance: true });
         break;
+      case "minh":
+        this.playMinhSanctuary();
+        this.playChord([523.25, 659.25, 783.99, 1046.5], 0.28, { type: "sine", vol: 0.09, stagger: 0.025, sendAmbiance: true });
+        break;
+      case "ducanh":
+        this.playDucAnhFortress();
+        this.playSubPunch(105, 34, 0.24, 0.26);
+        break;
       default:
         this.playChord([440, 659.25], 0.18, { type: "triangle", vol: 0.1, sendAmbiance: true });
     }
@@ -1011,6 +1019,8 @@ class SoundEngine {
       else if (heroId === "nguyen") this.playHolyLight();
       else if (heroId === "thanh") this.playThanhSnakeCast();
       else if (heroId === "nhi") this.playBow();
+      else if (heroId === "minh") this.playMinhBasic();
+      else if (heroId === "ducanh") this.playDucAnhSmash();
       else this.playIceSlash();
       return;
     }
@@ -1027,6 +1037,14 @@ class SoundEngine {
         this.playNhiAmmoSwitch(1);
         return;
       }
+      if (heroId === "minh") {
+        this.playMinhChains();
+        return;
+      }
+      if (heroId === "ducanh") {
+        this.playDucAnhRoll();
+        return;
+      }
     }
     if (skillKey === "c2") {
       if (heroId === "thien") {
@@ -1039,6 +1057,14 @@ class SoundEngine {
       }
       if (heroId === "nhi") {
         this.playNhiFlaskBreak();
+        return;
+      }
+      if (heroId === "minh") {
+        this.playMinhSanctuary();
+        return;
+      }
+      if (heroId === "ducanh") {
+        this.playDucAnhFortress();
         return;
       }
     }
@@ -1059,6 +1085,8 @@ class SoundEngine {
       else if (heroId === "thien") this.playThienPortal(false);
       else if (heroId === "thanh") this.playThanhGuardShield();
       else if (heroId === "nhi") this.playNhiUltShot();
+      else if (heroId === "minh") this.playMinhPrison();
+      else if (heroId === "ducanh") this.playDucAnhMeteor();
       else this.playShurikenThrow();
       return;
     }
@@ -1948,6 +1976,68 @@ class SoundEngine {
     this.playLayerTone({ startFreq: 235, endFreq: 86, duration: 0.52, type: "sawtooth", vol: 0.14, filterFreq: 1450, delay: 0.09, sendAmbiance: true });
     this.playChord([293.66, 440, 587.33, 880], 0.42, { type: "triangle", vol: 0.11, delay: 0.02, stagger: 0.03, sendAmbiance: true });
     this.playFilteredNoise({ duration: 0.46, filterType: "bandpass", freqStart: 2200, freqEnd: 340, q: 1.4, gainPeak: 0.26, sendAmbiance: true });
+  }
+
+  playMinhBasic() {
+    if (this.canThrottle("minhBasic", 60)) return;
+    this.playLayerTone({ startFreq: 660, endFreq: 990, duration: 0.12, type: "sine", vol: 0.12, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 1320, endFreq: 880, duration: 0.11, type: "triangle", vol: 0.07, delay: 0.02, sendAmbiance: true });
+  }
+
+  playMinhChains() {
+    if (this.canThrottle("minhChains", 80)) return;
+    this.playMetallicClang(1120, 0.18, 0.12);
+    this.playLayerTone({ startFreq: 523.25, endFreq: 784, duration: 0.22, type: "triangle", vol: 0.13, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.18, filterType: "highpass", freqStart: 3200, freqEnd: 1500, gainPeak: 0.13, sendAmbiance: true });
+  }
+
+  playMinhSanctuary() {
+    if (this.canThrottle("minhSanct", 90)) return;
+    this.playSubPunch(165, 58, 0.2, 0.18);
+    this.playChord([523.25, 659.25, 987.77, 1318.5], 0.34, { type: "sine", vol: 0.11, stagger: 0.03, sendAmbiance: true });
+  }
+
+  playMinhPrison() {
+    if (this.canThrottle("minhPrison", 110)) return;
+    this.playSubPunch(125, 42, 0.3, 0.26);
+    this.playMetallicClang(840, 0.24, 0.13);
+    this.playChord([392, 523.25, 783.99, 1046.5], 0.42, { type: "triangle", vol: 0.12, stagger: 0.035, sendAmbiance: true });
+  }
+
+  playMinhPrisonDetonate() {
+    if (this.canThrottle("minhDet", 90)) return;
+    this.playSubPunch(115, 34, 0.36, 0.28);
+    this.playChord([587.33, 783.99, 1174.66], 0.38, { type: "sine", vol: 0.14, stagger: 0.02, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.26, filterType: "bandpass", freqStart: 2400, freqEnd: 680, q: 1.5, gainPeak: 0.2, sendAmbiance: true });
+  }
+
+  playDucAnhSmash() {
+    if (this.canThrottle("ducanhAtk", 65)) return;
+    this.playSubPunch(118, 44, 0.14, 0.2);
+    this.playMetallicClang(460, 0.14, 0.12);
+    this.playFilteredNoise({ duration: 0.12, filterType: "lowpass", freqStart: 1200, freqEnd: 320, gainPeak: 0.16, sendAmbiance: true });
+  }
+
+  playDucAnhRoll() {
+    if (this.canThrottle("ducanhRoll", 100)) return;
+    this.playSubPunch(95, 32, 0.32, 0.28);
+    this.playMetallicClang(520, 0.22, 0.14);
+    this.playLayerTone({ startFreq: 165, endFreq: 92, duration: 0.32, type: "sawtooth", vol: 0.14, filterFreq: 920, sendAmbiance: true });
+  }
+
+  playDucAnhFortress() {
+    if (this.canThrottle("ducanhFort", 100)) return;
+    this.playSubPunch(110, 36, 0.26, 0.26);
+    this.playMetallicClang(680, 0.26, 0.16);
+    this.playChord([220, 329.63, 440], 0.28, { type: "triangle", vol: 0.1, stagger: 0.025, sendAmbiance: true });
+  }
+
+  playDucAnhMeteor() {
+    if (this.canThrottle("ducanhMeteor", 110)) return;
+    this.playSubPunch(88, 24, 0.54, 0.36);
+    this.playMetallicClang(380, 0.3, 0.16);
+    this.playLayerTone({ startFreq: 280, endFreq: 52, duration: 0.42, type: "sawtooth", vol: 0.16, filterFreq: 1100, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.4, filterType: "bandpass", freqStart: 1900, freqEnd: 280, q: 1.2, gainPeak: 0.26, sendAmbiance: true });
   }
 }
 

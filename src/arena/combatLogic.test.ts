@@ -118,6 +118,60 @@ import {
   DUNG_C3_COOLDOWN,
   computeDungCritProfile,
   computeDungHealValues,
+  BOSS_CC_IMMUNITY_WINDOW_SEC,
+  HERO_SHIELD_CAP_RATIO,
+  isBossHardCcImmune,
+  evaluateEnemyHardCcApplication,
+  computeBoundedShieldAdd,
+  MINH_PASSIVE_HEAL_RATIO,
+  MINH_PASSIVE_SHIELD_RATIO,
+  MINH_PASSIVE_SHIELD_DUR,
+  MINH_PASSIVE_ICD,
+  MINH_C1_MOB_ROOT,
+  MINH_C1_BOSS_ROOT,
+  MINH_C1_HEAL_RATIO,
+  MINH_C2_MOB_FREEZE,
+  MINH_C2_BOSS_FREEZE,
+  MINH_C2_BOSS_SLOW,
+  MINH_C2_BOSS_SLOW_DUR,
+  MINH_C2_ALLY_HEAL_RATIO,
+  MINH_C2_ALLY_SHIELD_RATIO,
+  MINH_C3_MOB_SEAL,
+  MINH_C3_BOSS_SEAL,
+  MINH_C3_ALLY_HEAL_RATIO,
+  MINH_C3_ALLY_SHIELD_RATIO,
+  computeMinhC1Damage,
+  computeMinhC2TickDamage,
+  computeMinhC3DetonateDamage,
+  DUCANH_PASSIVE_DR,
+  DUCANH_PASSIVE_HP_THRESHOLD,
+  DUCANH_PASSIVE_REGEN_RATIO,
+  DUCANH_PASSIVE_REGEN_DUR,
+  DUCANH_PASSIVE_SHIELD_RATIO,
+  DUCANH_PASSIVE_CD,
+  DUCANH_C1_DURATION,
+  DUCANH_C1_DR,
+  DUCANH_C1_BOSS_STUN,
+  DUCANH_C1_PER_HIT_PCT,
+  DUCANH_C1_MAX_PCT,
+  DUCANH_C2_DURATION,
+  DUCANH_C2_SHIELD_RATIO,
+  DUCANH_C2_DR,
+  DUCANH_C2_REGEN_RATIO,
+  DUCANH_C2_END_ALLY_HEAL,
+  DUCANH_C2_END_ALLY_SHIELD,
+  DUCANH_C3_MOB_KNOCKUP,
+  DUCANH_C3_BOSS_STUN,
+  DUCANH_C3_SELF_HEAL,
+  DUCANH_C3_SELF_SHIELD,
+  DUCANH_C3_ALLY_HEAL,
+  DUCANH_C3_ALLY_SHIELD,
+  DUCANH_MAX_DR_CAP,
+  computeDucAnhDamageReduction,
+  computeDucAnhC1RollGain,
+  computeDucAnhC1RollDamage,
+  computeDucAnhC2ExplosionDamage,
+  computeDucAnhC3ImpactDamage,
 } from './combatLogic.ts';
 import {
   DAILY_CHECKIN_REWARD,
@@ -620,15 +674,15 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (18 standard + 1 secret Founder = 19 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (20 standard + 1 secret Founder = 21 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 19, 'Must preserve all 18 standard heroes + secret Founder hero Thien');
-  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 18, 'Standard unlocked roster must remain 18 heroes');
+  assert.equal(Mi.length, 21, 'Must preserve all 20 standard heroes + secret Founder hero Thien');
+  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 20, 'Standard unlocked roster must be 20 heroes');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 19);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'thien']) {
+  assert.equal(heroIds.size, 21);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'thien']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
@@ -1504,9 +1558,9 @@ test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/ani
   }
 });
 
-test('MOBA hero role classification & filtering covers all 19 champions accurately', async () => {
+test('MOBA hero role classification & filtering covers all 21 champions accurately', async () => {
   const { Mi } = await import('./gameData.js');
-  assert.equal(Mi.length, 19);
+  assert.equal(Mi.length, 21);
   assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
 
   const allFiltered = filterHeroesByRole(Mi, 'all');
@@ -1531,7 +1585,7 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
   const prevWindow = (globalThis as any).window;
 
   const invokeAllSounds = () => {
-    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'thien'];
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'thien'];
     for (const id of heroIds) {
       R.lastCooldowns.clear();
       R.playHeroSelect(id);
@@ -3748,3 +3802,372 @@ test('Dung Three-Headed Cerberus Ult & upgraded skill VFX: waves, slashes, HUD, 
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunity/bounded-shield formulas, GameEngine mechanics, SoundEngine & zero-shadowBlur renderers', async () => {
+  const { Mi, Ff } = await import('./gameData.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
+  const { GameEngine } = await import('./GameEngine.js');
+  const { R } = await import('./soundEngine.js');
+  const wr = await import('./weaponRenderer.js');
+
+  // 1. Exact hero definitions & kit invariants (strictly 1 passive + 3 active skills, no c4)
+  const minh = Mi.find((h: any) => h.id === 'minh');
+  const ducanh = Mi.find((h: any) => h.id === 'ducanh');
+  assert.ok(minh, 'Minh must be present in Mi');
+  assert.ok(ducanh, 'Duc Anh must be present in Mi');
+
+  assert.equal(minh.stats.hp, 1150);
+  assert.equal(minh.stats.damage, 22);
+  assert.equal(minh.stats.ap, 45);
+  assert.deepEqual(minh.skills.map((s: any) => s.key), ['c1', 'c2', 'c3']);
+  assert.equal(HERO_ROLE_CATALOG.minh, 'mage');
+  assert.ok(Ff.minh && Ff.minh.length >= 2);
+  assert.ok(HERO_SKILL_ICONS.minh?.atk && HERO_SKILL_ICONS.minh?.passive && HERO_SKILL_ICONS.minh?.c1 && HERO_SKILL_ICONS.minh?.c2 && HERO_SKILL_ICONS.minh?.c3);
+
+  assert.equal(ducanh.stats.hp, 1850);
+  assert.equal(ducanh.stats.damage, 28);
+  assert.equal(ducanh.stats.ap, 18);
+  assert.deepEqual(ducanh.skills.map((s: any) => s.key), ['c1', 'c2', 'c3']);
+  assert.equal(HERO_ROLE_CATALOG.ducanh, 'tank');
+  assert.ok(Ff.ducanh && Ff.ducanh.length >= 2);
+  assert.ok(HERO_SKILL_ICONS.ducanh?.atk && HERO_SKILL_ICONS.ducanh?.passive && HERO_SKILL_ICONS.ducanh?.c1 && HERO_SKILL_ICONS.ducanh?.c2 && HERO_SKILL_ICONS.ducanh?.c3);
+
+  // 2. Pure combatLogic formulas
+  assert.equal(BOSS_CC_IMMUNITY_WINDOW_SEC, 2.5);
+  assert.equal(HERO_SHIELD_CAP_RATIO, 0.65);
+
+  const w27Boss = { kind: 'boss', bossWave: 27, bossCcImmunityTimer: 0 };
+  const w12Boss = { kind: 'boss', bossWave: 12, bossCcImmunityTimer: 0 };
+  const w12BossImmune = { kind: 'boss', bossWave: 12, bossCcImmunityTimer: 1.4 };
+  assert.equal(isBossHardCcImmune(w27Boss), true);
+  assert.equal(isBossHardCcImmune(w12Boss), false);
+
+  assert.deepEqual(evaluateEnemyHardCcApplication({ enemy: w27Boss, ccType: 'stun', duration: 2.0 }), {
+    applied: false,
+    duration: 0,
+    immuneReason: 'wave27',
+  });
+  assert.deepEqual(evaluateEnemyHardCcApplication({ enemy: w12Boss, ccType: 'root', duration: 1.2 }), {
+    applied: true,
+    duration: 1.2,
+  });
+  assert.deepEqual(evaluateEnemyHardCcApplication({ enemy: w12BossImmune, ccType: 'freeze', duration: 1.0 }), {
+    applied: false,
+    duration: 0,
+    immuneReason: 'post_cc_window',
+  });
+
+  // Shield cap prevents unbounded stacking
+  const shieldCapRes = computeBoundedShieldAdd({ currentShield: 600, maxHp: 1000, addShield: 400 });
+  assert.equal(shieldCapRes.cap, 650);
+  assert.equal(shieldCapRes.nextShield, 650);
+  assert.equal(shieldCapRes.added, 50);
+
+  // Minh damage scaling
+  assert.ok(computeMinhC1Damage({ atk: 22, ap: 45 }) > 0);
+  assert.ok(computeMinhC2TickDamage({ atk: 22, ap: 45 }) > 0);
+  assert.ok(computeMinhC3DetonateDamage({ atk: 22, ap: 45 }) > computeMinhC1Damage({ atk: 22, ap: 45 }));
+
+  // Duc Anh DR cap (12% passive + 60% C2 = 72% cap even if rolling flag were true)
+  assert.equal(computeDucAnhDamageReduction({ isRolling: false, isFortress: false }), DUCANH_PASSIVE_DR);
+  assert.equal(computeDucAnhDamageReduction({ isRolling: true, isFortress: false }), Number((DUCANH_PASSIVE_DR + DUCANH_C1_DR).toFixed(4)));
+  assert.equal(computeDucAnhDamageReduction({ isRolling: true, isFortress: true }), DUCANH_MAX_DR_CAP);
+
+  // Duc Anh C1 roll gain capped at 10%
+  let rollGain = 0;
+  for (let i = 0; i < 8; i++) {
+    const step = computeDucAnhC1RollGain({ currentGainPct: rollGain });
+    rollGain = step.nextGainPct;
+  }
+  assert.equal(rollGain, DUCANH_C1_MAX_PCT);
+  assert.ok(computeDucAnhC1RollDamage({ atk: 28, ap: 18, maxHp: 1850 }) > 0);
+  assert.ok(computeDucAnhC2ExplosionDamage({ atk: 28, ap: 18, maxHp: 1850 }) > 0);
+  assert.ok(computeDucAnhC3ImpactDamage({ atk: 28, ap: 18, maxHp: 1850 }) > computeDucAnhC2ExplosionDamage({ atk: 28, ap: 18, maxHp: 1850 }));
+
+  // Verify constants match prompt spec
+  assert.equal(MINH_PASSIVE_HEAL_RATIO, 0.05);
+  assert.equal(MINH_PASSIVE_SHIELD_RATIO, 0.08);
+  assert.equal(MINH_PASSIVE_SHIELD_DUR, 4);
+  assert.equal(MINH_C1_MOB_ROOT, 3);
+  assert.equal(MINH_C1_BOSS_ROOT, 1.2);
+  assert.equal(MINH_C1_HEAL_RATIO, 0.04);
+  assert.equal(MINH_C2_MOB_FREEZE, 3);
+  assert.equal(MINH_C2_BOSS_FREEZE, 1);
+  assert.equal(MINH_C2_BOSS_SLOW, 0.5);
+  assert.equal(MINH_C2_BOSS_SLOW_DUR, 3);
+  assert.equal(MINH_C2_ALLY_HEAL_RATIO, 0.08);
+  assert.equal(MINH_C2_ALLY_SHIELD_RATIO, 0.12);
+  assert.equal(MINH_C3_MOB_SEAL, 4);
+  assert.equal(MINH_C3_BOSS_SEAL, 2);
+  assert.equal(MINH_C3_ALLY_HEAL_RATIO, 0.18);
+  assert.equal(MINH_C3_ALLY_SHIELD_RATIO, 0.20);
+
+  assert.equal(DUCANH_PASSIVE_HP_THRESHOLD, 0.5);
+  assert.equal(DUCANH_PASSIVE_REGEN_RATIO, 0.04);
+  assert.equal(DUCANH_PASSIVE_REGEN_DUR, 4);
+  assert.equal(DUCANH_PASSIVE_SHIELD_RATIO, 0.08);
+  assert.equal(DUCANH_PASSIVE_CD, 20);
+  assert.equal(DUCANH_C1_DURATION, 5);
+  assert.equal(DUCANH_C1_BOSS_STUN, 1);
+  assert.equal(DUCANH_C1_PER_HIT_PCT, 0.02);
+  assert.equal(DUCANH_C2_DURATION, 5);
+  assert.equal(DUCANH_C2_SHIELD_RATIO, 0.40);
+  assert.equal(DUCANH_C2_DR, 0.60);
+  assert.equal(DUCANH_C2_REGEN_RATIO, 0.04);
+  assert.equal(DUCANH_C2_END_ALLY_HEAL, 0.12);
+  assert.equal(DUCANH_C2_END_ALLY_SHIELD, 0.10);
+  assert.equal(DUCANH_C3_MOB_KNOCKUP, 2);
+  assert.equal(DUCANH_C3_BOSS_STUN, 1.5);
+  assert.equal(DUCANH_C3_SELF_HEAL, 0.20);
+  assert.equal(DUCANH_C3_SELF_SHIELD, 0.20);
+  assert.equal(DUCANH_C3_ALLY_HEAL, 0.10);
+  assert.equal(DUCANH_C3_ALLY_SHIELD, 0.10);
+
+  // 3. GameEngine & Renderer integration tests
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  let shadowBlurUsed = false;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+  Object.defineProperty(ctxStub, 'shadowBlur', {
+    get() { return 0; },
+    set(val: number) { if (val > 0) shadowBlurUsed = true; },
+    configurable: true,
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    // SoundEngine safety without AudioContext
+    R.ctx = null;
+    R.lastCooldowns.clear();
+    assert.doesNotThrow(() => {
+      R.playMinhBasic();
+      R.playMinhChains();
+      R.playMinhSanctuary();
+      R.playMinhPrison();
+      R.playMinhPrisonDetonate();
+      R.playDucAnhSmash();
+      R.playDucAnhRoll();
+      R.playDucAnhFortress();
+      R.playDucAnhMeteor();
+    });
+
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+
+    // --- Test MINH ---
+    engine.startNewGame(minh);
+    assert.equal(engine.player.maxHp, 1150);
+    engine.player.hp = 600;
+    engine.player.shield = 0;
+    const bossNormal: any = {
+      id: 8101, kind: 'boss', bossWave: 12, name: 'Boss12', radius: 42,
+      x: engine.player.x + 120, y: engine.player.y,
+      hp: 20000, maxHp: 20000, speed: 100, damage: 50,
+      facing: Math.PI, stunTimer: 0, frozenTimer: 0, rootTimer: 0, sealTimer: 0, knockupTimer: 0,
+      slowFactor: 0, slowTimer: 0, bossCcImmunityTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    const boss27: any = {
+      id: 8102, kind: 'boss', bossWave: 27, name: 'Boss27', radius: 52,
+      x: engine.player.x + 160, y: engine.player.y,
+      hp: 40000, maxHp: 40000, speed: 100, damage: 90,
+      facing: Math.PI, stunTimer: 0, frozenTimer: 0, rootTimer: 0, sealTimer: 0, knockupTimer: 0,
+      slowFactor: 0, slowTimer: 0, bossCcImmunityTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    const mobMinh: any = {
+      id: 8103, kind: 'minion', name: 'Mob1', radius: 18,
+      x: engine.player.x + 90, y: engine.player.y,
+      hp: 2000, maxHp: 2000, speed: 90, damage: 15,
+      facing: Math.PI, stunTimer: 0, frozenTimer: 0, rootTimer: 0, sealTimer: 0, knockupTimer: 0,
+      slowFactor: 0, slowTimer: 0, bossCcImmunityTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies = [mobMinh, bossNormal, boss27];
+
+    // Cast Minh C1 -> piercing chains root mob (3s) & non-27 Boss (1.2s), heal Minh + passive shield; Wave 27 Boss immune to root
+    engine.castSkill(0, 0, bossNormal.x, bossNormal.y);
+    for (let i = 0; i < 12; i++) engine.updateProjectiles(0.05);
+    assert.ok(mobMinh.rootTimer > 0, 'Minh C1 must root normal monster');
+    assert.ok(bossNormal.rootTimer > 0, 'Minh C1 must root non-27 Boss');
+    assert.equal(boss27.rootTimer, 0, 'Wave 27 Boss must remain immune to hard CC');
+    assert.ok(boss27.hp < 40000, 'Wave 27 Boss must still take damage from Minh C1');
+    assert.ok(engine.player.hp > 600, 'Minh C1 + passive must heal Minh');
+    assert.ok(engine.player.shield > 0, 'Minh passive must grant virtual shield on CC');
+
+    // When hard CC ends on Boss12, Boss12 enters post-CC immunity window (2.5s)
+    bossNormal.rootTimer = 0.05;
+    bossNormal._hadHardCc = true;
+    engine.updateEnemies(0.1);
+    assert.ok(bossNormal.bossCcImmunityTimer > 2.0, 'Boss must get post-CC immunity window after CC ends');
+    const secondRootAttempt = engine.applyEnemyHardCC(bossNormal, 'stun', 1.5);
+    assert.equal(secondRootAttempt, false, 'Boss must reject hard CC while post-CC immunity window is active');
+
+    // Cast Minh C2 -> sanctuary freezes mob/Boss12 and slows Wave 27 Boss 50%
+    bossNormal.bossCcImmunityTimer = 0;
+    engine.castSkill(1, 0, boss27.x, boss27.y);
+    assert.equal(engine.minhSanctuaries.length, 1);
+    engine.updateMinhAndDucAnhSystems(0.1);
+    assert.equal(boss27.frozenTimer, 0, 'Wave 27 Boss immune to C2 freeze');
+    assert.ok(boss27.slowFactor >= 0.5 && boss27.slowTimer > 0, 'Wave 27 Boss still gets 50% slow from Minh C2');
+
+    // Cast Minh C3 -> Prison of Light seals & detonates
+    engine.castSkill(2, 0, mobMinh.x, mobMinh.y);
+    assert.equal(engine.minhPrisons.length, 1);
+    const mobHpBeforeDet = mobMinh.hp;
+    for (let i = 0; i < 20; i++) engine.updateMinhAndDucAnhSystems(0.12);
+    assert.ok(mobMinh.hp < mobHpBeforeDet, 'Minh C3 Prison detonation must deal AoE damage');
+
+    // --- Test DUC ANH ---
+    engine.startNewGame(ducanh);
+    assert.equal(engine.player.maxHp, 1850);
+
+    // Passive: 12% DR always + <50% HP triggers regen & 8% shield (20s CD)
+    engine.player.hp = 1850;
+    engine.player.shield = 0;
+    engine.damagePlayer(100);
+    assert.equal(engine.player.hp, 1850 - 88, 'Duc Anh passive must apply 12% damage reduction');
+
+    engine.player.hp = 800; // below 50% (925)
+    engine.damagePlayer(50);
+    assert.ok(engine.player.ducanh_passiveHotTimer > 3.5, 'Dropping <50% HP triggers passive 4s regen');
+    assert.equal(engine.player.ducanh_passiveCd, DUCANH_PASSIVE_CD, 'Passive enters 20s cooldown');
+    assert.ok(engine.player.shield > 0, 'Passive grants 8% virtual shield');
+
+    // C1 Rolling steel ball: 5s roll, collision damage/knockback/boss stun, 2% heal+shield per hit capped at 10%
+    const ducBoss: any = {
+      id: 8201, kind: 'boss', bossWave: 9, name: 'Boss9', radius: 38,
+      x: engine.player.x + 25, y: engine.player.y,
+      hp: 15000, maxHp: 15000, speed: 90, damage: 40,
+      facing: Math.PI, stunTimer: 0, frozenTimer: 0, rootTimer: 0, sealTimer: 0, knockupTimer: 0,
+      slowFactor: 0, slowTimer: 0, bossCcImmunityTimer: 0, hitFlash: 0, attackCooldown: 1,
+    };
+    engine.enemies = [ducBoss];
+    engine.player.hp = 1000;
+    engine.player.shield = 0;
+    engine.castSkill(0, 0, ducBoss.x, ducBoss.y);
+    assert.ok(engine.player.ducanh_c1Timer > 4.5, 'Duc Anh C1 enters 5s rolling state');
+    engine.updateMinhAndDucAnhSystems(0.05);
+    assert.ok(ducBoss.hp < 15000, 'Duc Anh C1 roll damages collided enemy');
+    assert.ok(ducBoss.stunTimer > 0, 'Duc Anh C1 roll stuns Boss for 1s');
+    assert.ok(engine.player.hp > 1000 && engine.player.shield > 0, 'Duc Anh C1 restores 2% HP and grants 2% shield on hit');
+
+    // C2 Fortress: 5s duration, 40% MaxHP shield, high DR, HoT, end explosion
+    engine.player.ducanh_c1Timer = 0;
+    engine.player.shield = 0;
+    engine.castSkill(1, 0, engine.player.x, engine.player.y);
+    assert.ok(engine.player.ducanh_c2Timer > 4.5);
+    assert.ok(engine.player.shield >= Math.round(1850 * 0.40) - 2);
+    const bossHpBeforeFortBoom = ducBoss.hp;
+    for (let i = 0; i < 52; i++) engine.updateMinhAndDucAnhSystems(0.1);
+    assert.equal(engine.player.ducanh_c2Timer, 0);
+    assert.ok(ducBoss.hp < bossHpBeforeFortBoom, 'Duc Anh C2 end explosion must damage nearby enemies');
+
+    // C3 Meteor Leap: launches leap, slams for stun/knockup + 20% self heal + 20% self shield
+    ducBoss.bossCcImmunityTimer = 0;
+    ducBoss.stunTimer = 0;
+    engine.player.hp = 900;
+    engine.player.shield = 0;
+    engine.castSkill(2, 0, ducBoss.x, ducBoss.y);
+    assert.equal(engine.ducanhMeteorLeaps.length, 1);
+    for (let i = 0; i < 12; i++) engine.updateMinhAndDucAnhSystems(0.06);
+    assert.equal(engine.ducanhMeteorLeaps.length, 0);
+    assert.ok(ducBoss.stunTimer > 0, 'Duc Anh C3 meteor impact must stun non-immune Boss 1.5s');
+    assert.ok(engine.player.hp >= 900 + Math.round(1850 * 0.20), 'Duc Anh C3 restores 20% HP on impact');
+    assert.ok(engine.player.shield >= Math.round(1850 * 0.20), 'Duc Anh C3 grants 20% shield on impact');
+
+    // Renderers & zero shadowBlur check for upgraded Nhi, Thanh, Minh & Duc Anh
+    assert.doesNotThrow(() => engine.render());
+    const animPlayerState: any = {
+      ...engine.player,
+      attackAnimTimer: 0.11,
+      weaponAttackDuration: 0.22,
+      attackSwingParity: 1,
+      bowRecoilTimer: 0.08,
+      walkCyclePhase: 1.4,
+      moveSpeedFactor: 0.9,
+      nhi_ammoType: 'green',
+      thanh_c3Timer: 2.0,
+    };
+    const zonesSample = [{ id: 1, x: 200, y: 200, radius: 100 }, { id: 2, x: 340, y: 220, radius: 100 }];
+    for (const isMono of [false, true]) {
+      wr.drawHeroBody(ctxStub, { heroId: 'thanh', radius: 22, facing: 0.2, color: '#10B981', accentColor: '#A78BFA', isMono, elapsedTime: 1.5, isUlt: true, moveSpeedFactor: 0.9, walkCyclePhase: 1.4 });
+      wr.drawHeroBody(ctxStub, { heroId: 'nhi', radius: 21, facing: 0.1, color: '#C084FC', accentColor: '#4ADE80', nhiAmmoType: 'life', isMono, elapsedTime: 1.5, moveSpeedFactor: 0.9, walkCyclePhase: 1.4 });
+      wr.drawHeroBody(ctxStub, { heroId: 'minh', radius: 22, facing: 0.2, color: '#38BDF8', accentColor: '#FDE047', isMono, elapsedTime: 1.5, moveSpeedFactor: 0.9, walkCyclePhase: 1.4 });
+      wr.drawHeroBody(ctxStub, { heroId: 'ducanh', radius: 24, facing: -0.3, color: '#F59E0B', accentColor: '#94A3B8', isMono, elapsedTime: 1.5 });
+      wr.drawHeroBody(ctxStub, { heroId: 'ducanh', radius: 24, facing: -0.3, color: '#F59E0B', accentColor: '#94A3B8', isMono, elapsedTime: 1.5, ducanhRolling: true });
+      wr.drawHeroBody(ctxStub, { heroId: 'ducanh', radius: 24, facing: -0.3, color: '#F59E0B', accentColor: '#94A3B8', isMono, elapsedTime: 1.5, ducanhFortress: true });
+
+      wr.drawHeroWeapon(ctxStub, 'thanh', animPlayerState, 1.5, isMono);
+      wr.drawHeroWeapon(ctxStub, 'nhi', animPlayerState, 1.5, isMono);
+      wr.drawHeroWeapon(ctxStub, 'minh', animPlayerState, 1.5, isMono);
+      wr.drawHeroWeapon(ctxStub, 'ducanh', animPlayerState, 1.5, isMono);
+
+      for (const proj of [
+        { style: 'thanh_atk', kind: 'thanh_atk', x: 200, y: 200, angle: 0.3, radius: 9, color: '#10B981' },
+        { style: 'thanh_c1_snake', kind: 'thanh_c1_snake', x: 220, y: 210, angle: 0.3, radius: 11, color: '#34D399' },
+        { style: 'nhi_arrow_purple', kind: 'nhi_arrow_purple', x: 240, y: 210, angle: 0.1, radius: 9, color: '#C084FC' },
+        { style: 'nhi_c2_flask', kind: 'nhi_c2_flask', x: 260, y: 220, angle: 0.4, radius: 11, color: '#4ADE80', distanceTraveled: 80 },
+        { style: 'nhi_c3_arrow', kind: 'nhi_c3_arrow', x: 280, y: 230, angle: 0.2, radius: 14, color: '#E879F9' },
+        { style: 'minh_orb', kind: 'minh_orb', x: 300, y: 240, angle: 0.1, radius: 11, color: '#38BDF8' },
+        { style: 'minh_chain', kind: 'minh_chain', x: 320, y: 250, angle: 0.2, radius: 16, color: '#FACC15', distanceTraveled: 120 },
+      ]) {
+        wr.drawUpgradedProjectile(ctxStub, proj, 1.5, isMono);
+      }
+
+      for (const sl of [
+        { kind: 'thanh_snake_fan', x: 200, y: 200, angle: 0, radius: 74, spread: 1.1, color: '#10B981', life: 0.1, maxLife: 0.24 },
+        { kind: 'thanh_devour_bite', x: 220, y: 200, angle: 0, radius: 140, spread: Math.PI * 2, color: '#10B981', life: 0.15, maxLife: 0.38 },
+        { kind: 'thanh_shield_pulse', x: 220, y: 200, angle: 0, radius: 68, spread: Math.PI * 2, color: '#34D399', life: 0.15, maxLife: 0.34 },
+        { kind: 'nhi_flask_boom', x: 240, y: 200, angle: 0, radius: 100, spread: Math.PI * 2, color: '#4ADE80', life: 0.15, maxLife: 0.34 },
+        { kind: 'nhi_mist_pulse', x: 240, y: 200, angle: 0, radius: 110, spread: Math.PI * 2, color: '#4ADE80', life: 0.15, maxLife: 0.34 },
+        { kind: 'nhi_ult_shock', x: 240, y: 200, angle: 0.2, radius: 78, spread: Math.PI * 2, color: '#E879F9', life: 0.15, maxLife: 0.34 },
+        { kind: 'minh_seal_boom', x: 300, y: 200, angle: 0, radius: 185, spread: Math.PI * 2, color: '#FACC15', life: 0.18, maxLife: 0.4 },
+        { kind: 'ducanh_fortress_boom', x: 350, y: 200, angle: 0, radius: 170, spread: Math.PI * 2, color: '#F59E0B', life: 0.16, maxLife: 0.36 },
+        { kind: 'ducanh_meteor_boom', x: 380, y: 200, angle: 0, radius: 185, spread: Math.PI * 2, color: '#F97316', life: 0.2, maxLife: 0.42 },
+      ]) {
+        wr.drawUpgradedSlash(ctxStub, sl, 1.5, isMono);
+      }
+
+      wr.drawThanhSpiritSnakes(ctxStub, [{ x: 200, y: 200, angle: 0.5, isCompanion: true, idx: 0 }], 1.5, isMono);
+      wr.drawThanhDevourSerpents(ctxStub, [{ x: 220, y: 220, radius: 145, life: 0.3, maxLife: 0.72 }], 1.5, isMono);
+      wr.drawNhiPoisonTethers(ctxStub, zonesSample, [{ fromIdx: 0, toIdx: 1 }], 1.5, isMono);
+      wr.drawNhiToxicMist(ctxStub, [{ x: 260, y: 260, radius: 110, timer: 1.0, duration: 4.0 }], 1.5, isMono);
+      wr.drawMinhSanctuaries(ctxStub, [{ x: 300, y: 300, radius: 155, timer: 1.0, duration: 3.0 }], 1.5, isMono);
+      wr.drawMinhPrisons(ctxStub, [{ x: 350, y: 300, radius: 185, timer: 0.9, duration: 2.0 }], 1.5, isMono);
+      wr.drawDucAnhMeteorLeaps(ctxStub, [{ x: 400, y: 300, startX: 250, startY: 300, targetX: 400, targetY: 300, radius: 185, timer: 0.25, duration: 0.45 }], 1.5, isMono);
+    }
+    assert.equal(shadowBlurUsed, false, 'Nhi, Thanh, Minh, and Duc Anh renderers must never set ctx.shadowBlur');
+  } finally {
+    R.ctx = null;
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+

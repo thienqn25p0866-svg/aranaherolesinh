@@ -959,6 +959,8 @@ export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
   nhi: 'marksman',
   gau: 'tank',
   nguyen: 'tank',
+  ducanh: 'tank',
+  minh: 'mage',
 };
 
 export const HERO_ROLE_ORDER: HeroRoleFilter[] = [
@@ -2088,6 +2090,181 @@ export function computeDungHealValues({
     c3HitBonusHeal,
   };
 }
+
+// ===== MINH (THẦN KHỐNG CHẾ) & ĐỨC ANH (CỖ XE BẤT DIỆT) =====
+
+export const BOSS_CC_IMMUNITY_WINDOW_SEC = 2.5;
+export const HERO_SHIELD_CAP_RATIO = 0.65;
+
+export type HardCcType = 'root' | 'freeze' | 'seal' | 'stun' | 'knockup' | 'knockback';
+
+export function isBossHardCcImmune(enemy: { kind?: string; bossWave?: number } | null | undefined): boolean {
+  return Boolean(enemy && enemy.kind === 'boss' && Number(enemy.bossWave) === 27);
+}
+
+export function evaluateEnemyHardCcApplication({
+  enemy,
+  duration = 0,
+}: {
+  enemy: { kind?: string; bossWave?: number; bossCcImmunityTimer?: number } | null | undefined;
+  ccType?: HardCcType;
+  duration?: number;
+}): { applied: boolean; duration: number; immuneReason?: 'wave27' | 'post_cc_window' } {
+  if (!enemy) return { applied: false, duration: 0 };
+  if (isBossHardCcImmune(enemy)) {
+    return { applied: false, duration: 0, immuneReason: 'wave27' };
+  }
+  if (enemy.kind === 'boss' && (enemy.bossCcImmunityTimer || 0) > 0) {
+    return { applied: false, duration: 0, immuneReason: 'post_cc_window' };
+  }
+  return {
+    applied: true,
+    duration: Math.max(0, Number.isFinite(duration) ? duration : 0),
+  };
+}
+
+export function computeBoundedShieldAdd({
+  currentShield,
+  maxHp,
+  addShield,
+  capRatio = HERO_SHIELD_CAP_RATIO,
+}: {
+  currentShield: number;
+  maxHp: number;
+  addShield: number;
+  capRatio?: number;
+}): { added: number; nextShield: number; cap: number } {
+  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1000);
+  const safeCurrent = Math.max(0, Number.isFinite(currentShield) ? currentShield : 0);
+  const safeAdd = Math.max(0, Number.isFinite(addShield) ? addShield : 0);
+  const cap = Math.round(safeMaxHp * Math.max(0, Math.min(1, capRatio)));
+  const nextShield = Math.round(Math.min(cap, safeCurrent + safeAdd));
+  const added = Math.max(0, Math.round(nextShield - safeCurrent));
+  return { added, nextShield, cap };
+}
+
+export const MINH_PASSIVE_HEAL_RATIO = 0.05;
+export const MINH_PASSIVE_SHIELD_RATIO = 0.08;
+export const MINH_PASSIVE_SHIELD_DUR = 4;
+export const MINH_PASSIVE_ICD = 1.2;
+
+export const MINH_C1_MOB_ROOT = 3;
+export const MINH_C1_BOSS_ROOT = 1.2;
+export const MINH_C1_HEAL_RATIO = 0.04;
+
+export const MINH_C2_MOB_FREEZE = 3;
+export const MINH_C2_BOSS_FREEZE = 1;
+export const MINH_C2_BOSS_SLOW = 0.5;
+export const MINH_C2_BOSS_SLOW_DUR = 3;
+export const MINH_C2_ALLY_HEAL_RATIO = 0.08;
+export const MINH_C2_ALLY_SHIELD_RATIO = 0.12;
+
+export const MINH_C3_MOB_SEAL = 4;
+export const MINH_C3_BOSS_SEAL = 2;
+export const MINH_C3_ALLY_HEAL_RATIO = 0.18;
+export const MINH_C3_ALLY_SHIELD_RATIO = 0.20;
+
+export function computeMinhC1Damage({ atk, ap }: { atk: number; ap: number }): number {
+  return Math.max(1, Math.round(62 + (atk || 0) * 0.45 + (ap || 0) * 1.15));
+}
+
+export function computeMinhC2TickDamage({ atk, ap }: { atk: number; ap: number }): number {
+  return Math.max(1, Math.round(28 + (atk || 0) * 0.2 + (ap || 0) * 0.58));
+}
+
+export function computeMinhC3DetonateDamage({ atk, ap }: { atk: number; ap: number }): number {
+  return Math.max(1, Math.round(145 + (atk || 0) * 0.65 + (ap || 0) * 2.15));
+}
+
+export const DUCANH_PASSIVE_DR = 0.12;
+export const DUCANH_PASSIVE_HP_THRESHOLD = 0.5;
+export const DUCANH_PASSIVE_REGEN_RATIO = 0.04;
+export const DUCANH_PASSIVE_REGEN_DUR = 4;
+export const DUCANH_PASSIVE_SHIELD_RATIO = 0.08;
+export const DUCANH_PASSIVE_CD = 20;
+
+export const DUCANH_C1_DURATION = 5;
+export const DUCANH_C1_DR = 0.35;
+export const DUCANH_C1_BOSS_STUN = 1;
+export const DUCANH_C1_PER_HIT_PCT = 0.02;
+export const DUCANH_C1_MAX_PCT = 0.10;
+
+export const DUCANH_C2_DURATION = 5;
+export const DUCANH_C2_SHIELD_RATIO = 0.40;
+export const DUCANH_C2_DR = 0.60;
+export const DUCANH_C2_REGEN_RATIO = 0.04;
+export const DUCANH_C2_END_ALLY_HEAL = 0.12;
+export const DUCANH_C2_END_ALLY_SHIELD = 0.10;
+
+export const DUCANH_C3_MOB_KNOCKUP = 2;
+export const DUCANH_C3_BOSS_STUN = 1.5;
+export const DUCANH_C3_SELF_HEAL = 0.20;
+export const DUCANH_C3_SELF_SHIELD = 0.20;
+export const DUCANH_C3_ALLY_HEAL = 0.10;
+export const DUCANH_C3_ALLY_SHIELD = 0.10;
+
+export const DUCANH_MAX_DR_CAP = 0.72;
+
+export function computeDucAnhDamageReduction({
+  isRolling = false,
+  isFortress = false,
+}: {
+  isRolling?: boolean;
+  isFortress?: boolean;
+}): number {
+  let dr = DUCANH_PASSIVE_DR;
+  if (isRolling) dr += DUCANH_C1_DR;
+  if (isFortress) dr += DUCANH_C2_DR;
+  return Math.min(DUCANH_MAX_DR_CAP, Number(dr.toFixed(4)));
+}
+
+export function computeDucAnhC1RollGain({
+  currentGainPct,
+}: {
+  currentGainPct: number;
+}): { delta: number; nextGainPct: number } {
+  const safeCur = Math.max(0, Math.min(DUCANH_C1_MAX_PCT, Number.isFinite(currentGainPct) ? currentGainPct : 0));
+  const nextGainPct = Math.min(DUCANH_C1_MAX_PCT, Number((safeCur + DUCANH_C1_PER_HIT_PCT).toFixed(4)));
+  const delta = Math.max(0, Number((nextGainPct - safeCur).toFixed(4)));
+  return { delta, nextGainPct };
+}
+
+export function computeDucAnhC1RollDamage({
+  atk,
+  ap,
+  maxHp,
+}: {
+  atk: number;
+  ap: number;
+  maxHp: number;
+}): number {
+  return Math.max(1, Math.round(48 + (atk || 0) * 0.95 + (ap || 0) * 0.55 + (maxHp || 0) * 0.025));
+}
+
+export function computeDucAnhC2ExplosionDamage({
+  atk,
+  ap,
+  maxHp,
+}: {
+  atk: number;
+  ap: number;
+  maxHp: number;
+}): number {
+  return Math.max(1, Math.round(95 + (atk || 0) * 1.15 + (ap || 0) * 1.1 + (maxHp || 0) * 0.06));
+}
+
+export function computeDucAnhC3ImpactDamage({
+  atk,
+  ap,
+  maxHp,
+}: {
+  atk: number;
+  ap: number;
+  maxHp: number;
+}): number {
+  return Math.max(1, Math.round(140 + (atk || 0) * 1.55 + (ap || 0) * 1.35 + (maxHp || 0) * 0.08));
+}
+
 
 
 

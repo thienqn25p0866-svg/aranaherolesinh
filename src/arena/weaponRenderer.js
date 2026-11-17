@@ -2214,86 +2214,137 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
 }
 
 function drawThanhSerpentStaff(ctx, p, elapsedTime, state, isMono) {
+  let isUlt = (p?.thanh_c3Timer || 0) > 0;
   let jade = isMono ? "#FFFFFF" : "#10B981";
   let emerald = isMono ? "#E5E5E5" : "#34D399";
   let mint = isMono ? "#FFFFFF" : "#A7F3D0";
-  let violet = isMono ? "#999999" : "#7E22CE";
+  let violet = isMono ? "#BBBBBB" : "#A855F7";
+  let gold = isMono ? "#FFFFFF" : "#FDE047";
   let dark = "#042F2E";
 
-  let swing = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 0.42 * state.parity : 0;
-  let bob = Math.sin(elapsedTime * 3.8 + state.walkPhase) * 1.4;
-  let glow = state.skillAlpha * 0.55 + state.critAlpha * 0.4;
+  let atkSin = state.hasAtk ? Math.sin(state.atkProg * Math.PI) : 0;
+  let swing = atkSin * 0.56 * state.parity;
+  let thrust = atkSin * 6.5;
+  let bob = Math.sin(elapsedTime * 3.6 + state.walkPhase) * (1.2 + state.moveAmt * 1.1);
+  let swayRot = state.moveAmt * Math.sin(state.walkPhase) * 0.08;
+  let glow = clamp(state.skillAlpha * 0.65 + state.critAlpha * 0.45 + (isUlt ? 0.4 : 0), 0, 1.3);
+  let jawOpen = clamp(0.18 + atkSin * 0.65 + state.skillAlpha * 0.55 + (isUlt ? 0.2 : 0), 0.15, 1.15);
 
   ctx.save();
-  ctx.rotate(swing);
-  ctx.translate(10, 4 + bob);
+  ctx.rotate(swing + swayRot);
+  ctx.translate(10 + thrust, 5 + bob);
 
-  // Coiled serpent staff shaft
+  // Flowing shadow-jade ribbon from staff pommel
+  let tailW1 = Math.sin(elapsedTime * 9.5 + state.walkPhase) * (3.2 + state.moveAmt * 3);
+  let tailW2 = Math.cos(elapsedTime * 8 + state.walkPhase) * (4.5 + state.moveAmt * 3.2);
+  ctx.strokeStyle = isMono ? "#888888" : violet;
+  ctx.lineWidth = 2.4;
   ctx.lineCap = "round";
-  ctx.strokeStyle = dark;
-  ctx.lineWidth = 5.4;
   ctx.beginPath();
-  ctx.moveTo(-14, 0);
+  ctx.moveTo(-17, 0);
+  ctx.quadraticCurveTo(-25, tailW1, -34, tailW2);
+  ctx.stroke();
+
+  // Heavy dark outline + metallic jade-obsidian shaft
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 6.2;
+  ctx.beginPath();
+  ctx.moveTo(-17, 0);
   ctx.lineTo(22, 0);
   ctx.stroke();
 
-  ctx.strokeStyle = jade;
-  ctx.lineWidth = 3.0;
+  let shaftGrad = ctx.createLinearGradient(-17, -2, 22, 2);
+  shaftGrad.addColorStop(0, isMono ? "#222222" : "#064E3B");
+  shaftGrad.addColorStop(0.55, jade);
+  shaftGrad.addColorStop(1, gold);
+  ctx.strokeStyle = shaftGrad;
+  ctx.lineWidth = 3.4;
   ctx.beginPath();
-  ctx.moveTo(-13, 0);
-  ctx.lineTo(21, 0);
+  ctx.moveTo(-17, 0);
+  ctx.lineTo(22, 0);
   ctx.stroke();
 
-  // Golden/Violet serpent spiral wrapping the shaft
-  ctx.strokeStyle = violet;
-  ctx.lineWidth = 1.9;
+  // Golden pommel spike
+  ctx.fillStyle = gold;
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  for (let i = 0; i <= 14; i++) {
-    let t = i / 14;
-    let sx = -10 + t * 28;
-    let sy = Math.sin(t * Math.PI * 3.2 - elapsedTime * 4.5) * 3.4;
-    if (i === 0) ctx.moveTo(sx, sy);
-    else ctx.lineTo(sx, sy);
+  ctx.moveTo(-21, 0);
+  ctx.lineTo(-15, -3.4);
+  ctx.lineTo(-13, 0);
+  ctx.lineTo(-15, 3.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Twin intertwined serpents coiling around shaft
+  for (let s of [-1, 1]) {
+    ctx.strokeStyle = s > 0 ? emerald : violet;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let i = 0; i <= 14; i++) {
+      let t = i / 14;
+      let sx = -12 + t * 30;
+      let sy = Math.sin(t * Math.PI * 3.2 - elapsedTime * 5) * 4.0 * s;
+      i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
   }
+
+  // Gauntleted hand grip
+  drawHandGrip(ctx, -1, 0.5, "#065F46", mint, 4.1, isMono);
+
+  // Sculpted Viper Crown Collar
+  ctx.fillStyle = gold;
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(16, -5.5);
+  ctx.lineTo(21, -7.2);
+  ctx.lineTo(23, 0);
+  ctx.lineTo(21, 7.2);
+  ctx.lineTo(16, 5.5);
+  ctx.closePath();
+  ctx.fill();
   ctx.stroke();
 
-  // Twin-fang serpent crest head + floating venom orb
-  ctx.fillStyle = dark;
-  ctx.beginPath();
-  ctx.moveTo(19, -6.2);
-  ctx.lineTo(29, -4.5);
-  ctx.lineTo(25, 0);
-  ctx.lineTo(29, 4.5);
-  ctx.lineTo(19, 6.2);
-  ctx.closePath();
-  ctx.fill();
+  // Articulated Twin-Fang Serpent Jaws that snap open on strike/cast
+  for (let s of [-1, 1]) {
+    ctx.fillStyle = dark;
+    ctx.strokeStyle = emerald;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(20, s * 2.5);
+    ctx.quadraticCurveTo(27, s * (7.2 + jawOpen * 4.5), 35, s * (2.8 + jawOpen * 4.2));
+    ctx.lineTo(29, s * (1.2 + jawOpen * 2.0));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 
-  ctx.fillStyle = emerald;
-  ctx.beginPath();
-  ctx.moveTo(20, -4.8);
-  ctx.lineTo(27.5, -3.5);
-  ctx.lineTo(23.5, 0);
-  ctx.lineTo(27.5, 3.5);
-  ctx.lineTo(20, 4.8);
-  ctx.closePath();
-  ctx.fill();
+    // Razor golden venom fang inside jaw
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.moveTo(31, s * (2.6 + jawOpen * 3.6));
+    ctx.lineTo(34.5, s * (0.6 + jawOpen * 1.2));
+    ctx.lineTo(28.5, s * (1.8 + jawOpen * 2.5));
+    ctx.closePath();
+    ctx.fill();
+  }
 
-  let orbR = 4.6 + glow * 2.2 + Math.sin(elapsedTime * 6) * 0.4;
-  let orbGrad = ctx.createRadialGradient(26, 0, 0.5, 26, 0, orbR * 1.8);
+  // Floating Venom-Soul Crystal Eye inside jaws
+  let orbX = 27.5;
+  let orbR = 4.5 + glow * 2.4 + Math.sin(elapsedTime * 6.5) * 0.45;
+  let orbGrad = ctx.createRadialGradient(orbX, 0, 0.5, orbX, 0, orbR * 2.1);
   orbGrad.addColorStop(0, "#FFFFFF");
-  orbGrad.addColorStop(0.4, mint);
-  orbGrad.addColorStop(0.8, jade);
+  orbGrad.addColorStop(0.35, mint);
+  orbGrad.addColorStop(0.7, isUlt ? violet : jade);
   orbGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
   ctx.fillStyle = orbGrad;
   ctx.beginPath();
-  ctx.arc(26, 0, orbR * 1.8, 0, Math.PI * 2);
+  ctx.arc(orbX, 0, orbR * 2.1, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#FFFFFF";
-  ctx.beginPath();
-  ctx.arc(26, 0, orbR * 0.52, 0, Math.PI * 2);
-  ctx.fill();
-
+  drawFourPointStar(ctx, orbX, 0, orbR * 1.15, orbR * 0.38, "#FFFFFF", isUlt ? violet : emerald);
   ctx.restore();
 }
 
@@ -2305,74 +2356,126 @@ function drawNhiVenomCrossbow(ctx, p, elapsedTime, state, isMono) {
     ? "#4ADE80"
     : ammo === "life"
     ? "#2DD4BF"
-    : "#C084FC";
+    : "#E879F9";
   let accentCol = isMono
     ? "#CCCCCC"
     : ammo === "green"
     ? "#16A34A"
     : ammo === "life"
-    ? "#10B981"
+    ? "#0D9488"
     : "#9333EA";
+  let brass = isMono ? "#E5E5E5" : "#F59E0B";
   let dark = "#1E1B2E";
-  let recoil = state.bowRecoil * 18 + (state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 3.5 : 0);
+  let atkSin = state.hasAtk ? Math.sin(state.atkProg * Math.PI) : 0;
+  let recoil = state.bowRecoil * 22 + atkSin * 4.2;
+  let limbFlex = atkSin * 2.6 + state.bowRecoil * 10;
+  let walkTilt = state.moveAmt * Math.sin(state.walkPhase) * 0.06;
 
   ctx.save();
-  ctx.translate(11 - recoil, 2);
+  ctx.rotate(walkTilt);
+  ctx.translate(11 - recoil, 2 + Math.sin(elapsedTime * 3.5) * 0.8);
 
-  // Repeating crossbow limb arcs
-  ctx.strokeStyle = dark;
-  ctx.lineWidth = 5.2;
-  ctx.lineCap = "round";
+  // Glow aura around active elixir canister
+  let glowR = 13 + state.skillAlpha * 5 + state.critAlpha * 4;
+  let glow = ctx.createRadialGradient(8, 0, 1, 8, 0, glowR);
+  glow.addColorStop(0, isMono ? "rgba(255,255,255,0.45)" : `${coreCol}66`);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.moveTo(8, -14);
-  ctx.quadraticCurveTo(17, 0, 8, 14);
-  ctx.stroke();
-
-  ctx.strokeStyle = accentCol;
-  ctx.lineWidth = 2.6;
-  ctx.beginPath();
-  ctx.moveTo(8, -13);
-  ctx.quadraticCurveTo(16, 0, 8, 13);
-  ctx.stroke();
-
-  // Bowstring
-  let pull = state.hasAtk ? -4 * (1 - state.atkProg) : 0;
-  ctx.strokeStyle = "#E2E8F0";
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(8, -13);
-  ctx.lineTo(1 + pull, 0);
-  ctx.lineTo(8, 13);
-  ctx.stroke();
-
-  // Crossbow body + venom vial chamber
-  ctx.fillStyle = dark;
-  ctx.beginPath();
-  ctx.roundRect(-8, -3.2, 24, 6.4, 2.5);
+  ctx.arc(8, 0, glowR, 0, Math.PI * 2);
   ctx.fill();
 
+  // Rear Tri-Elixir Revolving Drum (3 tiny color pips showing alchemist kit)
+  const drumCols = isMono ? ["#FFFFFF", "#CCCCCC", "#999999"] : ["#C084FC", "#4ADE80", "#2DD4BF"];
+  for (let i = 0; i < 3; i++) {
+    let dy = (i - 1) * 3.2;
+    ctx.fillStyle = drumCols[i];
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(-5.5, dy, 2.0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Sculpted twin recurve composite crossbow prod limbs with brass tips
+  for (let s of [-1, 1]) {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 5.4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(13, s * 2);
+    ctx.quadraticCurveTo(16 - limbFlex * 0.4, s * 10.5, 6 - limbFlex * 0.8, s * (16.5 - limbFlex * 0.3));
+    ctx.stroke();
+
+    ctx.strokeStyle = accentCol;
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.moveTo(13, s * 2);
+    ctx.quadraticCurveTo(15.5 - limbFlex * 0.4, s * 10.5, 6.5 - limbFlex * 0.8, s * (16 - limbFlex * 0.3));
+    ctx.stroke();
+
+    // Glowing elixir node on limb tip
+    ctx.fillStyle = coreCol;
+    ctx.beginPath();
+    ctx.arc(6.5 - limbFlex * 0.8, s * (16 - limbFlex * 0.3), 2.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Taut energy bowstring
+  let pull = state.hasAtk ? -5.2 * (1 - state.atkProg) : 0;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#F8FAFC";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(6.5 - limbFlex * 0.8, -(16 - limbFlex * 0.3));
+  ctx.lineTo(1 + pull, 0);
+  ctx.lineTo(6.5 - limbFlex * 0.8, 16 - limbFlex * 0.3);
+  ctx.stroke();
+
+  // Main Crossbow rail stock + brass sight frame
+  ctx.fillStyle = dark;
+  ctx.strokeStyle = brass;
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.roundRect(-8, -3.6, 26, 7.2, 2.6);
+  ctx.fill();
+  ctx.stroke();
+
+  // Pressurized Glass Venom Canister with animated liquid level & glass highlight
+  ctx.fillStyle = "#090D16";
+  ctx.beginPath();
+  ctx.roundRect(-2, -2.5, 11, 5.0, 1.8);
+  ctx.fill();
   ctx.fillStyle = coreCol;
   ctx.beginPath();
-  ctx.roundRect(-3, -2.0, 9, 4.0, 1.5);
+  ctx.roundRect(-1.5, -2.0, 9.8, 4.0, 1.4);
   ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.fillRect(0, -1.5, 6.5, 1.0);
 
-  // Loaded poison bolt tip matching active ammo
+  // Hand grip under stock
+  drawHandGrip(ctx, -2, 3.8, "#3B0764", coreCol, 3.4, isMono);
+
+  // Loaded Alchemical Crystal Quarrel Bolt
   let boltX = 16 + Math.sin(elapsedTime * 8) * 0.4;
   ctx.strokeStyle = coreCol;
-  ctx.lineWidth = 2.0;
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.moveTo(5 + pull, 0);
-  ctx.lineTo(boltX + 8, 0);
+  ctx.moveTo(4 + pull, 0);
+  ctx.lineTo(boltX + 9, 0);
   ctx.stroke();
 
   ctx.fillStyle = "#FFFFFF";
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.moveTo(boltX + 12, 0);
-  ctx.lineTo(boltX + 5, -3.2);
-  ctx.lineTo(boltX + 6.5, 0);
-  ctx.lineTo(boltX + 5, 3.2);
+  ctx.moveTo(boltX + 14.5, 0);
+  ctx.lineTo(boltX + 6, -3.8);
+  ctx.lineTo(boltX + 8.2, 0);
+  ctx.lineTo(boltX + 6, 3.8);
   ctx.closePath();
   ctx.fill();
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -2416,7 +2519,9 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
     dang: 1.26,
     thien: 1.32,
     thanh: 1.28,
-    nhi: 1.26
+    nhi: 1.26,
+    minh: 1.26,
+    ducanh: 1.28
   };
   let sc = scaleMap[heroId] || 1.26;
   ctx.save();
@@ -2479,6 +2584,14 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       break;
     case "nhi":
       drawNhiVenomCrossbow(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "minh":
+      drawMinhSealScepter(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "ducanh":
+      if (!p.ducanhRolling && !p.ducanhFortress) {
+        drawDucAnhSiegeGauntlets(ctx, p, elapsedTime, state, isMono);
+      }
       break;
     default:
       break;
@@ -3696,48 +3809,73 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     let isEcho = !!h.isEcho;
     let bodyCol = isMono ? "#FFFFFF" : isEcho ? "#A78BFA" : isC1 ? "#34D399" : "#10B981";
     let coreCol = isMono ? "#FFFFFF" : isEcho ? "#F3E8FF" : "#A7F3D0";
+    let finCol = isMono ? "#CCCCCC" : isEcho ? "#C084FC" : "#FDE047";
     let r = h.radius || (isC1 ? 11 : 7);
 
-    // Aura halo
-    let halo = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.1);
+    // Venom mist halo
+    let halo = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.4);
     halo.addColorStop(0, coreCol);
-    halo.addColorStop(0.5, isMono ? "rgba(255,255,255,0.35)" : isEcho ? "rgba(167,139,250,0.45)" : "rgba(16,185,129,0.48)");
+    halo.addColorStop(0.48, isMono ? "rgba(255,255,255,0.38)" : isEcho ? "rgba(167,139,250,0.48)" : "rgba(16,185,129,0.5)");
     halo.addColorStop(1, "rgba(16,185,129,0)");
     ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 2.1, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 2.4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Slithering spirit snake tail
-    let tailLen = isC1 ? 30 : isGuard ? 16 : 20;
+    // Dark outline + undulating scaled spirit snake body
+    let tailLen = isC1 ? 34 : isGuard ? 19 : 24;
     ctx.lineCap = "round";
-    ctx.strokeStyle = bodyCol;
-    ctx.lineWidth = isC1 ? 5.2 : 3.4;
+    ctx.strokeStyle = "#042F2E";
+    ctx.lineWidth = isC1 ? 7.2 : 5.0;
     ctx.beginPath();
     ctx.moveTo(4, 0);
-    for (let i = 1; i <= 7; i++) {
-      let sx = 4 - (i / 7) * tailLen;
-      let sy = Math.sin(elapsedTime * 18 - i * 1.1) * (isC1 ? 4.8 : 3.0);
+    for (let i = 1; i <= 8; i++) {
+      let sx = 4 - (i / 8) * tailLen;
+      let sy = Math.sin(elapsedTime * 19 - i * 1.05) * (isC1 ? 5.2 : 3.2) * (1 - i * 0.04);
       ctx.lineTo(sx, sy);
     }
     ctx.stroke();
 
-    // Snake head + twin fangs
-    ctx.fillStyle = bodyCol;
-    ctx.strokeStyle = "#042F2E";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = bodyCol;
+    ctx.lineWidth = isC1 ? 4.4 : 2.8;
+    ctx.stroke();
+
+    // Inner glowing spine streak
+    ctx.strokeStyle = coreCol;
+    ctx.lineWidth = isC1 ? 1.8 : 1.2;
+    ctx.stroke();
+
+    // Flickering forked serpent tongue
+    let tongueWag = Math.sin(elapsedTime * 28) * 1.4;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(r * 1.15, 0);
-    ctx.lineTo(-r * 0.25, -r * 0.65);
-    ctx.lineTo(-r * 0.05, 0);
-    ctx.lineTo(-r * 0.25, r * 0.65);
+    ctx.lineTo(r * 1.65, tongueWag * 0.4);
+    ctx.lineTo(r * 2.0, -2.0 + tongueWag);
+    ctx.moveTo(r * 1.65, tongueWag * 0.4);
+    ctx.lineTo(r * 2.0, 2.0 + tongueWag);
+    ctx.stroke();
+
+    // Horned viper head + glowing slit eyes
+    ctx.fillStyle = bodyCol;
+    ctx.strokeStyle = "#042F2E";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(r * 1.32, 0);
+    ctx.lineTo(-r * 0.15, -r * 0.78);
+    ctx.lineTo(-r * 0.45, -r * 0.45);
+    ctx.lineTo(-r * 0.08, 0);
+    ctx.lineTo(-r * 0.45, r * 0.45);
+    ctx.lineTo(-r * 0.15, r * 0.78);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = coreCol;
+    ctx.fillStyle = finCol;
     ctx.beginPath();
-    ctx.arc(r * 0.2, 0, r * 0.34, 0, Math.PI * 2);
+    ctx.arc(r * 0.3, -r * 0.24, r * 0.17, 0, Math.PI * 2);
+    ctx.arc(r * 0.3, r * 0.24, r * 0.17, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
@@ -3745,36 +3883,58 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   if (h.style === "nhi_arrow_purple" || h.style === "nhi_arrow_green" || h.style === "nhi_arrow_life") {
     let isPurple = h.style === "nhi_arrow_purple";
     let isGreen = h.style === "nhi_arrow_green";
-    let col = isMono ? "#FFFFFF" : isPurple ? "#C084FC" : isGreen ? "#4ADE80" : "#2DD4BF";
+    let col = isMono ? "#FFFFFF" : isPurple ? "#E879F9" : isGreen ? "#4ADE80" : "#2DD4BF";
     let dark = isMono ? "#111111" : isPurple ? "#581C87" : isGreen ? "#14532D" : "#115E59";
 
-    let aura = ctx.createRadialGradient(0, 0, 1, 0, 0, 15);
+    // Spiral elixir wake behind bolt
+    let wake = ctx.createLinearGradient(-24, 0, 12, 0);
+    wake.addColorStop(0, "rgba(0,0,0,0)");
+    wake.addColorStop(1, isMono ? "rgba(255,255,255,0.75)" : `${col}BB`);
+    ctx.strokeStyle = wake;
+    ctx.lineWidth = 4.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-24, 0);
+    ctx.lineTo(8, 0);
+    ctx.stroke();
+
+    let aura = ctx.createRadialGradient(4, 0, 1, 4, 0, 15);
     aura.addColorStop(0, "#FFFFFF");
     aura.addColorStop(0.45, col);
     aura.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = aura;
     ctx.beginPath();
-    ctx.arc(0, 0, 15, 0, Math.PI * 2);
+    ctx.arc(4, 0, 15, 0, Math.PI * 2);
     ctx.fill();
 
-    // Venom arrow shaft + fletching
+    // Fletching tail fins
+    ctx.fillStyle = col;
+    for (let s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(-22, s * 4.2);
+      ctx.lineTo(-14, s * 1.4);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Venom arrow shaft
     ctx.strokeStyle = col;
     ctx.lineWidth = 2.6;
-    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(-16, 0);
+    ctx.moveTo(-18, 0);
     ctx.lineTo(10, 0);
     ctx.stroke();
 
-    // Barbed broadhead
+    // Barbed crystal broadhead
     ctx.fillStyle = "#FFFFFF";
     ctx.strokeStyle = dark;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(15, 0);
-    ctx.lineTo(5, -4.5);
-    ctx.lineTo(7.5, 0);
-    ctx.lineTo(5, 4.5);
+    ctx.moveTo(17, 0);
+    ctx.lineTo(5, -5.2);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(5, 5.2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -3782,71 +3942,194 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   }
 
   if (h.style === "nhi_c2_flask") {
-    let spin = elapsedTime * 11;
+    let spin = elapsedTime * 10.5;
     ctx.save();
     ctx.rotate(spin);
-    let glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 16);
+    let glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 19);
     glow.addColorStop(0, isMono ? "#FFFFFF" : "#D9F99D");
     glow.addColorStop(0.55, isMono ? "#BBBBBB" : "#22C55E");
     glow.addColorStop(1, "rgba(34,197,94,0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.arc(0, 0, 19, 0, Math.PI * 2);
     ctx.fill();
 
-    // Glass venom bottle silhouette
-    ctx.fillStyle = isMono ? "#FFFFFF" : "#A855F7";
-    ctx.strokeStyle = "#052E16";
+    // Glass venom bottle silhouette + cork + liquid fill
+    ctx.fillStyle = isMono ? "#222222" : "#1E1B2E";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#D8B4FE";
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.arc(0, 2, 6.5, 0, Math.PI * 2);
+    ctx.arc(0, 2, 7.6, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
+    // Swirling dual-tone reagent inside glass sphere
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#A855F7";
+    ctx.beginPath();
+    ctx.arc(0, 2.2, 5.8, 0, Math.PI);
+    ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = isMono ? "#E5E5E5" : "#4ADE80";
-    ctx.fillRect(-2.5, -8, 5, 4.5);
+    ctx.beginPath();
+    ctx.arc(0, 2.2, 5.2, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.fill();
+
+    // Neck & amber cork stopper
+    ctx.fillStyle = isMono ? "#CCCCCC" : "#F59E0B";
+    ctx.strokeStyle = "#052E16";
+    ctx.lineWidth = 1.1;
+    ctx.fillRect(-2.6, -9.5, 5.2, 4.5);
+    ctx.strokeRect(-2.6, -9.5, 5.2, 4.5);
+    // Specular glass reflection dot
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(-2.5, 0, 1.6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
     return;
   }
 
   if (h.style === "nhi_c3_arrow") {
-    let glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 26);
+    let glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 30);
     glow.addColorStop(0, "#FFFFFF");
-    glow.addColorStop(0.35, isMono ? "#E5E5E5" : "#E879F9");
-    glow.addColorStop(0.7, isMono ? "#999999" : "#22C55E");
+    glow.addColorStop(0.32, isMono ? "#E5E5E5" : "#E879F9");
+    glow.addColorStop(0.68, isMono ? "#999999" : "#22C55E");
     glow.addColorStop(1, "rgba(34,197,94,0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+    ctx.arc(0, 0, 30, 0, Math.PI * 2);
     ctx.fill();
 
-    // Double-helix venom contrail
+    // Triple-helix venom contrail + sonic shock rings
     ctx.lineCap = "round";
     for (let s of [-1, 1]) {
-      ctx.strokeStyle = s > 0 ? (isMono ? "#FFFFFF" : "#C084FC") : (isMono ? "#CCCCCC" : "#4ADE80");
-      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = s > 0 ? (isMono ? "#FFFFFF" : "#E879F9") : (isMono ? "#CCCCCC" : "#4ADE80");
+      ctx.lineWidth = 2.8;
       ctx.beginPath();
-      for (let i = 0; i <= 8; i++) {
-        let sx = 6 - i * 4.2;
-        let sy = Math.sin(elapsedTime * 22 + i * 0.9) * 5.2 * s;
-        if (i === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
+      for (let i = 0; i <= 10; i++) {
+        let sx = 8 - i * 4.4;
+        let sy = Math.sin(elapsedTime * 24 + i * 0.85) * 6.4 * s;
+        i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
       }
       ctx.stroke();
     }
 
-    // Piercing execution bolt head
+    // Sonic shock chevrons behind lance head
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(240, 171, 252, 0.85)";
+    ctx.lineWidth = 2.0;
+    for (let cx of [2, -8]) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, -9);
+      ctx.lineTo(cx + 4, 0);
+      ctx.lineTo(cx - 5, 9);
+      ctx.stroke();
+    }
+
+    // Piercing crystalline execution lance head
     ctx.fillStyle = "#FFFFFF";
     ctx.strokeStyle = isMono ? "#000000" : "#581C87";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(22, 0);
-    ctx.lineTo(4, -7);
-    ctx.lineTo(8, 0);
-    ctx.lineTo(4, 7);
+    ctx.moveTo(25, 0);
+    ctx.lineTo(4, -8.5);
+    ctx.lineTo(9, 0);
+    ctx.lineTo(4, 8.5);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    drawFourPointStar(ctx, 11, 0, 6.2, 2.0, "#E879F9", "#FFFFFF");
+    return;
+  }
+
+  if (h.kind === "minh_orb") {
+    let r = h.radius || 9;
+    let halo = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.2);
+    halo.addColorStop(0, "#FFFFFF");
+    halo.addColorStop(0.45, isMono ? "rgba(255,255,255,0.55)" : "rgba(56, 189, 248, 0.6)");
+    halo.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    let grad = ctx.createLinearGradient(-28, 0, 10, 0);
+    grad.addColorStop(0, "rgba(56, 189, 248, 0)");
+    grad.addColorStop(0.6, isMono ? "rgba(255,255,255,0.45)" : "rgba(56, 189, 248, 0.65)");
+    grad.addColorStop(1, isMono ? "#FFFFFF" : "#FDE047");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 4.8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-28, 0);
+    ctx.lineTo(0, 0);
+    ctx.stroke();
+
+    // Rotating sacred seal ring around orb
+    ctx.save();
+    ctx.rotate(elapsedTime * 7);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#1D4ED8";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2);
+    ctx.fill();
+    drawFourPointStar(ctx, 0, 0, r * 1.28, r * 0.42, "#FEF08A", "#FFFFFF");
+    return;
+  }
+
+  if (h.kind === "minh_chain") {
+    // Luminous golden-cyan energy trail under chains
+    let trailGrad = ctx.createLinearGradient(-64, 0, 14, 0);
+    trailGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
+    trailGrad.addColorStop(1, isMono ? "rgba(255,255,255,0.5)" : "rgba(253, 224, 71, 0.55)");
+    ctx.strokeStyle = trailGrad;
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-64, 0);
+    ctx.lineTo(8, 0);
+    ctx.stroke();
+
+    let links = 6;
+    for (let i = 1; i <= links; i++) {
+      let lx = -i * 10.5;
+      let ly = Math.sin(elapsedTime * 16 - i * 0.9) * 2.2;
+      ctx.strokeStyle = "#1E3A8A";
+      ctx.lineWidth = 4.4;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, 6.4, 3.6, i % 2 === 0 ? 0.2 : -0.2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FDE047" : "#38BDF8";
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+    }
+
+    // Glowing anchor lock ring & barbed spearhead seal
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(2, 0, 8.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.strokeStyle = isMono ? "#000000" : "#1E3A8A";
+    ctx.lineWidth = 1.9;
+    ctx.beginPath();
+    ctx.moveTo(22, 0);
+    ctx.lineTo(3, -8.8);
+    ctx.lineTo(7, 0);
+    ctx.lineTo(3, 8.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    drawFourPointStar(ctx, 8, 0, 7.2, 2.4, "#FFFFFF", "#38BDF8");
     return;
   }
 
@@ -4698,75 +4981,198 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
   if (h.kind === "thanh_snake_fan") {
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle);
-    let r = (h.radius || 72) * (0.45 + 0.55 * f);
+    let r = (h.radius || 76) * (0.42 + 0.58 * f);
     let col = h.isEcho ? "#A78BFA" : h.color || "#10B981";
-    drawTaperedArc(ctx, 0, 0, r, -0.58, 0.58, 9 * alpha + 1.5, col, "#A7F3D0", isMono);
-    drawTaperedArc(ctx, 0, 0, r * 0.72, -0.4, 0.4, 5 * alpha + 1, "#FFFFFF", col, isMono);
+    let rim = h.isEcho ? "#F3E8FF" : "#A7F3D0";
+    drawTaperedArc(ctx, 0, 0, r, -0.64, 0.64, 11 * alpha + 1.8, col, rim, isMono);
+    drawTaperedArc(ctx, 0, 0, r * 0.74, -0.46, 0.46, 5.5 * alpha + 1, "#FFFFFF", "#FDE047", isMono);
+    for (let s of [-0.26, 0, 0.26]) {
+      ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha})` : `rgba(167, 243, 208, ${alpha * 0.9})`;
+      ctx.lineWidth = 2.2 * alpha + 0.6;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(s) * r * 0.3, Math.sin(s) * r * 0.3);
+      ctx.lineTo(Math.cos(s) * r * 1.08, Math.sin(s) * r * 1.08);
+      ctx.stroke();
+    }
     return;
   }
 
   if (h.kind === "thanh_devour_bite") {
-    let r = (h.radius || 140) * (0.55 + 0.45 * f);
-    ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha})` : `rgba(52, 211, 153, ${alpha * 0.9})`;
-    ctx.lineWidth = 4.5 * alpha + 1;
+    let r = (h.radius || 140) * (0.5 + 0.5 * f);
+    ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha})` : `rgba(52, 211, 153, ${alpha * 0.95})`;
+    ctx.lineWidth = 5.2 * alpha + 1.2;
     ctx.beginPath();
     ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.strokeStyle = isMono ? `rgba(200,200,200,${alpha * 0.7})` : `rgba(168, 85, 247, ${alpha * 0.75})`;
-    ctx.lineWidth = 2.6 * alpha;
+    ctx.strokeStyle = isMono ? `rgba(200,200,200,${alpha * 0.75})` : `rgba(168, 85, 247, ${alpha * 0.8})`;
+    ctx.lineWidth = 3.0 * alpha;
+    ctx.setLineDash([12, 8]);
     ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.72, 0, Math.PI * 2);
+    ctx.arc(h.x, h.y, r * 0.74, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (let k = 0; k < 6; k++) {
+      let a = (Math.PI / 3) * k + f * 0.5;
+      ctx.fillStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${alpha * 0.9})`;
+      ctx.beginPath();
+      ctx.moveTo(h.x + Math.cos(a) * r * 0.85, h.y + Math.sin(a) * r * 0.85);
+      ctx.lineTo(h.x + Math.cos(a + 0.08) * r * 1.06, h.y + Math.sin(a + 0.08) * r * 1.06);
+      ctx.lineTo(h.x + Math.cos(a - 0.08) * r * 1.06, h.y + Math.sin(a - 0.08) * r * 1.06);
+      ctx.closePath();
+      ctx.fill();
+    }
     return;
   }
 
   if (h.kind === "thanh_shield_pulse") {
-    let r = (h.radius || 58) * (0.5 + 0.5 * f);
-    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.25, h.x, h.y, r);
+    let r = (h.radius || 64) * (0.45 + 0.55 * f);
+    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.22, h.x, h.y, r);
     grad.addColorStop(0, "rgba(167, 243, 208, 0)");
-    grad.addColorStop(0.72, isMono ? `rgba(255,255,255,${alpha * 0.45})` : `rgba(16, 185, 129, ${alpha * 0.55})`);
+    grad.addColorStop(0.68, isMono ? `rgba(255,255,255,${alpha * 0.45})` : `rgba(16, 185, 129, ${alpha * 0.58})`);
     grad.addColorStop(1, "rgba(16, 185, 129, 0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(167, 139, 250, ${alpha * 0.85})`;
+    ctx.lineWidth = 2.6 * alpha;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, r * 0.86, 0, Math.PI * 2);
+    ctx.stroke();
     return;
   }
 
   if (h.kind === "nhi_flask_boom" || h.kind === "nhi_mist_pulse") {
     let r = (h.radius || 96) * (0.35 + 0.65 * Math.min(1, f * 1.25));
     let isMist = h.kind === "nhi_mist_pulse";
+    let baseCol = h.color || (isMist ? "#4ADE80" : "#C084FC");
     let grad = ctx.createRadialGradient(h.x, h.y, r * 0.12, h.x, h.y, r);
-    grad.addColorStop(0, isMono ? `rgba(255,255,255,${alpha * 0.45})` : isMist ? `rgba(74, 222, 128, ${alpha * 0.45})` : `rgba(192, 132, 252, ${alpha * 0.52})`);
-    grad.addColorStop(0.65, isMono ? `rgba(200,200,200,${alpha * 0.25})` : `rgba(34, 197, 94, ${alpha * 0.3})`);
+    grad.addColorStop(0, isMono ? `rgba(255,255,255,${alpha * 0.48})` : isMist ? `rgba(74, 222, 128, ${alpha * 0.48})` : `rgba(192, 132, 252, ${alpha * 0.54})`);
+    grad.addColorStop(0.65, isMono ? `rgba(200,200,200,${alpha * 0.25})` : `rgba(34, 197, 94, ${alpha * 0.32})`);
     grad.addColorStop(1, "rgba(34, 197, 94, 0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha * 0.8})` : `rgba(192, 132, 252, ${alpha * 0.85})`;
-    ctx.lineWidth = 2.4 * alpha + 0.8;
+    ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha * 0.85})` : baseCol;
+    ctx.globalAlpha *= alpha;
+    ctx.lineWidth = 2.8 * alpha + 0.9;
     ctx.beginPath();
     ctx.arc(h.x, h.y, r * 0.88, 0, Math.PI * 2);
     ctx.stroke();
+
+    // Shattered glass / alchemical droplet rays
+    for (let k = 0; k < 6; k++) {
+      let a = (Math.PI / 3) * k + 0.25;
+      ctx.strokeStyle = isMono ? "#FFFFFF" : k % 2 === 0 ? "#E879F9" : "#4ADE80";
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(h.x + Math.cos(a) * r * 0.42, h.y + Math.sin(a) * r * 0.42);
+      ctx.lineTo(h.x + Math.cos(a) * r * 0.96, h.y + Math.sin(a) * r * 0.96);
+      ctx.stroke();
+    }
     return;
   }
 
   if (h.kind === "nhi_ult_shock") {
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle || 0);
-    let r = (h.radius || 75) * (0.4 + 0.6 * f);
-    let grad = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
-    grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.65})`);
-    grad.addColorStop(0.55, isMono ? `rgba(220,220,220,${alpha * 0.45})` : `rgba(217, 70, 239, ${alpha * 0.5})`);
+    let r = (h.radius || 82) * (0.38 + 0.62 * f);
+    let grad = ctx.createRadialGradient(0, 0, r * 0.16, 0, 0, r);
+    grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.72})`);
+    grad.addColorStop(0.55, isMono ? `rgba(220,220,220,${alpha * 0.45})` : `rgba(217, 70, 239, ${alpha * 0.54})`);
     grad.addColorStop(1, "rgba(34, 197, 94, 0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
-    drawFourPointStar(ctx, 0, 0, r * 0.68 * alpha, r * 0.16 * alpha, "#E879F9", "#4ADE80");
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(74, 222, 128, ${alpha * 0.9})`;
+    ctx.lineWidth = 3 * alpha + 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, r * 0.74 * alpha, r * 0.18 * alpha, "#E879F9", "#4ADE80");
+    return;
+  }
+
+  if (h.kind === "minh_seal_boom") {
+    ctx.translate(h.x, h.y);
+    let r = (h.radius || 185) * (0.32 + 0.68 * f);
+    let g = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r);
+    g.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.78})`);
+    g.addColorStop(0.42, `rgba(250, 204, 21, ${alpha * 0.5})`);
+    g.addColorStop(0.82, `rgba(56, 189, 248, ${alpha * 0.28})`);
+    g.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${alpha})`;
+    ctx.lineWidth = 4.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = isMono ? "#E5E5E5" : `rgba(56, 189, 248, ${alpha * 0.9})`;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.74, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 8-point double celestial star burst
+    drawFourPointStar(ctx, 0, 0, r * 0.68 * alpha, r * 0.15 * alpha, "#FEF08A", "#FFFFFF");
+    ctx.rotate(Math.PI / 4);
+    drawFourPointStar(ctx, 0, 0, r * 0.52 * alpha, r * 0.12 * alpha, "#38BDF8", "#FFFFFF");
+    return;
+  }
+
+  if (h.kind === "ducanh_fortress_boom" || h.kind === "ducanh_meteor_boom") {
+    ctx.translate(h.x, h.y);
+    let r = (h.radius || 175) * (0.3 + 0.7 * f);
+    let isMeteor = h.kind === "ducanh_meteor_boom";
+    let g = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+    g.addColorStop(0, `rgba(254, 240, 138, ${alpha * 0.72})`);
+    g.addColorStop(0.55, isMeteor ? `rgba(249, 115, 22, ${alpha * 0.52})` : `rgba(96, 165, 250, ${alpha * 0.45})`);
+    g.addColorStop(1, "rgba(15, 23, 42, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : isMeteor ? `rgba(249, 115, 22, ${alpha})` : `rgba(147, 197, 253, ${alpha})`;
+    ctx.lineWidth = isMeteor ? 5.6 : 4.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (!isMeteor) {
+      // Hexagonal bastion shield shatter ring
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(74, 222, 128, ${alpha * 0.85})`;
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        let a = (Math.PI / 3) * i + f * 0.4;
+        let px = Math.cos(a) * r * 0.78;
+        let py = Math.sin(a) * r * 0.78;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    for (let k = 0; k < 8; k++) {
+      let a = (Math.PI / 4) * k + (isMeteor ? 0.2 : 0);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(251, 191, 36, ${alpha * 0.92})`;
+      ctx.lineWidth = isMeteor ? 3.2 : 2.6;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.36, Math.sin(a) * r * 0.36);
+      ctx.lineTo(Math.cos(a) * r * 0.98, Math.sin(a) * r * 0.98);
+      ctx.stroke();
+    }
     return;
   }
 
@@ -5012,7 +5418,9 @@ export function drawHeroBody(ctx, opts) {
     elapsedTime = 0,
     moveSpeedFactor = 0,
     walkCyclePhase = 0,
-    nhiAmmoType = "purple"
+    nhiAmmoType = "purple",
+    ducanhRolling = false,
+    ducanhFortress = false
   } = opts;
 
   let hitWhite = hitFlash > 0;
@@ -5595,6 +6003,307 @@ export function drawHeroBody(ctx, opts) {
         ctx.restore();
       }
     }
+  } else if (heroId === "thanh") {
+    // Thanh — Shadow Serpent Sovereign: venomous jade-amethyst aura, twin undulating cobra cloak tails & horned serpent pauldrons
+    let auraR = radius * (isUlt ? 1.85 : 1.48) + Math.sin(elapsedTime * 5.2) * 1.8;
+    let aura = ctx.createRadialGradient(-2, 0, radius * 0.32, -2, 0, auraR);
+    aura.addColorStop(0, "rgba(16, 185, 129, 0)");
+    aura.addColorStop(0.58, isMono ? "rgba(255,255,255,0.18)" : isUlt ? "rgba(168, 85, 247, 0.34)" : "rgba(16, 185, 129, 0.26)");
+    aura.addColorStop(1, "rgba(16, 185, 129, 0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(-2, 0, auraR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Twin undulating serpent-scale cape ribbons
+    ctx.fillStyle = isMono ? "#111111" : "#022C22";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : isUlt ? "#C084FC" : "#34D399";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.38, -radius * 0.68);
+    ctx.quadraticCurveTo(-radius * 1.32, -radius * 0.85 + sway * 5.2, -radius * 1.85, -radius * 0.34 + sway * 6.0);
+    ctx.lineTo(-radius * 1.25, sway * 3.5);
+    ctx.lineTo(-radius * 1.82, radius * 0.38 + sway * 5.8);
+    ctx.quadraticCurveTo(-radius * 1.3, radius * 0.85 + sway * 5.2, -radius * 0.38, radius * 0.68);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Hooded Cobra Shoulder Fangs
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#222222" : "#064E3B";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#A7F3D0";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(6, s * radius * 0.68);
+      ctx.quadraticCurveTo(-2, s * radius * 1.34, -14, s * radius * 1.12);
+      ctx.lineTo(-7, s * radius * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else if (heroId === "nhi") {
+    // Nhi — Arcane Alchemist Marksman: reagent-tinted scholar cape + twin glowing shoulder elixir vials
+    let elixirCol = isMono
+      ? "#FFFFFF"
+      : nhiAmmoType === "green"
+      ? "#4ADE80"
+      : nhiAmmoType === "life"
+      ? "#2DD4BF"
+      : "#E879F9";
+    let auraR = radius * 1.46 + Math.sin(elapsedTime * 4.4) * 1.6;
+    let aura = ctx.createRadialGradient(-2, 0, radius * 0.35, -2, 0, auraR);
+    aura.addColorStop(0, "rgba(0,0,0,0)");
+    aura.addColorStop(0.65, isMono ? "rgba(255,255,255,0.16)" : `${elixirCol}38`);
+    aura.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(-2, 0, auraR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Swallowtail alchemist cloak
+    ctx.fillStyle = isMono ? "#141414" : "#2E1065";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : elixirCol;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.4, -radius * 0.7);
+    ctx.quadraticCurveTo(-radius * 1.28, -radius * 0.8 + sway * 4, -radius * 1.62, -radius * 0.28 + sway * 4.5);
+    ctx.lineTo(-radius * 1.18, sway * 3);
+    ctx.lineTo(-radius * 1.62, radius * 0.28 + sway * 4.5);
+    ctx.quadraticCurveTo(-radius * 1.28, radius * 0.8 + sway * 4, -radius * 0.4, radius * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Twin glowing glass shoulder reagent vials
+    for (let s of [-1, 1]) {
+      let vy = s * radius * 0.94;
+      ctx.fillStyle = isMono ? "#222222" : "#0F172A";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(-4, vy, 5.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = elixirCol;
+      ctx.beginPath();
+      ctx.arc(-4, vy, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (heroId === "minh") {
+    // Minh — Celestial Arbiter: royal sapphire-gold mantle + solar halo crown + counter-rotating astrolabe seal ring
+    let auraR = radius * 1.54 + Math.sin(elapsedTime * 4) * 1.6;
+    let aura = ctx.createRadialGradient(-2, 0, radius * 0.3, -2, 0, auraR);
+    aura.addColorStop(0, "rgba(250, 204, 21, 0)");
+    aura.addColorStop(0.62, isMono ? "rgba(255,255,255,0.22)" : "rgba(56, 189, 248, 0.24)");
+    aura.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(-2, 0, auraR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flowing sapphire & gold-trimmed Arbiter Cloak
+    ctx.fillStyle = isMono ? "#111111" : "#1E3A8A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.36, -radius * 0.74);
+    ctx.quadraticCurveTo(-radius * 1.35, -radius * 0.84 + sway * 4, -radius * 1.68, 0 + sway * 3.5);
+    ctx.quadraticCurveTo(-radius * 1.35, radius * 0.84 + sway * 4, -radius * 0.36, radius * 0.74);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Sculpted Gold & Ivory Shoulder Epaulets
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#262626" : "#F8FAFC";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(6, s * radius * 0.66);
+      ctx.quadraticCurveTo(0, s * radius * 1.24, -10, s * radius * 1.06);
+      ctx.lineTo(-5, s * radius * 0.72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Orbiting golden celestial seal ring & diamond nodes
+    ctx.save();
+    ctx.rotate(elapsedTime * 1.55);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 1.9;
+    ctx.setLineDash([8, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 1.36, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 4; i++) {
+      let a = (Math.PI / 2) * i;
+      let sx = Math.cos(a) * radius * 1.36;
+      let sy = Math.sin(a) * radius * 1.36;
+      drawFourPointStar(ctx, sx, sy, 4.6, 1.7, i % 2 === 0 ? "#FDE047" : "#38BDF8", "#FFFFFF");
+    }
+    ctx.restore();
+  } else if (heroId === "ducanh") {
+    if (ducanhRolling) {
+      // C1 Thiết Cầu Xung Phong — Blazing Turbine Saw-Spiked Siege Wrecking Ball
+      let rollR = radius * 1.34;
+      let spin = elapsedTime * 15;
+
+      // Speed trail flames behind the rolling boulder
+      for (let t = 1; t <= 3; t++) {
+        ctx.fillStyle = isMono ? `rgba(255,255,255,${0.25 / t})` : `rgba(249, 115, 22, ${0.34 / t})`;
+        ctx.beginPath();
+        ctx.arc(-t * 10, 0, rollR * (1 - t * 0.14), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      let rg = ctx.createRadialGradient(-rollR * 0.28, -rollR * 0.28, rollR * 0.08, 0, 0, rollR);
+      rg.addColorStop(0, hitWhite ? "#FFFFFF" : "#E2E8F0");
+      rg.addColorStop(0.5, hitWhite ? "#E2E8F0" : "#475569");
+      rg.addColorStop(1, "#0F172A");
+      ctx.fillStyle = isMono ? "#1F2937" : rg;
+      ctx.beginPath();
+      ctx.arc(0, 0, rollR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+      ctx.lineWidth = 3.2;
+      ctx.stroke();
+
+      // Rotating curved turbine saw-spikes & molten furnace core
+      ctx.save();
+      ctx.rotate(spin);
+      for (let i = 0; i < 8; i++) {
+        let sa = (Math.PI / 4) * i;
+        ctx.save();
+        ctx.rotate(sa);
+        ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
+        ctx.strokeStyle = "#0F172A";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(rollR - 3, -5.2);
+        ctx.quadraticCurveTo(rollR + 5, -2.5, rollR + 10, 2);
+        ctx.lineTo(rollR - 2, 4.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.strokeStyle = "#94A3B8";
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(-rollR * 0.76, 0);
+      ctx.lineTo(rollR * 0.76, 0);
+      ctx.moveTo(0, -rollR * 0.76);
+      ctx.lineTo(0, rollR * 0.76);
+      ctx.stroke();
+
+      let coreG = ctx.createRadialGradient(0, 0, 1, 0, 0, 10);
+      coreG.addColorStop(0, "#FEF08A");
+      coreG.addColorStop(0.65, "#F97316");
+      coreG.addColorStop(1, "rgba(249,115,22,0)");
+      ctx.fillStyle = coreG;
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
+
+    if (ducanhFortress) {
+      // C2 Pháo Đài Thiết Giáp — Multi-Shield Interlocking Citadel Dome
+      let fortR = radius * 1.42;
+      let pulse = 1 + 0.045 * Math.sin(elapsedTime * 8);
+      ctx.save();
+      ctx.scale(pulse, pulse);
+
+      ctx.fillStyle = isMono ? "#111111" : "rgba(30, 58, 138, 0.36)";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#60A5FA";
+      ctx.lineWidth = 3.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, fortR * 1.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 6 Orbiting Riot Tower Shields locked around perimeter
+      ctx.save();
+      ctx.rotate(elapsedTime * 0.85);
+      for (let i = 0; i < 6; i++) {
+        let a = (Math.PI / 3) * i;
+        ctx.save();
+        ctx.rotate(a);
+        ctx.fillStyle = isMono ? "#333333" : "#475569";
+        ctx.strokeStyle = isMono ? "#FFFFFF" : "#FBBF24";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(fortR * 0.92, -9, 8.5, 18, 2.5);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // Inner Armored Hexagon Citadel + Glowing Vitality Core
+      ctx.fillStyle = isMono ? "#262626" : "#334155";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#E2E8F0";
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        let a = (Math.PI / 3) * i;
+        let px = Math.cos(a) * fortR * 0.92;
+        let py = Math.sin(a) * fortR * 0.92;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#1E3A8A";
+      ctx.strokeStyle = "#FBBF24";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        let a = (Math.PI / 3) * i + Math.PI / 6;
+        let px = Math.cos(a) * fortR * 0.56;
+        let py = Math.sin(a) * fortR * 0.56;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#4ADE80";
+      ctx.beginPath();
+      ctx.arc(0, 0, 5.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
+
+    // Normal stance: massive heavy dreadnought iron-amber siege pauldrons + furnace exhaust vents
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#222222" : "#334155";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(9, s * radius * 0.62);
+      ctx.lineTo(4, s * radius * 1.28);
+      ctx.lineTo(-14, s * radius * 1.15);
+      ctx.lineTo(-9, s * radius * 0.66);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Molten vent grille + shoulder rivet
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
+      ctx.beginPath();
+      ctx.arc(-4, s * radius * 0.96, 2.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // 1. Clean circular hero body with rich 3D sphere shading
@@ -6077,46 +6786,102 @@ export function drawHeroBody(ctx, opts) {
     ctx.fill();
     drawFourPointStar(ctx, 0, 0, radius * 0.34 * pulse, radius * 0.12, "#FFFFFF", "#FACC15");
   } else if (heroId === "thanh") {
-    // Serpent scale hood + twin jade fang crest
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#A7F3D0";
-    ctx.lineWidth = 2.0;
+    // Horned Serpent Sovereign crest + twin golden-jade fangs & pulsing amethyst venom heart
+    ctx.strokeStyle = isMono ? "#FFFFFF" : isUlt ? "#C084FC" : "#A7F3D0";
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.72, -1.05, 1.05);
+    ctx.arc(0, 0, radius * 0.74, -1.12, 1.12);
     ctx.stroke();
 
     ctx.fillStyle = isMono ? "#FFFFFF" : "#042F2E";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(radius * 0.48, 0);
-    ctx.lineTo(-radius * 0.18, -radius * 0.46);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(-radius * 0.18, radius * 0.46);
+    ctx.moveTo(radius * 0.52, 0);
+    ctx.lineTo(-radius * 0.22, -radius * 0.5);
+    ctx.lineTo(radius * 0.04, 0);
+    ctx.lineTo(-radius * 0.22, radius * 0.5);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
 
-    ctx.fillStyle = isMono ? "#E5E5E5" : "#34D399";
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.24, 0, Math.PI * 2);
-    ctx.fill();
+    drawFourPointStar(ctx, 0, 0, radius * 0.34, radius * 0.13, isMono ? "#FFFFFF" : isUlt ? "#C084FC" : "#34D399", "#FDE047");
   } else if (heroId === "nhi") {
-    // Alchemist dual-vial shoulder crest + toxic diamond core
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#C084FC";
-    ctx.lineWidth = 2.0;
+    // Alchemist Tri-Elixir Diamond Alembic Brooch & pulsing ammo-tinted core
+    let eCol = isMono ? "#CCCCCC" : nhiAmmoType === "green" ? "#4ADE80" : nhiAmmoType === "life" ? "#2DD4BF" : "#E879F9";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : eCol;
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.72, Math.PI * 0.62, Math.PI * 1.38);
+    ctx.arc(0, 0, radius * 0.72, Math.PI * 0.58, Math.PI * 1.42);
     ctx.stroke();
 
     ctx.fillStyle = isMono ? "#FFFFFF" : "#1E1B2E";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(radius * 0.45, 0);
-    ctx.lineTo(0, -radius * 0.36);
-    ctx.lineTo(-radius * 0.42, 0);
-    ctx.lineTo(0, radius * 0.36);
+    ctx.moveTo(radius * 0.48, 0);
+    ctx.lineTo(0, -radius * 0.4);
+    ctx.lineTo(-radius * 0.44, 0);
+    ctx.lineTo(0, radius * 0.4);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
 
-    ctx.fillStyle = isMono ? "#CCCCCC" : nhiAmmoType === "green" ? "#4ADE80" : nhiAmmoType === "life" ? "#2DD4BF" : "#E879F9";
+    ctx.fillStyle = eCol;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.21, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 0.24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(-radius * 0.06, -radius * 0.06, radius * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (heroId === "minh") {
+    // Minh — Sacred Celestial Octagram Seal Crest & luminous Sky-Gold Core
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#222222" : "#0F172A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.48, 0);
+    ctx.lineTo(0, -radius * 0.48);
+    ctx.lineTo(-radius * 0.48, 0);
+    ctx.lineTo(0, radius * 0.48);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    drawFourPointStar(ctx, 0, 0, radius * 0.36, radius * 0.14, isMono ? "#FFFFFF" : "#FEF08A", "#38BDF8");
+  } else if (heroId === "ducanh") {
+    // Duc Anh — Heavy Bolted Dreadnought Chest Plate & Incandescent Furnace Core
+    ctx.fillStyle = isMono ? "#222222" : "#1E293B";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#CBD5E1";
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.roundRect(-radius * 0.48, -radius * 0.48, radius * 0.96, radius * 0.96, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Diagonal armor seam & 4 corner rivets
+    ctx.strokeStyle = isMono ? "#999999" : "#475569";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.38, 0);
+    ctx.lineTo(radius * 0.38, 0);
+    ctx.stroke();
+
+    let furnacePulse = 1 + Math.sin(elapsedTime * 7) * 0.12;
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F59E0B";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.25 * furnacePulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.12, 0, Math.PI * 2);
     ctx.fill();
   } else {
     ctx.beginPath();
@@ -6157,9 +6922,9 @@ export function drawHeroBody(ctx, opts) {
       : heroId === "thien"
       ? isUlt ? "#FDE047" : "#38BDF8"
       : heroId === "thanh"
-      ? "#A7F3D0"
+      ? isUlt ? "#E879F9" : "#A7F3D0"
       : heroId === "nhi"
-      ? "#E879F9"
+      ? nhiAmmoType === "green" ? "#4ADE80" : nhiAmmoType === "life" ? "#2DD4BF" : "#E879F9"
       : "#FDE68A";
     for (let s of [-1, 1]) {
       ctx.fillStyle = darkInk;
@@ -6189,7 +6954,7 @@ export function drawHeroBody(ctx, opts) {
     ctx.arc(radius * 0.68, -3.2, 1.4, 0, Math.PI * 2);
     ctx.arc(radius * 0.68, 3.2, 1.4, 0, Math.PI * 2);
     ctx.fill();
-  } else if (heroId === "kin" || heroId === "longhoi" || heroId === "eohyen" || heroId === "trung" || heroId === "duccong" || heroId === "luan" || heroId === "nguyen") {
+  } else if (heroId === "kin" || heroId === "longhoi" || heroId === "eohyen" || heroId === "trung" || heroId === "duccong" || heroId === "luan" || heroId === "nguyen" || heroId === "minh" || heroId === "ducanh") {
     // Luminous elemental / arcane / sanctuary eyes
     let eyeCol = isMono
       ? "#FFFFFF"
@@ -6205,6 +6970,10 @@ export function drawHeroBody(ctx, opts) {
       ? "#F5D0FE"
       : heroId === "nguyen"
       ? "#FEF08A"
+      : heroId === "minh"
+      ? "#FDE047"
+      : heroId === "ducanh"
+      ? "#F59E0B"
       : "#67E8F9";
     for (let s of [-1, 1]) {
       ctx.fillStyle = darkInk;
@@ -9309,49 +10078,67 @@ export function drawThanhSpiritSnakes(ctx, snakes, elapsedTime, isMono) {
     if (!Number.isFinite(sx) || !Number.isFinite(sy)) continue;
     let ang = sn.angle || 0;
     let ratio = sn.maxLife > 0 ? clamp(1 - sn.life / sn.maxLife, 0, 1) : 1;
-    let col = isMono ? "#FFFFFF" : sn.isCompanion ? "#A78BFA" : "#34D399";
+    let col = isMono ? "#FFFFFF" : sn.isCompanion ? "#C084FC" : "#34D399";
     let accent = isMono ? "#DDDDDD" : sn.isCompanion ? "#F3E8FF" : "#A7F3D0";
+    let gold = isMono ? "#FFFFFF" : "#FDE047";
 
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(ang);
-    ctx.globalAlpha = 0.72 + 0.28 * ratio;
+    ctx.globalAlpha = 0.78 + 0.22 * ratio;
 
     // Aura glow (no shadowBlur)
-    let glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 16);
+    let glow = ctx.createRadialGradient(0, 0, 1, 0, 0, 19);
     glow.addColorStop(0, accent);
-    glow.addColorStop(0.5, isMono ? "rgba(255,255,255,0.3)" : sn.isCompanion ? "rgba(167,139,250,0.4)" : "rgba(52,211,153,0.42)");
+    glow.addColorStop(0.5, isMono ? "rgba(255,255,255,0.3)" : sn.isCompanion ? "rgba(192,132,252,0.44)" : "rgba(52,211,153,0.46)");
     glow.addColorStop(1, "rgba(16,185,129,0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.arc(0, 0, 19, 0, Math.PI * 2);
     ctx.fill();
 
-    // Undulating spirit body
+    // Dark ink outline + undulating multi-segment spirit body
     ctx.lineCap = "round";
-    ctx.strokeStyle = col;
-    ctx.lineWidth = sn.isCompanion ? 3.2 : 3.8;
+    ctx.strokeStyle = "#042F2E";
+    ctx.lineWidth = sn.isCompanion ? 5.6 : 6.2;
     ctx.beginPath();
-    ctx.moveTo(4, 0);
-    for (let i = 1; i <= 7; i++) {
-      let tx = 4 - i * 3.1;
-      let ty = Math.sin(elapsedTime * 14 - i * 1.15 + (sn.idx || 0)) * 3.4;
+    ctx.moveTo(5, 0);
+    for (let i = 1; i <= 8; i++) {
+      let tx = 5 - i * 3.2;
+      let ty = Math.sin(elapsedTime * 15 - i * 1.05 + (sn.idx || 0)) * 3.8 * (1 - i * 0.05);
       ctx.lineTo(tx, ty);
     }
     ctx.stroke();
 
-    // Viper head
+    ctx.strokeStyle = col;
+    ctx.lineWidth = sn.isCompanion ? 3.4 : 4.0;
+    ctx.stroke();
+
+    // Inner bright venom spine
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // Horned viper head + slit eyes + tongue
     ctx.fillStyle = accent;
     ctx.strokeStyle = "#042F2E";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.3;
     ctx.beginPath();
-    ctx.moveTo(9, 0);
-    ctx.lineTo(-1, -4.5);
-    ctx.lineTo(1, 0);
-    ctx.lineTo(-1, 4.5);
+    ctx.moveTo(11.5, 0);
+    ctx.lineTo(-1.5, -5.4);
+    ctx.lineTo(-3.5, -3.2);
+    ctx.lineTo(1.2, 0);
+    ctx.lineTo(-3.5, 3.2);
+    ctx.lineTo(-1.5, 5.4);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.arc(3.2, -1.7, 1.3, 0, Math.PI * 2);
+    ctx.arc(3.2, 1.7, 1.3, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -9361,18 +10148,18 @@ export function drawThanhDevourSerpents(ctx, serpents, elapsedTime, isMono) {
   if (!serpents || serpents.length === 0) return;
   for (let sp of serpents) {
     let p = sp.maxLife > 0 ? clamp(sp.life / sp.maxLife, 0, 1) : 0;
-    let alpha = p < 0.2 ? p / 0.2 : clamp(1 - (p - 0.2) / 0.8, 0, 1);
+    let alpha = p < 0.18 ? p / 0.18 : clamp(1 - (p - 0.18) / 0.82, 0, 1);
     let r = sp.radius || 140;
-    let surgeY = Math.sin(Math.min(1, p * 1.6) * Math.PI) * 38;
+    let surgeY = Math.sin(Math.min(1, p * 1.5) * Math.PI) * 44;
 
     ctx.save();
     ctx.translate(sp.x, sp.y);
     ctx.globalAlpha = alpha;
 
-    // Ground summon magic seal
-    let sealGrad = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r);
-    sealGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.45)" : "rgba(16, 185, 129, 0.48)");
-    sealGrad.addColorStop(0.65, isMono ? "rgba(200,200,200,0.22)" : "rgba(126, 34, 206, 0.28)");
+    // Ground summon magic seal + rotating rune circle
+    let sealGrad = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r);
+    sealGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.48)" : "rgba(16, 185, 129, 0.52)");
+    sealGrad.addColorStop(0.62, isMono ? "rgba(200,200,200,0.24)" : "rgba(147, 51, 234, 0.32)");
     sealGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
     ctx.fillStyle = sealGrad;
     ctx.beginPath();
@@ -9380,47 +10167,66 @@ export function drawThanhDevourSerpents(ctx, serpents, elapsedTime, isMono) {
     ctx.fill();
 
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Giant Mãng Xà jaws erupting from center
+    ctx.save();
+    ctx.rotate(elapsedTime * 2.2);
+    ctx.strokeStyle = isMono ? "#E5E5E5" : "#C084FC";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Giant Mãng Xà twin abyssal jaws erupting from center
     ctx.save();
     ctx.translate(0, -surgeY);
-    let jawOpen = Math.max(0.15, 1 - Math.abs(p - 0.38) * 2.1);
+    let jawOpen = Math.max(0.14, 1 - Math.abs(p - 0.36) * 2.15);
     let col = isMono ? "#FFFFFF" : "#10B981";
     let fang = isMono ? "#EEEEEE" : "#FDE047";
 
-    // Upper & lower serpent jaws
-    ctx.fillStyle = isMono ? "#DDDDDD" : "#064E3B";
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 3.2;
     for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#DDDDDD" : "#064E3B";
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 3.4;
       ctx.beginPath();
-      ctx.moveTo(-36, s * 10 * jawOpen);
-      ctx.quadraticCurveTo(0, s * (42 * jawOpen + 14), 44, s * 6 * jawOpen);
-      ctx.lineTo(22, s * 2);
+      ctx.moveTo(-42, s * 11 * jawOpen);
+      ctx.quadraticCurveTo(0, s * (48 * jawOpen + 16), 50, s * 7 * jawOpen);
+      ctx.lineTo(24, s * 2);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
-      // Glowing fangs
-      ctx.fillStyle = fang;
+      // Scale crest trim
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#A78BFA";
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(28, s * 16 * jawOpen);
-      ctx.lineTo(35, s * 4 * jawOpen);
-      ctx.lineTo(23, s * 12 * jawOpen);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = isMono ? "#DDDDDD" : "#064E3B";
+      ctx.moveTo(-26, s * (16 * jawOpen + 6));
+      ctx.quadraticCurveTo(6, s * (32 * jawOpen + 10), 34, s * (10 * jawOpen + 4));
+      ctx.stroke();
+
+      // Primary + secondary razor fangs
+      ctx.fillStyle = fang;
+      for (let fx of [32, 16]) {
+        ctx.beginPath();
+        ctx.moveTo(fx, s * (17 * jawOpen));
+        ctx.lineTo(fx + 7, s * (3.5 * jawOpen));
+        ctx.lineTo(fx - 5, s * (12 * jawOpen));
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
-    // Glowing serpent eyes
+    // Blazing serpent slit eyes
     ctx.fillStyle = isMono ? "#FFFFFF" : "#A7F3D0";
     ctx.beginPath();
-    ctx.arc(-8, -14 * jawOpen - 6, 4.2, 0, Math.PI * 2);
-    ctx.arc(-8, 14 * jawOpen + 6, 4.2, 0, Math.PI * 2);
+    ctx.ellipse(-10, -16 * jawOpen - 7, 5.5, 3.2, -0.35, 0, Math.PI * 2);
+    ctx.ellipse(-10, 16 * jawOpen + 7, 5.5, 3.2, 0.35, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -9445,28 +10251,42 @@ export function drawNhiPoisonTethers(ctx, zones, tethers, elapsedTime, isMono) {
     ctx.lineCap = "round";
 
     // Outer toxic energy halo
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.42)" : "rgba(192, 132, 252, 0.45)";
-    ctx.lineWidth = 8.5;
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.42)" : "rgba(192, 132, 252, 0.48)";
+    ctx.lineWidth = 9.5;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
-    for (let s = 1; s <= 10; s++) {
-      let t = s / 10;
-      let wave = Math.sin(t * Math.PI * 4 - elapsedTime * 11) * 7.5;
+    for (let s = 1; s <= 12; s++) {
+      let t = s / 12;
+      let wave = Math.sin(t * Math.PI * 4 - elapsedTime * 11) * 8;
       ctx.lineTo(a.x + dx * t + nx * wave, a.y + dy * t + ny * wave);
     }
     ctx.stroke();
 
-    // Inner bright venom core
+    // Inner bright venom core + counter-phase emerald helix
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#4ADE80";
-    ctx.lineWidth = 2.6;
+    ctx.lineWidth = 2.8;
+    ctx.stroke();
+
+    ctx.strokeStyle = isMono ? "#CCCCCC" : "#E879F9";
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
-    for (let s = 1; s <= 10; s++) {
-      let t = s / 10;
-      let wave = Math.sin(t * Math.PI * 4 - elapsedTime * 11) * 7.5;
+    for (let s = 1; s <= 12; s++) {
+      let t = s / 12;
+      let wave = -Math.sin(t * Math.PI * 4 - elapsedTime * 11) * 6.5;
       ctx.lineTo(a.x + dx * t + nx * wave, a.y + dy * t + ny * wave);
     }
     ctx.stroke();
+
+    // Flowing reagent droplets along tether
+    for (let d = 0; d < 3; d++) {
+      let prog = ((elapsedTime * 0.95 + d / 3) % 1);
+      let wave = Math.sin(prog * Math.PI * 4 - elapsedTime * 11) * 8;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(a.x + dx * prog + nx * wave, a.y + dy * prog + ny * wave, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -9489,24 +10309,35 @@ export function drawNhiToxicMist(ctx, mists, elapsedTime, isMono) {
 
     ctx.save();
     ctx.translate(m.x, m.y);
-    ctx.globalAlpha = fade * 0.85;
+    ctx.globalAlpha = fade * 0.88;
 
-    let grad = ctx.createRadialGradient(0, 0, r * 0.14, 0, 0, r);
-    grad.addColorStop(0, mainCol + "0.34)");
-    grad.addColorStop(0.65, mainCol + "0.18)");
+    let grad = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r);
+    grad.addColorStop(0, mainCol + "0.38)");
+    grad.addColorStop(0.62, mainCol + "0.2)");
     grad.addColorStop(1, mainCol + "0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = mainCol + "0.62)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([10, 8]);
+    // Drifting billowing toxic spore clouds
+    for (let p = 0; p < 5; p++) {
+      let pa = (Math.PI * 2 / 5) * p + elapsedTime * 0.55;
+      let pr = r * 0.52;
+      ctx.fillStyle = mainCol + "0.14)";
+      ctx.beginPath();
+      ctx.arc(Math.cos(pa) * pr, Math.sin(pa) * pr, r * 0.34, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = mainCol + "0.68)";
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([12, 8]);
     ctx.rotate(elapsedTime * 0.9);
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
 
     ctx.restore();
   }
@@ -10056,6 +10887,397 @@ export function drawDungCerberusUlt(ctx, bursts, elapsedTime, isMono) {
     ctx.restore();
   }
 }
+
+export function drawMinhSealScepter(ctx, p, elapsedTime, state, isMono) {
+  let atkProg = state?.atkProg || 0;
+  let atkSin = state?.hasAtk ? Math.sin(atkProg * Math.PI) : 0;
+  let thrust = atkSin * 11;
+  let bob = Math.sin(elapsedTime * 3.4 + (state?.walkPhase || 0)) * 1.4;
+  let parity = state?.parity || 1;
+  let gold = isMono ? "#FFFFFF" : "#FDE047";
+  let azure = isMono ? "#E5E5E5" : "#38BDF8";
+  let dark = "#0F172A";
+
+  ctx.save();
+  ctx.rotate(0.18 * parity - atkSin * 0.36 * parity);
+  ctx.translate(14 + thrust, 7 + bob);
+
+  // Flowing Celestial Talisman Ribbon behind pommel
+  let w1 = Math.sin(elapsedTime * 8.5 + (state?.walkPhase || 0)) * 4;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-17, 0);
+  ctx.quadraticCurveTo(-26, w1, -34, -w1 * 0.7);
+  ctx.stroke();
+
+  // Dark outline + Pearl-Gold Astrolabe Staff Shaft
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 5.8;
+  ctx.beginPath();
+  ctx.moveTo(-17, 0);
+  ctx.lineTo(18, 0);
+  ctx.stroke();
+
+  let shaftGrad = ctx.createLinearGradient(-17, 0, 18, 0);
+  shaftGrad.addColorStop(0, isMono ? "#333333" : "#1E3A8A");
+  shaftGrad.addColorStop(0.65, gold);
+  shaftGrad.addColorStop(1, "#FFFFFF");
+  ctx.strokeStyle = shaftGrad;
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(-17, 0);
+  ctx.lineTo(18, 0);
+  ctx.stroke();
+
+  // Gauntlet grip
+  drawHandGrip(ctx, -2, 0.5, "#1E40AF", gold, 3.8, isMono);
+
+  // Crescent Winged Gold Cradle at Scepter Head
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.arc(21, 0, 8.8, Math.PI * 0.58, Math.PI * 1.42);
+  ctx.stroke();
+
+  // Counter-rotating Dual Armillary Rings + Sapphire Prism Star
+  let headX = 24.5;
+  let glowR = 14 + (state?.skillAlpha || 0) * 5 + (state?.critAlpha || 0) * 4;
+  let hGrad = ctx.createRadialGradient(headX, 0, 1, headX, 0, glowR);
+  hGrad.addColorStop(0, "#FFFFFF");
+  hGrad.addColorStop(0.45, isMono ? "rgba(255,255,255,0.45)" : "rgba(56, 189, 248, 0.52)");
+  hGrad.addColorStop(1, "rgba(56, 189, 248, 0)");
+  ctx.fillStyle = hGrad;
+  ctx.beginPath();
+  ctx.arc(headX, 0, glowR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(headX, 0);
+  ctx.rotate(elapsedTime * 2.6);
+  ctx.strokeStyle = azure;
+  ctx.lineWidth = 1.9;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8.6, 4.6, 0.45, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.rotate(-elapsedTime * 5.2);
+  ctx.strokeStyle = gold;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8.6, 4.6, -0.45, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  drawFourPointStar(ctx, headX, 0, 6.8 + Math.sin(elapsedTime * 5) * 0.9, 2.4, "#FEF08A", azure);
+  ctx.restore();
+}
+
+export function drawDucAnhSiegeGauntlets(ctx, p, elapsedTime, state, isMono) {
+  let atkProg = state?.atkProg || 0;
+  let atkSin = state?.hasAtk ? Math.sin(atkProg * Math.PI) : 0;
+  let parity = state?.parity || 1;
+  let walkSway = (state?.moveAmt || 0) * Math.sin(state?.walkPhase || 0) * 2.5;
+  let flare = clamp((state?.skillAlpha || 0) + (state?.critAlpha || 0), 0, 1);
+
+  for (let s of [-1, 1]) {
+    let isLead = s * parity > 0;
+    let punch = isLead ? atkSin * 15 : -atkSin * 3.5;
+    let sideBob = s * walkSway;
+
+    ctx.save();
+    ctx.translate(15 + punch + sideBob * 0.4, s * 16.5);
+    ctx.rotate(isLead ? -s * atkSin * 0.14 : s * 0.08);
+
+    // Hydraulic piston strut behind gauntlet
+    ctx.strokeStyle = isMono ? "#999999" : "#94A3B8";
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(-3, 0);
+    ctx.stroke();
+
+    // Heavy beveled titanium siege ram gauntlet body
+    ctx.fillStyle = isMono ? "#262626" : "#334155";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -7.5);
+    ctx.lineTo(9, -7.5);
+    ctx.lineTo(13, -4);
+    ctx.lineTo(13, 4);
+    ctx.lineTo(9, 7.5);
+    ctx.lineTo(-6, 7.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Armored knuckle bumper plates + molten amber vents
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
+    ctx.fillRect(8, -5.2, 3.2, 10.4);
+
+    // Glowing furnace vent core on dorsal armor
+    let ventR = 3.0 + flare * 1.4;
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F97316";
+    ctx.beginPath();
+    ctx.arc(1.5, 0, ventR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(1.5, 0, ventR * 0.52, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shock ring flash at peak of lead punch
+    if (isLead && atkSin > 0.35) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${atkSin * 0.9})`;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(13, 0, 8 + atkSin * 6, -1.0, 1.0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+export function drawMinhSanctuaries(ctx, zones, elapsedTime, isMono) {
+  if (!zones || zones.length === 0) return;
+  for (let z of zones) {
+    let r = z.radius || 155;
+    let fade = Math.min(1, (z.duration - z.timer) / 0.35);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(z.x, z.y);
+
+    let g = ctx.createRadialGradient(0, 0, r * 0.08, 0, 0, r);
+    g.addColorStop(0, isMono ? "rgba(255,255,255,0.28)" : "rgba(186, 230, 253, 0.34)");
+    g.addColorStop(0.55, isMono ? "rgba(200,200,200,0.18)" : "rgba(56, 189, 248, 0.28)");
+    g.addColorStop(1, "rgba(14, 165, 233, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Rotating sacred hexagram & celestial astrolabe ring
+    ctx.save();
+    ctx.rotate(elapsedTime * 1.1);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([12, 7]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.84, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let t = 0; t < 2; t++) {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        let a = (Math.PI * 2 / 3) * i + (t * Math.PI) / 3;
+        let px = Math.cos(a) * r * 0.72;
+        let py = Math.sin(a) * r * 0.72;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Counter-rotating frost-crystalline cardinal ticks
+    ctx.save();
+    ctx.rotate(-elapsedTime * 0.75);
+    for (let i = 0; i < 6; i++) {
+      let a = (Math.PI / 3) * i;
+      let cx = Math.cos(a) * r * 0.94;
+      let cy = Math.sin(a) * r * 0.94;
+      drawFourPointStar(ctx, cx, cy, 7.5, 2.6, isMono ? "#FFFFFF" : "#BAE6FD", "#38BDF8");
+    }
+    ctx.restore();
+
+    // Orbiting healing stars & sanctuary motes
+    for (let i = 0; i < 6; i++) {
+      let ang = (Math.PI / 3) * i + elapsedTime * 1.5;
+      let dist = r * (0.42 + 0.24 * Math.sin(elapsedTime * 2.5 + i));
+      drawFourPointStar(ctx, Math.cos(ang) * dist, Math.sin(ang) * dist, 5.2, 2.0, i % 2 === 0 ? "#4ADE80" : "#FEF08A", null);
+    }
+    ctx.restore();
+  }
+}
+
+export function drawMinhPrisons(ctx, prisons, elapsedTime, isMono) {
+  if (!prisons || prisons.length === 0) return;
+  for (let p of prisons) {
+    let r = p.radius || 185;
+    let prog = Math.min(1, p.timer / Math.max(0.1, p.duration));
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    let g = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+    g.addColorStop(0, "rgba(254, 240, 138, 0.32)");
+    g.addColorStop(0.68, "rgba(56, 189, 248, 0.24)");
+    g.addColorStop(1, "rgba(30, 58, 138, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Base octagonal seal perimeter
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Detonation countdown ring closing inward
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(12, r * (1 - prog * 0.78)), 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 8 Celestial Light Pillars + Top Canopy Seal Chains
+    let tops = [];
+    for (let i = 0; i < 8; i++) {
+      let a = (Math.PI / 4) * i + elapsedTime * 0.38;
+      let bx = Math.cos(a) * r;
+      let by = Math.sin(a) * r;
+      let tx = bx * 0.86;
+      let ty = by * 0.86 - 58;
+      tops.push({ x: tx, y: ty, bx, by });
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(56, 189, 248, 0.65)";
+      ctx.lineWidth = 6.2;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+      ctx.lineWidth = 2.6;
+      ctx.stroke();
+    }
+
+    // Interlocking Top Canopy & Cross Seal Beams
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.8)";
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      let curr = tops[i];
+      let next = tops[(i + 1) % 8];
+      ctx.moveTo(curr.x, curr.y);
+      ctx.lineTo(next.x, next.y);
+    }
+    ctx.stroke();
+
+    for (let i = 0; i < 8; i++) {
+      drawFourPointStar(ctx, tops[i].x, tops[i].y, 6.2, 2.2, "#FFFFFF", "#FACC15");
+    }
+
+    // Converging Radiant Zenith Seal Star overhead
+    let starR = 16 + prog * 14;
+    drawFourPointStar(ctx, 0, -24, starR, starR * 0.3, "#FFFFFF", "#FACC15");
+    ctx.restore();
+  }
+}
+
+export function drawDucAnhMeteorLeaps(ctx, leaps, elapsedTime, isMono) {
+  if (!leaps || leaps.length === 0) return;
+  for (let l of leaps) {
+    let sx = l.sx ?? l.startX ?? l.x ?? 0;
+    let sy = l.sy ?? l.startY ?? l.y ?? 0;
+    let tx = l.tx ?? l.targetX ?? l.x ?? sx;
+    let ty = l.ty ?? l.targetY ?? l.y ?? sy;
+    let rad = l.radius || 185;
+    let t = Math.min(1, (l.timer || 0) / Math.max(0.05, l.duration || 0.45));
+    let arcH = Math.sin(t * Math.PI) * 175;
+    let cx = sx + (tx - sx) * t;
+    let cy = sy + (ty - sy) * t;
+
+    // Target landing zone warning reticle
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.fillStyle = "rgba(249, 115, 22, 0.16)";
+    ctx.beginPath();
+    ctx.arc(0, 0, rad, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#F97316";
+    ctx.lineWidth = 3.2;
+    ctx.stroke();
+
+    // Rotating tactical siege target brackets
+    ctx.save();
+    ctx.rotate(elapsedTime * 3.5);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 2.4;
+    ctx.setLineDash([16, 12]);
+    ctx.beginPath();
+    ctx.arc(0, 0, rad * 0.86, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Expanding impact progress ring
+    ctx.strokeStyle = "#FEF08A";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, rad * t, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Ground shadow
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.48)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 8, Math.max(12, 32 - arcH * 0.08), Math.max(7, 16 - arcH * 0.04), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Blazing atmospheric re-entry meteor sphere + spikes
+    ctx.save();
+    ctx.translate(cx, cy - arcH);
+    let r = 30 + Math.sin(t * Math.PI) * 11;
+
+    // Outer fiery plasma aura
+    let aura = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 1.75);
+    aura.addColorStop(0, "rgba(254, 240, 138, 0.7)");
+    aura.addColorStop(0.55, "rgba(249, 115, 22, 0.42)");
+    aura.addColorStop(1, "rgba(249, 115, 22, 0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.75, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.rotate(elapsedTime * 18);
+    // Spiked siege shell
+    for (let i = 0; i < 8; i++) {
+      let a = (Math.PI / 4) * i;
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a - 0.14) * (r - 2), Math.sin(a - 0.14) * (r - 2));
+      ctx.lineTo(Math.cos(a) * (r + 10), Math.sin(a) * (r + 10));
+      ctx.lineTo(Math.cos(a + 0.14) * (r - 2), Math.sin(a + 0.14) * (r - 2));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    let mg = ctx.createRadialGradient(-r * 0.25, -r * 0.25, r * 0.12, 0, 0, r);
+    mg.addColorStop(0, "#FEF08A");
+    mg.addColorStop(0.42, "#F97316");
+    mg.addColorStop(1, "#334155");
+    ctx.fillStyle = isMono ? "#FFFFFF" : mg;
+    ctx.strokeStyle = "#FDE047";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 
 
 

@@ -376,7 +376,7 @@ export function MobaLobbyMenu({
                 }}
                 className="text-amber-300 hover:text-amber-200 font-moba font-bold cursor-pointer"
               >
-                {isVi ? "Xem chi tiết cả 17 →" : "Full Roster →"}
+                {isVi ? `Xem chi tiết cả ${heroes.length} →` : `Full Roster (${heroes.length}) →`}
               </button>
             </div>
 
