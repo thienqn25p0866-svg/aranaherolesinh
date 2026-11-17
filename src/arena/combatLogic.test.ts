@@ -63,6 +63,33 @@ import {
   THIEN_ASCENDED_DURATION,
   THIEN_GOD_MODE_CDR_MULT,
   THIEN_GOD_MODE_DMG_MULT,
+  THANH_ECHO_DELAY,
+  THANH_ECHO_DMG_RATIO,
+  THANH_ECHO_MAX_QUEUE,
+  THANH_C1_POISON_DURATION,
+  THANH_C2_MAX_SWALLOW_PER_CAST,
+  THANH_C3_GUARD_COUNT,
+  THANH_C3_GUARD_DR,
+  evaluateThanhBurstPassive,
+  computeThanhC1SnakeDamage,
+  computeThanhC1BoundedHeal,
+  isThanhC2SwallowEligible,
+  computeThanhC2Damage,
+  computeThanhC3Sacrifice,
+  NHI_PASSIVE_HP_THRESHOLD,
+  NHI_PASSIVE_HEAL_RATIO,
+  NHI_PASSIVE_CD,
+  NHI_C2_MAX_ZONES,
+  NHI_C2_TETHER_RANGE,
+  NHI_C3_BOSS_PCT_CAP,
+  cycleNhiAmmoType,
+  getNhiAmmoProfile,
+  computeNhiPoisonDps,
+  computeNhiC1LifeHeal,
+  computeNhiPoisonZoneTethers,
+  selectHighestHpTarget,
+  computeNhiC3ArrowDamage,
+  computeNhiC3BoundedHeal,
   THIEN_GOD_MODE_REGEN_PER_SEC,
   THIEN_C1_SWORD_COUNT,
   computeThienPassiveGain,
@@ -574,15 +601,15 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (16 standard + 1 secret Founder = 17 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (18 standard + 1 secret Founder = 19 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 17, 'Must preserve all 16 standard heroes + secret Founder hero Thien');
-  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 16, 'Standard unlocked roster must remain 16 heroes');
+  assert.equal(Mi.length, 19, 'Must preserve all 18 standard heroes + secret Founder hero Thien');
+  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 18, 'Standard unlocked roster must remain 18 heroes');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 17);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thien']) {
+  assert.equal(heroIds.size, 19);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'thien']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
@@ -915,6 +942,12 @@ test('Portrait camera viewport widens FOV, shifts hero focus upward, and round-t
   const heroScreen = worldToScreenWithCamera(camX, camY, camX, camY, balanced);
   assert.equal(heroScreen.x, balanced.focusX);
   assert.equal(heroScreen.y, balanced.focusY);
+
+  const phoneLandscape = computeCameraViewportConfig({ viewW: 844, viewH: 390, layoutMode: 'auto', fovPreset: 'balanced' });
+  assert.equal(phoneLandscape.isPortrait, false);
+  assert.ok(phoneLandscape.zoom < 1, 'Compact phone landscape zooms out gently to keep vertical FOV wide');
+  assert.ok(phoneLandscape.visibleWorldH >= 540, `Expected wide vertical FOV >= 540, got ${phoneLandscape.visibleWorldH}`);
+  assert.ok(phoneLandscape.focusY < 390 / 2, 'Compact landscape hero focus shifts slightly upward above controls');
 });
 
 test('Joystick drag radius scales ergonomically between compact portrait (116px) and standard (144px+) zones', () => {
@@ -1452,9 +1485,9 @@ test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/ani
   }
 });
 
-test('MOBA hero role classification & filtering covers all 17 champions accurately', async () => {
+test('MOBA hero role classification & filtering covers all 19 champions accurately', async () => {
   const { Mi } = await import('./gameData.js');
-  assert.equal(Mi.length, 17);
+  assert.equal(Mi.length, 19);
   assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
 
   const allFiltered = filterHeroesByRole(Mi, 'all');
@@ -1479,17 +1512,17 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
   const prevWindow = (globalThis as any).window;
 
   const invokeAllSounds = () => {
-    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thien'];
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'thien'];
     for (const id of heroIds) {
       R.lastCooldowns.clear();
       R.playHeroSelect(id);
       R.playHeroSkillPreview(id, 'passive');
       R.playHeroSkillPreview(id, 'atk');
+      R.playHeroSkillPreview(id, 'c1');
+      R.playHeroSkillPreview(id, 'c2');
       R.playHeroSkillPreview(id, 'c3');
     }
     R.lastCooldowns.clear();
-    R.playHeroSkillPreview('thien', 'c1');
-    R.playHeroSkillPreview('thien', 'c2');
     R.playHeroSkillPreview('thien', 'c4');
     R.playThienBasic();
     R.playThienSwords();
@@ -1498,6 +1531,17 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
     R.playThienSunUlt();
     R.playThienAscend();
     R.playThienGodMode();
+    R.lastCooldowns.clear();
+    R.playThanhSnakeCast(false);
+    R.playThanhSnakeCast(true);
+    R.playThanhDevour();
+    R.playThanhGuardShield();
+    R.playNhiAmmoSwitch('purple');
+    R.playNhiAmmoSwitch('green');
+    R.playNhiAmmoSwitch('life');
+    R.playNhiFlaskBreak();
+    R.playNhiPoisonSizzle();
+    R.playNhiUltShot();
     R.lastCooldowns.clear();
     R.playPhongDash();
     R.playPhongIllusionSpawn();
@@ -2838,6 +2882,286 @@ test('PlayerAccount cloud merge and JSON save parser preserve max stats and stri
     assert.notEqual(parsedLocked.profile.titleBadge, 'Đấng Sáng Thế');
   }
 });
+
+test('Thanh & Nhi hero definitions: exact stats, 1 passive, strictly 3 skills (no c4), icons, and recommended builds', async () => {
+  const { Mi, Ff } = await import('./gameData.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
+
+  const thanh = Mi.find((h: any) => h.id === 'thanh');
+  const nhi = Mi.find((h: any) => h.id === 'nhi');
+  assert.ok(thanh, 'Thanh must exist in hero catalog');
+  assert.ok(nhi, 'Nhi must exist in hero catalog');
+
+  assert.equal(thanh.stats.hp, 1050);
+  assert.equal(thanh.stats.damage, 32);
+  assert.equal(thanh.stats.ap, 48);
+  assert.equal(thanh.skills.length, 3);
+  assert.deepEqual(thanh.skills.map((s: any) => s.key), ['c1', 'c2', 'c3']);
+  assert.equal((HERO_SKILL_ICONS.thanh as Record<string, unknown>)?.c4, undefined);
+  assert.ok(HERO_SKILL_ICONS.thanh?.atk && HERO_SKILL_ICONS.thanh?.passive && HERO_SKILL_ICONS.thanh?.c1 && HERO_SKILL_ICONS.thanh?.c2 && HERO_SKILL_ICONS.thanh?.c3);
+  assert.ok(Array.isArray(Ff.thanh) && Ff.thanh.length >= 2);
+  assert.equal(getHeroRoleKey('thanh'), 'mage');
+
+  assert.equal(nhi.stats.hp, 900);
+  assert.equal(nhi.stats.damage, 48);
+  assert.equal(nhi.stats.ap, 35);
+  assert.equal(nhi.skills.length, 3);
+  assert.deepEqual(nhi.skills.map((s: any) => s.key), ['c1', 'c2', 'c3']);
+  assert.equal((HERO_SKILL_ICONS.nhi as Record<string, unknown>)?.c4, undefined);
+  assert.ok(HERO_SKILL_ICONS.nhi?.atk && HERO_SKILL_ICONS.nhi?.passive && HERO_SKILL_ICONS.nhi?.c1 && HERO_SKILL_ICONS.nhi?.c2 && HERO_SKILL_ICONS.nhi?.c3);
+  assert.ok(Array.isArray(Ff.nhi) && Ff.nhi.length >= 2);
+  assert.equal(getHeroRoleKey('nhi'), 'marksman');
+});
+
+test('Thanh & Nhi pure combat helpers: echo scaling, burst shield, bounded heal, swallow filter, ammo cycling, tethers, and boss %HP cap', () => {
+  // Thanh passive burst shield + heal
+  const pas = evaluateThanhBurstPassive({
+    events: [{ time: 10.0, amount: 120 }],
+    now: 10.6,
+    incomingDamage: 90,
+    maxHp: 1050,
+    passiveCd: 0,
+  });
+  assert.equal(pas.triggered, true);
+  assert.equal(pas.shield, Math.round(1050 * 0.12));
+  assert.equal(pas.heal, Math.round(1050 * 0.06));
+  assert.equal(pas.nextCooldown, 18);
+
+  // Thanh C1 repeat bonus + echo 35% scaling + bounded heal
+  const firstHit = computeThanhC1SnakeDamage({ ap: 48, atk: 32, priorHitsOnTarget: 0, isEcho: false });
+  const repeatHit = computeThanhC1SnakeDamage({ ap: 48, atk: 32, priorHitsOnTarget: 1, isEcho: false });
+  const echoHit = computeThanhC1SnakeDamage({ ap: 48, atk: 32, priorHitsOnTarget: 0, isEcho: true });
+  assert.ok(repeatHit > firstHit);
+  assert.equal(echoHit, Math.round((54 + 48 * 0.92 + 32 * 0.35) * THANH_ECHO_DMG_RATIO));
+
+  let totalHeal = 0;
+  for (let i = 0; i < 20; i++) {
+    totalHeal += computeThanhC1BoundedHeal({ maxHp: 1050, ap: 48, alreadyHealed: totalHeal, isEcho: false });
+  }
+  assert.ok(totalHeal > 0 && totalHeal <= Math.round(1050 * 0.09 + 48 * 0.45));
+
+  // Thanh C2 swallow restrictions
+  assert.equal(isThanhC2SwallowEligible({ kind: 'minion', radius: 16, swallowedCount: 0, isEcho: false }), true);
+  assert.equal(isThanhC2SwallowEligible({ kind: 'minion', radius: 16, swallowedCount: THANH_C2_MAX_SWALLOW_PER_CAST, isEcho: false }), false);
+  assert.equal(isThanhC2SwallowEligible({ kind: 'boss', radius: 42, swallowedCount: 0, isEcho: false }), false);
+  assert.equal(isThanhC2SwallowEligible({ kind: 'brute', radius: 24, swallowedCount: 0, isEcho: false }), false);
+  assert.equal(isThanhC2SwallowEligible({ kind: 'minion', radius: 16, swallowedCount: 0, isEcho: true }), false);
+  assert.ok(computeThanhC2Damage({ ap: 48, atk: 32, isLargeOrBoss: true }) > computeThanhC2Damage({ ap: 48, atk: 32, isLargeOrBoss: false }));
+
+  // Thanh C3 sacrifice
+  const sac = computeThanhC3Sacrifice({ currentHp: 300, maxHp: 1050, guardCount: 4, sacrificeIcd: 0, hitDamage: 50 });
+  assert.equal(sac.shouldSacrifice, true);
+  assert.equal(sac.shield, Math.round(1050 * 0.1));
+  assert.equal(sac.heal, Math.round(1050 * 0.08));
+
+  // Nhi ammo cycling
+  assert.equal(cycleNhiAmmoType('purple'), 'green');
+  assert.equal(cycleNhiAmmoType('green'), 'life');
+  assert.equal(cycleNhiAmmoType('life'), 'purple');
+  assert.equal(getNhiAmmoProfile('green').aoeRadius, 88);
+  assert.equal(getNhiAmmoProfile('life').pierceLeft, 3);
+  assert.ok(getNhiAmmoProfile('purple').poisonDur >= 3);
+
+  // Nhi C2 tethers
+  const tethers = computeNhiPoisonZoneTethers(
+    [
+      { id: 1, x: 100, y: 100 },
+      { id: 2, x: 250, y: 100 },
+      { id: 3, x: 900, y: 900 },
+    ],
+    NHI_C2_TETHER_RANGE
+  );
+  assert.equal(tethers.length, 1);
+
+  // Nhi C3 highest HP target + boss cap + bounded heal
+  const picked = selectHighestHpTarget(
+    [
+      { id: 1, x: 200, y: 200, hp: 180 },
+      { id: 2, x: 350, y: 200, hp: 9200 },
+      { id: 3, x: 250, y: 200, hp: 420 },
+    ],
+    150,
+    200,
+    680
+  );
+  assert.equal(picked?.id, 2);
+  const bossArrow = computeNhiC3ArrowDamage({ atk: 48, ap: 35, targetCurrentHp: 500000, isFirstHit: true, isBoss: true });
+  const bossZeroHpArrow = computeNhiC3ArrowDamage({ atk: 48, ap: 35, targetCurrentHp: 0, isFirstHit: true, isBoss: true });
+  assert.equal(bossArrow - bossZeroHpArrow, NHI_C3_BOSS_PCT_CAP);
+
+  let nhiHeal = 0;
+  for (let i = 0; i < 10; i++) {
+    nhiHeal += computeNhiC3BoundedHeal({ damageDealt: 1200, maxHp: 900, alreadyHealed: nhiHeal });
+  }
+  assert.equal(nhiHeal, Math.round(900 * 0.16));
+  assert.ok(computeNhiPoisonDps({ stacks: 3, ap: 35, atk: 48, isBoss: false }) > 0);
+  assert.ok(computeNhiC1LifeHeal({ damageDealt: 100, maxHp: 900, alreadyHealed: 0 }) > 0);
+});
+
+test('GameEngine integration for Thanh & Nhi: echo mimicry after 0.8s, swallow, 4 guard snakes, ammo switch, max-6 poison zones & mist passive', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const store = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {},
+    restore() {},
+    translate() {},
+    rotate() {},
+    scale() {},
+    beginPath() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    quadraticCurveTo() {},
+    arc() {},
+    ellipse() {},
+    rect() {},
+    roundRect() {},
+    fillRect() {},
+    strokeRect() {},
+    clearRect() {},
+    fill() {},
+    stroke() {},
+    clip() {},
+    setTransform() {},
+    setLineDash() {},
+    fillText() {},
+    measureText: (t: string) => ({ width: (t || '').length * 7 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const { Mi } = await import('./gameData.js');
+    const { GameEngine } = await import('./GameEngine.js');
+    const wr = await import('./weaponRenderer.js');
+
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+
+    const thanhHero = Mi.find((h: any) => h.id === 'thanh');
+    const nhiHero = Mi.find((h: any) => h.id === 'nhi');
+    const engine: any = new GameEngine(canvasStub);
+
+    // 1. Test Thanh C1 + 0.8s echo, C2 swallow + zone heal, C3 4 guard snakes + DR + sacrifice
+    engine.startNewGame(thanhHero);
+    assert.equal(engine.player.maxHp, 1050);
+    assert.equal(engine.getHudSnapshot().skillStates.length, 3);
+
+    engine.castSkill(0, 0, engine.player.x + 150, engine.player.y);
+    assert.equal(engine.thanhEchoQueue.length, 1);
+    assert.equal(engine.projectiles.filter((p: any) => p.kind === 'thanh_c1_snake' && !p.isEcho).length, 3);
+
+    // Advance 0.85s -> echo fires 3 echo snakes!
+    for (let i = 0; i < 18; i++) engine.updateThanhAndNhiSystems(0.05);
+    assert.equal(engine.thanhEchoQueue.length, 0);
+    assert.ok(engine.projectiles.some((p: any) => p.kind === 'thanh_c1_snake' && p.isEcho));
+
+    // Test Thanh C2 swallows small minion, leaves zone and heals Thanh inside zone
+    engine.enemies = [
+      { id: 901, kind: 'minion', x: engine.player.x + 120, y: engine.player.y, radius: 16, hp: 120, maxHp: 120, speed: 100, damage: 10 },
+      { id: 902, kind: 'boss', x: engine.player.x + 130, y: engine.player.y, radius: 42, hp: 5000, maxHp: 5000, speed: 100, damage: 50 },
+    ];
+    engine.castSkill(1, 0, engine.player.x + 120, engine.player.y);
+    assert.equal(engine.enemies.some((e: any) => e.id === 901), false);
+    assert.ok(engine.enemies.find((e: any) => e.id === 902).hp < 5000);
+    const thanhZone = engine.zones.find((z: any) => z.kind === 'thanh_poison_zone');
+    assert.ok(thanhZone);
+    engine.player.hp = 600;
+    engine.player.x = thanhZone.x;
+    engine.player.y = thanhZone.y;
+    engine.updateThanhAndNhiSystems(0.5);
+    assert.ok(engine.player.hp > 600, 'Thanh should heal while standing inside her C2 poison zone');
+
+    // Test Thanh C3 summons 4 guard snakes & sacrifices 1 on danger
+    engine.castSkill(2, 0, engine.player.x, engine.player.y);
+    assert.equal(engine.thanhGuardSnakes.length, THANH_C3_GUARD_COUNT);
+    engine.player.hp = 300;
+    engine.damagePlayer(80);
+    assert.equal(engine.thanhGuardSnakes.length, THANH_C3_GUARD_COUNT - 1);
+    assert.ok(engine.player.shield > 0);
+
+    // 2. Test Nhi C1 ammo switch, C2 bounded max-6 poison zones + tethers, passive < 50% HP
+    engine.startNewGame(nhiHero);
+    assert.equal(engine.player.maxHp, 900);
+    assert.equal(engine.player.nhi_ammoType, 'purple');
+    engine.castSkill(0, 0, engine.player.x + 150, engine.player.y);
+    assert.equal(engine.player.nhi_ammoType, 'green');
+    engine.player.cooldowns[0] = 0;
+    engine.castSkill(0, 0, engine.player.x + 150, engine.player.y);
+    assert.equal(engine.player.nhi_ammoType, 'life');
+
+    // Drop Nhi below 50% HP via damage -> triggers passive mist + heal + 24s CD
+    engine.damagePlayer(520);
+    assert.ok(engine.nhiToxicMists.length >= 1);
+    assert.equal(engine.player.nhi_passiveCd, NHI_PASSIVE_CD);
+
+    // Trigger C2 flasks multiple times -> capped at NHI_C2_MAX_ZONES (6)
+    for (let c = 0; c < 4; c++) {
+      engine.player.cooldowns[1] = 0;
+      engine.castSkill(1, 0, engine.player.x + 160, engine.player.y);
+      for (let step = 0; step < 20; step++) engine.updateProjectiles(0.05);
+    }
+    const activeNhiZones = engine.zones.filter((z: any) => z.kind === 'nhi_poison_zone');
+    assert.ok(activeNhiZones.length <= NHI_C2_MAX_ZONES && activeNhiZones.length >= 2);
+
+    // Nhi C3 locks highest-HP target, applies bounded heal & spreads poison on hit
+    const boss = { id: 950, kind: 'boss', x: engine.player.x + 220, y: engine.player.y, radius: 42, hp: 50000, maxHp: 50000, speed: 90, damage: 45, slowFactor: 0, slowTimer: 0 };
+    const nearby = { id: 951, kind: 'minion', x: engine.player.x + 250, y: engine.player.y + 20, radius: 16, hp: 400, maxHp: 400, speed: 100, damage: 10, slowFactor: 0, slowTimer: 0 };
+    engine.enemies = [nearby, boss];
+    engine.player.hp = 400;
+    engine.player.cooldowns[2] = 0;
+    engine.castSkill(2, 0, engine.player.x + 100, engine.player.y);
+    for (let step = 0; step < 20; step++) engine.updateProjectiles(0.05);
+    assert.ok(boss.hp < 50000, 'Nhi C3 should damage highest-HP boss');
+    assert.ok((boss as any).poisonStacks >= 1 && (nearby as any).poisonStacks >= 1, 'Nhi C3 should poison hit target and spread nearby');
+    assert.ok(engine.player.hp > 400, 'Nhi C3 should heal Nhi based on damage dealt');
+
+    // Zero shadowBlur assertion on renderer routines
+    let shadowBlurUsed = false;
+    Object.defineProperty(ctxStub, 'shadowBlur', {
+      get() { return 0; },
+      set(val: number) { if (val > 0) shadowBlurUsed = true; },
+    });
+    wr.drawHeroBody(ctxStub, { heroId: 'thanh', elapsedTime: 1, radius: 22, facing: 0, color: '#10B981', accentColor: '#A7F3D0', isMono: false });
+    wr.drawHeroBody(ctxStub, { heroId: 'nhi', elapsedTime: 1, radius: 22, facing: 0, color: '#A855F7', accentColor: '#4ADE80', isMono: false });
+    wr.drawHeroWeapon(ctxStub, 'thanh', engine.player, 1, false);
+    wr.drawHeroWeapon(ctxStub, 'nhi', engine.player, 1, false);
+    wr.drawThanhSpiritSnakes(ctxStub, engine.thanhGuardSnakes, 1, false);
+    wr.drawThanhDevourSerpents(ctxStub, [{ x: 400, y: 400, radius: 140, life: 0.2, maxLife: 0.72 }], 1, false);
+    wr.drawNhiPoisonTethers(ctxStub, activeNhiZones, computeNhiPoisonZoneTethers(activeNhiZones, NHI_C2_TETHER_RANGE), 1, false);
+    wr.drawNhiToxicMist(ctxStub, engine.nhiToxicMists, 1, false);
+    assert.equal(shadowBlurUsed, false, 'Thanh & Nhi renderers must never set ctx.shadowBlur');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
 
 
 

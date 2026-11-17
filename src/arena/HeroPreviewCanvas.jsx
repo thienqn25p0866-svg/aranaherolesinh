@@ -305,6 +305,41 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.arc(sx, sy, 4.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    return;
+  }
+
+  if (heroId === "thanh") {
+    ctx.save();
+    const a = t * 2.1 * activeBoost;
+    for (let s = 0; s < 5; s++) {
+      const sa = a - s * 0.24;
+      const sx = Math.cos(sa) * auraR * 1.06;
+      const sy = Math.sin(sa) * auraR * 1.06;
+      ctx.fillStyle = s === 0 ? "#A7F3D0" : "rgba(16, 185, 129, 0.72)";
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.max(2, 4.6 - s * 0.55), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "nhi") {
+    ctx.save();
+    const cols = ["#A855F7", "#22C55E", "#34D399"];
+    for (let i = 0; i < 3; i++) {
+      const a = t * 1.85 * activeBoost + (Math.PI * 2 * i) / 3;
+      const vx = Math.cos(a) * auraR * 1.04;
+      const vy = Math.sin(a) * auraR * 1.04;
+      ctx.fillStyle = cols[i];
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(vx, vy, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }
 

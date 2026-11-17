@@ -301,20 +301,20 @@ body:-webkit-full-screen {
 }
 
 #joystickZone {
-  bottom: max(16px, env(safe-area-inset-bottom));
-  left: max(16px, env(safe-area-inset-left));
+  bottom: max(30px, calc(env(safe-area-inset-bottom) + 18px));
+  left: max(36px, calc(env(safe-area-inset-left) + 24px));
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   pointer-events: auto;
   touch-action: none;
   z-index: 25;
-  background: rgba(15, 23, 42, 0.48);
+  background: rgba(15, 23, 42, 0.38);
   border: 2px solid #94a3b859;
   border-radius: 50%;
   justify-content: center;
   align-items: center;
-  width: 156px;
-  height: 156px;
+  width: 150px;
+  height: 150px;
   display: flex;
   position: absolute;
 }
@@ -324,20 +324,20 @@ body:-webkit-full-screen {
   background: #f59e0be0;
   border: 2px solid #fef08a;
   border-radius: 50%;
-  width: 60px;
-  height: 60px;
+  width: 58px;
+  height: 58px;
   transition: transform 50ms ease-out;
   box-shadow: 0 4px 14px #f59e0b80;
 }
 
 #actionControls {
-  bottom: max(14px, env(safe-area-inset-bottom));
-  right: max(14px, env(safe-area-inset-right));
+  bottom: max(28px, calc(env(safe-area-inset-bottom) + 18px));
+  right: max(34px, calc(env(safe-area-inset-right) + 22px));
   pointer-events: none;
   z-index: 25;
   touch-action: none;
-  width: 292px;
-  height: 292px;
+  width: 294px;
+  height: 294px;
   position: absolute;
 }
 #actionControls .btn-attack,
@@ -354,11 +354,11 @@ body:-webkit-full-screen {
 
 .btn-attack {
   color: #fef08a;
-  width: 118px;
-  height: 118px;
+  width: 136px;
+  height: 136px;
   font-family: var(--font-display);
   touch-action: none;
-  background: radial-gradient(circle at 50% 45%, #283548, #0b1120);
+  background: radial-gradient(circle at 50% 45%, rgba(40, 53, 72, 0.88), rgba(11, 17, 32, 0.9));
   border: 3px solid #fbbf24;
   border-radius: 50%;
   flex-direction: column;
@@ -369,10 +369,10 @@ body:-webkit-full-screen {
   font-weight: 800;
   display: flex;
   position: absolute;
-  bottom: 0;
-  right: 0;
+  bottom: 2px;
+  right: 2px;
   overflow: hidden;
-  box-shadow: 0 0 20px #f59e0ba6, inset 0 0 12px #fbbf244d;
+  box-shadow: 0 0 22px #f59e0ba6, inset 0 0 14px #fbbf244d;
 }
 .btn-attack img { filter: brightness(1.22) saturate(1.15) contrast(1.05); }
 .btn-attack:active { transform: scale(.94); }
@@ -380,14 +380,14 @@ body:-webkit-full-screen {
 .btn-skill {
   color: #fff;
   touch-action: none;
-  background: #0f172a;
+  background: rgba(15, 23, 42, 0.88);
   border: 2.5px solid #38bdf8e6;
   border-radius: 50%;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  width: 84px;
-  height: 84px;
+  width: 78px;
+  height: 78px;
   padding: 0;
   display: flex;
   position: absolute;
@@ -395,35 +395,35 @@ body:-webkit-full-screen {
   box-shadow: 0 0 16px #38bdf873, 0 4px 14px #000000b8, inset 0 0 10px #38bdf840;
 }
 .btn-skill:not(.state-cooldown) img, .btn-skill.state-ready img { filter: brightness(1.25) saturate(1.18) contrast(1.06); }
-.btn-skill.c1 { bottom: 8px; left: 6px; }
-.btn-skill.c2 { bottom: 108px; left: 36px; }
+.btn-skill.c1 { bottom: 12px; left: 10px; }
+.btn-skill.c2 { bottom: 114px; left: 42px; }
 .btn-skill.c3 {
   border-color: #fbbf24f2;
-  bottom: 178px;
-  right: 8px;
+  bottom: 188px;
+  right: 14px;
   box-shadow: 0 0 20px #f59e0b8c, 0 4px 16px #000000b8, inset 0 0 12px #fbbf2459;
 }
 #actionControls.four-skills {
-  width: 316px;
-  height: 316px;
+  width: 312px;
+  height: 312px;
 }
 #actionControls.four-skills .btn-skill {
-  width: 74px;
-  height: 74px;
+  width: 70px;
+  height: 70px;
 }
-#actionControls.four-skills .btn-skill.c1 { bottom: 8px; left: 10px; }
-#actionControls.four-skills .btn-skill.c2 { bottom: 98px; left: 26px; }
+#actionControls.four-skills .btn-skill.c1 { bottom: 10px; left: 12px; }
+#actionControls.four-skills .btn-skill.c2 { bottom: 98px; left: 30px; }
 #actionControls.four-skills .btn-skill.c3 {
   border-color: #38bdf8e6;
-  bottom: 170px;
-  left: 102px;
+  bottom: 174px;
+  left: 104px;
   right: auto;
   box-shadow: 0 0 16px #38bdf873, 0 4px 14px #000000b8, inset 0 0 10px #38bdf840;
 }
 #actionControls.four-skills .btn-skill.c4 {
   border-color: #fbbf24f2;
-  bottom: 196px;
-  right: 12px;
+  bottom: 198px;
+  right: 14px;
   box-shadow: 0 0 22px #f59e0ba6, 0 4px 16px #000000b8, inset 0 0 12px #fde04766;
 }
 .btn-skill.state-cooldown { border-color: #475569b3; background: #050811; box-shadow: 0 2px 8px #000000bf; }
@@ -435,8 +435,8 @@ body:-webkit-full-screen {
 .btn-skill.state-recast { border-color: #67e8f9; animation: .9s ease-in-out infinite alternate skillPulseRecast; box-shadow: 0 0 22px #38bdf8e6, inset 0 0 10px #67e8f959; }
 .btn-skill.state-charging { border-color: #f87171; transform: scale(1.08); box-shadow: 0 0 24px #ef4444e6; }
 
-.btn-active-item { color: #fff; touch-action: none; background: #0f172a; border: 2px solid #38bdf8e6; border-radius: 50%; flex-direction: column; justify-content: center; align-items: center; width: 64px; height: 64px; padding: 0; display: flex; position: absolute; bottom: 52px; right: 130px; overflow: hidden; box-shadow: 0 4px 16px #06b6d473; }
-.btn-active-item.slot-2 { bottom: 144px; right: 104px; border-color: #c084fce6; box-shadow: 0 4px 16px #a855f773; }
+.btn-active-item { color: #fff; touch-action: none; background: #0f172a; border: 2px solid #38bdf8e6; border-radius: 50%; flex-direction: column; justify-content: center; align-items: center; width: 64px; height: 64px; padding: 0; display: flex; position: absolute; bottom: 58px; right: 146px; overflow: hidden; box-shadow: 0 4px 16px #06b6d473; }
+.btn-active-item.slot-2 { bottom: 154px; right: 118px; border-color: #c084fce6; box-shadow: 0 4px 16px #a855f773; }
 .btn-active-item.state-active-on { border-color: #fde047; box-shadow: 0 0 22px #f59e0bcc; animation: .85s ease-in-out infinite alternate skillPulseRecast; }
 .btn-active-item:active { transform: scale(.94); }
 
@@ -577,47 +577,50 @@ body:-webkit-full-screen {
     white-space: nowrap;
   }
   #hudLayer:not(.hud-portrait) #joystickZone {
-    width: 140px;
-    height: 140px;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(10px, env(safe-area-inset-left));
+    width: 132px;
+    height: 132px;
+    bottom: max(22px, calc(env(safe-area-inset-bottom) + 14px));
+    left: max(30px, calc(env(safe-area-inset-left) + 20px));
+    background: rgba(15, 23, 42, 0.36);
   }
   #hudLayer:not(.hud-portrait) #joystickKnob {
-    width: 54px;
-    height: 54px;
+    width: 52px;
+    height: 52px;
   }
   #hudLayer:not(.hud-portrait) #actionControls {
     width: 248px;
     height: 248px;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    right: max(10px, env(safe-area-inset-right));
+    bottom: max(20px, calc(env(safe-area-inset-bottom) + 14px));
+    right: max(28px, calc(env(safe-area-inset-right) + 20px));
   }
   #hudLayer:not(.hud-portrait) .btn-attack {
-    width: 100px;
-    height: 100px;
-    font-size: 12px;
+    width: 118px;
+    height: 118px;
+    bottom: 2px;
+    right: 2px;
+    font-size: 13px;
     border-width: 3px;
   }
   #hudLayer:not(.hud-portrait) .btn-skill {
-    width: 72px;
-    height: 72px;
+    width: 66px;
+    height: 66px;
     border-width: 2.5px;
   }
   #hudLayer:not(.hud-portrait) .btn-active-item {
     width: 54px;
     height: 54px;
-    bottom: 42px;
-    right: 112px;
+    bottom: 48px;
+    right: 128px;
   }
   #hudLayer:not(.hud-portrait) .btn-active-item.slot-2 {
     width: 52px;
     height: 52px;
-    bottom: 122px;
-    right: 88px;
+    bottom: 130px;
+    right: 102px;
   }
   #hudLayer:not(.hud-portrait) .btn-drone-mode {
-    bottom: 228px;
-    right: 4px;
+    bottom: 230px;
+    right: 6px;
     font-size: 11px;
     padding: 4px 10px;
     gap: 5px;
@@ -627,16 +630,16 @@ body:-webkit-full-screen {
     width: 24px !important;
     height: 24px !important;
   }
-  #hudLayer:not(.hud-portrait) .btn-skill.c1 { bottom: 6px; left: 4px; }
-  #hudLayer:not(.hud-portrait) .btn-skill.c2 { bottom: 88px; left: 28px; }
-  #hudLayer:not(.hud-portrait) .btn-skill.c3 { bottom: 148px; right: 6px; }
-  #hudLayer:not(.hud-portrait) #actionControls.four-skills { width: 268px; height: 268px; }
-  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill { width: 64px; height: 64px; }
-  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c1 { bottom: 6px; left: 6px; }
-  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c2 { bottom: 84px; left: 20px; }
-  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c3 { bottom: 148px; left: 84px; right: auto; }
-  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c4 { bottom: 172px; right: 8px; }
-  #hudLayer:not(.hud-portrait) .btn-thien-god { bottom: 244px; right: 4px; min-height: 36px; padding: 4px 10px; font-size: 11px; }
+  #hudLayer:not(.hud-portrait) .btn-skill.c1 { bottom: 8px; left: 6px; }
+  #hudLayer:not(.hud-portrait) .btn-skill.c2 { bottom: 92px; left: 28px; }
+  #hudLayer:not(.hud-portrait) .btn-skill.c3 { bottom: 156px; right: 10px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills { width: 266px; height: 266px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill { width: 60px; height: 60px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c1 { bottom: 8px; left: 6px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c2 { bottom: 86px; left: 22px; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c3 { bottom: 150px; left: 86px; right: auto; }
+  #hudLayer:not(.hud-portrait) #actionControls.four-skills .btn-skill.c4 { bottom: 172px; right: 10px; }
+  #hudLayer:not(.hud-portrait) .btn-thien-god { bottom: 246px; right: 6px; min-height: 36px; padding: 4px 10px; font-size: 11px; }
   #hudLayer:not(.hud-portrait) #cancelSkillZone {
     top: max(42px, calc(env(safe-area-inset-top) + 36px));
     padding: 4px 12px;
@@ -807,41 +810,43 @@ body:-webkit-full-screen {
 
 @media (max-width: 640px) and (orientation: portrait) {
   #joystickZone {
-    width: 132px;
-    height: 132px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    left: max(10px, env(safe-area-inset-left));
+    width: 128px;
+    height: 128px;
+    bottom: max(30px, calc(env(safe-area-inset-bottom) + 18px));
+    left: max(20px, calc(env(safe-area-inset-left) + 14px));
   }
   #joystickKnob {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
   }
   #actionControls {
-    width: 244px;
-    height: 244px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    right: max(10px, env(safe-area-inset-right));
+    width: 236px;
+    height: 236px;
+    bottom: max(28px, calc(env(safe-area-inset-bottom) + 18px));
+    right: max(18px, calc(env(safe-area-inset-right) + 14px));
   }
   .btn-attack {
-    width: 100px;
-    height: 100px;
+    width: 114px;
+    height: 114px;
+    bottom: 2px;
+    right: 2px;
     font-size: 13px;
   }
   .btn-skill {
-    width: 70px;
-    height: 70px;
+    width: 64px;
+    height: 64px;
   }
-  .btn-skill.c1 { bottom: 6px; left: 4px; }
-  .btn-skill.c2 { bottom: 90px; left: 28px; }
-  .btn-skill.c3 { bottom: 148px; right: 6px; }
-  #actionControls.four-skills { width: 256px; height: 256px; }
-  #actionControls.four-skills .btn-skill { width: 62px; height: 62px; }
-  #actionControls.four-skills .btn-skill.c1 { bottom: 6px; left: 4px; }
-  #actionControls.four-skills .btn-skill.c2 { bottom: 82px; left: 18px; }
-  #actionControls.four-skills .btn-skill.c3 { bottom: 146px; left: 82px; right: auto; }
-  #actionControls.four-skills .btn-skill.c4 { bottom: 168px; right: 6px; }
-  .btn-thien-god { bottom: 236px; right: 6px; padding: 4px 10px; font-size: 11px; }
-  .btn-drone-mode { bottom: 228px; right: 6px; padding: 5px 12px; font-size: 11px; }
+  .btn-skill.c1 { bottom: 8px; left: 6px; }
+  .btn-skill.c2 { bottom: 90px; left: 26px; }
+  .btn-skill.c3 { bottom: 154px; right: 10px; }
+  #actionControls.four-skills { width: 252px; height: 252px; }
+  #actionControls.four-skills .btn-skill { width: 58px; height: 58px; }
+  #actionControls.four-skills .btn-skill.c1 { bottom: 8px; left: 6px; }
+  #actionControls.four-skills .btn-skill.c2 { bottom: 84px; left: 18px; }
+  #actionControls.four-skills .btn-skill.c3 { bottom: 146px; left: 80px; right: auto; }
+  #actionControls.four-skills .btn-skill.c4 { bottom: 170px; right: 8px; }
+  .btn-thien-god { bottom: 238px; right: 6px; padding: 4px 10px; font-size: 11px; }
+  .btn-drone-mode { bottom: 230px; right: 6px; padding: 5px 12px; font-size: 11px; }
 }
 
 @media (pointer: coarse) {
@@ -973,12 +978,12 @@ body:-webkit-full-screen {
 }
 
 #hudLayer.hud-portrait #joystickZone {
-  width: 116px;
-  height: 116px;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  left: max(12px, env(safe-area-inset-left));
-  background: rgba(15, 23, 42, 0.42);
-  border: 1.5px solid rgba(148, 163, 184, 0.42);
+  width: 118px;
+  height: 118px;
+  bottom: max(34px, calc(env(safe-area-inset-bottom) + 22px));
+  left: max(22px, calc(env(safe-area-inset-left) + 16px));
+  background: rgba(15, 23, 42, 0.36);
+  border: 1.5px solid rgba(148, 163, 184, 0.44);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
@@ -991,47 +996,47 @@ body:-webkit-full-screen {
 }
 
 #hudLayer.hud-portrait #actionControls {
-  width: 176px;
-  height: 214px;
-  bottom: max(14px, env(safe-area-inset-bottom));
-  right: max(12px, env(safe-area-inset-right));
+  width: 184px;
+  height: 222px;
+  bottom: max(32px, calc(env(safe-area-inset-bottom) + 20px));
+  right: max(20px, calc(env(safe-area-inset-right) + 14px));
 }
 
 #hudLayer.hud-portrait .btn-attack {
-  width: 76px;
-  height: 76px;
-  bottom: 4px;
+  width: 96px;
+  height: 96px;
+  bottom: 2px;
   right: 2px;
-  font-size: 11px;
+  font-size: 12px;
   border-width: 2.5px;
-  opacity: 0.92;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.55), inset 0 0 10px rgba(251, 191, 36, 0.28);
+  opacity: 0.9;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.58), inset 0 0 12px rgba(251, 191, 36, 0.3);
 }
 
 #hudLayer.hud-portrait .btn-skill {
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-width: 2px;
-  opacity: 0.92;
+  opacity: 0.9;
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.42), 0 4px 12px rgba(0, 0, 0, 0.65);
 }
 
 #hudLayer.hud-portrait .btn-skill.c1 {
-  bottom: 4px;
+  bottom: 8px;
   left: auto;
-  right: 94px;
+  right: 110px;
 }
 
 #hudLayer.hud-portrait .btn-skill.c2 {
   bottom: 78px;
   left: auto;
-  right: 86px;
+  right: 102px;
 }
 
 #hudLayer.hud-portrait .btn-skill.c3 {
-  width: 60px;
-  height: 60px;
-  bottom: 96px;
+  width: 58px;
+  height: 58px;
+  bottom: 114px;
   right: 12px;
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.52), 0 4px 14px rgba(0, 0, 0, 0.7);
 }
@@ -1042,42 +1047,42 @@ body:-webkit-full-screen {
 }
 
 #hudLayer.hud-portrait #actionControls.four-skills {
-  width: 208px;
-  height: 232px;
+  width: 204px;
+  height: 234px;
 }
 #hudLayer.hud-portrait #actionControls.four-skills .btn-skill {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
 }
 #hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c1 {
-  bottom: 4px;
+  bottom: 6px;
   left: auto;
-  right: 92px;
+  right: 108px;
 }
 #hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c2 {
-  bottom: 66px;
+  bottom: 68px;
   left: auto;
-  right: 112px;
+  right: 124px;
 }
 #hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c3 {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   bottom: 122px;
   left: auto;
-  right: 74px;
+  right: 86px;
   border-color: #38bdf8e6;
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.42), 0 4px 12px rgba(0, 0, 0, 0.65);
 }
 #hudLayer.hud-portrait #actionControls.four-skills .btn-skill.c4 {
-  width: 54px;
-  height: 54px;
-  bottom: 118px;
-  right: 8px;
+  width: 52px;
+  height: 52px;
+  bottom: 116px;
+  right: 10px;
   border-color: #fbbf24f2;
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.56), 0 4px 14px rgba(0, 0, 0, 0.72);
 }
 #hudLayer.hud-portrait .btn-thien-god {
-  bottom: 184px;
+  bottom: 186px;
   right: 4px;
   min-height: 36px;
   padding: 4px 10px;
@@ -1087,7 +1092,7 @@ body:-webkit-full-screen {
 }
 
 #hudLayer.hud-portrait .btn-drone-mode {
-  bottom: 168px;
+  bottom: 182px;
   right: 4px;
   padding: 4px 10px;
   font-size: 11px;
@@ -1102,7 +1107,7 @@ body:-webkit-full-screen {
 }
 
 #hudLayer.hud-portrait .charge-bar-hud {
-  bottom: max(188px, calc(env(safe-area-inset-bottom) + 178px));
+  bottom: max(206px, calc(env(safe-area-inset-bottom) + 194px));
   width: min(210px, 56vw);
   padding: 5px 10px;
 }

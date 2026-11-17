@@ -295,6 +295,25 @@ function extractFounderTokenFromReq(req?: http.IncomingMessage | express.Request
   return cookies[FOUNDER_COOKIE_NAME] || "";
 }
 
+function isHttpsRequest(req: express.Request): boolean {
+  if (req.secure) return true;
+  const fwdProto = req.headers["x-forwarded-proto"];
+  if (typeof fwdProto === "string") {
+    const first = fwdProto.split(",")[0].trim().toLowerCase();
+    if (first === "https") return true;
+  }
+  const origin = req.headers.origin;
+  if (typeof origin === "string" && origin.startsWith("https://")) {
+    return true;
+  }
+  return false;
+}
+
+function buildFounderCookieHeader(req: express.Request, token: string, maxAgeSec: number): string {
+  const sameSite = isHttpsRequest(req) ? "SameSite=None; Secure" : "SameSite=Lax";
+  return `${FOUNDER_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; ${sameSite}; Max-Age=${maxAgeSec}`;
+}
+
 async function verifyFirebaseFounderIdToken(idToken: unknown): Promise<boolean> {
   if (typeof idToken !== "string" || !idToken.trim()) return false;
   const apiKey = getFirebaseApiKey();
@@ -1467,7 +1486,14 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 async function createApp() {
   const app = express();
   app.use("/api", (req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const origin = typeof req.headers.origin === "string" ? req.headers.origin.trim() : "";
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Vary", "Origin");
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    }
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Founder-Token");
     if (req.method === "OPTIONS") {
@@ -1627,10 +1653,7 @@ async function createApp() {
     founderVerifyAttempts.delete(ip);
     const founderToken = issueFounderToken();
     const maxAgeSec = Math.floor(FOUNDER_TOKEN_TTL_MS / 1000);
-    res.setHeader(
-      "Set-Cookie",
-      `${FOUNDER_COOKIE_NAME}=${encodeURIComponent(founderToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`
-    );
+    res.setHeader("Set-Cookie", buildFounderCookieHeader(req, founderToken, maxAgeSec));
     res.json({ ok: true, unlocked: true, founderToken });
   });
 
@@ -1638,7 +1661,7 @@ async function createApp() {
     res.setHeader("Cache-Control", "no-store");
     const token = extractFounderTokenFromReq(req);
     if (token) revokeFounderToken(token);
-    res.setHeader("Set-Cookie", `${FOUNDER_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    res.setHeader("Set-Cookie", buildFounderCookieHeader(req, "", 0));
     res.json({ ok: true, unlocked: false });
   });
 

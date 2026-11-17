@@ -769,6 +769,19 @@ export function computeCameraViewportConfig(params: {
   const isPortrait = isPortraitViewport(viewW, viewH, layoutMode);
 
   if (!isPortrait) {
+    // On compact landscape phones (short viewport height), zoom out gently so controls moved inward never crowd vertical visibility
+    if (viewH > 0 && viewH <= 540 && viewW >= 540) {
+      const targetH = 560;
+      const zoom = Math.round(Math.max(0.7, Math.min(1, viewH / targetH)) * 1000) / 1000;
+      return {
+        isPortrait: false,
+        zoom,
+        focusX: viewW / 2,
+        focusY: Math.round(viewH * 0.44),
+        visibleWorldW: Math.round(viewW / zoom),
+        visibleWorldH: Math.round(viewH / zoom),
+      };
+    }
     return {
       isPortrait: false,
       zoom: 1,
@@ -780,15 +793,15 @@ export function computeCameraViewportConfig(params: {
   }
 
   const presetBounds: Record<PortraitFovPreset, { targetW: number; minZoom: number; maxZoom: number }> = {
-    wide: { targetW: 780, minZoom: 0.46, maxZoom: 0.9 },
-    balanced: { targetW: 680, minZoom: 0.52, maxZoom: 0.92 },
-    close: { targetW: 540, minZoom: 0.62, maxZoom: 0.98 },
+    wide: { targetW: 820, minZoom: 0.44, maxZoom: 0.88 },
+    balanced: { targetW: 720, minZoom: 0.48, maxZoom: 0.9 },
+    close: { targetW: 560, minZoom: 0.58, maxZoom: 0.96 },
   };
   const cfg = presetBounds[fovPreset] || presetBounds.balanced;
   const rawZoom = viewW / cfg.targetW;
   const zoom = Math.round(Math.max(cfg.minZoom, Math.min(cfg.maxZoom, rawZoom)) * 1000) / 1000;
   const focusX = viewW / 2;
-  const focusY = Math.round(viewH * 0.435);
+  const focusY = Math.round(viewH * 0.42);
 
   return {
     isPortrait: true,

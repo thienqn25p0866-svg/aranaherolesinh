@@ -1198,6 +1198,22 @@ function ny() {
   founderUnlockedRef.current = founderUnlocked;
   googleUserRef.current = googleUser;
   playerProfileRef.current = playerProfile;
+  const resolveFounderApiBase = (0, ie.useCallback)(() => {
+    if (typeof window !== "undefined" && /^https?:$/i.test(window.location?.protocol || "")) {
+      return { canFetch: true, base: "" };
+    }
+    const base = mpClient.getHttpBaseResult().baseUrl || "";
+    return { canFetch: Boolean(base), base };
+  }, []);
+  const applyFounderUnlockState = (0, ie.useCallback)((unlocked, token = "", source = "") => {
+    const nextUnlocked = Boolean(unlocked);
+    const nextToken = nextUnlocked && typeof token === "string" ? token : "";
+    founderUnlockedRef.current = nextUnlocked;
+    mpClient.setFounderAuth(nextUnlocked, nextToken);
+    setFounderUnlocked(nextUnlocked);
+    setFounderToken(nextToken);
+    setFounderAuthSource(nextUnlocked ? source : "");
+  }, []);
   let requireFounderUnlock = (0, ie.useCallback)((onSuccessAction) => {
     if (founderUnlockedRef.current) {
       onSuccessAction?.();
@@ -1226,22 +1242,24 @@ function ny() {
   selectedHeroRef.current = p;
   (0, ie.useEffect)(() => {
     let active = true;
-    const base = mpClient.getHttpBaseResult().baseUrl || "";
-    const canFetchServer = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
-    if (!canFetchServer) {
-      mpClient.setFounderAuth(false, "");
+    const { canFetch, base } = resolveFounderApiBase();
+    if (!canFetch) {
+      if (!founderUnlockedRef.current) {
+        applyFounderUnlockState(false, "", "");
+      }
       return () => { active = false; };
     }
-    fetch(`${base}/api/founder/status`, { cache: "no-store", credentials: "include" })
+    const headers = mpClient.founderToken ? { "X-Founder-Token": mpClient.founderToken } : {};
+    fetch(`${base}/api/founder/status`, { cache: "no-store", credentials: "include", headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!active) return;
         const unlocked = Boolean(data?.unlocked);
-        const token = unlocked ? (data?.founderToken || data?.token || "") : "";
-        setFounderUnlocked(unlocked);
-        setFounderToken(token);
-        setFounderAuthSource(data?.source || "");
-        mpClient.setFounderAuth(unlocked, token);
+        if (!unlocked && founderUnlockedRef.current) {
+          return;
+        }
+        const token = unlocked ? (data?.founderToken || data?.token || mpClient.founderToken || "") : "";
+        applyFounderUnlockState(unlocked, token, data?.source || (unlocked ? "session" : ""));
         if (!unlocked && (selectedHeroRef.current?.isSecretFounder || a.current?.currentHero?.isSecretFounder)) {
           const fallbackHero = Mi[4];
           h(fallbackHero);
@@ -1252,10 +1270,10 @@ function ny() {
         }
       })
       .catch(() => {
-        if (active) mpClient.setFounderAuth(false, "");
+        if (active && !founderUnlockedRef.current) mpClient.setFounderAuth(false, "");
       });
     return () => { active = false; };
-  }, []);
+  }, [applyFounderUnlockState, resolveFounderApiBase]);
   (0, ie.useEffect)(() => {
     const stateMap = { MENU: "title", HERO_SELECT: "title", PLAYING: "playing", PAUSED: "paused", GAME_OVER: "gameover", VICTORY: "gameover" };
     document.body.dataset.state = stateMap[l] || "title";
@@ -1457,9 +1475,7 @@ function ny() {
         setP2pBusy(false);
         let errTxt = msg.message || "L\u1ED7i k\u1EBFt n\u1ED1i ph\xF2ng ch\u01A1i.";
         if (msg.code === "FOUNDER_LOCKED") {
-          setFounderUnlocked(false);
-          setFounderToken("");
-          mpClient.setFounderAuth(false, "");
+          applyFounderUnlockState(false, "", "");
           setFounderAuthError(errTxt);
           setFounderModalOpen(true);
         }
@@ -1684,8 +1700,7 @@ function ny() {
       setFounderAuthError("Vui lòng nhập mật khẩu 8 số của Nhà Sáng Lập.");
       return;
     }
-    const base = mpClient.getHttpBaseResult().baseUrl || "";
-    const hasHttpBackend = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+    const { canFetch: hasHttpBackend, base } = resolveFounderApiBase();
     if (!hasHttpBackend) {
       R.playError();
       setFounderAuthError("Xác thực mật khẩu yêu cầu kết nối máy chủ backend hoặc đăng nhập Google Nhà Sáng Lập.");
@@ -1707,10 +1722,7 @@ function ny() {
         return;
       }
       const token = data?.founderToken || data?.token || "";
-      mpClient.setFounderAuth(true, token);
-      setFounderUnlocked(true);
-      setFounderToken(token);
-      setFounderAuthSource(data.source || "pin");
+      applyFounderUnlockState(true, token, data.source || "pin");
       setFounderPinInput("");
       setFounderModalOpen(false);
       R.playHeroLockIn();
@@ -1738,8 +1750,7 @@ function ny() {
         setFounderAuthError(`Chỉ tài khoản Nhà Sáng Lập (${FOUNDER_EMAIL}) mới có quyền mở khóa Thiên.`);
         return;
       }
-      const base = mpClient.getHttpBaseResult().baseUrl || "";
-      const hasHttpBackend = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+      const { canFetch: hasHttpBackend, base } = resolveFounderApiBase();
       let token = "";
       if (hasHttpBackend) {
         const res = await fetch(`${base}/api/founder/verify`, {
@@ -1757,10 +1768,7 @@ function ny() {
         token = data?.founderToken || data?.token || "";
       }
       await syncFounderUnlockToFirestore("firebase_google").catch(() => {});
-      mpClient.setFounderAuth(true, token);
-      setFounderUnlocked(true);
-      setFounderToken(token);
-      setFounderAuthSource("firebase");
+      applyFounderUnlockState(true, token, "firebase");
       setFounderPinInput("");
       setFounderModalOpen(false);
       R.playHeroLockIn();
@@ -1780,19 +1788,17 @@ function ny() {
     R.playClick();
     setFounderAuthBusy(true);
     try {
-      const base = mpClient.getHttpBaseResult().baseUrl || "";
-      if (base || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol))) {
+      const { canFetch: hasHttpBackend, base } = resolveFounderApiBase();
+      const activeToken = founderToken || mpClient.founderToken || "";
+      if (hasHttpBackend) {
         await fetch(`${base}/api/founder/logout`, {
           method: "POST",
           credentials: "include",
-          headers: founderToken ? { "x-founder-token": founderToken } : {},
+          headers: activeToken ? { "x-founder-token": activeToken } : {},
         }).catch(() => {});
       }
       await signOutFounderAuth().catch(() => {});
-      mpClient.setFounderAuth(false, "");
-      setFounderUnlocked(false);
-      setFounderToken("");
-      setFounderAuthSource("");
+      applyFounderUnlockState(false, "", "");
       setFounderPinInput("");
       setFounderModalOpen(false);
       if (selectedHeroRef.current?.isSecretFounder) {
@@ -2094,8 +2100,7 @@ function ny() {
       const authRes = await signInPlayerWithGoogle();
       setGoogleUser(authRes.user);
       if (authRes.isFounder) {
-        const base = mpClient.getHttpBaseResult().baseUrl || "";
-        const hasHttpBackend = Boolean(base) || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol));
+        const { canFetch: hasHttpBackend, base } = resolveFounderApiBase();
         if (hasHttpBackend) {
           fetch(`${base}/api/founder/verify`, {
             method: "POST",
@@ -2107,10 +2112,7 @@ function ny() {
             .then((data) => {
               if (data?.unlocked) {
                 const token = data.founderToken || data.token || "";
-                mpClient.setFounderAuth(true, token);
-                setFounderUnlocked(true);
-                setFounderToken(token);
-                setFounderAuthSource("firebase");
+                applyFounderUnlockState(true, token, "firebase");
               }
             })
             .catch(() => {});
@@ -2135,18 +2137,16 @@ function ny() {
       setGoogleUser(null);
       syncedBootUidRef.current = null;
       if (founderAuthSource === "firebase") {
-        const base = mpClient.getHttpBaseResult().baseUrl || "";
-        if (base || (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol))) {
+        const { canFetch: hasHttpBackend, base } = resolveFounderApiBase();
+        const activeToken = founderToken || mpClient.founderToken || "";
+        if (hasHttpBackend) {
           await fetch(`${base}/api/founder/logout`, {
             method: "POST",
             credentials: "include",
-            headers: founderToken ? { "x-founder-token": founderToken } : {},
+            headers: activeToken ? { "x-founder-token": activeToken } : {},
           }).catch(() => {});
         }
-        mpClient.setFounderAuth(false, "");
-        setFounderUnlocked(false);
-        setFounderToken("");
-        setFounderAuthSource("");
+        applyFounderUnlockState(false, "", "");
         if (selectedHeroRef.current?.isSecretFounder) {
           const fallbackHero = Mi[4];
           h(fallbackHero);
@@ -2819,7 +2819,7 @@ function ny() {
     R.playClick(), je(p.id), N(true);
   }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", className: p.skills.length >= 4 ? "four-skills" : void 0, children: [p.skills.map((skItem, w) => {
     let j = skItem, ee = re.cooldowns[w] || 0, he = j.cooldown, le = re.skillStates[w] || "ready", padCd = re.padTeleportCds?.[w] || 0, isPadWaiting = p.id === "duccong" && w > 0 && padCd > 0, X = isPadWaiting || ee > 0 && le !== "recast" && le !== "charging", displayCd = isPadWaiting ? padCd : ee, displayMax = isPadWaiting ? 1.5 : he, we = X ? "state-cooldown" : le === "empowered" ? "state-empowered state-ready" : le === "recast" ? "state-recast state-ready" : le === "charging" ? "state-charging state-ready" : "state-ready";
-    let btnIconSize = isPortraitHud ? (p.skills.length >= 4 ? (w === 3 ? 54 : 50) : (w === 2 ? 60 : 56)) : 84;
+    let btnIconSize = isPortraitHud ? (p.skills.length >= 4 ? (w === 3 ? 52 : 48) : (w === 2 ? 58 : 54)) : 78;
     return (0, u.jsxs)("button", { className: `btn-skill c${w + 1} ${we}`, onPointerDown: (rt) => Be(w, rt), onPointerMove: ta, onPointerUp: Ha, onPointerCancel: Ha, onLostPointerCapture: Ha, title: j.name[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: j.key, size: btnIconSize, roundedClass: "rounded-full", className: "pointer-events-none", alt: j.name[c] }), X && (0, u.jsx)("div", { className: "cooldown-overlay", style: { height: `${Math.min(100, displayCd / Math.max(0.1, displayMax) * 100)}%` } }), X && (0, u.jsx)("span", { className: `absolute inset-0 z-10 flex items-center justify-center font-mono-numbers ${isPortraitHud ? "text-xs" : "text-sm"} font-black text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] tabular-nums pointer-events-none`, children: displayCd.toFixed(1) }), (0, u.jsx)("span", { className: `absolute bottom-0.5 inset-x-0 text-center z-10 font-mono-numbers ${isPortraitHud ? "text-[10px]" : "text-[11px]"} font-black text-amber-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] pointer-events-none`, children: p.id === "duccong" && le === "recast" ? "D\u1ECACH" : p.id === "luan" && w === 1 && le === "recast" ? "\u0110\xD3NG" : le === "recast" ? "T\xC1I" : j.label })] }, w);
   }), p.id === "thien" && (0, u.jsxs)("button", { type: "button", className: `btn-thien-god ${re.thienState?.godMode ? "active-on" : ""}`, onPointerDown: (w) => {
     w.preventDefault();
@@ -2830,7 +2830,7 @@ function ny() {
     w.preventDefault(), w.stopPropagation(), a.current?.toggleTaiDuDroneMode();
   }, title: "\u0110\u1ED5i ch\u1EBF \u0111\u1ED9 Drone (Ph\xEDm T)", children: [(0, u.jsx)(Wt, { heroId: "taidu", skillId: "passive", size: isPortraitHud ? 24 : 36, roundedClass: "rounded-full", className: "pointer-events-none", alt: "Drone" }), (0, u.jsx)("span", { className: `${isPortraitHud ? "text-[11px]" : "text-xs"} font-moba font-black tracking-tight leading-none`, style: { color: re.droneColor || "#38BDF8" }, children: re.droneLabel || "T\u1EA5n C\xF4ng" })] }), (0, u.jsx)("button", { className: "btn-attack", onPointerDown: (w) => {
     w.preventDefault(), w.stopPropagation(), a.current?.triggerBasicAttack();
-  }, title: p.weapon[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: isPortraitHud ? 76 : 118, roundedClass: "rounded-full", className: "pointer-events-none", alt: p.weapon[c] }), (0, u.jsx)("span", { className: `absolute bottom-1 inset-x-0 text-center font-moba ${isPortraitHud ? "text-[10px]" : "text-xs"} font-black text-amber-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] pointer-events-none`, children: ze.atk })] })] }), (0, u.jsx)("div", { id: "cancelSkillZone", ref: Ye, children: ze.cancelSkill })] }), l === "MENU" && (0, u.jsx)(MobaLobbyMenu, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, sfxEnabled: Ft, musicEnabled: musicOn, isFullscreen: fsActive, mpRoom, envInfo, SkillIcon: Wt, founderUnlocked, playerProfile, googleUser, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), canDailyCheckIn: canClaimDailyCheckIn(playerProfile?.dailyCheckInDate || "", getTodayDateKey()), onClaimDailyCheckIn: handleClaimDailyCheckIn, onOpenAccountModal: handleOpenAccountModal, onSignInGoogle: handlePlayerGoogleSignIn, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onCopyText: handleCopyText, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
+  }, title: p.weapon[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: "atk", size: isPortraitHud ? 96 : 136, roundedClass: "rounded-full", className: "pointer-events-none", alt: p.weapon[c] }), (0, u.jsx)("span", { className: `absolute bottom-1.5 inset-x-0 text-center font-moba ${isPortraitHud ? "text-[11px]" : "text-xs"} font-black text-amber-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] pointer-events-none`, children: ze.atk })] })] }), (0, u.jsx)("div", { id: "cancelSkillZone", ref: Ye, children: ze.cancelSkill })] }), l === "MENU" && (0, u.jsx)(MobaLobbyMenu, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, sfxEnabled: Ft, musicEnabled: musicOn, isFullscreen: fsActive, mpRoom, envInfo, SkillIcon: Wt, founderUnlocked, playerProfile, googleUser, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), canDailyCheckIn: canClaimDailyCheckIn(playerProfile?.dailyCheckInDate || "", getTodayDateKey()), onClaimDailyCheckIn: handleClaimDailyCheckIn, onOpenAccountModal: handleOpenAccountModal, onSignInGoogle: handlePlayerGoogleSignIn, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onCopyText: handleCopyText, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
     h(w);
     if (!(w?.isSecretFounder && !founderUnlockedRef.current) && a.current) {
       a.current.currentHero = w;
@@ -2885,7 +2885,7 @@ function ny() {
     R.playModalClose(), D(false);
   }, children: "\u0110\xF3ng" }) })] }) }), (l === "PAUSED" || l === "PLAYING" && mpMenuOpen) && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box pause-modal-box max-w-[340px] text-center", children: [(0, u.jsx)("h3", { className: "font-moba text-xl font-black text-white", children: a.current?.multiplayer?.active ? `PH\xD2NG CO-OP ${mpRoom?.roomId || ""}` : ze.pause }), (0, u.jsxs)("div", { className: "mt-3.5 flex flex-col gap-2", children: [(0, u.jsx)("button", { className: "btn-primary py-2 text-xs sm:text-sm", onClick: ve, children: ze.resume }), (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-slate-800 rounded-xl p-2 text-left flex flex-col gap-1.5", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[11px]", children: [(0, u.jsx)("span", { className: "text-slate-300 font-semibold", children: "Giao di\u1EC7n chi\u1EBFn \u0111\u1EA5u" }), (0, u.jsx)("span", { className: "text-cyan-300 font-moba font-bold", children: isPortraitHud ? "\u0110\u1EE9ng (T\u1EA7m nh\xECn r\u1ED9ng)" : "Ti\xEAu chu\u1EA9n" })] }), (0, u.jsx)("div", { className: "grid grid-cols-3 gap-1", children: [{ k: "auto", label: "T\u1EF1 \u0111\u1ED9ng" }, { k: "portrait", label: "\u0110\u1EE9ng" }, { k: "standard", label: "Chu\u1EA9n" }].map((opt) => (0, u.jsx)("button", { type: "button", className: `py-1 rounded-lg text-[11px] font-moba font-bold ${layoutMode === opt.k ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"}`, onClick: () => {
     R.playClick(), setLayoutMode(opt.k);
-  }, children: opt.label }, opt.k)) }), isPortraitHud && (0, u.jsx)("div", { className: "grid grid-cols-3 gap-1 pt-1 border-t border-slate-800", children: [{ k: "wide", label: "R\u1ED9ng 780" }, { k: "balanced", label: "C\xE2n b\u1EB1ng" }, { k: "close", label: "G\u1EA7n 540" }].map((opt) => (0, u.jsx)("button", { type: "button", className: `py-1 rounded-lg text-[11px] font-moba font-bold ${portraitFov === opt.k ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-300"}`, onClick: () => {
+  }, children: opt.label }, opt.k)) }), isPortraitHud && (0, u.jsx)("div", { className: "grid grid-cols-3 gap-1 pt-1 border-t border-slate-800", children: [{ k: "wide", label: "R\u1ED9ng 820" }, { k: "balanced", label: "C\xE2n b\u1EB1ng" }, { k: "close", label: "G\u1EA7n 560" }].map((opt) => (0, u.jsx)("button", { type: "button", className: `py-1 rounded-lg text-[11px] font-moba font-bold ${portraitFov === opt.k ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-300"}`, onClick: () => {
     R.playClick(), setPortraitFov(opt.k);
   }, children: opt.label }, opt.k)) })] }), (0, u.jsx)("button", { className: "btn-secondary py-2 text-xs sm:text-sm border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, children: fsActive ? "\u2922 Tho\xE1t To\xE0n M\xE0n H\xECnh" : "\u26F6 B\u1EADt To\xE0n M\xE0n H\xECnh" }), (0, u.jsx)("button", { className: "btn-secondary py-2 text-xs sm:text-sm border-cyan-500/40 text-cyan-200", onClick: () => ye(true), children: "B\u1EA3ng K\u1EF9 N\u0103ng & Ch\u1EC9 S\u1ED1" }), (0, u.jsx)("button", { className: "btn-secondary py-2 text-xs sm:text-sm border-amber-500/40 text-amber-200", onClick: () => {
     je(p.id), N(true);

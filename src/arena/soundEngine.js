@@ -895,6 +895,14 @@ class SoundEngine {
       case "thien":
         this.playThienAscend();
         break;
+      case "thanh":
+        this.playThanhSnakeCast();
+        this.playChord([329.63, 440, 523.25], 0.24, { type: "sine", vol: 0.08, stagger: 0.03, sendAmbiance: true });
+        break;
+      case "nhi":
+        this.playNhiAmmoSwitch(0);
+        this.playFilteredNoise({ duration: 0.14, filterType: "bandpass", freqStart: 1200, freqEnd: 2600, q: 1.8, gainPeak: 0.11, sendAmbiance: true });
+        break;
       default:
         this.playChord([440, 659.25], 0.18, { type: "triangle", vol: 0.1, sendAmbiance: true });
     }
@@ -917,6 +925,8 @@ class SoundEngine {
       else if (heroId === "danh") this.playHeavySword(1);
       else if (heroId === "taidu") this.playTurretShot();
       else if (heroId === "nguyen") this.playHolyLight();
+      else if (heroId === "thanh") this.playThanhSnakeCast();
+      else if (heroId === "nhi") this.playBow();
       else this.playIceSlash();
       return;
     }
@@ -925,10 +935,26 @@ class SoundEngine {
         this.playThienSwords();
         return;
       }
+      if (heroId === "thanh") {
+        this.playThanhSnakeCast();
+        return;
+      }
+      if (heroId === "nhi") {
+        this.playNhiAmmoSwitch(1);
+        return;
+      }
     }
     if (skillKey === "c2") {
       if (heroId === "thien") {
         this.playThienTimeZone();
+        return;
+      }
+      if (heroId === "thanh") {
+        this.playThanhDevour();
+        return;
+      }
+      if (heroId === "nhi") {
+        this.playNhiFlaskBreak();
         return;
       }
     }
@@ -947,6 +973,8 @@ class SoundEngine {
       else if (heroId === "phong") this.playPhongDeathFlurry();
       else if (heroId === "dang") this.playDangTigerRoar();
       else if (heroId === "thien") this.playThienPortal(false);
+      else if (heroId === "thanh") this.playThanhGuardShield();
+      else if (heroId === "nhi") this.playNhiUltShot();
       else this.playShurikenThrow();
       return;
     }
@@ -1775,6 +1803,56 @@ class SoundEngine {
       stagger: 0.03,
       sendAmbiance: true,
     });
+  }
+
+  playThanhSnakeCast(isEcho = false) {
+    if (this.canThrottle("thanhCast", isEcho ? 35 : 55)) return;
+    const fStart = isEcho ? 2300 : 1900;
+    const fEnd = isEcho ? 3800 : 3400;
+    this.playFilteredNoise({ duration: 0.16, filterType: "bandpass", freqStart: fStart, freqEnd: fEnd, q: 2.8, gainPeak: isEcho ? 0.11 : 0.14, sendAmbiance: true });
+    this.playLayerTone({ startFreq: isEcho ? 620 : 520, endFreq: isEcho ? 1020 : 860, duration: 0.15, type: "triangle", vol: isEcho ? 0.1 : 0.13, sendAmbiance: true });
+  }
+
+  playThanhDevour() {
+    if (this.canThrottle("thanhDevour", 110)) return;
+    this.playSubPunch(125, 36, 0.36, 0.34);
+    this.playLayerTone({ startFreq: 210, endFreq: 95, duration: 0.32, type: "sawtooth", vol: 0.15, filterFreq: 980, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.24, filterType: "bandpass", freqStart: 1200, freqEnd: 460, q: 1.5, gainPeak: 0.2, sendAmbiance: true });
+  }
+
+  playThanhGuardShield() {
+    if (this.canThrottle("thanhGuard", 85)) return;
+    this.playChord([392, 523.25, 659.25, 783.99], 0.3, { type: "sine", vol: 0.11, stagger: 0.03, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.15, filterType: "highpass", freqStart: 2200, freqEnd: 1200, gainPeak: 0.1, sendAmbiance: true });
+  }
+
+  /** @param {number | string} [ammo] */
+  playNhiAmmoSwitch(ammo = 0) {
+    if (this.canThrottle("nhiAmmo", 50)) return;
+    const idx = typeof ammo === "string" ? (ammo === "green" ? 1 : ammo === "life" ? 2 : 0) : ammo;
+    const baseFreqs = [620, 740, 880];
+    const f = baseFreqs[Math.abs(idx) % 3] || 660;
+    this.playMetallicClang(f, 0.09, 0.08);
+    this.playLayerTone({ startFreq: f, endFreq: f * 1.38, duration: 0.11, type: "triangle", vol: 0.12, sendAmbiance: true });
+  }
+
+  playNhiFlaskBreak() {
+    if (this.canThrottle("nhiFlask", 75)) return;
+    this.playSubPunch(160, 56, 0.18, 0.22);
+    this.playFilteredNoise({ duration: 0.22, filterType: "highpass", freqStart: 3200, freqEnd: 950, gainPeak: 0.18, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 920, endFreq: 380, duration: 0.18, type: "sawtooth", vol: 0.1, filterFreq: 1600, sendAmbiance: true });
+  }
+
+  playNhiPoisonSizzle() {
+    if (this.canThrottle("nhiSizzle", 120)) return;
+    this.playFilteredNoise({ duration: 0.14, filterType: "bandpass", freqStart: 2400, freqEnd: 3600, q: 2.2, gainPeak: 0.11, sendAmbiance: true });
+  }
+
+  playNhiUltShot() {
+    if (this.canThrottle("nhiUlt", 100)) return;
+    this.playSubPunch(145, 42, 0.26, 0.28);
+    this.playLayerTone({ startFreq: 1120, endFreq: 340, duration: 0.26, type: "sawtooth", vol: 0.16, filterFreq: 2800, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.24, filterType: "bandpass", freqStart: 2600, freqEnd: 780, q: 1.4, gainPeak: 0.22, sendAmbiance: true });
   }
 }
 
