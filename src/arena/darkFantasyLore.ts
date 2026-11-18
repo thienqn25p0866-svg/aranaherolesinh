@@ -1,4 +1,9 @@
 import type { CitadelSecretsProgress } from "./bloodCitadelMap";
+import {
+  type InfernoProgressState,
+  INFERNO_DOCS,
+  normalizeInfernoProgress,
+} from "./infernoAshMap";
 
 export type LoreLang = "vi" | "en";
 
@@ -106,6 +111,28 @@ export const CHRONICLE_CHAPTERS: WorldChronicleChapter[] = [
       en: [
         "Within the crumbling stone walls of the Bloodsoaked Ancient Citadel, automated watchtowers still fire to guard classified vaults while blood traps siphon life to feed the Northern Secret Vault.",
         "There lie the final traces of Project Bloodshade Zero — the forbidden program binding Tin's veins to the Crimson Ma Thach Core and fracturing Bảo's soul into stealth replicas through a distorted mirror.",
+      ],
+    },
+  },
+  {
+    id: "inferno_ash_truth",
+    eraTag: { vi: "KỶ NGUYÊN IV · HỎA NGỤC TÀN TRO", en: "ERA IV · INFERNO OF ASHES" },
+    title: {
+      vi: "Thành Phố Tro Tàn & Mật Thất Bốn Chiếc Ghế",
+      en: "The Burned City & Chamber of Four Chairs",
+    },
+    epigraph: {
+      vi: "“Lửa vẫn cháy sau nhiều năm không phải vì thiên thạch — mà vì có bốn người từng ngồi chung một bàn ký tên vào thảm họa.”",
+      en: "“The fires still burn not from the meteor alone — four once sat at one table and signed the disaster.”",
+    },
+    paragraphs: {
+      vi: [
+        "Mở rộng gấp 1,8 lần Đấu Trường Cổ Điển, Hỏa Ngục Tàn Tro là xác chết của kinh đô cũ sau vụ nổ thiên thạch bí ẩn. Tám khu vực liên thông từ Cổng Thành Tro Tàn đến Miệng Vực Tận Hỏa vẫn còn âm ỉ sét đánh, mạch lửa, cầu đá mục và kho lưu trữ bị xé nát.",
+        "Khi đưa Dũng, Danh và Long Hói lần lượt chạm tới ký ức riêng tại Hầm Hiến Tế, Điện Thờ Long Hỏa và Pháo Đài Thiên Hỏa, phong ấn Căn Phòng Bốn Chiếc Ghế dưới lòng đất mới mở ra — nơi Trung cất giữ mảnh sự thật cuối cùng.",
+      ],
+      en: [
+        "Spanning 1.8× the Classic Arena, the Inferno of Ashes preserves the scorched capital after a mysterious meteor cataclysm. Eight interconnected districts still crackle with lightning, magma fissures, fragile bridges, and purged archives.",
+        "When Dũng, Danh, and Long Hói each confront their hidden records across the Crypt, Wyrmfire Temple, and Skyfire Bastion, the underground Chamber of Four Chairs opens — revealing Trung's final truth.",
       ],
     },
   },
@@ -712,3 +739,92 @@ export function buildCitadelChronicleOverview(
     },
   };
 }
+
+export interface InfernoChronicleBlock {
+  title: string;
+  badge: string;
+  summary: string;
+  docsProgress: string;
+  dungDossier: { locked: boolean; text: string };
+  danhDossier: { locked: boolean; text: string };
+  longhoiDossier: { locked: boolean; text: string };
+  fourChairsDossier: { locked: boolean; trungDone: boolean; text: string };
+}
+
+export function buildInfernoChronicleOverview(
+  progressRaw: InfernoProgressState | null | undefined,
+  lang: LoreLang = "vi"
+): InfernoChronicleBlock {
+  const isVi = lang !== "en";
+  const progress = normalizeInfernoProgress(progressRaw);
+  const clueCount =
+    (progress.dungClue ? 1 : 0) +
+    (progress.danhClue ? 1 : 0) +
+    (progress.longhoiClue ? 1 : 0);
+  const docsTotal = Object.keys(INFERNO_DOCS).length;
+
+  return {
+    title: isVi
+      ? "Hỏa Ngục Tàn Tro · Hồ Sơ Thành Phố Cháy"
+      : "Inferno of Ashes · Scorched City Dossier",
+    badge: progress.trungTriggered
+      ? isVi
+        ? "★ ĐÃ GIẢI MÃ TRỌN VẸN (BỐN CHIẾC GHẾ)"
+        : "★ FOUR CHAIRS TRUTH UNVEILED"
+      : isVi
+      ? `MANH MỐI ANH HÙNG (${clueCount}/3)`
+      : `HERO CLUES (${clueCount}/3)`,
+    summary: isVi
+      ? "Thành phố cổ rộng 2400×2100 gồm 8 khu vực liên kết, lối đi bí mật sau tường nứt, chìa khóa, bẫy sấm sét - khe lửa - tên lửa - cầu sập và chuỗi ký ức ẩn của Dũng, Danh, Long Hói cùng Trung."
+      : "A 2400×2100 ruined city of 8 connected districts, destructible secret walls, locked archives, multi-hazard zones, and intertwined secrets for Dũng, Danh, Long Hói, and Trung.",
+    docsProgress: isVi
+      ? `Tài liệu đã thu thập: ${progress.collectedDocs.length}/${docsTotal}`
+      : `Collected Records: ${progress.collectedDocs.length}/${docsTotal}`,
+    dungDossier: {
+      locked: !progress.dungClue,
+      text: progress.dungClue
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 3 · Hầm Hiến Tế] Ba cái tên trên xiềng xích trùng khớp nghi lễ khống chế Tam Đầu Khuyển — Dũng tự nguyện trói mình để giữ thành phố."
+          : "UNLOCKED · [Zone 3 · Sacrificial Crypt] Three chained names match the Cerberus seal — Dũng bound himself willingly to hold the city."
+        : isVi
+        ? "CHƯA GIẢI MÃ · Đưa tướng DŨNG xuống Khu 3 (Hầm Hiến Tế) và nhấn [V] tại Ba Bệ Đá Xiềng Xích."
+        : "LOCKED · Bring hero DŨNG to Zone 3 (Sacrificial Crypt) and press [V] at the Chained Altars.",
+    },
+    danhDossier: {
+      locked: !progress.danhClue,
+      text: progress.danhClue
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 4 · Điện Thờ Long Hỏa] Bia nung chảy tiết lộ Danh từng đón nhận Xích Long Hỏa vào tim, và tiếng trẻ con trong tro tàn vẫn gọi tên anh."
+          : "UNLOCKED · [Zone 4 · Wyrmfire Temple] The melted dragon idol reveals Danh took Crimson Wyrmfire into his chest while ash-children call his name."
+        : isVi
+        ? "CHƯA GIẢI MÃ · Đưa tướng DANH tới Khu 4 (Điện Thờ Long Hỏa) và nhấn [V] trước Tượng Rồng Nung Chảy."
+        : "LOCKED · Bring hero DANH to Zone 4 (Wyrmfire Temple) and press [V] at the Melted Dragon Idol.",
+    },
+    longhoiDossier: {
+      locked: !progress.longhoiClue,
+      text: progress.longhoiClue
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 5 · Pháo Đài Thiên Hỏa] Nhật ký âm thanh 3 giọng nói chứng minh Long Hói đã cố phóng hỏa tiễn đánh chặn — nhưng một kẻ thứ tư đã sửa tọa độ."
+          : "UNLOCKED · [Zone 5 · Skyfire Bastion] A 3-voice terminal log proves Long Hói fired interceptors, until a fourth hand altered the coordinates."
+        : isVi
+        ? "CHƯA GIẢI MÃ · Đưa tướng LONG HÓI tới Khu 5 (Pháo Đài Thiên Hỏa) và nhấn [V] tại Bàn Điều Khiển Khẩn Cấp."
+        : "LOCKED · Bring hero LONG HÓI to Zone 5 (Skyfire Bastion) and press [V] at the Emergency Console.",
+    },
+    fourChairsDossier: {
+      locked: !progress.fourChairsUnlocked,
+      trungDone: Boolean(progress.trungTriggered),
+      text: progress.trungTriggered
+        ? isVi
+          ? "SỰ THẬT CUỐI CÙNG · [Khu 7 · Căn Phòng Bốn Chiếc Ghế] Ba lá thư cùng nét chữ, một chiếc ghế trống tan biến thành tro. Quả cầu phản chiếu gương mặt của Trung — người đồng hành chưa từng vô can."
+          : "FINAL TRUTH · [Zone 7 · Four Chairs] Three letters in one handwriting, a fourth shadow chair dissolving to ash. The orb reflects Trung himself."
+        : progress.fourChairsUnlocked
+        ? isVi
+          ? "CỬA MẬT THẤT ĐÃ MỞ · Hãy đưa TRUNG (hoặc bất kỳ anh hùng nào) vào Khu 7 bên dưới thành phố để soi Quả Cầu Ma Thuật."
+          : "CHAMBER OPEN · Enter Zone 7 beneath the city (best with TRUNG) and touch the Arcane Orb."
+        : isVi
+        ? "BỊ KHÓA · Cần giải mã đủ cả 3 manh mối của Dũng, Danh và Long Hói để phá phong ấn Căn Phòng Bốn Chiếc Ghế."
+        : "LOCKED · Gather all 3 clues from Dũng, Danh, and Long Hói to unseal the Chamber of Four Chairs.",
+    },
+  };
+}
+

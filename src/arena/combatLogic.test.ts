@@ -238,7 +238,29 @@ import {
   HERO_CHRONICLES,
   BOSS_CHRONICLES,
   buildCitadelChronicleOverview,
+  buildInfernoChronicleOverview,
 } from './darkFantasyLore.ts';
+import {
+  INFERNO_MAP_WIDTH,
+  INFERNO_MAP_HEIGHT,
+  INFERNO_SPAWN,
+  INFERNO_ZONES,
+  INFERNO_GATES,
+  INFERNO_DESTRUCTIBLE_WALLS,
+  INFERNO_INTERACTABLES,
+  INFERNO_DOCS,
+  createDefaultInfernoProgress,
+  normalizeInfernoProgress,
+  mergeInfernoProgress,
+  createInitialInfernoRuntimeState,
+  getInfernoZoneAt,
+  getActiveInfernoObstacles,
+  tryOpenInfernoGate,
+  damageInfernoDestructibleWalls,
+  evaluateInfernoInteraction,
+  getInfernoCompassTarget,
+  stepInfernoHazards,
+} from './infernoAshMap.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
   const w3p1 = getBossCcDuration(0.85, 3, 1, 'stun');
@@ -4249,12 +4271,13 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   assert.equal(CITADEL_UNLOCK_WAVE, 27);
   assert.equal(ARENA_MAPS.blood_citadel.width, BLOOD_CITADEL_SIZE);
   assert.equal(ARENA_MAPS.blood_citadel.height, BLOOD_CITADEL_SIZE);
-  assert.equal(ARENA_MAP_LIST.length, 2);
+  assert.equal(ARENA_MAP_LIST.length, 3);
 
-  // Locked before clearing Wave 27 without Founder access
+  // Locked before clearing Wave 27 without Founder access (Classic & Inferno Ash are unlocked by default)
   const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
-  assert.deepEqual(lockedMaps, ['classic']);
+  assert.deepEqual(lockedMaps, ['classic', 'inferno_ash']);
   assert.equal(isMapUnlocked('classic', lockedMaps, false), true);
+  assert.equal(isMapUnlocked('inferno_ash', lockedMaps, false), true);
   assert.equal(isMapUnlocked('blood_citadel', lockedMaps, false), false);
 
   // Unlocks upon clearing Wave 27 on Classic
@@ -4858,6 +4881,580 @@ test('GameEngine preserves coins/inventory/gear across startNewGame and restores
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Map 2 (Hỏa Ngục Tàn Tro) geometry, 8 zones, spawn clearance, gates, keys & destructible walls behave deterministically', () => {
+  // 1. Scale check: 2400x2100 = 5,040,000 px^2 = 1.8x Classic (2000x1400 = 2,800,000 px^2)
+  assert.equal(INFERNO_MAP_WIDTH, 2400);
+  assert.equal(INFERNO_MAP_HEIGHT, 2100);
+  assert.equal(ARENA_MAPS.inferno_ash.width, 2400);
+  assert.equal(ARENA_MAPS.inferno_ash.height, 2100);
+  const classicArea = 2000 * 1400;
+  const infernoArea = INFERNO_MAP_WIDTH * INFERNO_MAP_HEIGHT;
+  assert.ok(infernoArea / classicArea >= 1.75 && infernoArea / classicArea <= 2.0);
+  assert.equal(INFERNO_ZONES.length, 8);
+  assert.equal(INFERNO_INTERACTABLES.length, 15);
+  assert.equal(Object.keys(INFERNO_DOCS).length, 14);
+
+  // Spawn sits cleanly inside Zone 1 and outside all active obstacles
+  const startZone = getInfernoZoneAt(INFERNO_SPAWN.x, INFERNO_SPAWN.y);
+  assert.equal(startZone.id, 'zone_1');
+  let progress = createDefaultInfernoProgress();
+  const runtime = createInitialInfernoRuntimeState('inferno_ash', progress);
+  const initialObstacles = getActiveInfernoObstacles(runtime, progress);
+  assert.equal(doesPointOverlapAnyObstacle(INFERNO_SPAWN.x, INFERNO_SPAWN.y, 24, initialObstacles), false);
+
+  // Every zone center resolves cleanly to its zone and no interactable overlaps static obstacles
+  for (const z of INFERNO_ZONES) {
+    const resolved = getInfernoZoneAt(z.x + z.w * 0.5, z.y + z.h * 0.5);
+    assert.equal(resolved.id, z.id);
+  }
+  for (const node of INFERNO_INTERACTABLES) {
+    assert.equal(doesPointOverlapAnyObstacle(node.x, node.y, 16, initialObstacles), false, `Inferno interactable ${node.id} overlaps obstacle`);
+  }
+
+  // 2. Gates & Keys: gate_archive requires archive_key; gate_fortress_depot requires bunker_key; gate_four_chairs requires 3 hero clues
+  const lockedArchive = tryOpenInfernoGate({ gateId: 'gate_archive', progress, lang: 'vi' });
+  assert.equal(lockedArchive.openedNow, false);
+  assert.equal(lockedArchive.reason, 'missing_key');
+
+  const keyRes = evaluateInfernoInteraction({ nodeId: 'guardhouse_key', heroId: 'eohyen', progress, lang: 'vi' });
+  progress = keyRes.nextProgress;
+  assert.equal(progress.keysFound.includes('archive_key'), true);
+
+  const openArchive = tryOpenInfernoGate({ gateId: 'gate_archive', progress, lang: 'vi' });
+  assert.equal(openArchive.openedNow, true);
+  progress = openArchive.nextProgress;
+  assert.equal(getActiveInfernoObstacles(runtime, progress).some((o) => o.gateId === 'gate_archive'), false);
+
+  const bunkerLocked = tryOpenInfernoGate({ gateId: 'gate_fortress_depot', progress, lang: 'en' });
+  assert.equal(bunkerLocked.openedNow, false);
+  assert.equal(bunkerLocked.reason, 'missing_key');
+
+  const fortressSwitchRes = evaluateInfernoInteraction({ nodeId: 'fortress_switch', heroId: 'dung', progress, lang: 'vi' });
+  progress = fortressSwitchRes.nextProgress;
+  assert.equal(progress.openedDoors.includes('gate_fortress_depot'), true);
+  assert.equal(getActiveInfernoObstacles(runtime, progress).some((o) => o.gateId === 'gate_fortress_depot'), false);
+
+  const sealedFourChairs = tryOpenInfernoGate({ gateId: 'gate_four_chairs', progress, lang: 'vi' });
+  assert.equal(sealedFourChairs.openedNow, false);
+  assert.equal(sealedFourChairs.reason, 'missing_clues');
+
+  // 3. Destructible Walls shatter cleanly and persist in progress.destroyedWalls
+  const gateAlleyWall = INFERNO_DESTRUCTIBLE_WALLS.find((w) => w.id === 'cw_gate_alley')!;
+  const wallHit = damageInfernoDestructibleWalls(
+    runtime,
+    progress,
+    gateAlleyWall.x + gateAlleyWall.w * 0.5,
+    gateAlleyWall.y + gateAlleyWall.h * 0.5,
+    60,
+    gateAlleyWall.maxHp + 50
+  );
+  assert.equal(wallHit.destroyedWalls.length, 1);
+  assert.equal(wallHit.destroyedWalls[0].id, 'cw_gate_alley');
+  progress = wallHit.nextProgress;
+  assert.equal(progress.destroyedWalls.includes('cw_gate_alley'), true);
+  assert.equal(getActiveInfernoObstacles(runtime, progress).some((o) => o.destructibleId === 'cw_gate_alley'), false);
+});
+
+test('Map 2 character Easter eggs (Dũng, Danh, Long Hói, Four Chairs & Trung) & progression merge work cleanly', () => {
+  let progress = createDefaultInfernoProgress();
+
+  // Wrong hero inspecting dung_crypt does not unlock Dũng's clue
+  const wrongDung = evaluateInfernoInteraction({ nodeId: 'dung_crypt', heroId: 'eohyen', progress, lang: 'vi' });
+  assert.equal(wrongDung.nextProgress.dungClue, false);
+  assert.equal(wrongDung.coinBonus, 0);
+
+  // Dũng inspects Zone 3 Sacrificial Crypt -> spawns 3-headed hound phantom + unlocks dungClue
+  const rightDung = evaluateInfernoInteraction({ nodeId: 'dung_crypt', heroId: 'dung', progress, lang: 'vi' });
+  progress = rightDung.nextProgress;
+  assert.equal(progress.dungClue, true);
+  assert.equal(progress.collectedDocs.includes('doc_dung_chains'), true);
+  assert.equal(rightDung.spawnPhantom?.kind, 'hound_three_head');
+  assert.equal(rightDung.payload.unlockedNow, true);
+
+  // Danh inspects Zone 4 Wyrmfire Temple -> spawns ash_child phantom + unlocks danhClue
+  const rightDanh = evaluateInfernoInteraction({ nodeId: 'danh_shrine', heroId: 'danh', progress, lang: 'vi' });
+  progress = rightDanh.nextProgress;
+  assert.equal(progress.danhClue, true);
+  assert.equal(progress.collectedDocs.includes('doc_danh_dragon'), true);
+  assert.equal(rightDanh.spawnPhantom?.kind, 'ash_child');
+
+  // Four Chairs remains locked until Long Hói unlocks Zone 5 clue
+  assert.equal(progress.fourChairsUnlocked, false);
+  const danhCompass = getInfernoCompassTarget('longhoi', progress, 'vi');
+  assert.equal(danhCompass?.tag, 'PHÁO ĐÀI');
+
+  // Long Hói inspects Zone 5 Bastion Console -> unlocks longhoiClue & auto-unseals Zone 7 Four Chairs
+  const rightLongHoi = evaluateInfernoInteraction({ nodeId: 'longhoi_console', heroId: 'longhoi', progress, lang: 'vi' });
+  progress = rightLongHoi.nextProgress;
+  assert.equal(progress.longhoiClue, true);
+  assert.equal(progress.collectedDocs.includes('doc_longhoi_log'), true);
+  assert.equal(progress.fourChairsUnlocked, true);
+  assert.equal(progress.openedDoors.includes('gate_four_chairs'), true);
+
+  // Compass now points to Zone 7 Arcane Orb
+  const orbCompass = getInfernoCompassTarget('trung', progress, 'vi');
+  assert.equal(orbCompass?.tag, 'CẦU BỐN GHẾ');
+
+  // Non-Trung inspecting Zone 7 Orb only previews without triggering Trung's 2-step reveal
+  const previewOrb = evaluateInfernoInteraction({ nodeId: 'trung_orb_pedestal', heroId: 'dung', progress, lang: 'vi' });
+  assert.equal(previewOrb.nextProgress.trungTriggered, false);
+  assert.equal(previewOrb.payload.isTrungReveal, false);
+
+  // Trung inspecting Zone 7 Orb triggers 2-step reveal, darkness pulse, shadow phantom, +350 coins, and lore completion
+  const trungReveal = evaluateInfernoInteraction({ nodeId: 'trung_orb_pedestal', heroId: 'trung', progress, lang: 'vi' });
+  progress = trungReveal.nextProgress;
+  assert.equal(progress.trungTriggered, true);
+  assert.equal(progress.collectedDocs.includes('doc_trung_truth'), true);
+  assert.equal(trungReveal.payload.isTrungReveal, true);
+  assert.equal(trungReveal.payload.steps.length, 2);
+  assert.equal(trungReveal.spawnPhantom?.kind, 'fourth_chair_shadow');
+  assert.ok((trungReveal.darknessPulseSec || 0) >= 8.0);
+  assert.equal(getInfernoCompassTarget('trung', progress, 'vi'), null);
+
+  // Lore overview reflects full completion
+  const chronicle = buildInfernoChronicleOverview(progress, 'vi');
+  assert.equal(chronicle.fourChairsDossier.trungDone, true);
+  assert.match(chronicle.badge, /BỐN CHIẾC GHẾ/);
+
+  // Merge + normalize + save package JSON roundtrip preserves infernoProgress
+  const pA = normalizeInfernoProgress({ dungClue: true, collectedDocs: ['doc_gate_edict'], keysFound: ['archive_key'] });
+  const pB = normalizeInfernoProgress({ danhClue: true, longhoiClue: true, destroyedWalls: ['cw_gate_alley'] });
+  const mergedInferno = mergeInfernoProgress(pA, pB);
+  assert.equal(mergedInferno.dungClue, true);
+  assert.equal(mergedInferno.danhClue, true);
+  assert.equal(mergedInferno.longhoiClue, true);
+  assert.equal(mergedInferno.fourChairsUnlocked, true);
+  assert.equal(mergedInferno.destroyedWalls.includes('cw_gate_alley'), true);
+
+  const mergedAccount = mergeLocalAndCloudProgress(
+    { coins: 200, highestWave: 5, classicCleared: false, infernoProgress: pA } as any,
+    { coins: 300, highestWave: 6, infernoProgress: pB } as any,
+    false
+  );
+  assert.equal(mergedAccount.infernoProgress?.fourChairsUnlocked, true);
+
+  const parsedSave = parseSavePackageJson(JSON.stringify({
+    progress: { coins: 900, highestWave: 8, selectedMapId: 'inferno_ash', infernoProgress: progress },
+  }), false);
+  assert.equal(parsedSave.ok, true);
+  if (parsedSave.ok) {
+    assert.equal(parsedSave.progress.selectedMapId, 'inferno_ash');
+    assert.equal(parsedSave.progress.infernoProgress?.trungTriggered, true);
+  }
+});
+
+test('Map 2 steps all 6 hazard systems cleanly (lightning, fire fissures, missile wall break, bridge collapse, ambushes, Zone 8 arcane DoT)', () => {
+  let progress = createDefaultInfernoProgress();
+  const runtime = createInitialInfernoRuntimeState('inferno_ash', progress);
+
+  // 1. Lightning telegraph -> flash strike damage & stun
+  const lt = runtime.lightningStrikes[0];
+  lt.state = 'telegraph';
+  lt.timer = 0.05;
+  const ltTick = stepInfernoHazards({
+    runtime,
+    progress,
+    dt: 0.1,
+    playerX: lt.x,
+    playerY: lt.y,
+    playerRadius: 18,
+    playerAlive: true,
+  });
+  assert.equal(lt.state, 'flash');
+  assert.equal(ltTick.result.triggerLightningFlash, true);
+  assert.ok(ltTick.result.playerDamage >= 36);
+  assert.ok((ltTick.result.applyStunSec || 0) > 0);
+  lt.state = 'cooldown';
+  lt.timer = 99;
+
+  // 2. Fire fissure glow -> erupt damage + burn
+  const ff = runtime.fireFissures[0];
+  ff.state = 'glow';
+  ff.timer = 0.05;
+  const ffGlowTick = stepInfernoHazards({
+    runtime,
+    progress,
+    dt: 0.1,
+    playerX: ff.x + ff.w * 0.5,
+    playerY: ff.y + ff.h * 0.5,
+    playerRadius: 18,
+    playerAlive: true,
+  });
+  assert.equal(ff.state, 'erupt');
+  const ffEruptTick = stepInfernoHazards({
+    runtime,
+    progress,
+    dt: 0.1,
+    playerX: ff.x + ff.w * 0.5,
+    playerY: ff.y + ff.h * 0.5,
+    playerRadius: 18,
+    playerAlive: true,
+  });
+  assert.ok(ffEruptTick.result.playerDamage >= 18);
+  assert.ok(ffEruptTick.result.applyBurn);
+  ff.state = 'dormant';
+  ff.timer = 99;
+
+  // 3. Zone 5 Missile impact near cw_fortress_wall shatters cracked bastion wall
+  const bastionWall = INFERNO_DESTRUCTIBLE_WALLS.find((w) => w.id === 'cw_fortress_wall')!;
+  const ms = runtime.missileLocks[0];
+  ms.state = 'flying';
+  ms.targetX = bastionWall.x + bastionWall.w * 0.5;
+  ms.targetY = bastionWall.y + bastionWall.h * 0.5;
+  ms.missileX = ms.targetX;
+  ms.missileY = ms.targetY;
+  ms.timer = 0.05;
+  const msTick = stepInfernoHazards({
+    runtime,
+    progress,
+    dt: 0.1,
+    playerX: ms.targetX + 200,
+    playerY: ms.targetY + 200,
+    playerRadius: 18,
+    playerAlive: true,
+  });
+  progress = msTick.nextProgress;
+  assert.equal(msTick.result.missileImpacts.length, 1);
+  assert.equal(msTick.result.destroyedWalls.some((w) => w.id === 'cw_fortress_wall'), true);
+  assert.equal(progress.destroyedWalls.includes('cw_fortress_wall'), true);
+
+  // 4. Collapsible stone bridge: intact -> shaking -> collapsed -> reforms when clear
+  const br = runtime.collapsibleBridges[0];
+  const bx = br.x + br.w * 0.5;
+  const by = br.y + br.h * 0.5;
+  stepInfernoHazards({ runtime, progress, dt: 0.1, playerX: bx, playerY: by, playerRadius: 18, playerAlive: true });
+  assert.equal(br.state, 'shaking');
+  br.timer = 0.05;
+  const collapseTick = stepInfernoHazards({ runtime, progress, dt: 0.1, playerX: bx, playerY: by, playerRadius: 18, playerAlive: true });
+  assert.equal(br.state, 'collapsed');
+  assert.ok(collapseTick.result.playerDamage >= 24);
+  br.timer = 0.05;
+  stepInfernoHazards({ runtime, progress, dt: 0.1, playerX: 200, playerY: 1900, playerRadius: 18, playerAlive: true });
+  assert.equal(br.state, 'intact');
+
+  // 5. Ruin Ambush: armed -> warning -> spawn
+  const amb = runtime.ruinAmbushes[0];
+  stepInfernoHazards({ runtime, progress, dt: 0.1, playerX: amb.x, playerY: amb.y, playerRadius: 18, playerAlive: true });
+  assert.equal(amb.state, 'warning');
+  amb.timer = 0.05;
+  const ambTick = stepInfernoHazards({ runtime, progress, dt: 0.1, playerX: amb.x, playerY: amb.y, playerRadius: 18, playerAlive: true });
+  assert.equal(ambTick.result.ambushSpawns.length, 1);
+  assert.equal(amb.state, 'cooldown');
+
+  // 6. Zone 8 Unstable Arcane Zone: applies slow + stacking DoT after exposure >= 0.75s
+  const arc = runtime.unstableArcaneZones[0];
+  stepInfernoHazards({ runtime, progress, dt: 0.5, playerX: arc.x, playerY: arc.y, playerRadius: 18, playerAlive: true });
+  const arcTick = stepInfernoHazards({ runtime, progress, dt: 0.35, playerX: arc.x, playerY: arc.y, playerRadius: 18, playerAlive: true });
+  assert.ok(arcTick.result.applySlow);
+  assert.ok(arcTick.result.playerDamage >= 14);
+});
+
+test('GameEngine runs Map 2 (Hỏa Ngục Tàn Tro) end-to-end with zero shadowBlur and preserves P2PRoomHost inferno_ash', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const { P2PRoomHost } = await import('./webrtcCoop.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  let shadowBlurWrites = 0;
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+  const ctxStub: any = new Proxy(rawCtx, {
+    set(target, prop, value) {
+      if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+      target[prop] = value;
+      return true;
+    },
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const storyEvents: any[] = [];
+    const engine: any = new GameEngine(canvasStub);
+    engine.onInfernoStory = (payload: any) => storyEvents.push(payload);
+
+    assert.equal(engine.setSelectedMap('inferno_ash'), true);
+    assert.equal(engine.selectedMapId, 'inferno_ash');
+
+    const dungHero = Mi.find((h: any) => h.id === 'dung') || Mi[0];
+    engine.startNewGame(dungHero, 'inferno_ash');
+    assert.equal(engine.activeMapId, 'inferno_ash');
+    assert.equal(engine.mapWidth, 2400);
+    assert.equal(engine.mapHeight, 2100);
+    assert.equal(engine.player.x, INFERNO_SPAWN.x);
+    assert.equal(engine.player.y, INFERNO_SPAWN.y);
+
+    // Step update + render across Map 2 and assert zero ctx.shadowBlur usage
+    assert.doesNotThrow(() => engine.update(0.05));
+    assert.doesNotThrow(() => engine.render());
+    assert.equal(shadowBlurWrites, 0);
+
+    // Interact with Zone 3 Dũng crypt in-engine & verify HUD snapshot reflects Map 2 state
+    const dungNode = INFERNO_INTERACTABLES.find((n) => n.id === 'dung_crypt')!;
+    engine.player.x = dungNode.x;
+    engine.player.y = dungNode.y;
+    const interacted = engine.interactNearestMapNode();
+    assert.ok(interacted);
+    assert.equal(engine.infernoProgress.dungClue, true);
+    assert.equal(storyEvents.length, 1);
+
+    const hudSnap = engine.getHudSnapshot();
+    assert.equal(hudSnap.mapId, 'inferno_ash');
+    assert.equal(hudSnap.infernoHud?.clueCount, 1);
+    assert.equal(hudSnap.infernoProgress?.dungClue, true);
+
+    // P2PRoomHost preserves inferno_ash map selection
+    const p2pHost = new P2PRoomHost({
+      hostName: 'InfernoHost',
+      heroId: 'dung',
+      mapId: 'inferno_ash',
+      onLocalEvent: () => {},
+      onPeersChanged: () => {},
+    });
+    p2pHost.start();
+    assert.equal(p2pHost.serializeRoom().mapId, 'inferno_ash');
+    p2pHost.handleMessage(p2pHost.hostId, { type: 'SET_MAP', mapId: 'classic' });
+    assert.equal(p2pHost.serializeRoom().mapId, 'classic');
+    p2pHost.handleMessage(p2pHost.hostId, { type: 'SET_MAP', mapId: 'inferno_ash' });
+    assert.equal(p2pHost.serializeRoom().mapId, 'inferno_ash');
+    p2pHost.destroy();
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('GameEngine renders Map 3 (blood_citadel) Easter eggs, hazards, and monochrome mode with zero shadowBlur and softened screen flashes', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const { BLOOD_CITADEL_INTERACTABLES, BLOOD_CITADEL_WATCHTOWERS, BLOOD_CITADEL_BLOOD_TRAPS } = await import('./bloodCitadelMap.ts');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  let shadowBlurWrites = 0;
+  let maxFullWhiteFillAlpha = 0;
+
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {},
+    fillRect(x: number, y: number, w: number, h: number) {
+      if (
+        w >= 1200 &&
+        h >= 700 &&
+        typeof rawCtx.fillStyle === 'string' &&
+        (rawCtx.fillStyle.includes('255, 255, 255') || rawCtx.fillStyle.toLowerCase() === '#ffffff')
+      ) {
+        maxFullWhiteFillAlpha = Math.max(maxFullWhiteFillAlpha, Number(rawCtx.globalAlpha || 1));
+      }
+    },
+    strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  const ctxStub: any = new Proxy(rawCtx, {
+    set(target, prop, value) {
+      if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+      target[prop] = value;
+      return true;
+    },
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const loreEvents: any[] = [];
+    const engine: any = new GameEngine(canvasStub);
+    engine.onCitadelLore = (payload: any) => loreEvents.push(payload);
+    engine.setFounderUnlocked(true);
+    engine.setSelectedMap('blood_citadel');
+
+    const tinHero = Mi.find((h: any) => h.id === 'tin') || Mi[0];
+    const baoHero = Mi.find((h: any) => h.id === 'bao') || Mi[0];
+
+    // Start Map 3 with Tin near NE Tin Lab (#MT-07)
+    engine.startNewGame(tinHero, 'blood_citadel');
+    assert.equal(engine.activeMapId, 'blood_citadel');
+
+    const tinLab = BLOOD_CITADEL_INTERACTABLES.find((n: any) => n.id === 'tin_lab')!;
+    const baoMirror = BLOOD_CITADEL_INTERACTABLES.find((n: any) => n.id === 'bao_mirror')!;
+    const sharedAltar = BLOOD_CITADEL_INTERACTABLES.find((n: any) => n.id === 'shared_altar')!;
+
+    // Trigger watchtower telegraph & blood trap active states during render
+    if (engine.citadelRuntime?.watchtowers?.[0]) {
+      engine.citadelRuntime.watchtowers[0].state = 'telegraph';
+      engine.citadelRuntime.watchtowers[0].timer = 0.6;
+    }
+    if (engine.citadelRuntime?.bloodTraps?.[0]) {
+      engine.citadelRuntime.bloodTraps[0].state = 'erupt';
+      engine.citadelRuntime.bloodTraps[0].timer = 0.5;
+    }
+
+    // 1. Tin stands inside resonance range of #MT-07 Lab -> interact & render normal + mono
+    engine.player.x = tinLab.x;
+    engine.player.y = tinLab.y;
+    engine.interactNearestCitadelNode();
+    assert.equal(engine.citadelSecrets.tinClue, true);
+    engine.screenFlashWhite = 0.14;
+    assert.doesNotThrow(() => engine.render());
+
+    // 2. Switch to Bảo standing near SW Bảo Mirror (#BS-04) -> interact & render reflection + afterimages
+    engine.currentHero = baoHero;
+    engine.player.x = baoMirror.x;
+    engine.player.y = baoMirror.y;
+    engine.interactNearestCitadelNode();
+    assert.equal(engine.citadelSecrets.baoClue, true);
+    assert.ok(loreEvents.length >= 2);
+    assert.doesNotThrow(() => engine.render());
+
+    // 3. Move to Northern Secret Vault (#ZERO-00) with unlocked star & test Monochrome Realm render
+    engine.player.x = sharedAltar.x;
+    engine.player.y = sharedAltar.y;
+    engine.interactNearestCitadelNode();
+    assert.equal(engine.citadelSecrets.combinedUnlocked, true);
+    engine.player.tin_monochrome_realm_timer = 1.5;
+    assert.doesNotThrow(() => engine.render());
+
+    // Assert zero shadowBlur writes and zero blinding full-screen opaque white rectangles
+    assert.equal(shadowBlurWrites, 0);
+    assert.equal(maxFullWhiteFillAlpha, 0);
+
+    // Also verify Tin C3 Overload & screenFlashWhite decay keep flash softly capped (<= 0.16)
+    engine.currentHero = tinHero;
+    engine.player.tin_monochrome_realm_timer = 0;
+    engine.screenFlashWhite = 0;
+    engine.castSkill('c3');
+    assert.ok(engine.screenFlashWhite <= 0.16, `Expected Tin C3 screenFlashWhite <= 0.16, got ${engine.screenFlashWhite}`);
+
+    // Verify Map 2 lighting/flash, keys, forged chains, masonry walls, fire fissures, lightning bolts, flameParticles & Minh prisons
+    engine.startNewGame(tinHero, 'inferno_ash');
+    if (engine.infernoRuntime) {
+      engine.infernoRuntime.lightningFlash = 0.8;
+      if (engine.infernoRuntime.lightningStrikes?.[0]) {
+        engine.infernoRuntime.lightningStrikes[0].state = 'flash';
+        engine.infernoRuntime.lightningStrikes[0].timer = 0.2;
+      }
+      if (engine.infernoRuntime.lightningStrikes?.[1]) {
+        engine.infernoRuntime.lightningStrikes[1].state = 'telegraph';
+        engine.infernoRuntime.lightningStrikes[1].timer = 0.5;
+      }
+      if (engine.infernoRuntime.fireFissures?.[0]) {
+        engine.infernoRuntime.fireFissures[0].state = 'erupt';
+        engine.infernoRuntime.fireFissures[0].timer = 0.6;
+      }
+      engine.infernoRuntime.phantoms.push({
+        kind: 'hound_three_head',
+        x: 280,
+        y: 775,
+        targetX: 280,
+        targetY: 775,
+        life: 0.4,
+        maxLife: 2,
+        alpha: 0.8,
+      });
+    }
+    engine.spawnFlameParticles(280, 775, 'red', 4, 30, 80);
+    engine.spawnFlameParticles(280, 775, 'blue', 2, 30, 80);
+    engine.createBranchingLightning(220, 720, 340, 820, '#38BDF8', 3.4);
+    engine.lavaPools.push({ id: 9991, visualOnly: true, x: 280, y: 775, radius: 120, timer: 0.2, duration: 3.0, tickTimer: 0, tickInterval: 0.5, damagePerTick: 0 });
+    engine.zones.push({ id: 9992, visualOnly: true, kind: 'danh_dragon_fire', x: 280, y: 775, radius: 110, timer: 0.2, duration: 3.0, tickTimer: 0, tickInterval: 0.5, damagePerTick: 0, rotation: 0 });
+    engine.zones.push({ id: 9993, visualOnly: true, kind: 'trung_thunder_zone', x: 280, y: 775, radius: 110, timer: 0.2, duration: 3.0, tickTimer: 0, tickInterval: 0.5, damagePerTick: 0, rotation: 0 });
+    engine.minhPrisons.push({ x: 280, y: 775, radius: 140, timer: 0.4, duration: 2.0 });
+
+    const sweepPositions = [
+      { x: 280, y: 1840 }, // Zone 1 gate & cart wrecks
+      { x: 1335, y: 1505 }, // Zone 2 guardhouse key & plaza echo
+      { x: 280, y: 775 }, // Zone 3 crypt chains, hound phantom, lightning flash & VFX
+      { x: 2022, y: 1265 }, // Zone 4 dragon shrine & fire fissures
+      { x: 2020, y: 450 }, // Zone 5 bunker walls & launch pads
+      { x: 1765, y: 1850 }, // Zone 6 bookshelves & archive gate
+      { x: 1140, y: 225 }, // Zone 7 four chairs, letters & orb
+      { x: 1090, y: 775 }, // Zone 8 abyssal crater
+    ];
+    for (const pos of sweepPositions) {
+      engine.player.x = pos.x;
+      engine.player.y = pos.y;
+      engine.player.tin_monochrome_realm_timer = pos.y < 1000 ? 1.0 : 0;
+      assert.doesNotThrow(() => engine.render());
+    }
+    assert.equal(shadowBlurWrites, 0);
+    assert.equal(maxFullWhiteFillAlpha, 0);
+
+    assert.ok(BLOOD_CITADEL_WATCHTOWERS.length > 0 && BLOOD_CITADEL_BLOOD_TRAPS.length > 0);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+
 
 
 

@@ -5277,37 +5277,76 @@ export function drawCurvedLightning(ctx, l, isMono) {
     }
   };
 
-  // Pass 1: Wide outer ionized plasma glow (no shadowBlur)
-  ctx.globalAlpha = alpha * 0.28;
+  // Pass 1: Subtle outer atmospheric ionization sheath (anti-glare, zero shadowBlur)
+  ctx.globalAlpha = alpha * 0.22;
   traceJaggedBolt();
   ctx.strokeStyle = isMono ? "#000000" : l.color;
-  ctx.lineWidth = w * 3.4;
+  ctx.lineWidth = w * 3.8;
   ctx.stroke();
 
-  // Pass 2: High-intensity colored electric arc
-  ctx.globalAlpha = alpha * 0.92;
+  // Pass 2: Saturated electric plasma body
+  ctx.globalAlpha = alpha * 0.9;
   traceJaggedBolt();
   ctx.strokeStyle = isMono ? "#111111" : l.color;
-  ctx.lineWidth = w * 1.4;
+  ctx.lineWidth = w * 1.55;
   ctx.stroke();
 
-  // Pass 3: Razor-hot white plasma filament core
+  // Pass 3: Razor-hot incandescent plasma filament core
   ctx.globalAlpha = alpha;
   traceJaggedBolt();
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = Math.max(1.15, w * 0.48);
+  ctx.strokeStyle = "#FFFBEB";
+  ctx.lineWidth = Math.max(1.15, w * 0.46);
   ctx.stroke();
 
-  // Electric ionization nodes at jagged bends & strike endpoint
-  if (alpha > 0.25 && pts.length >= 3) {
-    let tip = pts[pts.length - 1];
-    drawFourPointStar(ctx, tip.x, tip.y, (3.2 + w * 1.4) * alpha, 1.3 * alpha, "#FFFFFF", isMono ? "#000000" : l.color);
-    ctx.fillStyle = "#FFFFFF";
+  // Procedural forked electrical sub-branches sprouting from jagged bend vertices
+  if (pts.length >= 3 && alpha > 0.14) {
     for (let i = 1; i < pts.length - 1; i += 2) {
+      let prev = pts[i - 1];
+      let curr = pts[i];
+      let segAngle = Math.atan2(curr.y - prev.y, curr.x - prev.x);
+      let side = i % 4 === 1 ? 1 : -1;
+      let forkAng = segAngle + side * (0.48 + ((i * 19) % 7) * 0.06);
+      let forkLen = Math.min(34, Math.max(12, Math.hypot(curr.x - prev.x, curr.y - prev.y) * 0.85));
+      let mx = curr.x + Math.cos(forkAng) * forkLen * 0.55 - Math.sin(forkAng) * side * 4.5;
+      let my = curr.y + Math.sin(forkAng) * forkLen * 0.55 + Math.cos(forkAng) * side * 4.5;
+      let ex = curr.x + Math.cos(forkAng - side * 0.18) * forkLen;
+      let ey = curr.y + Math.sin(forkAng - side * 0.18) * forkLen;
+
+      ctx.globalAlpha = alpha * 0.72;
+      ctx.strokeStyle = isMono ? "#1E293B" : l.color;
+      ctx.lineWidth = Math.max(1.0, w * 0.65);
       ctx.beginPath();
-      ctx.arc(pts[i].x, pts[i].y, Math.max(1.2, w * 0.45), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(curr.x, curr.y);
+      ctx.lineTo(mx, my);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+
+      ctx.globalAlpha = alpha * 0.92;
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = Math.max(0.7, w * 0.24);
+      ctx.stroke();
     }
+  }
+
+  // Strike endpoint discharge crown: radial surface spark arcs + sharp flash star
+  if (alpha > 0.2 && pts.length >= 2) {
+    let tip = pts[pts.length - 1];
+    let prev = pts[pts.length - 2];
+    let baseAng = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+    for (let s = 0; s < 4; s++) {
+      let sa = baseAng + (Math.PI * 0.5) * s + 0.35;
+      let sr = (8 + w * 3.2) * alpha;
+      ctx.globalAlpha = alpha * 0.85;
+      ctx.strokeStyle = isMono ? "#0F172A" : l.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(tip.x, tip.y);
+      ctx.lineTo(tip.x + Math.cos(sa + 0.22) * sr * 0.55, tip.y + Math.sin(sa + 0.22) * sr * 0.55);
+      ctx.lineTo(tip.x + Math.cos(sa) * sr, tip.y + Math.sin(sa) * sr);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = alpha;
+    drawFourPointStar(ctx, tip.x, tip.y, (3.4 + w * 1.4) * alpha, 1.3 * alpha, "#FFFFFF", isMono ? "#000000" : l.color);
   }
 
   ctx.restore();
@@ -5315,7 +5354,7 @@ export function drawCurvedLightning(ctx, l, isMono) {
 
 export function drawImpactBurst(ctx, b, isMono) {
   let f = clamp(b.life / b.maxLife, 0, 1);
-  let alpha = 1 - f;
+  let alpha = (1 - f) * 0.78;
   let r = b.radius * (0.35 + 0.65 * Math.pow(f, 0.6));
 
   ctx.save();
@@ -5323,22 +5362,22 @@ export function drawImpactBurst(ctx, b, isMono) {
   ctx.translate(b.x, b.y);
   ctx.rotate(b.angle || 0);
 
-  // Expanding shock ring + inner flash ring
+  // Expanding shock ring + soft inner ring
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.strokeStyle = isMono ? "#000000" : b.color;
-  ctx.lineWidth = (b.isCrit ? 3.5 : 2.3) * alpha + 0.7;
+  ctx.strokeStyle = isMono ? "#CBD5E1" : b.color;
+  ctx.lineWidth = (b.isCrit ? 3.2 : 2.1) * alpha + 0.6;
   ctx.stroke();
 
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.66, 0, Math.PI * 2);
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = 1.4 * alpha;
+  ctx.strokeStyle = "rgba(226, 232, 240, 0.55)";
+  ctx.lineWidth = 1.25 * alpha;
   ctx.stroke();
 
   // 4 radial velocity needles
-  ctx.strokeStyle = isMono ? "#FFFFFF" : b.isCrit ? "#FEF08A" : b.color;
-  ctx.lineWidth = 1.6 * alpha;
+  ctx.strokeStyle = isMono ? "#E2E8F0" : b.isCrit ? "#FDE047" : b.color;
+  ctx.lineWidth = 1.5 * alpha;
   for (let i = 0; i < 4; i++) {
     let sa = (Math.PI / 2) * i + 0.4;
     ctx.beginPath();
@@ -5347,17 +5386,17 @@ export function drawImpactBurst(ctx, b, isMono) {
     ctx.stroke();
   }
 
-  // Directional collision flare + anime crit slash flash (lightweight)
-  if (f < 0.78) {
-    let starScale = (1 - f / 0.78) * (b.isCrit ? 1.55 : 1.0);
-    drawFourPointStar(ctx, 0, 0, 14 * starScale, 2.8 * starScale, isMono ? "#FFFFFF" : "#FEF08A", isMono ? "#000000" : b.color);
+  // Directional collision flare + soft crit slash
+  if (f < 0.72) {
+    let starScale = (1 - f / 0.72) * (b.isCrit ? 1.32 : 0.9);
+    drawFourPointStar(ctx, 0, 0, 12 * starScale, 2.4 * starScale, isMono ? "#E2E8F0" : "#FDE68A", isMono ? "#0F172A" : b.color);
     if (b.isCrit) {
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 2.4 * (1 - f);
+      ctx.strokeStyle = "rgba(254, 240, 138, 0.72)";
+      ctx.lineWidth = 2.0 * (1 - f);
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(-r * 1.35, -r * 0.65);
-      ctx.lineTo(r * 1.35, r * 0.65);
+      ctx.moveTo(-r * 1.25, -r * 0.6);
+      ctx.lineTo(r * 1.25, r * 0.6);
       ctx.stroke();
     }
   }
@@ -5492,20 +5531,61 @@ export function drawHeroBody(ctx, opts) {
     walkCyclePhase = 0,
     nhiAmmoType = "purple",
     ducanhRolling = false,
-    ducanhFortress = false
+    ducanhFortress = false,
+    attackAnimTimer = 0,
+    weaponAttackDuration = 0.22,
+    weaponSkillTimer = 0,
+    weaponSkillDur = 0.46
   } = opts;
 
   let hitWhite = hitFlash > 0;
-  let fillMain = isMono ? "#000000" : hitWhite ? "#FFFFFF" : color;
-  let fillAccent = isMono ? "#333333" : hitWhite ? "#FFFFFF" : accentColor;
-  let trimCol = isMono ? "#444444" : borderColor || (isUlt ? "#FBBF24" : isStealth ? "#E879F9" : "#FFFFFF");
+  let fillMain = isMono ? "#090D16" : hitWhite ? "#FCA5A5" : color;
+  let fillAccent = isMono ? "#334155" : hitWhite ? "#E2E8F0" : accentColor;
+  let trimCol = isMono ? "#94A3B8" : borderColor || (isUlt ? "#FBBF24" : isStealth ? "#E879F9" : "#E2E8F0");
   let markCol = isMono ? "#FFFFFF" : hitWhite ? "#0F172A" : fillAccent;
   let darkInk = isMono ? "#111111" : "rgba(10, 16, 30, 0.58)";
   let moveAmt = clamp(moveSpeedFactor || 0, 0, 1);
   let sway = Math.sin(elapsedTime * (5.5 + moveAmt * 4.5) + walkCyclePhase * 0.5);
+  let atkProg = attackAnimTimer > 0 ? clamp(1 - attackAnimTimer / Math.max(0.06, weaponAttackDuration || 0.22), 0, 1) : 0;
+  let atkLunge = atkProg > 0 ? Math.sin(atkProg * Math.PI) * 3.8 : 0;
+  let skillProg = weaponSkillTimer > 0 ? clamp(1 - weaponSkillTimer / Math.max(0.08, weaponSkillDur || 0.46), 0, 1) : 0;
+  let skillFlare = skillProg > 0 ? Math.sin(skillProg * Math.PI) : 0;
+  let stride = moveAmt > 0.08 ? Math.sin(walkCyclePhase || elapsedTime * 11) * moveAmt : 0;
 
   ctx.save();
   ctx.rotate(facing);
+  if (atkLunge > 0.05) {
+    ctx.translate(atkLunge, 0);
+  }
+  if (hitWhite) {
+    ctx.scale(0.92, 1.07);
+  } else if (isDowned) {
+    ctx.scale(1.12, 0.82);
+  } else if (skillFlare > 0.05) {
+    ctx.scale(1 + skillFlare * 0.07, 1 + skillFlare * 0.07);
+  }
+
+  // Foot stride pads when walking cleanly underneath cloak/armor
+  if (!isDowned && moveAmt > 0.08) {
+    for (let s of [-1, 1]) {
+      let footX = stride * s * 6.5;
+      let footY = s * (radius * 0.48);
+      ctx.fillStyle = isMono ? "#111111" : "#0F172A";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : fillAccent;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(footX, footY, 4.4, 2.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+  if (skillFlare > 0.15) {
+    ctx.strokeStyle = isMono ? "#FFFFFF" : fillAccent;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (1.18 + skillFlare * 0.24), -0.9, 0.9);
+    ctx.stroke();
+  }
 
   // 0. Back/Outer Silhouette Layer (capes, tails, halos, shoulder armor — outside radius)
   if (heroId === "dung") {
@@ -7085,24 +7165,46 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
   let r = enemy.radius || 16;
   let facing = enemy.facing || 0;
   let hit = enemy.hitFlash > 0;
-  let wobble = Math.sin((elapsedTime || 0) * 7.5 + (enemy.id || 0)) * 0.07;
+  let speedMag = Math.hypot(enemy.vx || 0, enemy.vy || 0);
+  let isMoving = speedMag > 8;
+  let walkPhase = enemy.animWalkPhase || (elapsedTime || 0) * 7.5 + (enemy.id || 0);
+  let stride = isMoving ? Math.sin(walkPhase) : 0;
+  let idleBreath = Math.sin((elapsedTime || 0) * 4.2 + (enemy.id || 0)) * 0.035;
+  let atkTimer = enemy.attackAnimTimer || 0;
+  let atkDur = Math.max(0.08, enemy.attackAnimDur || 0.28);
+  let atkProg = atkTimer > 0 ? clamp(1 - atkTimer / atkDur, 0, 1) : 0;
+  let atkSwing = atkProg > 0 ? Math.sin(atkProg * Math.PI) : 0;
+  let wobble = isMoving ? stride * 0.095 : idleBreath;
 
   // Ground shadow
   ctx.beginPath();
-  ctx.ellipse(enemy.x, enemy.y + r * 0.75, r * 0.92, r * 0.42, 0, 0, Math.PI * 2);
+  ctx.ellipse(enemy.x, enemy.y + r * 0.75, r * (0.92 + idleBreath), r * 0.42, 0, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.45)";
   ctx.fill();
 
   ctx.save();
-  ctx.translate(enemy.x, enemy.y);
+  ctx.translate(enemy.x + Math.cos(facing) * (atkSwing * r * 0.34), enemy.y + Math.sin(facing) * (atkSwing * r * 0.34));
   ctx.rotate(facing + wobble);
+  if (hit) {
+    ctx.scale(0.9, 1.09);
+  } else if (atkSwing > 0.05) {
+    ctx.scale(1 + atkSwing * 0.1, 1 - atkSwing * 0.05);
+  }
+  if (isMoving) {
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#111111" : "#18181B";
+      ctx.beginPath();
+      ctx.ellipse(stride * s * (r * 0.34), s * r * 0.56, r * 0.22, r * 0.13, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   if (enemy.kind === "brute") {
     // Đao Phủ — Heavy Iron Executioner with Huge Double-Headed Battle Axe
     // Weapon (right arm forward swing)
     ctx.save();
     ctx.translate(r * 0.25, r * 0.75);
-    ctx.rotate(0.25 + Math.sin((elapsedTime || 0) * 4.5 + enemy.id) * 0.14);
+    ctx.rotate(0.25 + Math.sin((elapsedTime || 0) * 4.5 + enemy.id) * 0.14 - atkSwing * 1.15);
     ctx.strokeStyle = "#0F172A";
     ctx.lineWidth = 5;
     ctx.beginPath();
@@ -7113,7 +7215,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.lineWidth = 2.6;
     ctx.stroke();
     // Double axe blades
-    ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#222222" : "#CBD5E1";
+    ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#222222" : "#CBD5E1";
     ctx.strokeStyle = isMono ? "#000000" : "#EF4444";
     ctx.lineWidth = 1.6;
     ctx.beginPath();
@@ -7128,7 +7230,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
 
     // Heavy Spiked Shoulder Armor
     for (let s of [-1, 1]) {
-      ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#111111" : "#9A3412";
+      ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#111111" : "#9A3412";
       ctx.strokeStyle = "#0F172A";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -7140,7 +7242,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Core armored body + horned helm
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : enemy.color;
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : enemy.color;
     ctx.fill();
     ctx.strokeStyle = "#1E293B";
     ctx.lineWidth = 2.8;
@@ -7163,7 +7265,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Ma Khuyển — Razor Stalker Beast with Twin Scythe-Claws
     // Twin mounted shoulder scythe blades
     for (let s of [-1, 1]) {
-      ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#222222" : "#FDE047";
+      ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#222222" : "#FDE047";
       ctx.strokeStyle = "#0F172A";
       ctx.lineWidth = 1.4;
       ctx.beginPath();
@@ -7184,7 +7286,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.lineTo(-r * 0.95, r * 0.38);
     ctx.lineTo(r * 0.15, r * 0.82);
     ctx.closePath();
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : enemy.color;
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : enemy.color;
     ctx.fill();
     ctx.strokeStyle = "#0F172A";
     ctx.lineWidth = 2.2;
@@ -7209,7 +7311,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.moveTo(-r * 0.75, 0);
     ctx.lineTo(r * 1.05, 0);
     ctx.stroke();
-    ctx.fillStyle = isMono ? "#FFFFFF" : "#E879F9";
+    ctx.fillStyle = isMono ? "#CBD5E1" : "#E879F9";
     ctx.beginPath();
     ctx.arc(r * 1.12, 0, 4.2 * staffPulse, 0, Math.PI * 2);
     ctx.fill();
@@ -7221,7 +7323,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Cultist Robed Hood
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#6B21A8";
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#6B21A8";
     ctx.fill();
     ctx.strokeStyle = isMono ? "#333333" : "#E879F9";
     ctx.lineWidth = 2.2;
@@ -7241,7 +7343,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Xạ Thủ Băng — Ice Recurve Bow + Hooded Marksman
     ctx.save();
     ctx.translate(r * 0.55, 0);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#7DD3FC";
+    ctx.strokeStyle = isMono ? "#CBD5E1" : "#7DD3FC";
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.arc(-r * 0.15, 0, r * 0.85, -1.05, 1.05);
@@ -7265,7 +7367,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Frost cloak & hood
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#0369A1";
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#0369A1";
     ctx.fill();
     ctx.strokeStyle = isMono ? "#444444" : "#BAE6FD";
     ctx.lineWidth = 2.2;
@@ -7290,7 +7392,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     }
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : priming ? "#DC2626" : "#3F3F46";
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : priming ? "#DC2626" : "#3F3F46";
     ctx.fill();
     ctx.strokeStyle = priming ? "#FEF08A" : "#F97316";
     ctx.lineWidth = 2.5;
@@ -7320,7 +7422,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
   } else if (enemy.kind === "assassin") {
     // Sát Thủ Bóng Đêm — Twin Shadow Blades & Sleek Cowl
     for (let s of [-1, 1]) {
-      ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#222222" : "#F43F5E";
+      ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#222222" : "#F43F5E";
       ctx.strokeStyle = "#FDF2F8";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -7338,7 +7440,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.lineTo(-r * 0.9, r * 0.35);
     ctx.lineTo(0, r * 0.78);
     ctx.closePath();
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#311042";
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#311042";
     ctx.fill();
     ctx.strokeStyle = isMono ? "#555555" : "#C084FC";
     ctx.lineWidth = 2;
@@ -7365,13 +7467,13 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Armored body
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#334155";
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#334155";
     ctx.fill();
     ctx.strokeStyle = "#94A3B8";
     ctx.lineWidth = 2.6;
     ctx.stroke();
     // Large Curved Tower Shield held in front
-    ctx.fillStyle = isMono ? "#222222" : hit ? "#FFFFFF" : "#0EA5E9";
+    ctx.fillStyle = isMono ? "#222222" : hit ? "#CBD5E1" : "#0EA5E9";
     ctx.strokeStyle = "#E0F2FE";
     ctx.lineWidth = 2.4;
     ctx.beginPath();
@@ -7394,7 +7496,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     }
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : "#1E1B4B";
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#1E1B4B";
     ctx.fill();
     ctx.strokeStyle = isMono ? "#555555" : "#818CF8";
     ctx.lineWidth = 2.2;
@@ -7417,7 +7519,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.save();
     ctx.translate(r * 0.35, r * 0.68);
     ctx.rotate(0.28);
-    ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#222222" : "#94A3B8";
+    ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#222222" : "#94A3B8";
     ctx.strokeStyle = "#0F172A";
     ctx.lineWidth = 1.4;
     ctx.beginPath();
@@ -7432,7 +7534,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
 
     // Goblin ears
     for (let s of [-1, 1]) {
-      ctx.fillStyle = isMono ? "#111111" : hit ? "#FFFFFF" : "#16A34A";
+      ctx.fillStyle = isMono ? "#111111" : hit ? "#CBD5E1" : "#16A34A";
       ctx.strokeStyle = "#0F172A";
       ctx.lineWidth = 1.4;
       ctx.beginPath();
@@ -7447,7 +7549,7 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     // Body
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : hit ? "#FFFFFF" : enemy.color;
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : enemy.color;
     ctx.fill();
     ctx.strokeStyle = "#0F172A";
     ctx.lineWidth = 2;
@@ -8937,7 +9039,7 @@ export function drawDuyDecoy(ctx, decoy, elapsedTime, isMono) {
   // Puppet / Straw Ninja Decoy silhouette
   ctx.save();
   ctx.rotate(wobble);
-  let bodyCol = hitFlash > 0 ? "#FFFFFF" : isMono ? "#CBD5E1" : "#D97706";
+  let bodyCol = hitFlash > 0 ? "#CBD5E1" : isMono ? "#CBD5E1" : "#D97706";
   let wrapCol = isMono ? "#000000" : "#14B8A6";
 
   // Wooden crossbar / ninja post arms
@@ -8969,7 +9071,7 @@ export function drawDuyDecoy(ctx, decoy, elapsedTime, isMono) {
   ctx.stroke();
 
   // Decoy head + ninja headband
-  ctx.fillStyle = hitFlash > 0 ? "#FFFFFF" : isMono ? "#F8FAFC" : "#FDE68A";
+  ctx.fillStyle = hitFlash > 0 ? "#E2E8F0" : isMono ? "#F8FAFC" : "#FDE68A";
   ctx.strokeStyle = isMono ? "#000000" : "#F59E0B";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -9253,7 +9355,7 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
     for (let side of [-1, 1]) {
       ctx.save();
       ctx.translate(side * r * 0.88, -r * 0.14 + podRecoil);
-      ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#1A1A1A" : "#1E293B";
+      ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#1A1A1A" : "#1E293B";
       ctx.strokeStyle = isMono ? "#FFFFFF" : "#94A3B8";
       ctx.lineWidth = 2.4;
       ctx.fillRect(-12, -r * 0.48, 24, r * 0.92);
@@ -9270,9 +9372,9 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
 
     // Main Octagonal Dreadnought Steel Hull with metallic gradient
     let hullGrad = ctx.createLinearGradient(-r, -r, r, r);
-    hullGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#333333" : "#475569");
-    hullGrad.addColorStop(0.5, hit ? "#FFFFFF" : isMono ? "#1A1A1A" : "#1E293B");
-    hullGrad.addColorStop(1, hit ? "#FFFFFF" : isMono ? "#080808" : "#0F172A");
+    hullGrad.addColorStop(0, hit ? "#CBD5E1" : isMono ? "#333333" : "#475569");
+    hullGrad.addColorStop(0.5, hit ? "#CBD5E1" : isMono ? "#1A1A1A" : "#1E293B");
+    hullGrad.addColorStop(1, hit ? "#CBD5E1" : isMono ? "#080808" : "#0F172A");
 
     ctx.beginPath();
     for (let i = 0; i < 8; i++) {
@@ -9429,8 +9531,8 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
 
     // Storm Avatar Body & Armored Cobalt Pauldrons
     let bodyGrad = ctx.createRadialGradient(0, -r * 0.2, 8, 0, 0, r);
-    bodyGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#444444" : "#0284C7");
-    bodyGrad.addColorStop(1, hit ? "#FFFFFF" : isMono ? "#090909" : "#082F49");
+    bodyGrad.addColorStop(0, hit ? "#CBD5E1" : isMono ? "#444444" : "#0284C7");
+    bodyGrad.addColorStop(1, hit ? "#CBD5E1" : isMono ? "#090909" : "#082F49");
     ctx.fillStyle = bodyGrad;
     ctx.strokeStyle = stormBlue;
     ctx.lineWidth = 3.8;
@@ -9563,8 +9665,8 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
 
     // 3. Armored Draconic Carapace
     let bodyGrad = ctx.createRadialGradient(0, -r * 0.25, 6, 0, 0, r);
-    bodyGrad.addColorStop(0, hit ? "#FFFFFF" : scaleMid);
-    bodyGrad.addColorStop(1, hit ? "#FFFFFF" : scaleDark);
+    bodyGrad.addColorStop(0, hit ? "#CBD5E1" : scaleMid);
+    bodyGrad.addColorStop(1, hit ? "#CBD5E1" : scaleDark);
     ctx.fillStyle = bodyGrad;
     ctx.strokeStyle = acidCol;
     ctx.lineWidth = 4;
@@ -9684,8 +9786,8 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
 
     // 4. Crimson-Obsidian Vampire Sovereign Armor
     let bodyGrad = ctx.createRadialGradient(0, -r * 0.2, 6, 0, 0, r * 0.94);
-    bodyGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#444444" : "#BE123C");
-    bodyGrad.addColorStop(1, hit ? "#FFFFFF" : crimsonDark);
+    bodyGrad.addColorStop(0, hit ? "#CBD5E1" : isMono ? "#444444" : "#BE123C");
+    bodyGrad.addColorStop(1, hit ? "#CBD5E1" : crimsonDark);
     ctx.fillStyle = bodyGrad;
     ctx.strokeStyle = roseRim;
     ctx.lineWidth = 3.6;
@@ -9830,8 +9932,8 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
 
   // 3. Fallen Seraph Royal Celestial-Obsidian Armor Body
   let bodyGrad = ctx.createRadialGradient(0, -r * 0.2, 6, 0, 0, r);
-  bodyGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#333333" : "#312E81");
-  bodyGrad.addColorStop(1, hit ? "#FFFFFF" : indigo);
+  bodyGrad.addColorStop(0, hit ? "#CBD5E1" : isMono ? "#333333" : "#312E81");
+  bodyGrad.addColorStop(1, hit ? "#CBD5E1" : indigo);
   ctx.fillStyle = bodyGrad;
   ctx.strokeStyle = gold;
   ctx.lineWidth = 4.5;
@@ -11231,17 +11333,37 @@ export function drawMinhPrisons(ctx, prisons, elapsedTime, isMono) {
       ctx.stroke();
     }
 
-    // Interlocking Top Canopy & Cross Seal Beams
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.8)";
-    ctx.lineWidth = 2.0;
-    ctx.beginPath();
+    // Interlocking Forged Golden Seal Chains linking the 8 canopy pillar crowns
     for (let i = 0; i < 8; i++) {
       let curr = tops[i];
       let next = tops[(i + 1) % 8];
-      ctx.moveTo(curr.x, curr.y);
-      ctx.lineTo(next.x, next.y);
+      let dx = next.x - curr.x;
+      let dy = next.y - curr.y;
+      let dist = Math.hypot(dx, dy) || 1;
+      let steps = Math.max(4, Math.round(dist / 9));
+      let ang = Math.atan2(dy, dx);
+      for (let s = 0; s <= steps; s++) {
+        let f = s / steps;
+        let lx = curr.x + dx * f;
+        let ly = curr.y + dy * f + Math.sin(f * Math.PI) * 5;
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(ang);
+        ctx.strokeStyle = isMono ? "#FFFFFF" : s % 2 === 0 ? "#FACC15" : "#FEF08A";
+        ctx.lineWidth = s % 2 === 0 ? 1.8 : 2.1;
+        if (s % 2 === 0) {
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 4.6, 2.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(-3.6, 0);
+          ctx.lineTo(3.6, 0);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
-    ctx.stroke();
 
     for (let i = 0; i < 8; i++) {
       drawFourPointStar(ctx, tops[i].x, tops[i].y, 6.2, 2.2, "#FFFFFF", "#FACC15");

@@ -7,13 +7,16 @@ import {
   HERO_CHRONICLES,
   BOSS_CHRONICLES,
   buildCitadelChronicleOverview,
+  buildInfernoChronicleOverview,
 } from "./darkFantasyLore";
 import { CitadelBlueprintEmblem, CitadelLoreCrest } from "./CitadelVisuals";
+import { InfernoBlueprintEmblem } from "./InfernoVisuals";
 
 const TAB_LABELS = {
   world: { vi: "Biên Niên Sử", en: "World Lore" },
   heroes: { vi: "21 Anh Hùng", en: "21 Heroes" },
   bosses: { vi: "9 Đại Trùm", en: "9 Bosses" },
+  inferno: { vi: "Hỏa Ngục Tàn Tro", en: "Inferno of Ashes" },
   citadel: { vi: "Cổ Thành Huyết Táng", en: "Blood Citadel" },
 };
 
@@ -26,7 +29,9 @@ export function ChroniclesModal({
   founderUnlocked = false,
   citadelUnlocked = false,
   citadelSecrets = { tinClue: false, baoClue: false, combinedUnlocked: false, inspectedNodes: [] },
+  infernoProgress = null,
   onSelectHero,
+  onSelectInfernoMap,
   onSelectCitadelMap,
   onClose,
 }) {
@@ -59,6 +64,7 @@ export function ChroniclesModal({
   const activeHero = heroes.find((h) => h.id === selectedHeroId) || heroes[0];
   const heroLore = HERO_CHRONICLES[activeHero?.id] || HERO_CHRONICLES.dung;
   const citadelOverview = buildCitadelChronicleOverview(citadelSecrets, safeLang);
+  const infernoOverview = buildInfernoChronicleOverview(infernoProgress, safeLang);
   const canPickHero = activeHero && (!activeHero.isSecretFounder || founderUnlocked);
 
   return (
@@ -281,6 +287,89 @@ export function ChroniclesModal({
                   </p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {tab === "inferno" && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-orange-500/40 bg-gradient-to-br from-orange-950/35 via-slate-950 to-slate-950 p-4 sm:p-5 flex items-start gap-4">
+                <InfernoBlueprintEmblem
+                  progress={infernoProgress}
+                  active={true}
+                  className="w-16 h-16 sm:w-[72px] sm:h-[72px] hidden sm:block"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-lg font-extrabold text-orange-100">
+                      {infernoOverview.title}
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-amber-300">
+                      {infernoOverview.badge}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    {infernoOverview.summary}
+                  </p>
+                  <div className="mt-2 text-xs font-mono text-orange-300">
+                    {infernoOverview.docsProgress}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                <div className={`rounded-xl border p-4 ${infernoOverview.dungDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-yellow-500/55 bg-yellow-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-yellow-300">
+                    ⛓ DŨNG · {isVi ? "KHU 3 HẦM HIẾN TẾ" : "ZONE 3 CRYPT"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {infernoOverview.dungDossier.text}
+                  </p>
+                </div>
+
+                <div className={`rounded-xl border p-4 ${infernoOverview.danhDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-orange-500/55 bg-orange-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-orange-300">
+                    🐉 DANH · {isVi ? "KHU 4 ĐIỆN RỒNG" : "ZONE 4 TEMPLE"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {infernoOverview.danhDossier.text}
+                  </p>
+                </div>
+
+                <div className={`rounded-xl border p-4 ${infernoOverview.longhoiDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-amber-500/55 bg-amber-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-300">
+                    📡 LONG HÓI · {isVi ? "KHU 5 PHÁO ĐÀI" : "ZONE 5 BASTION"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {infernoOverview.longhoiDossier.text}
+                  </p>
+                </div>
+              </div>
+
+              <div className={`rounded-xl border p-4 sm:p-5 ${infernoOverview.fourChairsDossier.trungDone ? "border-purple-400/75 bg-purple-950/25" : infernoOverview.fourChairsDossier.locked ? "border-slate-800 bg-slate-950/65" : "border-fuchsia-400/65 bg-fuchsia-950/20"}`}>
+                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                  🔮 {isVi ? "ĐÔNG PHỤC CHÍNH · KHU 7 CĂN PHÒNG BỐN CHIẾC GHẾ & TRUNG" : "FINAL EASTER EGG · ZONE 7 FOUR CHAIRS & TRUNG"}
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-100">
+                  {infernoOverview.fourChairsDossier.text}
+                </p>
+                {onSelectInfernoMap && (
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">
+                      {isVi ? "Bản đồ mở sẵn cho mọi người chơi (2400×2100 · 8 Khu Vực)." : "Available immediately for all players (2400×2100 · 8 Zones)."}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectInfernoMap();
+                        onClose?.();
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
+                    >
+                      {isVi ? "Chọn Map Hỏa Ngục Tàn Tro" : "Select Inferno of Ashes"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

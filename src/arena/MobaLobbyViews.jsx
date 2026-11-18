@@ -14,6 +14,7 @@ import { ARENA_MAP_LIST, isMapUnlocked } from "./bloodCitadelMap.ts";
 import { HERO_CHRONICLES } from "./darkFantasyLore.ts";
 import { detectStorageEnvironment } from "./deviceStorage.ts";
 import { CitadelBlueprintEmblem } from "./CitadelVisuals.jsx";
+import { InfernoBlueprintEmblem } from "./InfernoVisuals.jsx";
 
 export function MobaLobbyMenu({
   lang,
@@ -57,6 +58,7 @@ export function MobaLobbyMenu({
   selectedMapId = "classic",
   unlockedMaps = ["classic"],
   citadelSecrets = null,
+  infernoProgress = null,
   onSelectMap,
   onOpenChronicles,
   resumableRun = null,
@@ -632,7 +634,7 @@ export function MobaLobbyMenu({
             </div>
           </div>
 
-          {/* Map Selector: Classic vs Cổ Thành Huyết Táng */}
+          {/* Map Selector: Classic, Hỏa Ngục Tàn Tro, Cổ Thành Huyết Táng */}
           <div className="rounded-xl bg-[#070B16]/90 border border-slate-800/90 p-2.5 mt-3">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -643,25 +645,35 @@ export function MobaLobbyMenu({
                   type="button"
                   onClick={() => {
                     R.playModalOpen();
+                    onOpenChronicles?.("inferno");
+                  }}
+                  className="text-[10px] font-moba font-bold text-orange-300/90 hover:text-amber-300 underline decoration-orange-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {isVi ? "Hồ Sơ Hỏa Ngục" : "Inferno Lore"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playModalOpen();
                     onOpenChronicles?.("citadel");
                   }}
                   className="text-[10px] font-moba font-bold text-rose-300/90 hover:text-amber-300 underline decoration-rose-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  {isVi ? "Hồ Sơ Cổ Thành" : "Citadel Lore"}
+                  {isVi ? "Cổ Thành" : "Citadel"}
                 </button>
               </div>
               <span className="text-[10px] font-mono-numbers text-slate-400 whitespace-nowrap shrink-0">
                 {isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked)
                   ? founderUnlocked
                     ? isVi
-                      ? "Đổi tự do · Quyền Thiên"
+                      ? "Đổi tự do · Thiên"
                       : "Free Switch · Founder"
                     : isVi
-                      ? "✓ Đã mở Cổ Thành"
-                      : "✓ Citadel Unlocked"
+                      ? "✓ Mở đủ 3 Map"
+                      : "✓ All 3 Maps"
                   : isVi
-                    ? "Mở sau Màn 27 Cổ Điển"
-                    : "Unlock: Classic Wave 27"}
+                    ? "Hỏa Ngục mở sẵn"
+                    : "Inferno Ready"}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -669,6 +681,7 @@ export function MobaLobbyMenu({
                 const unlocked = isMapUnlocked(m.id, unlockedMaps, founderUnlocked);
                 const active = selectedMapId === m.id;
                 const isCitadel = m.id === "blood_citadel";
+                const isInferno = m.id === "inferno_ash";
                 const mapName = m.name?.[lang] || m.name?.vi || m.id;
                 const mapSub = m.subtitle?.[lang] || m.subtitle?.vi || "";
                 return (
@@ -683,14 +696,18 @@ export function MobaLobbyMenu({
                       R.playTabSwitch();
                       onSelectMap?.(m.id);
                     }}
-                    className={`text-left rounded-xl p-2.5 border transition cursor-pointer flex items-start gap-2.5 ${
+                    className={`${m.id === "classic" ? "sm:col-span-2" : ""} text-left rounded-xl p-2.5 border transition cursor-pointer flex items-start gap-2.5 ${
                       active
                         ? isCitadel
                           ? "bg-gradient-to-br from-[#230916]/95 via-[#150814] to-[#0B0712] border-rose-400/80 text-rose-50 shadow-[0_0_20px_rgba(225,29,72,0.2)]"
+                          : isInferno
+                          ? "bg-gradient-to-br from-[#260D08]/95 via-[#170907] to-[#0B0709] border-orange-400/85 text-orange-50 shadow-[0_0_20px_rgba(249,115,22,0.22)]"
                           : "bg-gradient-to-br from-amber-950/65 to-slate-950 border-amber-400/80 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
                         : unlocked
                           ? isCitadel
                             ? "bg-[#110812]/90 border-rose-900/50 hover:border-rose-500/60 text-slate-200"
+                            : isInferno
+                            ? "bg-[#140908]/90 border-orange-900/55 hover:border-orange-500/65 text-slate-200"
                             : "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
                           : "bg-slate-950/60 border-slate-800/70 text-slate-500 opacity-80"
                     }`}
@@ -699,6 +716,12 @@ export function MobaLobbyMenu({
                       <CitadelBlueprintEmblem
                         secrets={citadelSecrets}
                         unlocked={unlocked}
+                        active={active}
+                        className="w-11 h-11 mt-0.5"
+                      />
+                    ) : isInferno ? (
+                      <InfernoBlueprintEmblem
+                        progress={infernoProgress}
                         active={active}
                         className="w-11 h-11 mt-0.5"
                       />
@@ -722,7 +745,7 @@ export function MobaLobbyMenu({
                         {active && (
                           <span
                             className={`text-[9px] font-mono-numbers font-black uppercase tracking-wider shrink-0 ${
-                              isCitadel ? "text-rose-300" : "text-amber-300"
+                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : "text-amber-300"
                             }`}
                           >
                             {isVi ? "ĐANG CHỌN" : "ACTIVE"}
@@ -736,6 +759,25 @@ export function MobaLobbyMenu({
                             ? "Phá đảo Màn 27 Cổ Điển hoặc mở khóa Thiên"
                             : "Clear Classic Wave 27 or unlock Thiên"}
                       </div>
+                      {isInferno && (
+                        <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-orange-500/20 text-[9.5px] font-mono-numbers tabular-nums">
+                          <span className={infernoProgress?.dungClue ? "text-yellow-300 font-bold" : "text-slate-500"}>
+                            Dũng {infernoProgress?.dungClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={infernoProgress?.danhClue ? "text-orange-300 font-bold" : "text-slate-500"}>
+                            Danh {infernoProgress?.danhClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={infernoProgress?.longhoiClue ? "text-amber-300 font-bold" : "text-slate-500"}>
+                            Long {infernoProgress?.longhoiClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={infernoProgress?.trungTriggered ? "text-purple-300 font-bold" : infernoProgress?.fourChairsUnlocked ? "text-fuchsia-300 font-bold" : "text-slate-500"}>
+                            4G {infernoProgress?.trungTriggered ? "★" : infernoProgress?.fourChairsUnlocked ? "✓" : "○"}
+                          </span>
+                        </div>
+                      )}
                       {isCitadel && unlocked && (
                         <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-rose-500/20 text-[9.5px] font-mono-numbers tabular-nums">
                           <span className={citadelSecrets?.tinClue ? "text-rose-300 font-bold" : "text-slate-500"}>

@@ -1,4 +1,4 @@
-export type ArenaMapId = "classic" | "blood_citadel";
+export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel";
 
 export interface ArenaMapMetadata {
   id: ArenaMapId;
@@ -121,6 +121,8 @@ export interface CitadelLoreModalPayload {
 
 export const CLASSIC_MAP_WIDTH = 2000;
 export const CLASSIC_MAP_HEIGHT = 1400;
+export const INFERNO_ASH_WIDTH = 2400;
+export const INFERNO_ASH_HEIGHT = 2100;
 export const BLOOD_CITADEL_SIZE = 1600;
 export const CITADEL_UNLOCK_WAVE = 27;
 
@@ -136,6 +138,21 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
     subtitle: {
       vi: "2000×1400 · Đấu trường sinh tồn nguyên bản 27 Màn",
       en: "2000×1400 · Original 27-Wave Survival Arena",
+    },
+    unlockWaveRequired: 0,
+    unlockFromMap: null,
+  },
+  inferno_ash: {
+    id: "inferno_ash",
+    width: INFERNO_ASH_WIDTH,
+    height: INFERNO_ASH_HEIGHT,
+    name: {
+      vi: "Hỏa Ngục Tàn Tro",
+      en: "Inferno of Ashes",
+    },
+    subtitle: {
+      vi: "2400×2100 · Thành phố tro tàn 8 khu vực, mật thất 4 ghế & bí mật thảm họa",
+      en: "2400×2100 · 8-zone ruined city, Four Chairs Sanctum & catastrophe secrets",
     },
     unlockWaveRequired: 0,
     unlockFromMap: null,
@@ -404,7 +421,9 @@ export function normalizeCitadelSecrets(raw: unknown): CitadelSecretsProgress {
 }
 
 export function normalizeArenaMapId(raw: unknown): ArenaMapId {
-  return raw === "blood_citadel" ? "blood_citadel" : "classic";
+  if (raw === "blood_citadel") return "blood_citadel";
+  if (raw === "inferno_ash") return "inferno_ash";
+  return "classic";
 }
 
 export function computeUnlockedMaps({
@@ -418,10 +437,11 @@ export function computeUnlockedMaps({
   storedUnlocked?: unknown;
   founderUnlocked?: boolean;
 }): ArenaMapId[] {
-  const set = new Set<ArenaMapId>(["classic"]);
+  const set = new Set<ArenaMapId>(["classic", "inferno_ash"]);
   if (Array.isArray(storedUnlocked)) {
     for (const m of storedUnlocked) {
       if (m === "blood_citadel") set.add("blood_citadel");
+      if (m === "inferno_ash") set.add("inferno_ash");
     }
   }
   if (classicCleared || highestWaveCleared >= CITADEL_UNLOCK_WAVE || founderUnlocked) {
@@ -435,7 +455,7 @@ export function isMapUnlocked(
   unlockedMaps: ArenaMapId[],
   founderUnlocked = false
 ): boolean {
-  if (mapId === "classic") return true;
+  if (mapId === "classic" || mapId === "inferno_ash") return true;
   if (founderUnlocked && mapId === "blood_citadel") return true;
   return Array.isArray(unlockedMaps) && unlockedMaps.includes(mapId);
 }
@@ -537,7 +557,7 @@ export function resolveCircleObstacles(
   cx: number,
   cy: number,
   radius: number,
-  obstacles: CitadelRectObstacle[],
+  obstacles: ReadonlyArray<{ x: number; y: number; w: number; h: number }>,
   mapWidth: number,
   mapHeight: number,
   margin = 16
@@ -575,7 +595,7 @@ export function doesPointOverlapAnyObstacle(
   x: number,
   y: number,
   radius: number,
-  obstacles: CitadelRectObstacle[]
+  obstacles: ReadonlyArray<{ x: number; y: number; w: number; h: number }>
 ): boolean {
   for (let i = 0; i < obstacles.length; i++) {
     const r = obstacles[i];
@@ -592,7 +612,7 @@ export function findClearPointNear(
   x: number,
   y: number,
   radius: number,
-  obstacles: CitadelRectObstacle[],
+  obstacles: ReadonlyArray<{ x: number; y: number; w: number; h: number }>,
   mapWidth: number,
   mapHeight: number,
   margin = 24

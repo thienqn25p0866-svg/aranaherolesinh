@@ -24,6 +24,8 @@ class SoundEngine {
     this.activeVoices = 0;
     this.maxVoices = 22;
     this.lowPowerAudio = false;
+    this._narrativeDuck = 1;
+    this._infernoAmbTimer = 2.2;
     this._pageHidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
 
     if (typeof window !== "undefined") {
@@ -191,15 +193,21 @@ class SoundEngine {
       }
       if (this.masterBgmGain) {
         const pausedScale = this.musicMode === "paused" ? 0.25 : 1;
+        const duckScale = typeof this._narrativeDuck === "number" ? this._narrativeDuck : 1;
         const targetBgm =
           this.musicEnabled && this.musicMode !== "off"
-            ? this.musicVolume * 0.42 * pausedScale
+            ? this.musicVolume * 0.42 * pausedScale * duckScale
             : 0;
         this.masterBgmGain.gain.setTargetAtTime(targetBgm, now, 0.06);
       }
     } catch {
       // Ignore AudioParam errors
     }
+  }
+
+  setNarrativeDuck(active) {
+    this._narrativeDuck = active ? 0.16 : 1;
+    this.syncVolumes();
   }
 
   setSfxEnabled(val) {
@@ -2038,6 +2046,93 @@ class SoundEngine {
     this.playMetallicClang(380, 0.3, 0.16);
     this.playLayerTone({ startFreq: 280, endFreq: 52, duration: 0.42, type: "sawtooth", vol: 0.16, filterFreq: 1100, sendAmbiance: true });
     this.playFilteredNoise({ duration: 0.4, filterType: "bandpass", freqStart: 1900, freqEnd: 280, q: 1.2, gainPeak: 0.26, sendAmbiance: true });
+  }
+
+  // =========================================================
+  // MAP 2: HOẢ NGỤC TÀN TRO (INFERNO ASH) AUDIO CUES & AMBIENCE
+  // =========================================================
+
+  playInfernoThunder() {
+    if (this.canThrottle("infThunder", 180)) return;
+    this.playSubPunch(72, 24, 0.58, 0.34);
+    this.playLayerTone({ startFreq: this.jitter(145, 0.08), endFreq: 38, duration: 0.52, type: "sawtooth", vol: 0.18, filterFreq: 780, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.48, filterType: "lowpass", freqStart: 2200, freqEnd: 180, q: 0.9, gainPeak: 0.28, sendAmbiance: true });
+  }
+
+  playInfernoWhisper() {
+    if (this.canThrottle("infWhisper", 450)) return;
+    this.playFilteredNoise({ duration: 0.42, filterType: "bandpass", freqStart: 1650, freqEnd: 920, q: 4.5, gainPeak: 0.085, sendAmbiance: true });
+    this.playLayerTone({ startFreq: this.jitter(784, 0.04), endFreq: 698, duration: 0.36, type: "sine", vol: 0.065, delay: 0.04, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 587, endFreq: 523, duration: 0.34, type: "sine", vol: 0.05, delay: 0.14, sendAmbiance: true });
+  }
+
+  playInfernoTerminalLog() {
+    if (this.canThrottle("infTerminal", 220)) return;
+    this.playLayerTone({ startFreq: 1180, endFreq: 1180, duration: 0.06, type: "square", vol: 0.085, filterFreq: 2400 });
+    this.playLayerTone({ startFreq: 880, endFreq: 980, duration: 0.07, type: "square", vol: 0.075, delay: 0.075, filterFreq: 2400 });
+    this.playLayerTone({ startFreq: 1320, endFreq: 1320, duration: 0.09, type: "triangle", vol: 0.09, delay: 0.16, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.28, filterType: "bandpass", freqStart: 2400, freqEnd: 1600, q: 3.0, gainPeak: 0.045, delay: 0.1 });
+  }
+
+  playInfernoSecretDiscovery() {
+    if (this.canThrottle("infSecret", 250)) return;
+    this.playSubPunch(115, 44, 0.28, 0.22);
+    this.playChord([293.66, 440, 523.25, 659.25], 0.48, { type: "triangle", vol: 0.11, stagger: 0.04, sendAmbiance: true });
+    this.playChord([880, 1174.66], 0.36, { type: "sine", vol: 0.085, delay: 0.14, stagger: 0.04, sendAmbiance: true });
+  }
+
+  playInfernoTrungLaugh() {
+    if (this.canThrottle("infTrungLaugh", 500)) return;
+    this.playSubPunch(82, 34, 0.38, 0.2);
+    const notes = [245, 222, 198, 174];
+    notes.forEach((f, idx) => {
+      const delay = idx * 0.17;
+      this.playLayerTone({ startFreq: f, endFreq: f * 0.84, duration: 0.13, type: "sawtooth", vol: 0.075, delay, filterFreq: 760, sendAmbiance: true });
+      this.playLayerTone({ startFreq: f * 1.5, endFreq: f * 1.28, duration: 0.12, type: "sine", vol: 0.055, delay, sendAmbiance: true });
+    });
+  }
+
+  playInfernoDoorUnlock() {
+    if (this.canThrottle("infDoor", 180)) return;
+    this.playSubPunch(130, 42, 0.26, 0.24);
+    this.playMetallicClang(420, 0.24, 0.14);
+    this.playMetallicClang(620, 0.2, 0.11, 0.09);
+    this.playFilteredNoise({ duration: 0.24, filterType: "lowpass", freqStart: 950, freqEnd: 220, q: 1.2, gainPeak: 0.18 });
+  }
+
+  playInfernoWallShatter() {
+    if (this.canThrottle("infWall", 150)) return;
+    this.playSubPunch(96, 26, 0.42, 0.34);
+    this.playLayerTone({ startFreq: 180, endFreq: 42, duration: 0.36, type: "sawtooth", vol: 0.2, filterFreq: 1200, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.38, filterType: "lowpass", freqStart: 2200, freqEnd: 190, q: 1.0, gainPeak: 0.3, sendAmbiance: true });
+  }
+
+  playInfernoMissileLock() {
+    if (this.canThrottle("infLock", 240)) return;
+    this.playLayerTone({ startFreq: 980, endFreq: 1280, duration: 0.075, type: "triangle", vol: 0.11 });
+    this.playLayerTone({ startFreq: 1180, endFreq: 1480, duration: 0.085, type: "triangle", vol: 0.11, delay: 0.095 });
+  }
+
+  updateInfernoAmbience(zoneId, inCombat, dt) {
+    if (!this.enabled || this._pageHidden) return;
+    this._infernoAmbTimer = (this._infernoAmbTimer ?? 2.5) - Math.max(0, Number(dt) || 0);
+    if (this._infernoAmbTimer > 0) return;
+    this._infernoAmbTimer = inCombat ? 6.5 : 4.8;
+    if (!this._canSpawnVoice(false)) return;
+
+    if (zoneId === "sacrificial_vault" || zoneId === "four_chairs") {
+      this.playLayerTone({ startFreq: this.jitter(92, 0.05), endFreq: 76, duration: 0.9, type: "sine", vol: 0.06, sendAmbiance: true });
+      this.playFilteredNoise({ duration: 0.65, filterType: "bandpass", freqStart: 420, freqEnd: 260, q: 2.2, gainPeak: 0.04, sendAmbiance: true });
+    } else if (zoneId === "ash_square" || zoneId === "burn_archive") {
+      this.playFilteredNoise({ duration: 0.72, filterType: "bandpass", freqStart: 920, freqEnd: 460, q: 1.8, gainPeak: 0.055, sendAmbiance: true });
+      if (zoneId === "ash_square" && Math.random() < 0.45) {
+        this.playLayerTone({ startFreq: 740, endFreq: 660, duration: 0.28, type: "sine", vol: 0.04, delay: 0.12, sendAmbiance: true });
+      }
+    } else if (zoneId === "meteor_crater") {
+      this.playChord([146.83, 220, 277.18], 0.75, { type: "sine", vol: 0.045, stagger: 0.06, sendAmbiance: true });
+    } else {
+      this.playFilteredNoise({ duration: 0.68, filterType: "lowpass", freqStart: 780, freqEnd: 260, q: 1.1, gainPeak: 0.05, sendAmbiance: true });
+    }
   }
 }
 

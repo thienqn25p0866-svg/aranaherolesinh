@@ -118,7 +118,7 @@ interface ServerEnemy {
 interface Room {
   id: string;
   status: "LOBBY" | "PLAYING";
-  mapId: "classic" | "blood_citadel";
+  mapId: "classic" | "inferno_ash" | "blood_citadel";
   hostId: string;
   players: Map<string, RoomPlayerState>;
   matchPlayerCount: number;
@@ -533,7 +533,7 @@ function getNextFreeSlot(room: Room): number {
 
 function getSpawnPosition(
   slot: number,
-  mapId: "classic" | "blood_citadel" = "classic"
+  mapId: "classic" | "inferno_ash" | "blood_citadel" = "classic"
 ): { x: number; y: number } {
   const offsets = [
     { dx: -75, dy: -45 },
@@ -544,6 +544,9 @@ function getSpawnPosition(
   const off = offsets[slot % offsets.length];
   if (mapId === "blood_citadel") {
     return { x: 800 + off.dx, y: 840 + off.dy };
+  }
+  if (mapId === "inferno_ash") {
+    return { x: 280 + off.dx, y: 1840 + off.dy };
   }
   return { x: 1000 + off.dx, y: 700 + off.dy };
 }
@@ -852,7 +855,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     }
     removePlayerFromCurrentRoom(playerId);
     const roomId = generateRoomId();
-    const mapId: "classic" | "blood_citadel" = msg.mapId === "blood_citadel" ? "blood_citadel" : "classic";
+    const mapId: "classic" | "inferno_ash" | "blood_citadel" =
+      msg.mapId === "blood_citadel" || msg.mapId === "inferno_ash" ? msg.mapId : "classic";
     const name = sanitizeName(msg.playerName, 1);
     const pos = getSpawnPosition(0, mapId);
 
@@ -1021,7 +1025,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
   if (msg.type === "SET_MAP") {
     if (room.hostId !== playerId || room.status !== "LOBBY") return;
-    room.mapId = msg.mapId === "blood_citadel" ? "blood_citadel" : "classic";
+    room.mapId = msg.mapId === "blood_citadel" || msg.mapId === "inferno_ash" ? msg.mapId : "classic";
     broadcastRoomUpdate(room);
     return;
   }
@@ -1162,8 +1166,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const knockY = Number(msg.knockY) || 0;
     if (knockX !== 0 || knockY !== 0) {
       const factor = enemy.kind === "boss" ? 0.25 : 1;
-      const mapW = room.mapId === "blood_citadel" ? 1600 : 2000;
-      const mapH = room.mapId === "blood_citadel" ? 1600 : 1400;
+      const mapW = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2400 : 2000;
+      const mapH = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2100 : 1400;
       enemy.x = Math.max(enemy.radius, Math.min(mapW - enemy.radius, enemy.x + knockX * factor));
       enemy.y = Math.max(enemy.radius, Math.min(mapH - enemy.radius, enemy.y + knockY * factor));
     }
@@ -1336,8 +1340,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const s = msg.state;
     if (!s || typeof s !== "object") return;
     const wasAlive = player.alive;
-    const mapW = room.mapId === "blood_citadel" ? 1600 : 2000;
-    const mapH = room.mapId === "blood_citadel" ? 1600 : 1400;
+    const mapW = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2400 : 2000;
+    const mapH = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2100 : 1400;
     player.x = Math.max(20, Math.min(mapW - 20, Number(s.x) || player.x));
     player.y = Math.max(20, Math.min(mapH - 20, Number(s.y) || player.y));
     player.vx = Number(s.vx) || 0;

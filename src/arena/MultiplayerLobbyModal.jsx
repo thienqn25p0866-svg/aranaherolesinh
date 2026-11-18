@@ -527,7 +527,10 @@ export function MultiplayerLobbyModal({
                 <div className="flex flex-wrap items-center gap-3 text-xs font-mono-numbers tabular-nums">
                   <div className="flex items-center gap-1.5">
                     {ARENA_MAP_LIST.map((m) => {
-                      const roomMapId = room.mapId === "blood_citadel" ? "blood_citadel" : "classic";
+                      const roomMapId =
+                        room.mapId === "blood_citadel" || room.mapId === "inferno_ash"
+                          ? room.mapId
+                          : "classic";
                       const active = roomMapId === m.id;
                       const unlocked = isMapUnlocked(m.id, unlockedMaps, founderUnlocked);
                       const disabled = !isHost || !unlocked;
@@ -545,6 +548,8 @@ export function MultiplayerLobbyModal({
                             active
                               ? m.id === "blood_citadel"
                                 ? "bg-rose-950/80 border-rose-400/80 text-rose-100"
+                                : m.id === "inferno_ash"
+                                ? "bg-orange-950/80 border-orange-400/80 text-orange-100"
                                 : "bg-amber-950/70 border-amber-400/80 text-amber-100"
                               : disabled
                               ? "bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed"
@@ -558,7 +563,7 @@ export function MultiplayerLobbyModal({
                               : m.name?.[lang]
                           }
                         >
-                          {unlocked ? (m.id === "blood_citadel" ? "🏰 " : "⚔️ ") : "🔒 "}
+                          {unlocked ? (m.id === "blood_citadel" ? "🏰 " : m.id === "inferno_ash" ? "🔥 " : "⚔️ ") : "🔒 "}
                           {m.name?.[lang] || m.id}
                         </button>
                       );

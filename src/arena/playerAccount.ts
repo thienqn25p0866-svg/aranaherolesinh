@@ -8,6 +8,12 @@ import {
   normalizeCitadelSecrets,
 } from "./bloodCitadelMap";
 import {
+  type InfernoProgressState,
+  createDefaultInfernoProgress,
+  mergeInfernoProgress,
+  normalizeInfernoProgress,
+} from "./infernoAshMap";
+import {
   type DeviceSettings,
   type SavedRunCheckpoint,
   normalizeDeviceSettings,
@@ -158,6 +164,7 @@ export interface ProgressSnapshot {
   classicCleared?: boolean;
   unlockedMaps?: ArenaMapId[];
   citadelSecrets?: CitadelSecretsProgress;
+  infernoProgress?: InfernoProgressState;
 }
 
 export function getTodayDateKey(now: Date = new Date()): string {
@@ -423,6 +430,7 @@ export function mergeLocalAndCloudProgress(
       classicCleared: localClassicCleared,
       unlockedMaps,
       citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
+      infernoProgress: normalizeInfernoProgress(local.infernoProgress),
     };
   }
   const cloudWave = Math.max(0, Math.min(27, Math.floor(Number(cloud.highestWave) || 0)));
@@ -481,6 +489,7 @@ export function mergeLocalAndCloudProgress(
     classicCleared,
     unlockedMaps,
     citadelSecrets,
+    infernoProgress: mergeInfernoProgress(local.infernoProgress, cloud.infernoProgress),
   };
 }
 
@@ -519,6 +528,7 @@ export function parseSavePackageJson(
     const rawMap = normalizeArenaMapId(p.selectedMapId);
     const selectedMapId = isMapUnlocked(rawMap, unlockedMaps, founderUnlocked) ? rawMap : "classic";
     const citadelSecrets = p.citadelSecrets ? normalizeCitadelSecrets(p.citadelSecrets) : createDefaultCitadelSecrets();
+    const infernoProgress = p.infernoProgress ? normalizeInfernoProgress(p.infernoProgress) : createDefaultInfernoProgress();
     const savedRun = normalizeSavedRun(parsed.savedRun ?? p.savedRun, 27);
     const settings =
       parsed.settings && typeof parsed.settings === "object"
@@ -548,6 +558,7 @@ export function parseSavePackageJson(
       classicCleared,
       unlockedMaps,
       citadelSecrets,
+      infernoProgress,
     };
     return {
       ok: true,
