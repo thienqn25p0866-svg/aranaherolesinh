@@ -118,6 +118,7 @@ interface ServerEnemy {
 interface Room {
   id: string;
   status: "LOBBY" | "PLAYING";
+  mapId: "classic" | "blood_citadel";
   hostId: string;
   players: Map<string, RoomPlayerState>;
   matchPlayerCount: number;
@@ -530,7 +531,10 @@ function getNextFreeSlot(room: Room): number {
   return room.players.size;
 }
 
-function getSpawnPosition(slot: number): { x: number; y: number } {
+function getSpawnPosition(
+  slot: number,
+  mapId: "classic" | "blood_citadel" = "classic"
+): { x: number; y: number } {
   const offsets = [
     { dx: -75, dy: -45 },
     { dx: 75, dy: -45 },
@@ -538,6 +542,9 @@ function getSpawnPosition(slot: number): { x: number; y: number } {
     { dx: 75, dy: 55 },
   ];
   const off = offsets[slot % offsets.length];
+  if (mapId === "blood_citadel") {
+    return { x: 800 + off.dx, y: 840 + off.dy };
+  }
   return { x: 1000 + off.dx, y: 700 + off.dy };
 }
 
@@ -563,6 +570,7 @@ function serializeRoom(room: Room) {
   return {
     roomId: room.id,
     status: room.status,
+    mapId: room.mapId || "classic",
     hostId: room.hostId,
     maxPlayers: MAX_PLAYERS_PER_ROOM,
     playerCount: members.length,
@@ -779,7 +787,7 @@ function startRoomMatch(room: Room) {
 
   const spawns: Record<string, { x: number; y: number; slot: number }> = {};
   for (const p of room.players.values()) {
-    const pos = getSpawnPosition(p.slot);
+    const pos = getSpawnPosition(p.slot, room.mapId);
     p.alive = true;
     p.readyNextWave = false;
     p.totalDamage = 0;
@@ -794,6 +802,7 @@ function startRoomMatch(room: Room) {
   broadcastRoom(room, {
     type: "MATCH_STARTED",
     room: serializeRoom(room),
+    mapId: room.mapId || "classic",
     wave: 1,
     playerCount: room.matchPlayerCount,
     powerMultiplier: room.powerMultiplier,
@@ -843,8 +852,9 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     }
     removePlayerFromCurrentRoom(playerId);
     const roomId = generateRoomId();
+    const mapId: "classic" | "blood_citadel" = msg.mapId === "blood_citadel" ? "blood_citadel" : "classic";
     const name = sanitizeName(msg.playerName, 1);
-    const pos = getSpawnPosition(0);
+    const pos = getSpawnPosition(0, mapId);
 
     const hostPlayer: RoomPlayerState = {
       id: playerId,
@@ -878,6 +888,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const room: Room = {
       id: roomId,
       status: "LOBBY",
+      mapId,
       hostId: playerId,
       players: new Map([[playerId, hostPlayer]]),
       matchPlayerCount: 1,
@@ -932,7 +943,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
     const slot = getNextFreeSlot(room);
     const name = sanitizeName(msg.playerName, slot + 1);
-    const pos = getSpawnPosition(slot);
+    const pos = getSpawnPosition(slot, room.mapId);
 
     const joinedPlayer: RoomPlayerState = {
       id: playerId,
@@ -1004,6 +1015,13 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
 
   if (msg.type === "SET_NAME") {
     player.name = sanitizeName(msg.playerName, player.slot + 1);
+    broadcastRoomUpdate(room);
+    return;
+  }
+
+  if (msg.type === "SET_MAP") {
+    if (room.hostId !== playerId || room.status !== "LOBBY") return;
+    room.mapId = msg.mapId === "blood_citadel" ? "blood_citadel" : "classic";
     broadcastRoomUpdate(room);
     return;
   }
@@ -1144,8 +1162,10 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const knockY = Number(msg.knockY) || 0;
     if (knockX !== 0 || knockY !== 0) {
       const factor = enemy.kind === "boss" ? 0.25 : 1;
-      enemy.x = Math.max(enemy.radius, Math.min(2000 - enemy.radius, enemy.x + knockX * factor));
-      enemy.y = Math.max(enemy.radius, Math.min(1400 - enemy.radius, enemy.y + knockY * factor));
+      const mapW = room.mapId === "blood_citadel" ? 1600 : 2000;
+      const mapH = room.mapId === "blood_citadel" ? 1600 : 1400;
+      enemy.x = Math.max(enemy.radius, Math.min(mapW - enemy.radius, enemy.x + knockX * factor));
+      enemy.y = Math.max(enemy.radius, Math.min(mapH - enemy.radius, enemy.y + knockY * factor));
     }
 
     if (msg.effects && typeof msg.effects === "object") {
@@ -1316,8 +1336,10 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const s = msg.state;
     if (!s || typeof s !== "object") return;
     const wasAlive = player.alive;
-    player.x = Math.max(20, Math.min(1980, Number(s.x) || player.x));
-    player.y = Math.max(20, Math.min(1380, Number(s.y) || player.y));
+    const mapW = room.mapId === "blood_citadel" ? 1600 : 2000;
+    const mapH = room.mapId === "blood_citadel" ? 1600 : 1400;
+    player.x = Math.max(20, Math.min(mapW - 20, Number(s.x) || player.x));
+    player.y = Math.max(20, Math.min(mapH - 20, Number(s.y) || player.y));
     player.vx = Number(s.vx) || 0;
     player.vy = Number(s.vy) || 0;
     player.facing = Number(s.facing) || 0;

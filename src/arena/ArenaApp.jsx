@@ -9,6 +9,7 @@ import { detectClientEnvironment, isPrivateOrDevOrigin, classifyJoinCode, sortIt
 import { MobaLobbyMenu, MobaHeroSelect } from "./MobaLobbyViews";
 import PlayerAccountModal from "./PlayerAccountModal";
 import AuthErrorBanner from "./AuthErrorBanner";
+import ChroniclesModal from "./ChroniclesModal";
 import {
   ARENA_MAPS,
   CITADEL_UNLOCK_WAVE,
@@ -19,6 +20,9 @@ import {
   normalizeArenaMapId,
 } from "./bloodCitadelMap";
 import {
+  GAME_SAVE_STORAGE_KEY,
+  MP_PLAYER_NAME_STORAGE_KEY,
+  PLAYER_PROFILE_STORAGE_KEY,
   DAILY_CHECKIN_REWARD,
   canClaimDailyCheckIn,
   computeUnlockedTitles,
@@ -32,6 +36,20 @@ import {
   saveLocalPlayerProfile,
   serializeHeroGearEntries,
 } from "./playerAccount";
+import {
+  DEVICE_SETTINGS_STORAGE_KEY,
+  decodeDeviceTransferCode,
+  encodeDeviceTransferCode,
+  hydrateDeviceStorageAsync,
+  isStaticWebHost,
+  loadDeviceRecord,
+  loadDeviceSettings,
+  readDeviceKey,
+  requestPersistentStorage,
+  saveDeviceSettings,
+  touchDeviceVisit,
+  writeDeviceKey,
+} from "./deviceStorage";
 import {
   FOUNDER_EMAIL,
   fetchOwnPublicProfile,
@@ -1141,40 +1159,13 @@ function formatWaveClock(sec) {
   return `${String(m).padStart(2, "0")}:${r < 10 ? "0" : ""}${r.toFixed(1)}`;
 }
 function ny() {
-  let s = (0, ie.useRef)(null), a = (0, ie.useRef)(null), [l, m] = (0, ie.useState)("MENU"), [c, g] = (0, ie.useState)("vi"), [p, h] = (0, ie.useState)(Mi[4]), [f, v] = (0, ie.useState)(100), [T, b] = (0, ie.useState)(false), [x, C] = (0, ie.useState)(false), [H, D] = (0, ie.useState)(false), [P, N] = (0, ie.useState)(false), [W, V] = (0, ie.useState)(false), [oe, ye] = (0, ie.useState)(false), [De, nt] = (0, ie.useState)(false), [ce, Me] = (0, ie.useState)(null), [ht, je] = (0, ie.useState)("eohyen"), [qe, bt] = (0, ie.useState)(0), [Ft, Nt] = (0, ie.useState)(true), [U, pe] = (0, ie.useState)(0.45), [musicOn, setMusicOn] = (0, ie.useState)(true), [musicVol, setMusicVol] = (0, ie.useState)(0.35), [ne, _e] = (0, ie.useState)(true), [Z, tt] = (0, ie.useState)(true), [layoutMode, setLayoutMode] = (0, ie.useState)(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("arena_hero_portrait_prefs") || "{}");
-      if (saved.layoutMode === "portrait" || saved.layoutMode === "standard" || saved.layoutMode === "auto") return saved.layoutMode;
-    } catch {
-    }
-    return "auto";
-  }), [portraitFov, setPortraitFov] = (0, ie.useState)(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("arena_hero_portrait_prefs") || "{}");
-      if (saved.portraitFov === "wide" || saved.portraitFov === "balanced" || saved.portraitFov === "close") return saved.portraitFov;
-    } catch {
-    }
-    return "balanced";
-  }), [qualityMode, setQualityMode] = (0, ie.useState)(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("arena_hero_perf_prefs") || "{}");
-      return normalizeQualityMode(saved.qualityMode);
-    } catch {
-      return "auto";
-    }
-  }), [fpsCapMode, setFpsCapMode] = (0, ie.useState)(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("arena_hero_perf_prefs") || "{}");
-      return normalizeFpsCapMode(saved.fpsCapMode);
-    } catch {
-      return "auto";
-    }
-  }), [viewportSize, setViewportSize] = (0, ie.useState)(() => ({
+  const [initialDeviceSettings] = (0, ie.useState)(() => loadDeviceSettings());
+  let s = (0, ie.useRef)(null), a = (0, ie.useRef)(null), [l, m] = (0, ie.useState)("MENU"), [c, g] = (0, ie.useState)(() => initialDeviceSettings.lang || "vi"), [p, h] = (0, ie.useState)(Mi[4]), [f, v] = (0, ie.useState)(100), [T, b] = (0, ie.useState)(false), [x, C] = (0, ie.useState)(false), [H, D] = (0, ie.useState)(false), [P, N] = (0, ie.useState)(false), [W, V] = (0, ie.useState)(false), [oe, ye] = (0, ie.useState)(false), [De, nt] = (0, ie.useState)(false), [ce, Me] = (0, ie.useState)(null), [ht, je] = (0, ie.useState)("eohyen"), [qe, bt] = (0, ie.useState)(0), [Ft, Nt] = (0, ie.useState)(() => initialDeviceSettings.sfxEnabled), [U, pe] = (0, ie.useState)(() => initialDeviceSettings.sfxVolume), [musicOn, setMusicOn] = (0, ie.useState)(() => initialDeviceSettings.musicOn), [musicVol, setMusicVol] = (0, ie.useState)(() => initialDeviceSettings.musicVol), [ne, _e] = (0, ie.useState)(() => initialDeviceSettings.screenShake), [Z, tt] = (0, ie.useState)(() => initialDeviceSettings.showDamageNumbers), [layoutMode, setLayoutMode] = (0, ie.useState)(() => initialDeviceSettings.layoutMode), [portraitFov, setPortraitFov] = (0, ie.useState)(() => initialDeviceSettings.portraitFov), [qualityMode, setQualityMode] = (0, ie.useState)(() => initialDeviceSettings.qualityMode), [fpsCapMode, setFpsCapMode] = (0, ie.useState)(() => initialDeviceSettings.fpsCapMode), [viewportSize, setViewportSize] = (0, ie.useState)(() => ({
     w: typeof window !== "undefined" ? window.innerWidth || 1280 : 1280,
     h: typeof window !== "undefined" ? window.innerHeight || 720 : 720
   })), [isFullscreen, setIsFullscreen] = (0, ie.useState)(false), [isPseudoFullscreen, setIsPseudoFullscreen] = (0, ie.useState)(false), [shareGuideOpen, setShareGuideOpen] = (0, ie.useState)(false), [shareCopied, setShareCopied] = (0, ie.useState)(false), [mpLobbyOpen, setMpLobbyOpen] = (0, ie.useState)(false), [mpRoom, setMpRoom] = (0, ie.useState)(null), [mpName, setMpName] = (0, ie.useState)(() => {
     try {
-      return localStorage.getItem("arena_hero_mp_name") || "";
+      return readDeviceKey(MP_PLAYER_NAME_STORAGE_KEY) || "";
     } catch {
       return "";
     }
@@ -1195,10 +1186,15 @@ function ny() {
     [accountSyncBusy, setAccountSyncBusy] = (0, ie.useState)(false),
     [accountAuthError, setAccountAuthError] = (0, ie.useState)(""),
     [accountAuthDetails, setAccountAuthDetails] = (0, ie.useState)(null),
+    [deviceInfo, setDeviceInfo] = (0, ie.useState)(() => touchDeviceVisit()),
+    [resumableRun, setResumableRun] = (0, ie.useState)(null),
     [selectedMapId, setSelectedMapId] = (0, ie.useState)("classic"),
     [unlockedMaps, setUnlockedMaps] = (0, ie.useState)(["classic"]),
     [citadelSecrets, setCitadelSecrets] = (0, ie.useState)(() => createDefaultCitadelSecrets()),
     [citadelLoreModal, setCitadelLoreModal] = (0, ie.useState)(null),
+    [chroniclesOpen, setChroniclesOpen] = (0, ie.useState)(false),
+    [chroniclesTab, setChroniclesTab] = (0, ie.useState)("world"),
+    [chroniclesFocusHeroId, setChroniclesFocusHeroId] = (0, ie.useState)(null),
     [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null, mapId: "classic", nearbyInteractable: null, citadelSecrets: createDefaultCitadelSecrets() }),
     [mt, S] = (0, ie.useState)(null),
     selectedHeroRef = (0, ie.useRef)(p),
@@ -1229,7 +1225,11 @@ function ny() {
   playerProfileRef.current = playerProfile;
   perfPrefsRef.current = { qualityMode, fpsCapMode };
   const resolveFounderApiBase = (0, ie.useCallback)(() => {
-    if (typeof window !== "undefined" && /^https?:$/i.test(window.location?.protocol || "")) {
+    if (
+      typeof window !== "undefined" &&
+      /^https?:$/i.test(window.location?.protocol || "") &&
+      !isStaticWebHost(window.location?.hostname || "", window.location?.protocol || "")
+    ) {
       return { canFetch: true, base: "" };
     }
     const base = mpClient.getHttpBaseResult().baseUrl || "";
@@ -1243,6 +1243,7 @@ function ny() {
     setFounderUnlocked(nextUnlocked);
     setFounderToken(nextToken);
     setFounderAuthSource(nextUnlocked ? source : "");
+    a.current?.setFounderUnlocked?.(nextUnlocked);
   }, []);
   let requireFounderUnlock = (0, ie.useCallback)((onSuccessAction) => {
     if (founderUnlockedRef.current) {
@@ -1311,12 +1312,17 @@ function ny() {
   (0, ie.useEffect)(() => {
     if (!s.current) return;
     let w = new Hf(s.current);
+    w.currentLang = initialDeviceSettings.lang || "vi";
     w.applyPerformanceSettings?.(perfPrefsRef.current);
-    a.current = w, w.onToast = G, w.onStateChange = () => {
+    a.current = w, w.onToast = G, w.onSaveUpdated = () => {
+      setDeviceInfo(loadDeviceRecord());
+      setResumableRun(w.getSavedRunSnapshot?.() || null);
+    }, w.onStateChange = () => {
       m(w.gameState), v(w.playerCoins);
       setSelectedMapId(w.selectedMapId || "classic");
       setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
       setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
+      setResumableRun(w.getSavedRunSnapshot?.() || null);
     };
     w.onCitadelLore = (lorePayload) => {
       if (!lorePayload) return;
@@ -1350,7 +1356,8 @@ function ny() {
       w.unlockedMaps = computeUnlockedMaps({
         classicCleared: Boolean(w.classicCleared),
         highestWaveCleared: w.highestWaveCleared,
-        existing: w.unlockedMaps,
+        storedUnlocked: w.unlockedMaps,
+        founderUnlocked: founderUnlockedRef.current,
       });
       w.saveGame();
       setUnlockedMaps([...w.unlockedMaps]);
@@ -1403,13 +1410,16 @@ function ny() {
       w.unlockedMaps = computeUnlockedMaps({
         classicCleared: Boolean(w.classicCleared),
         highestWaveCleared: w.highestWaveCleared,
-        existing: w.unlockedMaps,
+        storedUnlocked: w.unlockedMaps,
+        founderUnlocked: founderUnlockedRef.current,
       });
       w.saveGame();
     }
     setSelectedMapId(w.selectedMapId || "classic");
     setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
     setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
+    setResumableRun(w.getSavedRunSnapshot?.() || null);
+    setDeviceInfo(loadDeviceRecord());
     v(w.playerCoins);
     if (w.currentHero && !(w.currentHero.isSecretFounder && !founderUnlockedRef.current)) {
       h(w.currentHero);
@@ -1447,6 +1457,60 @@ function ny() {
     } catch {
     }
     let hudTimerId = null, hudStopped = false;
+    requestPersistentStorage().then((granted) => {
+      if (!hudStopped && granted) {
+        setDeviceInfo(loadDeviceRecord());
+      }
+    }).catch(() => {});
+    hydrateDeviceStorageAsync().then((res) => {
+      if (hudStopped || !res?.recoveredKeys?.length) return;
+      if (res.recoveredKeys.includes(GAME_SAVE_STORAGE_KEY)) {
+        const recoveredRaw = readDeviceKey(GAME_SAVE_STORAGE_KEY);
+        if (recoveredRaw && w.applyHydratedSaveData?.(recoveredRaw)) {
+          v(w.playerCoins);
+          setSelectedMapId(w.selectedMapId || "classic");
+          setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
+          setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
+          setResumableRun(w.getSavedRunSnapshot?.() || null);
+          bt((n) => n + 1);
+        }
+      }
+      if (res.recoveredKeys.includes(PLAYER_PROFILE_STORAGE_KEY)) {
+        const recoveredProf = loadLocalPlayerProfile({
+          founderUnlocked: founderUnlockedRef.current,
+          minHighestWave: w.highestWaveCleared,
+        });
+        setPlayerProfile(recoveredProf);
+        if (recoveredProf.displayName) setMpName(recoveredProf.displayName);
+      }
+      if (res.recoveredKeys.includes(DEVICE_SETTINGS_STORAGE_KEY)) {
+        const ds = loadDeviceSettings();
+        g(ds.lang);
+        Nt(ds.sfxEnabled);
+        pe(ds.sfxVolume);
+        setMusicOn(ds.musicOn);
+        setMusicVol(ds.musicVol);
+        _e(ds.screenShake);
+        tt(ds.showDamageNumbers);
+        setLayoutMode(ds.layoutMode);
+        setPortraitFov(ds.portraitFov);
+        setQualityMode(ds.qualityMode);
+        setFpsCapMode(ds.fpsCapMode);
+      }
+      setDeviceInfo(loadDeviceRecord());
+    }).catch(() => {});
+    const flushDeviceCheckpoint = () => {
+      if (!hudStopped && (w.gameState === "PLAYING" || w.gameState === "PAUSED") && !w.multiplayer?.active && w.player && w.player.hp > 0) {
+        w.captureCurrentRunCheckpoint?.();
+        w.saveGame();
+      }
+    };
+    const autoSaveTimer = setInterval(() => {
+      if (!hudStopped && w.gameState === "PLAYING" && !w.multiplayer?.active && w.player && w.player.hp > 0) {
+        w.captureCurrentRunCheckpoint?.();
+        w.saveGame();
+      }
+    }, 8000);
     const tickHud = () => {
       if (hudStopped) return;
       const isHidden = typeof document !== "undefined" && Boolean(document.hidden);
@@ -1473,17 +1537,21 @@ function ny() {
     hudTimerId = setTimeout(tickHud, 70);
     const onVisHud = () => {
       if (hudStopped || typeof document === "undefined") return;
-      if (!document.hidden && hudTimerId !== null) {
+      if (document.hidden) {
+        flushDeviceCheckpoint();
+      } else if (hudTimerId !== null) {
         clearTimeout(hudTimerId);
         hudTimerId = setTimeout(tickHud, 20);
       }
     };
     typeof document !== "undefined" && document.addEventListener("visibilitychange", onVisHud);
+    window.addEventListener("pagehide", flushDeviceCheckpoint);
+    window.addEventListener("beforeunload", flushDeviceCheckpoint);
     let ee = () => w.resizeCanvas();
     window.addEventListener("resize", ee);
     let he = null;
     return typeof ResizeObserver < "u" && s.current && (he = new ResizeObserver(() => w.resizeCanvas()), he.observe(s.current)), () => {
-      hudStopped = true, hudTimerId !== null && clearTimeout(hudTimerId), typeof document !== "undefined" && document.removeEventListener("visibilitychange", onVisHud), window.removeEventListener("resize", ee), he?.disconnect(), w.stop();
+      hudStopped = true, clearInterval(autoSaveTimer), hudTimerId !== null && clearTimeout(hudTimerId), typeof document !== "undefined" && document.removeEventListener("visibilitychange", onVisHud), window.removeEventListener("pagehide", flushDeviceCheckpoint), window.removeEventListener("beforeunload", flushDeviceCheckpoint), window.removeEventListener("resize", ee), he?.disconnect(), w.stop();
     };
   }, [G]), (0, ie.useEffect)(() => {
     let unsub = mpClient.subscribe((msg) => {
@@ -1621,13 +1689,21 @@ function ny() {
       unsub();
     };
   }, [G]), (0, ie.useEffect)(() => {
-    a.current && (a.current.gameSettings.soundEnabled = Ft, a.current.gameSettings.volume = U, a.current.gameSettings.screenShake = ne, a.current.gameSettings.showDamageNumbers = Z, a.current.gameSettings.layoutMode = layoutMode, a.current.gameSettings.portraitFov = portraitFov, a.current.applyPerformanceSettings?.({ qualityMode, fpsCapMode })), R.setSfxEnabled(Ft), R.setSfxVolume(U), R.setMusicEnabled(musicOn), R.setMusicVolume(musicVol);
-    try {
-      localStorage.setItem("arena_hero_portrait_prefs", JSON.stringify({ layoutMode, portraitFov }));
-      localStorage.setItem("arena_hero_perf_prefs", JSON.stringify({ qualityMode, fpsCapMode }));
-    } catch {
-    }
-  }, [Ft, U, musicOn, musicVol, ne, Z, layoutMode, portraitFov, qualityMode, fpsCapMode]), (0, ie.useEffect)(() => {
+    a.current && (a.current.currentLang = c, a.current.gameSettings.soundEnabled = Ft, a.current.gameSettings.volume = U, a.current.gameSettings.screenShake = ne, a.current.gameSettings.showDamageNumbers = Z, a.current.gameSettings.layoutMode = layoutMode, a.current.gameSettings.portraitFov = portraitFov, a.current.applyPerformanceSettings?.({ qualityMode, fpsCapMode })), R.setSfxEnabled(Ft), R.setSfxVolume(U), R.setMusicEnabled(musicOn), R.setMusicVolume(musicVol);
+    saveDeviceSettings({
+      lang: c,
+      sfxEnabled: Ft,
+      sfxVolume: U,
+      musicOn,
+      musicVol,
+      screenShake: ne,
+      showDamageNumbers: Z,
+      layoutMode,
+      portraitFov,
+      qualityMode,
+      fpsCapMode,
+    });
+  }, [c, Ft, U, musicOn, musicVol, ne, Z, layoutMode, portraitFov, qualityMode, fpsCapMode]), (0, ie.useEffect)(() => {
     if (l === "MENU" || l === "HERO_SELECT") R.setMusicMode("menu");
     else if (l === "PAUSED") R.setMusicMode("paused");
     else if (l === "GAME_OVER" || l === "VICTORY") R.setMusicMode("off");
@@ -1791,7 +1867,12 @@ function ny() {
     const { canFetch: hasHttpBackend, base } = resolveFounderApiBase();
     if (!hasHttpBackend) {
       R.playError();
-      setFounderAuthError("Xác thực mật khẩu yêu cầu kết nối máy chủ backend hoặc đăng nhập Google Nhà Sáng Lập.");
+      const env = detectStorageEnvironment();
+      setFounderAuthError(
+        env.isStaticHost
+          ? "Bản Web tĩnh / HTML cục bộ không chạy backend PIN. Hãy dùng Google Nhà Sáng Lập hoặc gắn máy chủ Co-op."
+          : "Xác thực mật khẩu yêu cầu kết nối máy chủ backend hoặc đăng nhập Google Nhà Sáng Lập."
+      );
       return;
     }
     setFounderAuthBusy(true);
@@ -1905,7 +1986,7 @@ function ny() {
   }, handleMpNameChange = (val) => {
     setMpName(val);
     try {
-      localStorage.setItem("arena_hero_mp_name", val);
+      writeDeviceKey(MP_PLAYER_NAME_STORAGE_KEY, val);
     } catch {
     }
   };
@@ -1938,7 +2019,8 @@ function ny() {
       unlockedMaps: computeUnlockedMaps({
         classicCleared: Boolean(w?.classicCleared),
         highestWaveCleared: highestWave,
-        existing: w?.unlockedMaps,
+        storedUnlocked: w?.unlockedMaps,
+        founderUnlocked: founderUnlockedRef.current,
       }),
       citadelSecrets: normalizeCitadelSecrets(w?.citadelSecrets),
     };
@@ -1965,14 +2047,15 @@ function ny() {
     w.unlockedMaps = computeUnlockedMaps({
       classicCleared: w.classicCleared,
       highestWaveCleared: w.highestWaveCleared,
-      existing: [...(w.unlockedMaps || []), ...(snapshot.unlockedMaps || [])],
+      storedUnlocked: [...(w.unlockedMaps || []), ...(snapshot.unlockedMaps || [])],
+      founderUnlocked: founderUnlockedRef.current,
     });
     w.citadelSecrets = normalizeCitadelSecrets({
       ...w.citadelSecrets,
       ...(snapshot.citadelSecrets || {}),
     });
     const reqMap = normalizeArenaMapId(snapshot.selectedMapId || w.selectedMapId);
-    w.selectedMapId = isMapUnlocked(reqMap, w.unlockedMaps) ? reqMap : "classic";
+    w.selectedMapId = isMapUnlocked(reqMap, w.unlockedMaps, founderUnlockedRef.current) ? reqMap : "classic";
     let candidate = Mi.find((hr) => hr.id === snapshot.selectedHeroId) || Mi[4];
     if (candidate?.isSecretFounder && !founderUnlockedRef.current) {
       candidate = Mi[4];
@@ -2306,11 +2389,27 @@ function ny() {
   };
   let handleExportSaveJson = () => {
     const snapshot = buildProgressSnapshot(playerProfileRef.current);
+    const curDev = loadDeviceRecord();
     const payload = {
       version: "11.8",
+      deviceId: curDev.deviceId,
       exportedAt: new Date().toISOString(),
       profile: playerProfileRef.current,
       progress: snapshot,
+      savedRun: a.current?.getSavedRunSnapshot?.() || null,
+      settings: {
+        lang: c,
+        sfxEnabled: Ft,
+        sfxVolume: U,
+        musicOn,
+        musicVol,
+        screenShake: ne,
+        showDamageNumbers: Z,
+        layoutMode,
+        portraitFov,
+        qualityMode,
+        fpsCapMode,
+      },
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2323,8 +2422,39 @@ function ny() {
     setTimeout(() => URL.revokeObjectURL(url), 30000);
     G("Đã tải xuống file sao lưu tiến trình (.json)!");
   };
+  let handleGenerateTransferCode = () => {
+    const snapshot = buildProgressSnapshot(playerProfileRef.current);
+    const curDev = loadDeviceRecord();
+    return encodeDeviceTransferCode({
+      version: "11.8",
+      deviceId: curDev.deviceId,
+      exportedAt: new Date().toISOString(),
+      profile: playerProfileRef.current,
+      progress: snapshot,
+      savedRun: a.current?.getSavedRunSnapshot?.() || null,
+      settings: {
+        lang: c,
+        sfxEnabled: Ft,
+        sfxVolume: U,
+        musicOn,
+        musicVol,
+        screenShake: ne,
+        showDamageNumbers: Z,
+        layoutMode,
+        portraitFov,
+        qualityMode,
+        fpsCapMode,
+      },
+    });
+  };
   let handleImportSaveJson = async (rawText) => {
-    const parsed = parseSavePackageJson(rawText, founderUnlockedRef.current);
+    const decoded = decodeDeviceTransferCode(rawText);
+    if (!decoded.ok) {
+      R.playError();
+      G(decoded.error);
+      return;
+    }
+    const parsed = parseSavePackageJson(decoded.jsonText, founderUnlockedRef.current);
     if (!parsed.ok) {
       R.playError();
       G(parsed.error);
@@ -2336,6 +2466,25 @@ function ny() {
       founderUnlockedRef.current
     );
     applyProgressSnapshotToEngine(mergedProgress);
+    if (parsed.savedRun && a.current) {
+      a.current.savedRun = parsed.savedRun;
+      a.current.saveGame();
+      setResumableRun(a.current.getSavedRunSnapshot?.() || null);
+    }
+    if (parsed.settings) {
+      const ds = saveDeviceSettings(parsed.settings);
+      g(ds.lang);
+      Nt(ds.sfxEnabled);
+      pe(ds.sfxVolume);
+      setMusicOn(ds.musicOn);
+      setMusicVol(ds.musicVol);
+      _e(ds.screenShake);
+      tt(ds.showDamageNumbers);
+      setLayoutMode(ds.layoutMode);
+      setPortraitFov(ds.portraitFov);
+      setQualityMode(ds.qualityMode);
+      setFpsCapMode(ds.fpsCapMode);
+    }
     const nextProf = saveLocalPlayerProfile(
       {
         ...playerProfileRef.current,
@@ -2353,8 +2502,9 @@ function ny() {
     );
     setPlayerProfile(nextProf);
     handleMpNameChange(nextProf.displayName);
+    setDeviceInfo(loadDeviceRecord());
     R.playHeroLockIn();
-    G("Đã khôi phục tiến trình từ file sao lưu!");
+    G(parsed.savedRun ? `Đã khôi phục toàn bộ tiến trình & màn đang chơi (Màn ${parsed.savedRun.wave})!` : "Đã khôi phục tiến trình thành công!");
     if (googleUserRef.current?.uid) {
       await syncCloudProgress(googleUserRef.current, nextProf, mergedProgress, false);
     }
@@ -2374,7 +2524,7 @@ function ny() {
     setP2pAnswerCode("");
     setP2pAutoPaired(false);
     setMpBusy(true);
-    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", safeHeroId).then((res) => {
+    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", safeHeroId, selectedMapId).then((res) => {
       setMpBusy(false);
       if (res?.mode === "p2p") {
         setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
@@ -2484,7 +2634,7 @@ function ny() {
     setP2pAutoPaired(false);
     setP2pBusy(true);
     try {
-      const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", safeHeroId);
+      const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", safeHeroId, selectedMapId);
       setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
       setP2pManualOfferCode(res.manualOfferCode || "");
       setP2pHasServerSignal(Boolean(res.hasServerSignaling));
@@ -2617,8 +2767,28 @@ function ny() {
       return;
     }
     lastTrackedMatchKillsRef.current = 0;
-    R.playClick(), h(w), a.current && (a.current.startNewGame(w), m("PLAYING"), v(a.current.playerCoins));
+    R.playClick(), h(w), a.current && (a.current.startNewGame(w), m("PLAYING"), v(a.current.playerCoins), setResumableRun(a.current.getSavedRunSnapshot?.() || null));
     if (w?.isSecretFounder) logFounderAuditEvent("MATCH_STARTED", "solo").catch(() => {});
+  }, handleResumeSavedRun = () => {
+    const w = a.current;
+    if (!w) return;
+    const snap = w.getSavedRunSnapshot?.();
+    if (!snap) return;
+    if (snap.heroId === "thien" && !founderUnlockedRef.current) {
+      requireFounderUnlock(() => handleResumeSavedRun());
+      return;
+    }
+    lastTrackedMatchKillsRef.current = snap.totalKilled || 0;
+    R.playHeroLockIn();
+    R.playMatchStart();
+    if (w.resumeSavedGame?.(snap)) {
+      h(w.currentHero);
+      v(w.playerCoins);
+      setSelectedMapId(w.selectedMapId || "classic");
+      setResumableRun(w.getSavedRunSnapshot?.() || null);
+      m("PLAYING");
+      G(c === "vi" ? `Tiếp tục Màn ${snap.wave} cùng ${w.currentHero.name.split("(")[0].trim()}!` : `Resumed Wave ${snap.wave}!`);
+    }
   }, ve = (0, ie.useCallback)(() => {
     let w = a.current;
     w && (R.playClick(), w.multiplayer?.active ? setMpMenuOpen((prev) => !prev) : w.gameState === "PLAYING" ? (w.gameState = "PAUSED", w.moveInput = { x: 0, y: 0 }, w.tapDestination = null, w.aimState.active = false, m("PAUSED")) : w.gameState === "PAUSED" && (w.gameState = "PLAYING", m("PLAYING")));
@@ -2767,7 +2937,7 @@ function ny() {
                   const authInjected = `<script>window.__ARENA_AUTH_URL__=${JSON.stringify(authUrls[0])};window.__ARENA_AUTH_URLS__=${JSON.stringify(authUrls)};<\/script>`;
                   j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${authInjected}\n</head>`) : `${authInjected}\n${j}`;
                 }
-                if (!isPrivateOrDevOrigin(liveOrigin) && !j.includes("window.__ARENA_API_URL__")) {
+                if (!isPrivateOrDevOrigin(liveOrigin) && !isStaticWebHost(window.location?.hostname || "", window.location?.protocol || "") && !j.includes("window.__ARENA_API_URL__")) {
                   const injected = `<script>window.__ARENA_API_URL__=${JSON.stringify(liveOrigin)};<\/script>`;
                   j = /<\/head>/i.test(j) ? j.replace(/<\/head>/i, () => `${injected}\n</head>`) : `${injected}\n${j}`;
                 } else if (isLanWiFi && !j.includes("window.__ARENA_LAN_URL__")) {
@@ -2791,7 +2961,7 @@ function ny() {
       console.error(w);
     }
     setShareGuideOpen(true);
-  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen || Boolean(citadelLoreModal), _i = (0, ie.useRef)(Xa);
+  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen || chroniclesOpen || Boolean(citadelLoreModal), _i = (0, ie.useRef)(Xa);
   (0, ie.useEffect)(() => {
     _i.current = Xa, Xa && (Ci.current.clear(), Da.current.clear(), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.tapDestination = null, a.current.aimState.active = false, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true)));
   }, [Xa]), (0, ie.useEffect)(() => {
@@ -2832,6 +3002,10 @@ function ny() {
             citadelLorePausedRef.current = false;
             a.current.gameState = "PLAYING";
           }
+          return;
+        }
+        if (chroniclesOpen) {
+          setChroniclesOpen(false);
           return;
         }
         if (founderModalOpen) {
@@ -2901,7 +3075,7 @@ function ny() {
     return window.addEventListener("keydown", we), window.addEventListener("keyup", rt), window.addEventListener("blur", Et), () => {
       window.removeEventListener("keydown", we), window.removeEventListener("keyup", rt), window.removeEventListener("blur", Et);
     };
-  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen, citadelLoreModal]);
+  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen, chroniclesOpen, citadelLoreModal]);
   let ze = Ef[c];
   let fsActive = isFullscreen || isPseudoFullscreen;
   let portraitVp = computeCameraViewportConfig({ viewW: viewportSize.w, viewH: viewportSize.h, layoutMode, fovPreset: portraitFov });
@@ -2927,19 +3101,23 @@ function ny() {
     R.playClick(), je(p.id), N(true);
   }, title: "Cửa Hàng Trang Bị", children: [(0, u.jsx)("span", { children: "🪙" }), (0, u.jsx)("span", { className: "font-mono-numbers tabular-nums", children: f })] }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn border-cyan-500/45 text-cyan-200", onClick: () => {
     R.playClick(), ye(true);
-  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve  }, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-rose-950/55 border-t border-rose-500/30 text-rose-200", children: [(0, u.jsx)("span", { className: "font-bold truncate", children: c === "vi" ? "🏰 Cổ Thành Huyết Táng" : "🏰 Bloodsoaked Citadel" }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: ["Tin ", re.citadelSecrets?.tinClue ? "✓" : "?", " · Bảo ", re.citadelSecrets?.baoClue ? "✓" : "?", " · Ẩn ", re.citadelSecrets?.combinedUnlocked ? "✓" : "?"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState)) && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
+  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-rose-950/55 border-t border-rose-500/30 text-rose-200", children: [(0, u.jsx)("span", { className: "font-bold truncate", children: c === "vi" ? "🏰 Cổ Thành Huyết Táng" : "🏰 Bloodsoaked Citadel" }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: ["Tin ", re.citadelSecrets?.tinClue ? "✓" : "?", " · Bảo ", re.citadelSecrets?.baoClue ? "✓" : "?", " · Ẩn ", re.citadelSecrets?.combinedUnlocked ? "✓" : "?"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState)) && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "px-1.5 py-0.5 rounded-md bg-slate-950/68 border border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "💀" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
   }) })] }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: [re.combo.efficiency, "%"] })] })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] })]  }) : (0, u.jsxs)("div", { className: "hud-header", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-hero-card w-[184px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold leading-tight", children: [(0, u.jsx)("span", { className: "text-white font-moba text-xs text-neon-cyan truncate", children: re.heroName }), (0, u.jsxs)("span", { className: "text-[#F59E0B] font-mono-numbers text-[11px] shrink-0", children: ["Lv.", re.level] })] }), (0, u.jsxs)("div", { className: "bar-container h-[7px] mt-1", children: [(0, u.jsx)("div", { className: "bar-fill hp-fill", style: { width: `${re.hp / re.maxHp * 100}%` } }), (0, u.jsx)("div", { className: "shield-fill", style: { width: `${Math.min(100, re.shield / re.maxHp * 100)}%` } })] }), (0, u.jsxs)("div", { className: "flex justify-between text-[9.5px] text-slate-400 mt-0.5 font-mono-numbers leading-tight", children: [(0, u.jsxs)("span", { children: [re.hp, " / ", re.maxHp] }), re.shield > 0 && (0, u.jsxs)("span", { className: "text-[#38BDF8]", children: ["Khi\xEAn: ", re.shield] })] }), re.resourceText && (0, u.jsx)("div", { className: "text-[9.5px] font-mono-numbers font-extrabold text-amber-300 mt-0.5 truncate leading-tight", children: re.resourceText }), re.buffsText && (0, u.jsx)("div", { className: "text-[9.5px] text-[#FDE68A] mt-0.5 truncate font-semibold leading-tight", children: re.buffsText }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill xp-fill", style: { width: `${re.xpPct}%` } }) })] }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap mt-1 pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "HP Boss:" : "Boss HP:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name} ${b.hp.toLocaleString()}/${b.maxHp.toLocaleString()}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK: ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1: ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2: ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3: ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4: ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-1 border-t border-sky-500/20", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Tổng ST:" : "Total DMG:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-amber-300 font-black", children: (re.thienState.totalDamage || 0).toLocaleString() })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Quái hạ gục:" : "Kills:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300 font-bold", children: [re.kills, "/", re.waveTotal, " (Tổng ", re.thienState.totalKilled || 0, ")"] })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Hoàn thành màn:" : "Wave Clear:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200 font-bold", children: [formatWaveClock(re.thienState.waveElapsedTime), re.thienState.lastWaveClearTime > 0 ? ` · Trước ${formatWaveClock(re.thienState.lastWaveClearTime)}` : ""] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "mt-1 flex flex-col gap-1 w-[152px] sm:w-[178px] pointer-events-none", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "hud-card py-0.5 px-2 border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9.5px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "\u{1F480} Ng\xE3" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
-  }) }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: ["Hi\u1EC7u su\u1EA5t ", re.combo.efficiency, "%"] })] })] }), re.combo.comboName && (0, u.jsx)("div", { className: "text-[9.5px] font-moba font-bold text-cyan-300 mt-0.5 truncate", children: re.combo.comboName }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-center gap-1 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-wave-card text-center px-3 py-1 border-amber-500/50", children: [(0, u.jsxs)("div", { className: "text-xs font-black text-[#F59E0B] font-mono-numbers tracking-wider leading-tight", children: [c === "vi" ? "M\xC0N" : "WAVE", " ", re.wave, " / 27"] }), (0, u.jsxs)("div", { className: "text-[10px] text-slate-300 font-mono-numbers mt-0.5 leading-tight", children: [c === "vi" ? "Ti\xEAu di\u1EC7t" : "Slain", ": ", re.kills, " / ", re.waveTotal] }), re.coopActive && mpRoom && (0, u.jsxs)("div", { className: "text-[9px] font-mono-numbers font-bold text-cyan-300 mt-0.5", children: ["CO-OP ", mpRoom.roomId, " \xB7 Qu\xE1i ", Math.round((re.powerMultiplier || 1) * 100), "%"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-card hud-boss-card w-[228px] text-center py-1 px-2.5 border-red-500/70", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "hud-actions-bar flex items-center gap-1 sm:gap-1.5", children: [(0, u.jsxs)("button", { type: "button", className: "hud-card hud-coin-pill flex items-center gap-1 px-2 py-1 cursor-pointer border-amber-500/40 hover:border-amber-400", onClick: () => {
+  }) }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: ["Hi\u1EC7u su\u1EA5t ", re.combo.efficiency, "%"] })] })] }), re.combo.comboName && (0, u.jsx)("div", { className: "text-[9.5px] font-moba font-bold text-cyan-300 mt-0.5 truncate", children: re.combo.comboName }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-center gap-1 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-wave-card text-center px-3 py-1 border-amber-500/50", children: [(0, u.jsxs)("div", { className: "text-xs font-black text-[#F59E0B] font-mono-numbers tracking-wider leading-tight", children: [c === "vi" ? "M\xC0N" : "WAVE", " ", re.wave, " / 27"] }), (0, u.jsxs)("div", { className: "text-[10px] text-slate-300 font-mono-numbers mt-0.5 leading-tight", children: [c === "vi" ? "Ti\xEAu di\u1EC7t" : "Slain", ": ", re.kills, " / ", re.waveTotal] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-rose-300 mt-0.5", children: ["🏰 ", c === "vi" ? "Cổ Thành" : "Citadel", " · Tin ", re.citadelSecrets?.tinClue ? "✓" : "?", " · Bảo ", re.citadelSecrets?.baoClue ? "✓" : "?", " · Ẩn ", re.citadelSecrets?.combinedUnlocked ? "✓" : "?"] }), re.coopActive && mpRoom && (0, u.jsxs)("div", { className: "text-[9px] font-mono-numbers font-bold text-cyan-300 mt-0.5", children: ["CO-OP ", mpRoom.roomId, " \xB7 Qu\xE1i ", Math.round((re.powerMultiplier || 1) * 100), "%"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-card hud-boss-card w-[228px] text-center py-1 px-2.5 border-red-500/70", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "hud-actions-bar flex items-center gap-1 sm:gap-1.5", children: [(0, u.jsxs)("button", { type: "button", className: "hud-card hud-coin-pill flex items-center gap-1 px-2 py-1 cursor-pointer border-amber-500/40 hover:border-amber-400", onClick: () => {
     R.playClick(), je(p.id), N(true);
   }, title: "M\u1EDF C\u1EEDa H\xE0ng Trang B\u1ECB", children: [(0, u.jsx)("span", { className: "text-xs sm:text-sm", children: "\u{1FA99}" }), (0, u.jsx)("span", { className: "font-mono-numbers text-[11px] sm:text-xs font-extrabold text-[#F59E0B]", children: f })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2.5 py-1 border-cyan-500/40 text-cyan-200", onClick: () => {
     R.playClick(), ye(true);
   }, children: "K\u1EF9 N\u0103ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2.5 py-1 border-amber-500/40 text-amber-200", onClick: () => {
     R.playClick(), je(p.id), N(true);
-  }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", className: p.skills.length >= 4 ? "four-skills" : void 0, children: [p.skills.map((skItem, w) => {
+  }, children: "C\u1EEDa H\xE0ng" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1 border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, title: fsActive ? "Tho\xE1t to\xE0n m\xE0n h\xECnh" : "To\xE0n m\xE0n h\xECnh", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary hud-menu-btn text-[11px] px-2 py-1", onClick: ve, title: "T\u1EA1m d\u1EEBng", children: "\u275A\u275A" })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), re.nearbyInteractable && (0, u.jsxs)("button", { type: "button", className: "pointer-events-auto absolute bottom-[126px] sm:bottom-[142px] left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-950/95 via-amber-950/95 to-purple-950/95 border border-amber-400/80 text-amber-100 text-xs sm:text-sm font-moba font-extrabold shadow-[0_0_24px_rgba(251,191,36,0.35)] flex items-center gap-2 hover:brightness-110 active:scale-95 transition cursor-pointer", onPointerDown: (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    a.current?.interactNearestCitadelNode?.();
+  }, children: [(0, u.jsx)("span", { className: "px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono-numbers text-[11px] font-black", children: "V" }), (0, u.jsx)("span", { children: re.nearbyInteractable.shortPrompt?.[c === "en" ? "en" : "vi"] || (c === "vi" ? "Khám phá manh mối" : "Inspect Clue") })] }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", className: p.skills.length >= 4 ? "four-skills" : void 0, children: [p.skills.map((skItem, w) => {
     let j = skItem, ee = re.cooldowns[w] || 0, he = j.cooldown, le = re.skillStates[w] || "ready", padCd = re.padTeleportCds?.[w] || 0, isPadWaiting = p.id === "duccong" && w > 0 && padCd > 0, X = isPadWaiting || ee > 0 && le !== "recast" && le !== "charging", displayCd = isPadWaiting ? padCd : ee, displayMax = isPadWaiting ? 1.5 : he, we = X ? "state-cooldown" : le === "empowered" ? "state-empowered state-ready" : le === "recast" ? "state-recast state-ready" : le === "charging" ? "state-charging state-ready" : "state-ready";
     let btnIconSize = isPortraitHud ? (p.skills.length >= 4 ? (w === 3 ? 52 : 48) : (w === 2 ? 58 : 54)) : 78;
     return (0, u.jsxs)("button", { className: `btn-skill c${w + 1} ${we}`, onPointerDown: (rt) => Be(w, rt), onPointerMove: ta, onPointerUp: Ha, onPointerCancel: Ha, onLostPointerCapture: Ha, title: j.name[c], children: [(0, u.jsx)(Wt, { heroId: p.id, skillId: j.key, size: btnIconSize, roundedClass: "rounded-full", className: "pointer-events-none", alt: j.name[c] }), X && (0, u.jsx)("div", { className: "cooldown-overlay", style: { height: `${Math.min(100, displayCd / Math.max(0.1, displayMax) * 100)}%` } }), X && (0, u.jsx)("span", { className: `absolute inset-0 z-10 flex items-center justify-center font-mono-numbers ${isPortraitHud ? "text-xs" : "text-sm"} font-black text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.95)] tabular-nums pointer-events-none`, children: displayCd.toFixed(1) }), (0, u.jsx)("span", { className: `absolute bottom-0.5 inset-x-0 text-center z-10 font-mono-numbers ${isPortraitHud ? "text-[10px]" : "text-[11px]"} font-black text-amber-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] pointer-events-none`, children: p.id === "duccong" && le === "recast" ? "D\u1ECACH" : p.id === "luan" && w === 1 && le === "recast" ? "\u0110\xD3NG" : le === "recast" ? "T\xC1I" : j.label })] }, w);
@@ -2959,7 +3137,7 @@ function ny() {
       a.current.selectedHeroId = w.id;
       a.current.saveGame();
     }
-  }, onEnterArena: (w) => ke(w), onOpenHeroSelect: () => m("HERO_SELECT"), selectedMapId, unlockedMaps, citadelSecrets, onSelectMap: (nextMapId) => {
+  }, onEnterArena: (w) => ke(w), resumableRun, onResumeRun: handleResumeSavedRun, deviceInfo, onOpenHeroSelect: () => m("HERO_SELECT"), selectedMapId, unlockedMaps, citadelSecrets, onSelectMap: (nextMapId) => {
     if (a.current?.setSelectedMap?.(nextMapId)) {
       setSelectedMapId(a.current.selectedMapId);
     } else {
@@ -2971,7 +3149,7 @@ function ny() {
   }, onOpenShop: () => {
     je(p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id);
     N(true);
-  }, onOpenGuide: () => C(true), onOpenSettings: () => D(true), onOpenPatchNotes: () => b(true), onOpenShareGuide: () => setShareGuideOpen(true), onDownloadOrShare: ba, onToggleSfx: () => Nt((prev) => !prev), onToggleMusic: () => setMusicOn((prev) => !prev), onToggleFullscreen: toggleFullscreen, onToggleLang: J }), l === "HERO_SELECT" && (0, u.jsx)(MobaHeroSelect, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, equippedCount: a.current ? Object.values(a.current.heroGear[p.id] || {}).filter(Boolean).length : 0, isFullscreen: fsActive, SkillIcon: Wt, getSkillAimMeta: vm, founderUnlocked, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
+  }, onOpenGuide: () => C(true), onOpenSettings: () => D(true), onOpenPatchNotes: () => b(true), onOpenChronicles: (tabName = "world", heroIdArg = null) => { setChroniclesTab(tabName); setChroniclesFocusHeroId(heroIdArg); setChroniclesOpen(true); }, onOpenShareGuide: () => setShareGuideOpen(true), onDownloadOrShare: ba, onToggleSfx: () => Nt((prev) => !prev), onToggleMusic: () => setMusicOn((prev) => !prev), onToggleFullscreen: toggleFullscreen, onToggleLang: J }), l === "HERO_SELECT" && (0, u.jsx)(MobaHeroSelect, { lang: c, strings: ze, heroes: Mi, selectedHero: p, coins: f, equippedCount: a.current ? Object.values(a.current.heroGear[p.id] || {}).filter(Boolean).length : 0, isFullscreen: fsActive, SkillIcon: Wt, getSkillAimMeta: vm, founderUnlocked, onRequireFounderAuth: (candidate) => requireFounderUnlock(() => { const target = candidate || Mi.find((hr) => hr.id === "thien"); if (target) { h(target); a.current && (a.current.currentHero = target, a.current.selectedHeroId = target.id, a.current.saveGame()); } }), onSelectHero: (w) => {
     if (w?.isSecretFounder && !founderUnlockedRef.current) {
       requireFounderUnlock(() => {
         h(w);
@@ -2984,6 +3162,10 @@ function ny() {
   }, onEnterArena: (w) => ke(w), onOpenShop: () => {
     je(p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id);
     N(true);
+  }, onOpenChronicles: (tabName = "heroes", heroIdArg = null) => {
+    setChroniclesTab(tabName);
+    setChroniclesFocusHeroId(heroIdArg || p.id);
+    setChroniclesOpen(true);
   }, onBack: () => m("MENU"), onToggleFullscreen: toggleFullscreen }), T && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[680px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-2", children: [(0, u.jsx)("span", { className: "text-2xl", children: "\u{1F4CB}" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white", children: "Arena Hero 11.8 \u2014 C\xE2n B\u1EB1ng Lu\u1EADn, Buff Boss & 27 M\xE0n" }), (0, u.jsx)("span", { className: "text-[11px] text-amber-400 font-bold", children: "NERF LU\u1EACN (V\u1EBET N\u1EE8T & C1) \xB7 T\u0102NG S\u1EE8C M\u1EA0NH 9 BOSS \xB7 27 M\xC0N & 9 CH\u1EE6NG QU\xC1I \xB7 CO-OP 6 S\u1ED0" })] })] }), (0, u.jsx)("button", { className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => {
     R.playModalClose(), b(false);
   }, children: "\u2715" })] }), (0, u.jsxs)("div", { className: "mt-4 flex flex-col gap-3 text-xs leading-relaxed text-slate-300", children: [(0, u.jsxs)("div", { className: "bg-slate-900 border border-rose-500/60 rounded-xl p-3", children: [(0, u.jsxs)("div", { className: "font-extrabold text-rose-400 text-sm flex items-center gap-1.5", children: [(0, u.jsx)("span", { children: "\u2696\uFE0F" }), " C\xC2N B\u1EB0NG T\u01AF\u1EDANG (11.8) \u2014 GI\u1EA2M S\xC1T TH\u01AF\u01A0NG LU\u1EACN"] }), (0, u.jsxs)("p", { className: "mt-1", children: [(0, u.jsx)("b", { children: "N\u1ED9i t\u1EA1i V\u1EBFt N\u1EE9t Kh\xF4ng Gian:" }), " Gi\u1EA3m s\xE1t th\u01B0\u01A1ng m\u1ED7i nh\u1ECBp v\u1EBFt n\u1EE9t t\u1EEB 11 + 22% AP (m\u1ED7i 0,45s) xu\u1ED1ng c\u00F2n 7 + 13% AP (m\u1ED7i 0,5s), gi\u1EDBi h\u1EA1n t\u1ED1i \u0111a 14 \u0111o\u1EA1n v\u1EBFt n\u1EE9t ch\u1ED3ng ch\xE9o.", (0, u.jsx)("br", {}), (0, u.jsx)("b", { children: "Chi\xEAu 1 \u2014 M\u1EA3nh V\u1EE1 Kh\xF4ng Gian (C1):" }), " Gi\u1EA3m s\xE1t th\u01B0\u01A1ng m\u1ED7i m\u1EA3nh n\u0103ng l\u01B0\u1EE3ng t\u1EEB 42 + 58% AP xu\u1ED1ng c\u00F2n 28 + 38% AP (v\u1EABn gi\u1EEF xuy\xEAn th\u1EA5u v\xE0 ph\xE2n nh\xE1nh qua C\u1ED5ng C2)."] })] }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-amber-500/60 rounded-xl p-3", children: [(0, u.jsxs)("div", { className: "font-extrabold text-amber-400 text-sm flex items-center gap-1.5", children: [(0, u.jsx)("span", { children: "\u{1F451}" }), " T\u0102NG S\u1EE8C M\u1EA0NH BOSS & 9 \u0110\u1EA0I TR\xD9M \u0110\u1ED8C B\u1EA2N"] }), (0, u.jsxs)("p", { className: "mt-1", children: [(0, u.jsx)("b", { children: "Buff S\u1EE9c M\u1EA1nh Boss (11.8):" }), " T\u0103ng nh\u1EB9 m\xE1u (+11% \u2192 +14%), s\xE1t th\u01B0\u01A1ng (+9% \u2192 +11%) v\xE0 t\u1ED1c \u0111\u1ED9 truy \u0111u\u1ED5i cho to\xE0n b\u1ED9 9 \u0110\u1EA1i Tr\xF9m.", (0, u.jsx)("br", {}), (0, u.jsx)("b", { children: "Boss M\xE0n 15 & Tr\xF9m Cu\u1ED1i M\xE0n 27:" }), " Thay Boss M\xE0n 15 th\xE0nh Trung Boss Ph\xE1o V\u01B0\u01A1ng C\u01A1 Gi\u1EDBi Rex (3 chi\xEAu); M\xE0n 27 l\xE0 Thi\xEAn Th\u1EA7n Sa Ng\xE3 Lucifer (6 chi\xEAu, 6 c\xE1nh).", (0, u.jsx)("br", {}), (0, u.jsx)("b", { children: "Kh\u1ED1ng ch\u1EBF Boss:" }), " B\u1EAFt \u0111\u1EA7u t\u1EEB 1,0s \u1EDF Boss 1 (M\xE0n 3) v\xE0 t\u0103ng \u0111\u1EC1u +0,2s m\u1ED7i c\u1EA5p l\xEAn 2,6s \u1EDF Boss 9 (M\xE0n 27)."] })] }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-cyan-500/50 rounded-xl p-3", children: [(0, u.jsxs)("div", { className: "font-extrabold text-cyan-400 text-sm flex items-center gap-1.5", children: [(0, u.jsx)("span", { children: "\u2694\uFE0F" }), " 27 M\xC0N \xB7 9 CH\u1EE6NG QU\xC1I \xB7 CO-OP 6 S\u1ED0 (11.8)"] }), (0, u.jsxs)("p", { className: "mt-1", children: [(0, u.jsx)("b", { children: "5 Ch\u1EE7ng Qu\xE1i M\u1EDBi:" }), " X\u1EA1 Th\u1EE7 B\u0103ng, Qu\xE1i C\u1EA3m T\u1EED, S\xE1t Th\u1EE7 B\xF3ng \u0110\xEAm, Hi\u1EC7p S\u0129 Khi\xEAn (gi\u1EA3m 30% ST tr\u01B0\u1EDBc m\u1EB7t) v\xE0 T\xEDn \u0110\u1ED3 H\u01B0 Kh\xF4ng.", (0, u.jsx)("br", {}), (0, u.jsx)("b", { children: "Trang b\u1ECB & Co-op Online:" }), " S\u1EAFp x\u1EBFp kho trang b\u1ECB theo \u0111\u1ED9 hi\u1EBFm chu\u1EA9n x\xE1c; h\u1ED7 tr\u1EE3 m\xE3 ph\xF2ng/P2P 6 s\u1ED1 ng\u1EABu nhi\xEAn v\xE0 t\u1EF1 \u0111\u1ED9ng chuy\u1EC3n kh\xE1ch v\xE0o ph\xF2ng & tr\u1EADn \u0111\u1EA5u."] })] })] }), (0, u.jsx)("div", { className: "mt-4 text-right", children: (0, u.jsx)("button", { className: "btn-primary text-xs px-6 py-2", onClick: () => {
@@ -3035,7 +3217,7 @@ function ny() {
   }, children: "\u{1F6AA} R\u1EDDi Ph\xF2ng Co-op" })] }) : (0, u.jsxs)(u.Fragment, { children: [(0, u.jsx)("button", { className: "btn-secondary py-2.5 text-sm", onClick: () => {
     a.current && a.current.startNewGame(p), m("PLAYING");
   }, children: ze.restart }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-sm text-slate-400", onClick: () => {
-    a.current && (a.current.gameState = "MENU"), m("MENU");
+    a.current && (a.current.captureCurrentRunCheckpoint?.(), a.current.saveGame(), a.current.gameState = "MENU", setResumableRun(a.current.getSavedRunSnapshot?.() || null)), m("MENU");
   }, children: ze.mainMenu })] })] })] }) }), De && ce && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[480px] text-center", children: [(0, u.jsx)("div", { className: "text-amber-400 font-mono-numbers text-xs font-bold tracking-wider", children: c === "vi" ? "CHI\u1EBEN TH\u1EAENG \u0110\u1EE2T QU\xC1I" : "WAVE CLEARED" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white mt-1", children: c === "vi" ? `Ho\xE0n Th\xE0nh M\xE0n ${ce.wave}` : `Wave ${ce.wave} Complete` }), (0, u.jsxs)("div", { className: `speed-badge ${ce.speedClass} my-3 mx-auto`, children: [(0, u.jsx)("span", { children: "\u26A1" }), (0, u.jsx)("span", { children: ce.speedText })] }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3.5 text-left text-xs text-slate-300", children: [(0, u.jsxs)("div", { className: "flex justify-between py-1 border-b border-slate-800", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Th\u1EDDi gian:" }), (0, u.jsxs)("span", { className: "font-mono-numbers font-bold text-cyan-400", children: [ce.elapsedFormatted, " / ", ce.targetFormatted] })] }), (0, u.jsxs)("div", { className: "flex justify-between py-1 border-b border-slate-800", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Qu\xE1i ti\xEAu di\u1EC7t:" }), (0, u.jsx)("span", { className: "font-mono-numbers font-bold text-white", children: ce.kills })] }), (0, u.jsxs)("div", { className: "flex justify-between py-1", children: [(0, u.jsx)("span", { children: "Xu c\u01A1 b\u1EA3n:" }), (0, u.jsxs)("span", { className: "font-mono-numbers font-bold text-amber-300", children: ["+", ce.baseCoins, " Xu"] })] }), (0, u.jsxs)("div", { className: "flex justify-between py-1", children: [(0, u.jsx)("span", { children: "Th\u01B0\u1EDFng t\u1ED1c \u0111\u1ED9:" }), (0, u.jsxs)("span", { className: "font-mono-numbers font-bold text-cyan-300", children: ["+", ce.speedCoins, " Xu"] })] }), ce.bossCoins > 0 && (0, u.jsxs)("div", { className: "flex justify-between py-1 text-red-300 font-bold", children: [(0, u.jsx)("span", { children: "Th\u01B0\u1EDFng h\u1EA1 g\u1EE5c Boss:" }), (0, u.jsxs)("span", { className: "font-mono-numbers", children: ["+", ce.bossCoins, " Xu"] })] }), (0, u.jsxs)("div", { className: "mt-2 pt-2 border-t border-slate-800 flex justify-between items-baseline font-black", children: [(0, u.jsx)("span", { className: "text-white text-sm", children: "T\u1ED5ng Xu Nh\u1EADn \u0110\u01B0\u1EE3c:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-xl text-amber-400", children: ["+", ce.totalEarned, " \u{1FA99}"] })] })] }), a.current?.multiplayer?.active && mpRoom?.members && (0, u.jsxs)("div", { className: "mt-2.5 bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 text-left text-[11px]", children: [(0, u.jsx)("div", { className: "font-moba font-bold text-cyan-300 mb-1.5", children: "TR\u1EA0NG TH\xC1I \u0110\u1ED2NG \u0110\u1ED8I" }), (0, u.jsx)("div", { className: "grid grid-cols-2 gap-1.5", children: mpRoom.members.map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1 gap-1", children: [(0, u.jsx)("span", { className: "truncate text-slate-200 font-semibold", children: mem.name }), (0, u.jsx)("span", { className: `shrink-0 font-bold ${mem.isHost ? "text-amber-300" : mem.readyNextWave ? "text-emerald-400" : "text-slate-400"}`, children: mem.isHost ? "\u{1F451} Ch\u1EE7" : mem.readyNextWave ? "\u2713 S\u1EB5n" : "\u23F3 Ch\u1EDD" })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "mt-4 flex gap-2.5", children: [(0, u.jsx)("button", { className: "btn-secondary flex-1 py-2.5 text-xs border-amber-500/40 text-amber-200", onClick: () => {
     je(p.id), N(true);
   }, children: "\u{1FA99} V\xE0o C\u1EEDa H\xE0ng" }), a.current?.multiplayer?.active && mpRoom ? (() => {
@@ -3051,7 +3233,7 @@ function ny() {
   })() : (0, u.jsx)("button", { className: "btn-primary flex-1 py-2.5 text-xs font-bold", onClick: () => {
     nt(false);
     let w = a.current;
-    w && (w.waitingReward = false, w.waveCleared = false, w.wave >= 27 ? (w.gameState = "VICTORY", w.unlockCitadelIfEligible?.(), w.saveGame(), w.onGameOver?.(true), m("VICTORY")) : w.startWave(w.wave + 1));
+    w && (w.waitingReward = false, w.waveCleared = false, w.wave >= 27 ? (w.gameState = "VICTORY", w.clearSavedRun?.(false), w.unlockCitadelIfEligible?.(), w.saveGame(), w.onGameOver?.(true), m("VICTORY")) : w.startWave(w.wave + 1));
   }, children: ce.isFinalWave ? c === "vi" ? "Chinh Ph\u1EE5c!" : "Victory!" : c === "vi" ? "M\xE0n Ti\u1EBFp Theo \u2192" : "Next Wave \u2192" })] })] }) }), (l === "GAME_OVER" || l === "VICTORY") && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[460px] text-center", children: [(0, u.jsx)("div", { className: "w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center bg-amber-500/20 text-amber-400 text-3xl", children: l === "VICTORY" ? "\u{1F451}" : "\u{1F480}" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white", children: l === "VICTORY" ? ze.victory : ze.defeat }), (0, u.jsx)("p", { className: "text-xs text-slate-400 mt-1", children: l === "VICTORY" ? ze.victorySub : ze.defeatSub }), l === "VICTORY" && isMapUnlocked("blood_citadel", unlockedMaps) && (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-rose-950/75 border border-rose-400/60 text-rose-100 text-xs font-moba font-bold", children: c === "vi" ? "🏰 Bản đồ mới ĐÃ MỞ KHÓA: CỔ THÀNH HUYẾT TÁNG! Chọn trong Sảnh Chính." : "🏰 New Map UNLOCKED: BLOODSOAKED CITADEL! Select it in the Lobby." }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 my-3 grid grid-cols-2 gap-2 text-left text-xs font-mono-numbers", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "M\xE0n ch\u01A1i:" }), (0, u.jsxs)("div", { className: "text-amber-400 font-bold text-sm", children: [a.current?.wave || 1, " / 27"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "Ti\xEAu di\u1EC7t:" }), (0, u.jsx)("div", { className: "text-white font-bold text-sm", children: a.current?.totalKilled || 0 })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "C\u1EA5p \u0111\u1ED9:" }), (0, u.jsx)("div", { className: "text-emerald-400 font-bold text-sm", children: ["Lv.", a.current?.player?.level || 1] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "T\u1ED5ng s\xE1t th\u01B0\u01A1ng:" }), (0, u.jsx)("div", { className: "text-rose-400 font-bold text-sm", children: (a.current?.player?.totalDamage || 0).toLocaleString() })] })] }), (a.current?.multiplayer?.active || mpMatchResult) && (mpMatchResult?.room?.members || mpRoom?.members) && (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 mb-3 text-left text-xs", children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-bold text-cyan-300 uppercase tracking-wider mb-1.5", children: "B\u1EA3ng S\xE1t Th\u01B0\u01A1ng \u0110\u1ED3ng \u0110\u1ED9i" }), (0, u.jsx)("div", { className: "space-y-1", children: (mpMatchResult?.room?.members || mpRoom?.members || []).map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between font-mono-numbers text-[11px]", children: [(0, u.jsxs)("span", { className: "text-slate-200 truncate", children: [mem.isHost ? "\u{1F451} " : "", mem.name] }), (0, u.jsx)("span", { className: "text-rose-400 font-bold", children: [(mem.totalDamage || 0).toLocaleString(), " DMG"] })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "flex flex-col gap-2", children: [a.current?.multiplayer?.active || mpMatchResult ? (0, u.jsxs)(u.Fragment, { children: [(mpMatchResult?.room?.hostId || mpRoom?.hostId) === mpClient.playerId && (0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
     R.playClick();
     mpClient.restartMatch();
@@ -3121,20 +3303,35 @@ function ny() {
     handleLeaveRoom();
   }, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pManualOfferCode, p2pHasServerSignal, p2pAnswerCode, p2pAutoPaired, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, lanUrls, isFullscreen: fsActive, onToggleFullscreen: toggleFullscreen, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
     setMpLobbyOpen(false);
-  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3", children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), citadelLoreModal && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10060 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[520px] border-rose-500/70 bg-gradient-to-b from-[#160b18] to-[#080910]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-rose-300", children: c === "vi" ? citadelLoreModal.subtitleVi : citadelLoreModal.subtitleEn }), (0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white mt-0.5", children: c === "vi" ? citadelLoreModal.titleVi : citadelLoreModal.titleEn })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => {
+  }, unlockedMaps, onChangeRoomMap: (nextMapId) => mpClient.setMap(nextMapId) }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, deviceInfo, resumableRun, onGenerateTransferCode: handleGenerateTransferCode, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })], className: "flex items-center gap-3" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), citadelLoreModal && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10060 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[540px] border-rose-500/70 bg-gradient-to-b from-[#160b18] to-[#080910]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-rose-300", children: citadelLoreModal.subtitle }), (0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white mt-0.5", children: citadelLoreModal.title })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => {
     R.playModalClose();
     setCitadelLoreModal(null);
     if (citadelLorePausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
       citadelLorePausedRef.current = false;
       a.current.gameState = "PLAYING";
     }
-  }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-2.5 text-xs leading-relaxed text-slate-200", children: [citadelLoreModal.quote && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-400/45 text-amber-200 font-moba font-bold italic", children: citadelLoreModal.quote }), (c === "vi" ? citadelLoreModal.paragraphsVi : citadelLoreModal.paragraphsEn)?.map((para, idx) => (0, u.jsx)("p", { className: "text-slate-300", children: para }, idx)), citadelLoreModal.rewardTextVi && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-emerald-500/12 border border-emerald-400/45 text-emerald-200 font-bold", children: citadelLoreModal.rewardTextVi }), (0, u.jsx)("button", { type: "button", className: "w-full btn-primary py-2.5 text-xs font-black mt-1", onClick: () => {
+  }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-2.5 text-xs leading-relaxed text-slate-200", children: [citadelLoreModal.quote && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-400/45 text-amber-200 font-moba font-bold italic", children: citadelLoreModal.quote }), (citadelLoreModal.paragraphs || []).map((para, idx) => (0, u.jsx)("p", { className: "text-slate-300", children: para }, idx)), citadelLoreModal.clueSummary && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-slate-900/85 border border-slate-700/80 text-sky-200 font-semibold", children: citadelLoreModal.clueSummary }), citadelLoreModal.rewardText && (0, u.jsx)("div", { className: "px-3 py-2 rounded-xl bg-emerald-500/12 border border-emerald-400/45 text-emerald-200 font-bold", children: citadelLoreModal.rewardText }), citadelLoreModal.secrets && (0, u.jsxs)("div", { className: "flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono-numbers text-slate-300", children: [(0, u.jsxs)("span", { className: citadelLoreModal.secrets.tinClue ? "text-rose-300 font-bold" : "text-slate-500", children: ["Tin: ", citadelLoreModal.secrets.tinClue ? "✓ Đã mở" : "○ Chưa mở"] }), (0, u.jsx)("span", { className: "text-slate-700", children: "·" }), (0, u.jsxs)("span", { className: citadelLoreModal.secrets.baoClue ? "text-purple-300 font-bold" : "text-slate-500", children: ["Bảo: ", citadelLoreModal.secrets.baoClue ? "✓ Đã mở" : "○ Chưa mở"] }), (0, u.jsx)("span", { className: "text-slate-700", children: "·" }), (0, u.jsxs)("span", { className: citadelLoreModal.secrets.combinedUnlocked ? "text-amber-300 font-bold" : "text-slate-500", children: [c === "vi" ? "Bí mật chung: " : "Shared: ", citadelLoreModal.secrets.combinedUnlocked ? (c === "vi" ? "✓ Đã mở" : "✓ Unlocked") : (c === "vi" ? "○ Khóa" : "○ Locked")] })] }), (0, u.jsx)("button", { type: "button", className: "w-full btn-primary py-2.5 text-xs font-black mt-1", onClick: () => {
     R.playModalClose();
     setCitadelLoreModal(null);
     if (citadelLorePausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
       citadelLorePausedRef.current = false;
       a.current.gameState = "PLAYING";
     }
-  }, children: c === "vi" ? "Tiếp Tục Chiến Đấu" : "Continue Fighting" })] })] }) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
+  }, children: c === "vi" ? "Tiếp Tục Chiến Đấu" : "Continue Fighting" })] })] }) }), chroniclesOpen && (0, u.jsx)(ChroniclesModal, { open: chroniclesOpen, lang: c, heroes: Mi, initialTab: chroniclesTab, focusHeroId: chroniclesFocusHeroId, founderUnlocked, citadelUnlocked: isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked), citadelSecrets, onSelectHero: (heroIdArg) => {
+    const found = Mi.find((hr) => hr.id === heroIdArg);
+    if (!found) return;
+    if (found.isSecretFounder && !founderUnlockedRef.current) return;
+    h(found);
+    if (a.current) {
+      a.current.currentHero = found;
+      a.current.selectedHeroId = found.id;
+      a.current.saveGame();
+    }
+  }, onSelectCitadelMap: () => {
+    if (a.current?.setSelectedMap?.("blood_citadel")) {
+      setSelectedMapId("blood_citadel");
+      G(c === "vi" ? "Đã chọn map: Cổ Thành Huyết Táng!" : "Selected map: Bloodsoaked Ancient Citadel!");
+    }
+  }, onClose: () => setChroniclesOpen(false) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
 }
 export default ny;

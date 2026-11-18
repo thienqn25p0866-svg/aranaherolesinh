@@ -1,11 +1,13 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
 import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction } from "./bloodCitadelMap";
 import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt, drawMinhSanctuaries, drawMinhPrisons, drawDucAnhMeteorLeaps } from "./weaponRenderer";
+import { renderBloodCitadelFloor as drawBloodCitadelFloorScene, renderBloodCitadelStructuresAndProps as drawBloodCitadelStructuresScene, renderBloodCitadelAtmosphere as drawBloodCitadelAtmosphereScene, getBloodCitadelZoneLabel } from "./bloodCitadelRenderer";
 import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal, normalizeQualityMode, normalizeFpsCapMode, detectDeviceHardwareTier, resolvePerformanceProfile, stepAdaptiveQualityGovernor, computeWorldViewBounds, isCircleInViewBounds, isSegmentInViewBounds, swapRemoveAt, computeAdaptiveSyncIntervals, DUNG_BASE_CRIT, DUNG_MAX_CRIT, DUNG_BASE_LIFESTEAL, DUNG_C2_DURATION, DUNG_C3_DURATION, DUNG_C3_BOSS_DMG_MULT, computeDungCritProfile, computeDungHealValues, BOSS_CC_IMMUNITY_WINDOW_SEC, HERO_SHIELD_CAP_RATIO, isBossHardCcImmune, evaluateEnemyHardCcApplication, computeBoundedShieldAdd, MINH_PASSIVE_HEAL_RATIO, MINH_PASSIVE_SHIELD_RATIO, MINH_PASSIVE_SHIELD_DUR, MINH_PASSIVE_ICD, MINH_C1_MOB_ROOT, MINH_C1_BOSS_ROOT, MINH_C1_BOSS27_SLOW, MINH_C1_BOSS27_SLOW_DUR, MINH_C1_RANGE, MINH_C1_WIDTH, MINH_C1_CHAIN_COUNT, MINH_C1_HEAL_RATIO, MINH_C1_MAX_HEAL_RATIO, MINH_C2_MOB_FREEZE, MINH_C2_BOSS_FREEZE, MINH_C2_BOSS_SLOW, MINH_C2_BOSS_SLOW_DUR, MINH_C2_ALLY_HEAL_RATIO, MINH_C2_ALLY_SHIELD_RATIO, MINH_C3_MOB_SEAL, MINH_C3_BOSS_SEAL, MINH_C3_ALLY_HEAL_RATIO, MINH_C3_ALLY_SHIELD_RATIO, computeMinhBasicDamage, computeMinhC1Damage, computeMinhC1CcHeal, computeMinhC2TickDamage, computeMinhC3DetonateDamage, DUCANH_PASSIVE_DR, DUCANH_PASSIVE_HP_THRESHOLD, DUCANH_PASSIVE_REGEN_RATIO, DUCANH_PASSIVE_REGEN_DUR, DUCANH_PASSIVE_SHIELD_RATIO, DUCANH_PASSIVE_CD, DUCANH_C1_DURATION, DUCANH_C1_DR, DUCANH_C1_BOSS_STUN, DUCANH_C1_PER_HIT_PCT, DUCANH_C1_MAX_PCT, DUCANH_C2_DURATION, DUCANH_C2_SHIELD_RATIO, DUCANH_C2_DR, DUCANH_C2_REGEN_RATIO, DUCANH_C2_END_ALLY_HEAL, DUCANH_C2_END_ALLY_SHIELD, DUCANH_C3_MOB_KNOCKUP, DUCANH_C3_BOSS_STUN, DUCANH_C3_SELF_HEAL, DUCANH_C3_SELF_SHIELD, DUCANH_C3_ALLY_HEAL, DUCANH_C3_ALLY_SHIELD, DUCANH_MAX_DR_CAP, computeDucAnhDamageReduction, computeDucAnhC1RollGain, computeDucAnhC1RollDamage, computeDucAnhC2ExplosionDamage, computeDucAnhC3ImpactDamage } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
+import { readDeviceKey, writeDeviceKey, recordDeviceSave, normalizeSavedRun } from "./deviceStorage";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.unlockedMaps = ["classic"], this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.mapWidth = this.mapWidth, this.mapHeight = this.mapHeight, this.onCitadelLore = null, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.unlockedMaps = ["classic"], this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
       let hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
       let profile = this.getPerformanceProfile(false, hidden);
       let rawMs = a - this.lastTime;
@@ -143,40 +145,165 @@ export class GameEngine {
   }
   loadSave() {
     try {
-      let s = localStorage.getItem(cm);
+      let s = readDeviceKey(cm);
       if (s) {
         let a = JSON.parse(s);
-        if (typeof a.coins == "number" && (this.playerCoins = Math.max(0, a.coins)), typeof a.currentWave == "number" && (this.currentWaveNumber = Math.max(1, Math.min(MAX_WAVES, a.currentWave))), typeof a.highestWave == "number" && (this.highestWaveCleared = Math.max(0, a.highestWave)), typeof a.selectedHeroId == "string") {
-          let l = Mi.find((m) => m.id === a.selectedHeroId);
-          l && !(l.isSecretFounder && !mpClient.isFounderUnlocked()) && (this.selectedHeroId = l.id, this.currentHero = l);
-        }
-        if (a.heroGear && typeof a.heroGear == "object") for (let l of Mi.map((m) => m.id)) a.heroGear[l] && (this.heroGear[l] = Object.assign(xa(), a.heroGear[l]));
-        Array.isArray(a.inventory) && (this.inventory = a.inventory.filter((l) => !!(l && typeof l == "object" && "itemId" in l && typeof l.itemId == "string"))), typeof a.nextUid == "number" && (this.nextUid = Math.max(this.nextUid, a.nextUid));
-        this.classicCleared = Boolean(a.classicCleared) || this.highestWaveCleared >= CITADEL_UNLOCK_WAVE;
-        this.unlockedMaps = computeUnlockedMaps({
-          highestWaveCleared: this.highestWaveCleared,
-          classicCleared: this.classicCleared,
-          storedUnlocked: a.unlockedMaps,
-        });
-        this.citadelSecrets = normalizeCitadelSecrets(a.citadelSecrets);
-        let requestedMap = normalizeArenaMapId(a.selectedMapId);
-        this.selectedMapId = isMapUnlocked(requestedMap, this.unlockedMaps) ? requestedMap : "classic";
+        this.applyParsedSaveObject(a, { overwriteHigherOnly: false });
       }
     } catch (s) {
       console.warn("Failed loading save:", s);
     }
   }
+  applyParsedSaveObject(a, { overwriteHigherOnly = true } = {}) {
+    if (!a || typeof a !== "object") return false;
+    if (typeof a.saveRevision === "number") {
+      this.saveRevision = Math.max(this.saveRevision || 0, Math.floor(a.saveRevision));
+    }
+    if (typeof a.coins === "number") {
+      this.playerCoins = overwriteHigherOnly
+        ? Math.max(this.playerCoins || 0, Math.max(0, a.coins))
+        : Math.max(0, a.coins);
+    }
+    if (typeof a.currentWave === "number") {
+      let wv = Math.max(1, Math.min(MAX_WAVES, a.currentWave));
+      this.currentWaveNumber = overwriteHigherOnly ? Math.max(this.currentWaveNumber || 1, wv) : wv;
+    }
+    if (typeof a.highestWave === "number") {
+      this.highestWaveCleared = Math.max(overwriteHigherOnly ? (this.highestWaveCleared || 0) : 0, Math.max(0, a.highestWave));
+    }
+    if (typeof a.selectedHeroId === "string") {
+      let l = Mi.find((m) => m.id === a.selectedHeroId);
+      l && !(l.isSecretFounder && !mpClient.isFounderUnlocked()) && (this.selectedHeroId = l.id, this.currentHero = l);
+    }
+    if (a.heroGear && typeof a.heroGear === "object") {
+      for (let l of Mi.map((m) => m.id)) {
+        if (a.heroGear[l]) {
+          if (overwriteHigherOnly) {
+            let curCount = Object.values(this.heroGear[l] || {}).filter(Boolean).length;
+            let nextCount = Object.values(a.heroGear[l] || {}).filter(Boolean).length;
+            if (nextCount > curCount) {
+              this.heroGear[l] = Object.assign(xa(), a.heroGear[l]);
+            }
+          } else {
+            this.heroGear[l] = Object.assign(xa(), a.heroGear[l]);
+          }
+        }
+      }
+    }
+    if (Array.isArray(a.inventory)) {
+      let parsedInv = a.inventory.filter((l) => !!(l && typeof l === "object" && "itemId" in l && typeof l.itemId === "string"));
+      if (!overwriteHigherOnly || parsedInv.length > this.inventory.length) {
+        this.inventory = parsedInv;
+      }
+    }
+    if (typeof a.nextUid === "number") {
+      this.nextUid = Math.max(this.nextUid, a.nextUid);
+    }
+    this.classicCleared = Boolean(this.classicCleared && overwriteHigherOnly) || Boolean(a.classicCleared) || this.highestWaveCleared >= CITADEL_UNLOCK_WAVE;
+    this.unlockedMaps = computeUnlockedMaps({
+      highestWaveCleared: this.highestWaveCleared,
+      classicCleared: this.classicCleared,
+      storedUnlocked: overwriteHigherOnly ? [...(this.unlockedMaps || []), ...(Array.isArray(a.unlockedMaps) ? a.unlockedMaps : [])] : a.unlockedMaps,
+      founderUnlocked: this.founderUnlocked,
+    });
+    let incomingSecrets = normalizeCitadelSecrets(a.citadelSecrets);
+    if (overwriteHigherOnly) {
+      let curSec = normalizeCitadelSecrets(this.citadelSecrets);
+      let combined = Boolean(curSec.combinedUnlocked || incomingSecrets.combinedUnlocked);
+      this.citadelSecrets = normalizeCitadelSecrets({
+        tinClue: Boolean(curSec.tinClue || incomingSecrets.tinClue || combined),
+        baoClue: Boolean(curSec.baoClue || incomingSecrets.baoClue || combined),
+        combinedUnlocked: combined,
+        inspectedNodes: Array.from(new Set([...(curSec.inspectedNodes || []), ...(incomingSecrets.inspectedNodes || [])])),
+      });
+    } else {
+      this.citadelSecrets = incomingSecrets;
+    }
+    let incomingRun = normalizeSavedRun(a.savedRun, MAX_WAVES);
+    if (!overwriteHigherOnly) {
+      this.savedRun = incomingRun;
+    } else if (incomingRun && !this.savedRun) {
+      this.savedRun = incomingRun;
+    }
+    let requestedMap = normalizeArenaMapId(a.selectedMapId || this.selectedMapId);
+    this.selectedMapId = isMapUnlocked(requestedMap, this.unlockedMaps, this.founderUnlocked) ? requestedMap : "classic";
+    if (this.gameState === "MENU" || this.gameState === "HERO_SELECT") {
+      this.applyMapLayout(this.selectedMapId, true);
+    }
+    return true;
+  }
+  applyHydratedSaveData(rawJson) {
+    if (!rawJson || typeof rawJson !== "string") return false;
+    try {
+      let a = JSON.parse(rawJson);
+      let ok = this.applyParsedSaveObject(a, { overwriteHigherOnly: true });
+      ok && this.onStateChange && this.onStateChange();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+  getSavedRunSnapshot() {
+    return normalizeSavedRun(this.savedRun, MAX_WAVES);
+  }
+  hasResumableRun() {
+    return Boolean(this.getSavedRunSnapshot());
+  }
+  clearSavedRun(saveNow = false) {
+    this.savedRun = null;
+    if (saveNow) this.saveGame();
+  }
+  captureCurrentRunCheckpoint(waveOverride = null) {
+    if (this.multiplayer?.active || !this.player || this.player.hp <= 0) return null;
+    if (waveOverride === null && this.gameState !== "PLAYING" && this.gameState !== "PAUSED") return null;
+    let targetWave = waveOverride !== null
+      ? Math.max(1, Math.min(MAX_WAVES, Math.floor(Number(waveOverride) || 1)))
+      : Math.max(1, Math.min(MAX_WAVES, Math.floor(Number(this.wave) || 1)));
+    let checkpoint = normalizeSavedRun({
+      active: true,
+      wave: targetWave,
+      mapId: this.activeMapId || this.selectedMapId || "classic",
+      heroId: this.currentHero?.id || this.selectedHeroId || "eohyen",
+      level: this.player.level || 1,
+      xp: this.player.xp || 0,
+      xpToNext: this.player.xpToNext || 100,
+      hp: Math.max(1, Math.round(this.player.hp || this.player.maxHp || 960)),
+      maxHp: Math.max(100, Math.round(this.player.maxHp || 960)),
+      shield: Math.max(0, Math.round(this.player.shield || 0)),
+      bonusLevelHp: Math.max(0, Math.round(this.player.bonusLevelHp || 0)),
+      bonusLevelAtk: Math.max(0, Math.round(this.player.bonusLevelAtk || 0)),
+      bonusLevelAp: Math.max(0, Math.round(this.player.bonusLevelAp || 0)),
+      totalKilled: Math.max(0, Math.round(this.totalKilled || 0)),
+      totalDamage: Math.max(0, Math.round(this.player.totalDamage || 0)),
+      elapsedTime: Math.max(0, Math.round(this.elapsedTime || 0)),
+      updatedAt: new Date().toISOString(),
+    }, MAX_WAVES);
+    this.savedRun = checkpoint;
+    this.currentWaveNumber = targetWave;
+    return checkpoint;
+  }
   saveGame() {
     try {
+      let persistedMaps = computeUnlockedMaps({
+        highestWaveCleared: this.highestWaveCleared,
+        classicCleared: this.classicCleared,
+      });
       this.unlockedMaps = computeUnlockedMaps({
         highestWaveCleared: this.highestWaveCleared,
         classicCleared: this.classicCleared,
-        storedUnlocked: this.unlockedMaps,
+        storedUnlocked: persistedMaps,
+        founderUnlocked: this.founderUnlocked,
       });
-      if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps)) {
+      if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps, this.founderUnlocked)) {
         this.selectedMapId = "classic";
       }
+      this.saveRevision = Math.max(0, Math.floor(Number(this.saveRevision) || 0)) + 1;
+      let devRec = recordDeviceSave(this.saveRevision);
+      this.saveRevision = devRec.saveRevision;
       let s = {
+        deviceId: devRec.deviceId,
+        saveRevision: this.saveRevision,
+        savedAt: new Date().toISOString(),
         coins: this.playerCoins,
         currentWave: this.currentWaveNumber,
         highestWave: this.highestWaveCleared,
@@ -186,17 +313,37 @@ export class GameEngine {
         nextUid: this.nextUid,
         selectedMapId: this.selectedMapId,
         classicCleared: this.classicCleared,
-        unlockedMaps: this.unlockedMaps,
+        unlockedMaps: persistedMaps,
         citadelSecrets: this.citadelSecrets,
+        savedRun: this.savedRun || null,
       };
-      localStorage.setItem(cm, JSON.stringify(s));
+      writeDeviceKey(cm, JSON.stringify(s));
+      this.onSaveUpdated && this.onSaveUpdated();
     } catch (s) {
       console.warn("Failed saving game:", s);
     }
   }
+  setFounderUnlocked(unlocked) {
+    this.founderUnlocked = Boolean(unlocked);
+    let persistedMaps = computeUnlockedMaps({
+      highestWaveCleared: this.highestWaveCleared,
+      classicCleared: this.classicCleared,
+    });
+    this.unlockedMaps = computeUnlockedMaps({
+      highestWaveCleared: this.highestWaveCleared,
+      classicCleared: this.classicCleared,
+      storedUnlocked: persistedMaps,
+      founderUnlocked: this.founderUnlocked,
+    });
+    if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps, this.founderUnlocked)) {
+      this.selectedMapId = "classic";
+    }
+    this.saveGame();
+    this.onStateChange && this.onStateChange();
+  }
   setSelectedMap(mapId) {
     let next = normalizeArenaMapId(mapId);
-    if (!isMapUnlocked(next, this.unlockedMaps)) {
+    if (!isMapUnlocked(next, this.unlockedMaps, this.founderUnlocked)) {
       this.selectedMapId = "classic";
       return false;
     }
@@ -207,7 +354,7 @@ export class GameEngine {
   }
   applyMapLayout(mapId = this.selectedMapId, allowLockedFallback = true) {
     let requested = normalizeArenaMapId(mapId);
-    if (allowLockedFallback && !isMapUnlocked(requested, this.unlockedMaps)) {
+    if (allowLockedFallback && !isMapUnlocked(requested, this.unlockedMaps, this.founderUnlocked)) {
       requested = "classic";
     }
     this.activeMapId = requested;
@@ -286,16 +433,17 @@ export class GameEngine {
   }
   unlockCitadelIfEligible() {
     if (this.activeMapId !== "classic" || this.wave < CITADEL_UNLOCK_WAVE) return false;
-    let wasUnlocked = isMapUnlocked("blood_citadel", this.unlockedMaps);
+    let wasClassicCleared = Boolean(this.classicCleared);
     this.classicCleared = true;
     this.highestWaveCleared = Math.max(this.highestWaveCleared || 0, CITADEL_UNLOCK_WAVE);
     this.unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: this.highestWaveCleared,
       classicCleared: true,
       storedUnlocked: this.unlockedMaps,
+      founderUnlocked: this.founderUnlocked,
     });
     this.saveGame();
-    if (!wasUnlocked) {
+    if (!wasClassicCleared) {
       let msg = this.currentLang === "en"
         ? "Unlocked new map: Bloodsoaked Ancient Citadel!"
         : "Đã mở khóa bản đồ mới: CỔ THÀNH HUYẾT TÁNG!";
@@ -561,325 +709,11 @@ export class GameEngine {
     }
     void obstacles;
   }
-  renderBloodCitadelFloor(ctx, isMono, viewBounds) {
-    let W = this.mapWidth, H = this.mapHeight;
-    ctx.fillStyle = isMono ? "#F8FAFC" : "#110910";
-    ctx.fillRect(0, 0, W, H);
-
-    // Subtle stone flagstones inside view bounds
-    let step = 120;
-    let gxStart = Math.max(0, Math.floor(viewBounds.minX / step) * step);
-    let gxEnd = Math.min(W, Math.ceil(viewBounds.maxX / step) * step);
-    let gyStart = Math.max(0, Math.floor(viewBounds.minY / step) * step);
-    let gyEnd = Math.min(H, Math.ceil(viewBounds.maxY / step) * step);
-    ctx.strokeStyle = isMono ? "rgba(0,0,0,0.2)" : "rgba(127, 29, 29, 0.16)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let x = gxStart; x <= gxEnd; x += step) {
-      ctx.moveTo(x, gyStart);
-      ctx.lineTo(x, gyEnd);
-    }
-    for (let y = gyStart; y <= gyEnd; y += step) {
-      ctx.moveTo(gxStart, y);
-      ctx.lineTo(gxEnd, y);
-    }
-    ctx.stroke();
-
-    // Northern Secret Underground Vault floor zone
-    let vr = BLOOD_CITADEL_SECRET_VAULT_RECT;
-    ctx.save();
-    ctx.fillStyle = isMono ? "#E2E8F0" : "#1A0D18";
-    ctx.fillRect(vr.x, vr.y, vr.w, vr.h);
-    ctx.strokeStyle = isMono ? "#000000" : (this.citadelSecrets.combinedUnlocked ? "#FACC15" : "rgba(190, 24, 93, 0.55)");
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([10, 6]);
-    ctx.strokeRect(vr.x, vr.y, vr.w, vr.h);
-    ctx.setLineDash([]);
-    ctx.font = '800 11px "JetBrains Mono", monospace';
-    ctx.fillStyle = isMono ? "#000000" : "rgba(244, 114, 182, 0.72)";
-    ctx.textAlign = "center";
-    ctx.fillText("HẦM BÍ MẬT CỔ THÀNH", vr.x + vr.w / 2, vr.y + 22);
-    ctx.restore();
-
-    // Central blood ritual seal
-    let cx = W / 2, cy = BLOOD_CITADEL_SPAWN.y;
-    ctx.save();
-    ctx.strokeStyle = isMono ? "rgba(0,0,0,0.32)" : "rgba(190, 18, 60, 0.28)";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 200, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 130, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // Southern Citadel Gate Arch floor threshold
-    let ga = BLOOD_CITADEL_GATE_ARCH;
-    ctx.save();
-    ctx.fillStyle = isMono ? "#CBD5E1" : "rgba(69, 10, 10, 0.45)";
-    ctx.fillRect(ga.x, ga.y, ga.w, ga.h);
-    ctx.strokeStyle = isMono ? "#000000" : "#B45309";
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(ga.x, ga.y, ga.w, ga.h);
-    ctx.font = '800 11px "JetBrains Mono", monospace';
-    ctx.fillStyle = isMono ? "#000000" : "#FCD34D";
-    ctx.textAlign = "center";
-    ctx.fillText("CỔNG THÀNH HUYẾT TÁNG", ga.x + ga.w / 2, ga.y + ga.h / 2 + 4);
-    ctx.restore();
-
-    // Blood Traps & Ambush floor rings
-    let rt = this.citadelRuntime;
-    if (rt && rt.mapId === "blood_citadel") {
-      for (let tr of rt.bloodTraps) {
-        if (!isCircleInViewBounds(tr.x, tr.y, tr.radius + 24, viewBounds)) continue;
-        ctx.save();
-        ctx.translate(tr.x, tr.y);
-        let warnPulse = 0.55 + 0.45 * Math.sin(this.elapsedTime * 16);
-        if (tr.state === "warning") {
-          ctx.fillStyle = `rgba(225, 29, 72, ${0.22 + warnPulse * 0.25})`;
-          ctx.strokeStyle = "#FDA4AF";
-          ctx.lineWidth = 3;
-        } else if (tr.state === "erupt") {
-          ctx.fillStyle = "rgba(244, 63, 94, 0.46)";
-          ctx.strokeStyle = "#FEF08A";
-          ctx.lineWidth = 3.5;
-        } else {
-          ctx.fillStyle = tr.state === "cooldown" ? "rgba(30, 41, 59, 0.35)" : "rgba(136, 19, 55, 0.24)";
-          ctx.strokeStyle = tr.state === "cooldown" ? "rgba(148, 163, 184, 0.35)" : "rgba(244, 63, 94, 0.55)";
-          ctx.lineWidth = 2;
-        }
-        ctx.beginPath();
-        ctx.arc(0, 0, tr.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        if (tr.state === "warning") {
-          let prog = Math.max(0, 1 - tr.timer / 0.95);
-          ctx.beginPath();
-          ctx.arc(0, 0, tr.radius * prog, 0, Math.PI * 2);
-          ctx.strokeStyle = "#FEF08A";
-          ctx.lineWidth = 2.2;
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-      for (let az of rt.ambushZones) {
-        if (!isCircleInViewBounds(az.x, az.y, az.triggerRadius + 20, viewBounds)) continue;
-        if (az.state === "cooldown") continue;
-        ctx.save();
-        ctx.translate(az.x, az.y);
-        ctx.strokeStyle = az.state === "warning" ? "#FB7185" : "rgba(168, 85, 247, 0.22)";
-        ctx.lineWidth = az.state === "warning" ? 3 : 1.5;
-        ctx.setLineDash([10, 8]);
-        ctx.beginPath();
-        ctx.arc(0, 0, az.triggerRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-    }
-
-    // Outer Citadel battlements border
-    ctx.strokeStyle = isMono ? "#000000" : "#9F1239";
-    ctx.lineWidth = 6;
-    ctx.strokeRect(8, 8, W - 16, H - 16);
+  renderBloodCitadelFloor(ctx, isMono, viewBounds, prof) {
+    drawBloodCitadelFloorScene(ctx, this, isMono, viewBounds, prof || this.getPerformanceProfile());
   }
   renderBloodCitadelStructuresAndProps(ctx, isMono, viewBounds) {
-    if (this.activeMapId !== "blood_citadel" || !this.citadelRuntime) return;
-    let rt = this.citadelRuntime;
-    let obstacles = getActiveCitadelObstacles(rt);
-
-    // 1. Collapsed rubble footprints
-    for (let cw of rt.collapsibleWalls) {
-      if (cw.state !== "collapsed") continue;
-      ctx.save();
-      ctx.fillStyle = "rgba(68, 64, 60, 0.35)";
-      ctx.strokeStyle = "rgba(168, 162, 158, 0.4)";
-      ctx.setLineDash([6, 6]);
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(cw.x, cw.y, cw.w, cw.h);
-      ctx.strokeRect(cw.x, cw.y, cw.w, cw.h);
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
-
-    // 2. Solid stone walls, ruined buildings & intact collapsible walls
-    for (let ob of obstacles) {
-      if (ob.id.startsWith("tower_")) continue;
-      if (!isCircleInViewBounds(ob.x + ob.w * 0.5, ob.y + ob.h * 0.5, Math.max(ob.w, ob.h), viewBounds)) continue;
-      ctx.save();
-      let isCollapsible = ob.kind === "collapsible_wall";
-      let cwRef = isCollapsible ? rt.collapsibleWalls.find((c) => c.id === ob.id) : null;
-      let isWarning = cwRef && cwRef.state === "warning";
-      let shakeX = isWarning ? (Math.random() - 0.5) * 4 : 0;
-      let shakeY = isWarning ? (Math.random() - 0.5) * 4 : 0;
-      ctx.translate(shakeX, shakeY);
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.fillRect(ob.x + 5, ob.y + 6, ob.w, ob.h);
-      ctx.fillStyle = isMono ? "#334155" : isCollapsible ? "#44403C" : ob.kind === "vault_wall" ? "#2E1065" : "#27272A";
-      ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
-      ctx.strokeStyle = isMono ? "#000000" : isWarning ? "#FBBF24" : isCollapsible ? "#A8A29E" : ob.kind === "vault_wall" ? "#C084FC" : "#71717A";
-      ctx.lineWidth = isWarning ? 3 : 2.2;
-      ctx.strokeRect(ob.x, ob.y, ob.w, ob.h);
-      if (isCollapsible) {
-        ctx.strokeStyle = isWarning ? "#FDE047" : "rgba(251, 191, 36, 0.45)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(ob.x + 8, ob.y + 6);
-        ctx.lineTo(ob.x + ob.w * 0.5, ob.y + ob.h - 6);
-        ctx.lineTo(ob.x + ob.w - 8, ob.y + 8);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // 3. Watchtowers + telegraph aim lines
-    for (let tw of rt.watchtowers) {
-      if (!isCircleInViewBounds(tw.x, tw.y, tw.range + 40, viewBounds)) continue;
-      if (tw.state === "telegraph") {
-        ctx.save();
-        ctx.strokeStyle = tw.timer < 0.35 ? "#FEF08A" : "rgba(244, 63, 94, 0.85)";
-        ctx.lineWidth = tw.timer < 0.35 ? 3.2 : 2.2;
-        ctx.setLineDash([12, 8]);
-        ctx.beginPath();
-        ctx.moveTo(tw.x, tw.y);
-        ctx.lineTo(tw.targetX, tw.targetY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.arc(tw.targetX, tw.targetY, 16, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-      ctx.save();
-      ctx.translate(tw.x, tw.y);
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.beginPath();
-      ctx.arc(3, 5, tw.radius + 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = isMono ? "#1E293B" : "#1F1218";
-      ctx.strokeStyle = tw.state === "telegraph" ? "#FB7185" : "#9F1239";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, tw.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.rotate(tw.angle);
-      ctx.fillStyle = tw.state === "telegraph" ? "#FEF08A" : "#E11D48";
-      ctx.fillRect(0, -5, tw.radius + 8, 10);
-      ctx.beginPath();
-      ctx.arc(0, 0, 9, 0, Math.PI * 2);
-      ctx.fillStyle = tw.state === "telegraph" ? "#FFFFFF" : "#FDA4AF";
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // 4. Interactive Easter Eggs: Tin Lab, Bao Mirror, Secret Vault Altar
-    let nearby = this.getNearbyCitadelInteractable();
-    let heroId = this.currentHero?.id || this.selectedHeroId;
-    for (let node of BLOOD_CITADEL_INTERACTABLES) {
-      if (!isCircleInViewBounds(node.x, node.y, 120, viewBounds)) continue;
-      let isNear = nearby && nearby.id === node.id;
-      ctx.save();
-      ctx.translate(node.x, node.y);
-      if (node.id === "tin_lab") {
-        let tinHere = heroId === "tin";
-        let pulse = 0.72 + 0.28 * Math.sin(this.elapsedTime * (tinHere ? 7 : 3));
-        ctx.fillStyle = tinHere || this.citadelSecrets.tinClue ? `rgba(244, 63, 94, ${0.22 * pulse})` : "rgba(136, 19, 55, 0.16)";
-        ctx.beginPath();
-        ctx.arc(0, 0, 48, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = tinHere ? "#FB7185" : this.citadelSecrets.tinClue ? "#F43F5E" : "#9F1239";
-        ctx.lineWidth = tinHere ? 3 : 2;
-        ctx.stroke();
-        // Lab table, blood vials & Ma Thach dossiers
-        ctx.fillStyle = "#292524";
-        ctx.fillRect(-24, -12, 48, 24);
-        ctx.strokeStyle = "#78716C";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(-24, -12, 48, 24);
-        // Blood vials
-        ctx.fillStyle = "#E11D48";
-        ctx.fillRect(-16, -8, 6, 12);
-        ctx.fillRect(-6, -10, 6, 14);
-        // Dossier & glowing crystal
-        ctx.fillStyle = "#F5F5F4";
-        ctx.fillRect(6, -8, 12, 14);
-        ctx.fillStyle = tinHere ? "#FDA4AF" : "#F43F5E";
-        ctx.beginPath();
-        ctx.moveTo(0, -24);
-        ctx.lineTo(7, -14);
-        ctx.lineTo(0, -4);
-        ctx.lineTo(-7, -14);
-        ctx.closePath();
-        ctx.fill();
-      } else if (node.id === "bao_mirror") {
-        let baoHere = heroId === "bao";
-        ctx.fillStyle = baoHere || this.citadelSecrets.baoClue ? "rgba(168, 85, 247, 0.2)" : "rgba(88, 28, 135, 0.14)";
-        ctx.beginPath();
-        ctx.arc(0, 0, 48, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = baoHere ? "#E879F9" : "#9333EA";
-        ctx.lineWidth = baoHere ? 3 : 2;
-        ctx.stroke();
-        // Distorted mirror frame
-        ctx.fillStyle = "#1E1B4B";
-        ctx.strokeStyle = "#C084FC";
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        ctx.ellipse(0, -6, 18, 26, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        // Crack line across mirror
-        ctx.strokeStyle = "#E9D5FF";
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(-10, -20);
-        ctx.lineTo(2, -4);
-        ctx.lineTo(-4, 14);
-        ctx.stroke();
-        // Flickering Bao shadow clone silhouette
-        let phase = rt.baoShadowPhase || this.elapsedTime;
-        let alpha = Math.max(0.18, 0.55 + 0.4 * Math.sin(phase * 4.5));
-        let offX = Math.sin(phase * 2.2) * (baoHere ? 30 : 22);
-        let offY = Math.cos(phase * 1.7) * 14 - 8;
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = "#7E22CE";
-        ctx.strokeStyle = "#E879F9";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(offX, offY, 13, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-      } else if (node.id === "shared_altar") {
-        let ready = this.citadelSecrets.tinClue && this.citadelSecrets.baoClue;
-        ctx.fillStyle = this.citadelSecrets.combinedUnlocked ? "rgba(250, 204, 21, 0.22)" : ready ? "rgba(232, 121, 249, 0.2)" : "rgba(30, 41, 59, 0.35)";
-        ctx.beginPath();
-        ctx.arc(0, 0, 54, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = this.citadelSecrets.combinedUnlocked ? "#FACC15" : ready ? "#F472B6" : "#64748B";
-        ctx.lineWidth = 2.8;
-        ctx.stroke();
-        // Twin sockets (Tin crimson + Bao violet)
-        ctx.fillStyle = this.citadelSecrets.tinClue ? "#F43F5E" : "#3F3F46";
-        ctx.beginPath();
-        ctx.arc(-16, 0, 9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = this.citadelSecrets.baoClue ? "#C084FC" : "#3F3F46";
-        ctx.beginPath();
-        ctx.arc(16, 0, 9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (isNear) {
-        ctx.font = '800 12px "JetBrains Mono", monospace';
-        ctx.fillStyle = "#FEF08A";
-        ctx.textAlign = "center";
-        ctx.fillText("[V] " + node.shortPrompt[this.currentLang === "en" ? "en" : "vi"], 0, -56);
-      }
-      ctx.restore();
-    }
+    drawBloodCitadelStructuresScene(ctx, this, isMono, viewBounds);
   }
   getHeroGearStats(s) {
     let a = this.heroGear[s] || {}, l = { atk: 0, matk: 0, hp: 0, hpRegen: 0, ms: 0, as: 0, crit: 0, critExtraDmg: 0, cdr: 0, lifesteal: 0, reflect: 0, dmgRed: 0, lightningChance: 0, lightningDmg: 0, frostThornsChance: 0, killHeal: 0, autoShield20: 0, autoShield20Cd: 45, dashAttackSpeed: 0, skillBurstChance: 0, skillBurstDmg: 0, autoShield30: 0, autoShield30Cd: 50, bossDmgBonus: 0, hitProcCount: 0, hitProcDmg: 0, healAmp: 0, bossSkillExtraDmg: 0, autoShield25: 0, frostSlowDur: 0, aoeAmp: 0, autoHeal20: 0, autoHeal20Cd: 60, waveStartShield: 0, skillMoveSpeedBonus: 0, equippedCount: 0 };
@@ -1566,7 +1400,7 @@ export class GameEngine {
         this.onStateChange && this.onStateChange();
       } else {
         R.playDefeat();
-        this.gameState = "GAME_OVER", R.setMusicMode("off"), this.onGameOver && this.onGameOver(false), this.onStateChange && this.onStateChange();
+        this.gameState = "GAME_OVER", this.clearSavedRun(false), this.saveGame(), R.setMusicMode("off"), this.onGameOver && this.onGameOver(false), this.onStateChange && this.onStateChange();
       }
     }
   }
@@ -4506,7 +4340,7 @@ export class GameEngine {
     this.multiplayer.reviveSendCooldown = 0;
     this.multiplayer._lastRemoteDrawTime = 0;
 
-    this.applyMapLayout(roomData?.mapId || this.selectedMapId, true);
+    this.applyMapLayout(roomData?.mapId || this.selectedMapId, !roomData?.mapId);
     this.playerCoins = 100;
     this.inventory = [];
     this.heroGear = um();
@@ -4516,7 +4350,7 @@ export class GameEngine {
       this.player.x = spawns[myId].x;
       this.player.y = spawns[myId].y;
       if (this.activeMapId === "blood_citadel") {
-        let pt = findClearPointNear(BLOOD_CITADEL_SPAWN.x + (spawns[myId].x - Se / 2) * 0.65, BLOOD_CITADEL_SPAWN.y + (spawns[myId].y - Ce / 2) * 0.65, this.player.radius, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 26);
+        let pt = findClearPointNear(spawns[myId].x, spawns[myId].y, this.player.radius, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 26);
         this.player.x = pt.x;
         this.player.y = pt.y;
       }
@@ -4679,6 +4513,10 @@ export class GameEngine {
     this.addFloatingText(this.player.x, this.player.y - 48, m, "#F59E0B", 22), R.playWaveStart(l), this.syncMusicState();
     this.multiplayer.active && this.isCoopHost() && mpClient.send({ type: "WAVE_META", wave: this.wave, waveTotal: this.waveTotal, waveSpawned: this.waveSpawned });
     l && this.isCoopHost() && this.spawnBoss(s);
+    if (!this.multiplayer.active && this.gameState === "PLAYING" && this.player && this.player.hp > 0) {
+      this.captureCurrentRunCheckpoint(s);
+      this.saveGame();
+    }
   }
   spawnBoss(s) {
     if (!this.isCoopHost()) return;
@@ -4730,10 +4568,59 @@ export class GameEngine {
     this.enemies.push(enemy), this.waveSpawned++;
     this.multiplayer.active && mpClient.send({ type: "SPAWN_ENEMIES", enemies: [enemy], waveSpawned: this.waveSpawned });
   }
-  startNewGame(s, mapId = this.selectedMapId) {
+  startNewGame(s, mapId = this.selectedMapId, options = {}) {
     this.stopCoopMode();
     this.applyMapLayout(mapId, true);
-    s && (this.currentHero = s, this.selectedHeroId = s.id), this.playerCoins = 100, this.inventory = [], this.heroGear = um(), this.duccong_pads = [null, null, null], this.saveGame(), this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.syncMusicState(), this.onStateChange && this.onStateChange();
+    s && (this.currentHero = s, this.selectedHeroId = s.id);
+    if (options && options.resetLoadout === true) {
+      this.playerCoins = 100;
+      this.inventory = [];
+      this.heroGear = um();
+    }
+    this.duccong_pads = [null, null, null];
+    this.savedRun = null;
+    this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.captureCurrentRunCheckpoint(1), this.saveGame(), this.syncMusicState(), this.onStateChange && this.onStateChange();
+  }
+  resumeSavedGame(customRun = null) {
+    let run = normalizeSavedRun(customRun || this.savedRun, MAX_WAVES);
+    if (!run) return false;
+    this.stopCoopMode();
+    let heroObj = Mi.find((m) => m.id === run.heroId) || this.currentHero || Mi[4];
+    if (heroObj?.isSecretFounder && !this.founderUnlocked) {
+      heroObj = Mi[4];
+    }
+    this.currentHero = heroObj;
+    this.selectedHeroId = heroObj.id;
+    let mapId = isMapUnlocked(run.mapId, this.unlockedMaps, this.founderUnlocked) ? run.mapId : "classic";
+    this.selectedMapId = mapId;
+    this.applyMapLayout(mapId, true);
+    this.duccong_pads = [null, null, null];
+    this.initPlayer();
+    this.player.level = run.level;
+    this.player.xp = Math.min(run.xp, run.xpToNext);
+    this.player.xpToNext = run.xpToNext;
+    this.player.bonusLevelHp = run.bonusLevelHp;
+    this.player.bonusLevelAtk = run.bonusLevelAtk;
+    this.player.bonusLevelAp = run.bonusLevelAp;
+    this.computeHeroStats();
+    this.player.hp = Math.max(1, Math.min(this.player.maxHp, run.hp));
+    if (run.shield > 0) {
+      this.player.shield = Math.min(this.player.maxHp * 2, run.shield);
+      this.player.shieldTimer = Math.max(this.player.shieldTimer || 0, 8);
+    }
+    this.player.totalDamage = run.totalDamage;
+    this.comboManager.fullReset();
+    this.totalKilled = run.totalKilled;
+    this.elapsedTime = run.elapsedTime;
+    this.enemies = []; this.projectiles = []; this.zones = []; this.icePillars = []; this.groundCracks = []; this.scorchMarks = []; this.frostTracks = []; this.spatialTears = []; this.frostBarrages = []; this.lavaPools = []; this.bossWarnings = []; this.bossBeams = []; this.bossShockRings = []; this.afterimages = []; this.lightnings = []; this.slashes = []; this.impactBursts = []; this.particles = []; this.floatingTexts = []; this.xpOrbs = []; this.deadCorpses = []; this.bloodParticles = []; this.redCrystals = []; this.flameParticles = []; this.smokePuffs = []; this.rocketProjectiles = []; this.giantMeteors = []; this.galaxyVortices = []; this.cataclysmicExplosions = []; this.tinCrystals = []; this.shadowClones = []; this.dragonWaves = []; this.skyDragons = []; this.luanPortals = []; this.luanRifts = []; this.luanBeams = []; this.taiduTurrets = []; this.taiduCarpetStrikes = []; this.nguyenSanctuaryFields = []; this.nguyenSanctuaryWaves = []; this.duyDecoys = []; this.duyHealOrbs = []; this.duyC2Queues = []; this.duyC3Barrages = []; this.phongIllusions = []; this.phongSkillQueue = []; this.dangFlurryQueue = []; this.thienSwords = []; this.thienTimeZones = []; this.thienPortals = []; this.thienSunJudgements = []; this.thanhEchoQueue = []; this.thanhGuardSnakes = []; this.thanhDevourSerpents = []; this.nhiToxicMists = []; this.cerberusUltWaves = []; this.minhSanctuaries = []; this.minhPrisons = []; this.ducanhMeteorLeaps = [];
+    this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y };
+    this.startWave(run.wave);
+    this.gameState = "PLAYING";
+    this.captureCurrentRunCheckpoint(run.wave);
+    this.saveGame();
+    this.syncMusicState();
+    this.onStateChange && this.onStateChange();
+    return true;
   }
   update(s) {
     if (this.gameState !== "PLAYING") return;
@@ -5279,7 +5166,22 @@ export class GameEngine {
     let g = 0;
     BOSS_WAVES.includes(this.wave) && (g = _f[this.wave] || 160);
     let p = s + l + g;
-    this.waveRewardClaimed || (this.waveRewardClaimed = true, this.playerCoins += p, this.wave > this.highestWaveCleared && (this.highestWaveCleared = this.wave), this.unlockCitadelIfEligible(), this.saveGame(), this.wave >= MAX_WAVES ? R.playVictory() : R.playWaveClear());
+    if (!this.waveRewardClaimed) {
+      this.waveRewardClaimed = true;
+      this.playerCoins += p;
+      if (this.wave > this.highestWaveCleared) this.highestWaveCleared = this.wave;
+      if (this.wave >= MAX_WAVES) {
+        this.clearSavedRun(false);
+        this.unlockCitadelIfEligible();
+        this.saveGame();
+        R.playVictory();
+      } else {
+        this.unlockCitadelIfEligible();
+        this.captureCurrentRunCheckpoint(this.wave + 1);
+        this.saveGame();
+        R.playWaveClear();
+      }
+    }
     let h = Math.floor(this.waveElapsedTime / 60), f = Math.floor(this.waveElapsedTime % 60), v = Math.floor(a / 60), T = Math.floor(a % 60);
     this.onWaveReward && this.onWaveReward({ wave: this.wave, baseCoins: s, speedCoins: l, bossCoins: g, totalEarned: p, currentBalance: this.playerCoins, speedText: m, speedClass: c, elapsedFormatted: `${h.toString().padStart(2, "0")}:${f.toString().padStart(2, "0")}`, targetFormatted: `${v.toString().padStart(2, "0")}:${T.toString().padStart(2, "0")}`, kills: this.waveKilled, isFinalWave: this.wave >= MAX_WAVES });
   }
@@ -6433,10 +6335,9 @@ export class GameEngine {
         }
       }
       if (this.activeMapId === "blood_citadel") {
-        let obs = this.getActiveObstacles();
         for (let a of this.enemies) {
           if (a.hp <= 0) continue;
-          resolveCircleObstacles(a, obs, this.mapWidth, this.mapHeight, 14);
+          this.resolveEntityObstacles(a, 14);
         }
       }
     }
@@ -6771,7 +6672,7 @@ export class GameEngine {
     a.translate(-this.camera.x, -this.camera.y);
     let c = this.player.tin_monochrome_realm_timer > 0;
     if (this.activeMapId === "blood_citadel") {
-      this.renderBloodCitadelFloor(a, c, viewBounds);
+      this.renderBloodCitadelFloor(a, c, viewBounds, prof);
     } else {
       let gs = prof.gridStepPx || 100;
       let gxStart = Math.max(0, Math.floor(viewBounds.minX / gs) * gs), gxEnd = Math.min(this.mapWidth, Math.ceil(viewBounds.maxX / gs) * gs);
@@ -7485,6 +7386,7 @@ export class GameEngine {
     for (let h of this.particles) if (isCircleInViewBounds(h.x, h.y, (h.radius || 6) + 12, viewBounds)) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
     a.textAlign = "center", a.textBaseline = "middle";
     for (let h of this.floatingTexts) if (isCircleInViewBounds(h.x, h.y, 110, viewBounds)) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.font = `800 ${h.size}px "JetBrains Mono", monospace`, a.fillStyle = "#070B14", a.fillText(h.text, h.x + 1, h.y + 1), a.fillStyle = c ? "#000000" : h.color, a.fillText(h.text, h.x, h.y), a.restore();
+    this.activeMapId === "blood_citadel" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawBloodCitadelAtmosphereScene(a, this, c, prof), a.restore());
     this.screenFlashWhite > 0 && (a.save(), a.setTransform(1, 0, 0, 1, 0, 0), a.fillStyle = `rgba(255, 255, 255, ${Math.min(0.65, this.screenFlashWhite * 2)})`, a.fillRect(0, 0, this.canvas.width, this.canvas.height), a.restore());
     if (this.gameState === "PLAYING") {
       a.save();
@@ -8827,7 +8729,18 @@ export class GameEngine {
     } : null;
     let dProf = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(s.taidu_droneMode || "attack") : null;
     let m = s.chargeState.active ? Math.min(1, s.chargeState.elapsed / Math.max(0.1, s.chargeState.maxDur)) : 0, c = "";
-    return s.chargeState.active && (c = s.chargeState.kind === "danh_c2" ? `T\u1EE4 L\u1EF0C LONG H\u1ED2N \xB7 ${s.chargeState.elapsed >= 2.5 ? "T\u1EA6NG 3 (T\u1ED0I \u0110A)" : s.chargeState.elapsed >= 1.5 ? "T\u1EA6NG 2" : "T\u1EA6NG 1"}` : s.chargeState.elapsed >= 0.35 ? "KI\u1EBEM KH\xCD S\u1EB4N S\xC0NG!" : "GI\u1EEE \u0110\u1EC2 PH\xD3NG KI\u1EBEM KH\xCD..."), { skillStates: a, padTeleportCds: pads, chargeProgress: m, chargeActive: s.chargeState.active, chargeLabel: c, resourceText: l, thienState, droneMode: s.taidu_droneMode || "attack", droneLabel: dProf?.label || "T\u1EA5n C\xF4ng", droneColor: dProf?.color || "#38BDF8", combo: this.comboManager.getSnapshot(), mapId: this.activeMapId, nearbyInteractable: this.getNearbyCitadelInteractable(), citadelSecrets: { ...this.citadelSecrets } };
+    let liveBossForHud = this.activeMapId === "blood_citadel" ? this.enemies.find((e) => e.kind === "boss" && e.hp > 0) : null;
+    let citadelHud = this.activeMapId === "blood_citadel" && this.citadelRuntime ? {
+      playerX: Math.round(s.x),
+      playerY: Math.round(s.y),
+      playerFacing: s.facing || 0,
+      zoneLabel: getBloodCitadelZoneLabel(s.x, s.y, this.currentLang),
+      bossPos: liveBossForHud ? { x: Math.round(liveBossForHud.x), y: Math.round(liveBossForHud.y) } : null,
+      watchtowers: (this.citadelRuntime.watchtowers || []).map((tw) => ({ id: tw.id, x: tw.x, y: tw.y, state: tw.state })),
+      bloodTraps: (this.citadelRuntime.bloodTraps || []).map((tr) => ({ id: tr.id, x: tr.x, y: tr.y, state: tr.state })),
+      collapsedIds: (this.citadelRuntime.collapsibleWalls || []).filter((cw) => cw.state === "collapsed").map((cw) => cw.id),
+    } : null;
+    return s.chargeState.active && (c = s.chargeState.kind === "danh_c2" ? `T\u1EE4 L\u1EF0C LONG H\u1ED2N \xB7 ${s.chargeState.elapsed >= 2.5 ? "T\u1EA6NG 3 (T\u1ED0I \u0110A)" : s.chargeState.elapsed >= 1.5 ? "T\u1EA6NG 2" : "T\u1EA6NG 1"}` : s.chargeState.elapsed >= 0.35 ? "KI\u1EBEM KH\xCD S\u1EB4N S\xC0NG!" : "GI\u1EEE \u0110\u1EC2 PH\xD3NG KI\u1EBEM KH\xCD..."), { skillStates: a, padTeleportCds: pads, chargeProgress: m, chargeActive: s.chargeState.active, chargeLabel: c, resourceText: l, thienState, droneMode: s.taidu_droneMode || "attack", droneLabel: dProf?.label || "T\u1EA5n C\xF4ng", droneColor: dProf?.color || "#38BDF8", combo: this.comboManager.getSnapshot(), mapId: this.activeMapId, nearbyInteractable: this.getNearbyCitadelInteractable(), citadelSecrets: { ...this.citadelSecrets }, citadelHud };
   }
   stop() {
     this.animFrameId && (this.animFrameId = (cancelAnimationFrame(this.animFrameId), null));

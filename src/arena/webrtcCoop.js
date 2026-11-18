@@ -131,7 +131,7 @@ function waitForIceComplete(pc, timeoutMs = 2600) {
   });
 }
 
-function getSpawnPosition(slot) {
+function getSpawnPosition(slot, mapId = "classic") {
   const offsets = [
     { dx: -75, dy: -45 },
     { dx: 75, dy: -45 },
@@ -139,6 +139,9 @@ function getSpawnPosition(slot) {
     { dx: 75, dy: 55 },
   ];
   const off = offsets[slot % offsets.length];
+  if (mapId === "blood_citadel") {
+    return { x: 800 + off.dx, y: 840 + off.dy };
+  }
   return { x: 1000 + off.dx, y: 700 + off.dy };
 }
 
@@ -163,7 +166,7 @@ function generateRandomSixDigitCode() {
 }
 
 export class P2PRoomHost {
-  constructor({ hostName, heroId, founderUnlocked = false, onLocalEvent, onPeersChanged }) {
+  constructor({ hostName, heroId, mapId = "classic", founderUnlocked = false, onLocalEvent, onPeersChanged }) {
     this.hostId = `p2p_${Math.random().toString(36).slice(2, 10)}`;
     this.founderUnlocked = Boolean(founderUnlocked);
     this.onLocalEvent = onLocalEvent;
@@ -173,13 +176,15 @@ export class P2PRoomHost {
     this.pendingPeerCounter = 0;
     this.syncRetryTimer = null;
 
+    const safeMapId = mapId === "blood_citadel" ? "blood_citadel" : "classic";
     const safeHeroId = heroId === "thien" && !this.founderUnlocked ? "eohyen" : heroId || "eohyen";
-    const pos = getSpawnPosition(0);
+    const pos = getSpawnPosition(0, safeMapId);
     const codeSuffix = generateRandomSixDigitCode();
     this.room = {
       id: codeSuffix,
       isP2P: true,
       status: "LOBBY",
+      mapId: safeMapId,
       hostId: this.hostId,
       players: new Map([
         [
@@ -274,6 +279,7 @@ export class P2PRoomHost {
       roomId: this.room.id,
       isP2P: true,
       status: this.room.status,
+      mapId: this.room.mapId || "classic",
       hostId: this.room.hostId,
       maxPlayers: MAX_PLAYERS,
       playerCount: members.length,
@@ -773,7 +779,7 @@ export class P2PRoomHost {
 
     const spawns = {};
     for (const p of this.room.players.values()) {
-      const pos = getSpawnPosition(p.slot);
+      const pos = getSpawnPosition(p.slot, this.room.mapId);
       p.alive = true;
       p.readyNextWave = false;
       p.totalDamage = 0;
@@ -788,6 +794,7 @@ export class P2PRoomHost {
     this.broadcastRoom({
       type: "MATCH_STARTED",
       room: this.serializeRoom(),
+      mapId: this.room.mapId || "classic",
       wave: 1,
       matchNonce: this.room.matchNonce,
       playerCount: this.room.matchPlayerCount,
@@ -870,7 +877,7 @@ export class P2PRoomHost {
         return;
       }
       const slot = this.getNextFreeSlot();
-      const pos = getSpawnPosition(slot);
+      const pos = getSpawnPosition(slot, this.room.mapId);
       const requestedHero = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
       const safePeerHero = requestedHero === "thien" ? "dung" : requestedHero;
       const joined = {
@@ -965,6 +972,13 @@ export class P2PRoomHost {
 
     if (msg.type === "SET_NAME") {
       player.name = sanitizeName(msg.playerName, player.slot + 1);
+      this.broadcastRoomUpdate();
+      return;
+    }
+
+    if (msg.type === "SET_MAP") {
+      if (playerId !== this.hostId || this.room.status !== "LOBBY") return;
+      this.room.mapId = msg.mapId === "blood_citadel" ? "blood_citadel" : "classic";
       this.broadcastRoomUpdate();
       return;
     }
@@ -1095,8 +1109,10 @@ export class P2PRoomHost {
       const knockY = Number(msg.knockY) || 0;
       if (knockX !== 0 || knockY !== 0) {
         const factor = enemy.kind === "boss" ? 0.25 : 1;
-        enemy.x = Math.max(enemy.radius, Math.min(2000 - enemy.radius, enemy.x + knockX * factor));
-        enemy.y = Math.max(enemy.radius, Math.min(1400 - enemy.radius, enemy.y + knockY * factor));
+        const mapW = this.room.mapId === "blood_citadel" ? 1600 : 2000;
+        const mapH = this.room.mapId === "blood_citadel" ? 1600 : 1400;
+        enemy.x = Math.max(enemy.radius, Math.min(mapW - enemy.radius, enemy.x + knockX * factor));
+        enemy.y = Math.max(enemy.radius, Math.min(mapH - enemy.radius, enemy.y + knockY * factor));
       }
 
       if (msg.effects && typeof msg.effects === "object") {
@@ -1273,8 +1289,10 @@ export class P2PRoomHost {
       const s = msg.state;
       if (!s || typeof s !== "object") return;
       const wasAlive = player.alive;
-      player.x = Math.max(20, Math.min(1980, Number(s.x) || player.x));
-      player.y = Math.max(20, Math.min(1380, Number(s.y) || player.y));
+      const mapW = this.room.mapId === "blood_citadel" ? 1600 : 2000;
+      const mapH = this.room.mapId === "blood_citadel" ? 1600 : 1400;
+      player.x = Math.max(20, Math.min(mapW - 20, Number(s.x) || player.x));
+      player.y = Math.max(20, Math.min(mapH - 20, Number(s.y) || player.y));
       player.vx = Number(s.vx) || 0;
       player.vy = Number(s.vy) || 0;
       player.facing = Number(s.facing) || 0;

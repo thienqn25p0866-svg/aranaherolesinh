@@ -10,7 +10,10 @@ import {
   filterHeroesByRole,
   getHeroRoleKey,
 } from "./combatLogic.ts";
-import { ARENA_MAPS, isMapUnlocked } from "./bloodCitadelMap.ts";
+import { ARENA_MAP_LIST, isMapUnlocked } from "./bloodCitadelMap.ts";
+import { HERO_CHRONICLES } from "./darkFantasyLore.ts";
+import { detectStorageEnvironment } from "./deviceStorage.ts";
+import { CitadelBlueprintEmblem } from "./CitadelVisuals.jsx";
 
 export function MobaLobbyMenu({
   lang,
@@ -55,10 +58,25 @@ export function MobaLobbyMenu({
   unlockedMaps = ["classic"],
   citadelSecrets = null,
   onSelectMap,
+  onOpenChronicles,
+  resumableRun = null,
+  onResumeRun,
+  deviceInfo = null,
 }) {
   const [attackTrigger, setAttackTrigger] = useState(0);
   const [previewSkillKey, setPreviewSkillKey] = useState("c3");
   const isVi = lang === "vi";
+  const storageEnv = useMemo(() => detectStorageEnvironment(), []);
+  const resumeHero = useMemo(
+    () => (resumableRun?.active ? heroes.find((h) => h.id === resumableRun.heroId) || null : null),
+    [resumableRun, heroes]
+  );
+  const resumeMap = useMemo(
+    () => (resumableRun?.active ? ARENA_MAP_LIST.find((m) => m.id === resumableRun.mapId) || ARENA_MAP_LIST[0] : null),
+    [resumableRun]
+  );
+  const resumeHeroName = ((resumeHero?.name || resumableRun?.heroId || "Anh Hùng") + "").split("(")[0].trim();
+  const resumeMapName = resumeMap?.name?.[lang] || resumeMap?.name?.vi || resumableRun?.mapId || "Classic";
 
   const currentIdx = Math.max(
     0,
@@ -180,6 +198,17 @@ export function MobaLobbyMenu({
             className="hover:text-amber-300 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
           >
             {isVi ? "Xếp Hạng" : "Leaderboard"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              R.playModalOpen();
+              onOpenChronicles?.("world");
+            }}
+            onMouseEnter={() => R.playHover()}
+            className="hover:text-rose-300 text-rose-200 transition-colors py-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            {isVi ? "Cốt Truyện" : "Chronicles"}
           </button>
           <button
             type="button"
@@ -558,6 +587,17 @@ export function MobaLobbyMenu({
               />
             )}
 
+            {deviceInfo?.deviceId && (
+              <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-950/85 border border-emerald-500/25 text-[10px]">
+                <span className="text-emerald-300 font-semibold truncate">
+                  ✓ {isVi ? "Đã nhớ thiết bị" : "Device Remembered"} · {deviceInfo.deviceId}
+                </span>
+                <span className="font-mono-numbers text-slate-400 shrink-0">
+                  {isVi ? storageEnv.labelVi : storageEnv.labelEn} · #{deviceInfo.sessionCount || 1}
+                </span>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
               <button
                 type="button"
@@ -593,26 +633,44 @@ export function MobaLobbyMenu({
           </div>
 
           {/* Map Selector: Classic vs Cổ Thành Huyết Táng */}
-          <div className="rounded-xl bg-slate-950/85 border border-slate-800/90 p-2.5 mt-3">
+          <div className="rounded-xl bg-[#070B16]/90 border border-slate-800/90 p-2.5 mt-3">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-[11px] font-moba font-bold tracking-wider uppercase text-slate-300">
-                {isVi ? "Bản Đồ Chiến Trường" : "Battleground Map"}
-              </span>
-              <span className="text-[10px] text-slate-400">
-                {isMapUnlocked("blood_citadel", unlockedMaps)
-                  ? isVi
-                    ? "Đã mở Cổ Thành"
-                    : "Citadel Unlocked"
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-moba font-bold tracking-wider uppercase text-slate-300 truncate">
+                  {isVi ? "Bản Đồ Chiến Trường" : "Battleground Map"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playModalOpen();
+                    onOpenChronicles?.("citadel");
+                  }}
+                  className="text-[10px] font-moba font-bold text-rose-300/90 hover:text-amber-300 underline decoration-rose-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {isVi ? "Hồ Sơ Cổ Thành" : "Citadel Lore"}
+                </button>
+              </div>
+              <span className="text-[10px] font-mono-numbers text-slate-400 whitespace-nowrap shrink-0">
+                {isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked)
+                  ? founderUnlocked
+                    ? isVi
+                      ? "Đổi tự do · Quyền Thiên"
+                      : "Free Switch · Founder"
+                    : isVi
+                      ? "✓ Đã mở Cổ Thành"
+                      : "✓ Citadel Unlocked"
                   : isVi
                     ? "Mở sau Màn 27 Cổ Điển"
                     : "Unlock: Classic Wave 27"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {ARENA_MAPS.map((m) => {
-                const unlocked = isMapUnlocked(m.id, unlockedMaps);
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ARENA_MAP_LIST.map((m) => {
+                const unlocked = isMapUnlocked(m.id, unlockedMaps, founderUnlocked);
                 const active = selectedMapId === m.id;
                 const isCitadel = m.id === "blood_citadel";
+                const mapName = m.name?.[lang] || m.name?.vi || m.id;
+                const mapSub = m.subtitle?.[lang] || m.subtitle?.vi || "";
                 return (
                   <button
                     key={m.id}
@@ -625,60 +683,75 @@ export function MobaLobbyMenu({
                       R.playTabSwitch();
                       onSelectMap?.(m.id);
                     }}
-                    className={`text-left rounded-lg p-2 border transition cursor-pointer ${
+                    className={`text-left rounded-xl p-2.5 border transition cursor-pointer flex items-start gap-2.5 ${
                       active
                         ? isCitadel
-                          ? "bg-rose-950/75 border-rose-400/80 text-rose-100"
-                          : "bg-amber-950/60 border-amber-400/80 text-amber-100"
+                          ? "bg-gradient-to-br from-[#230916]/95 via-[#150814] to-[#0B0712] border-rose-400/80 text-rose-50 shadow-[0_0_20px_rgba(225,29,72,0.2)]"
+                          : "bg-gradient-to-br from-amber-950/65 to-slate-950 border-amber-400/80 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
                         : unlocked
-                          ? "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
-                          : "bg-slate-900/50 border-slate-800/70 text-slate-500 opacity-80"
+                          ? isCitadel
+                            ? "bg-[#110812]/90 border-rose-900/50 hover:border-rose-500/60 text-slate-200"
+                            : "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
+                          : "bg-slate-950/60 border-slate-800/70 text-slate-500 opacity-80"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-moba font-extrabold leading-tight truncate">
-                        {unlocked ? (isCitadel ? "🏰 " : "⚔️ ") : "🔒 "}
-                        {isVi ? m.nameVi : m.nameEn}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 leading-snug">
-                      {unlocked
-                        ? `${m.width}×${m.height} · ${isVi ? m.shortDescVi : m.shortDescEn}`
-                        : isVi
-                          ? "Phá đảo Màn 27 ở Đấu Trường Cổ Điển để mở khóa"
-                          : "Clear Wave 27 in Classic Arena to unlock"}
-                    </div>
-                    {isCitadel && unlocked && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        <span
-                          className={`text-[9px] px-1.5 py-0.5 rounded border ${
-                            citadelSecrets?.tinClue
-                              ? "bg-rose-500/20 border-rose-400/50 text-rose-200"
-                              : "bg-slate-900 border-slate-700 text-slate-500"
-                          }`}
-                        >
-                          Tin {citadelSecrets?.tinClue ? "✓" : "?"}
-                        </span>
-                        <span
-                          className={`text-[9px] px-1.5 py-0.5 rounded border ${
-                            citadelSecrets?.baoClue
-                              ? "bg-purple-500/20 border-purple-400/50 text-purple-200"
-                              : "bg-slate-900 border-slate-700 text-slate-500"
-                          }`}
-                        >
-                          Bảo {citadelSecrets?.baoClue ? "✓" : "?"}
-                        </span>
-                        <span
-                          className={`text-[9px] px-1.5 py-0.5 rounded border ${
-                            citadelSecrets?.combinedUnlocked
-                              ? "bg-amber-500/20 border-amber-400/60 text-amber-200"
-                              : "bg-slate-900 border-slate-700 text-slate-500"
-                          }`}
-                        >
-                          {isVi ? "Bí Mật Chung" : "Shared"} {citadelSecrets?.combinedUnlocked ? "✓" : "?"}
-                        </span>
+                    {isCitadel ? (
+                      <CitadelBlueprintEmblem
+                        secrets={citadelSecrets}
+                        unlocked={unlocked}
+                        active={active}
+                        className="w-11 h-11 mt-0.5"
+                      />
+                    ) : (
+                      <div
+                        className={`w-11 h-11 mt-0.5 rounded-md border flex items-center justify-center text-base shrink-0 ${
+                          active
+                            ? "bg-amber-950/70 border-amber-400/70 text-amber-200"
+                            : "bg-slate-900/90 border-slate-700/70 text-slate-300"
+                        }`}
+                      >
+                        ⚔
                       </div>
                     )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="text-xs font-moba font-extrabold leading-tight truncate">
+                          {unlocked ? "" : "🔒 "}
+                          {mapName}
+                        </span>
+                        {active && (
+                          <span
+                            className={`text-[9px] font-mono-numbers font-black uppercase tracking-wider shrink-0 ${
+                              isCitadel ? "text-rose-300" : "text-amber-300"
+                            }`}
+                          >
+                            {isVi ? "ĐANG CHỌN" : "ACTIVE"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5 leading-snug line-clamp-2">
+                        {unlocked
+                          ? mapSub
+                          : isVi
+                            ? "Phá đảo Màn 27 Cổ Điển hoặc mở khóa Thiên"
+                            : "Clear Classic Wave 27 or unlock Thiên"}
+                      </div>
+                      {isCitadel && unlocked && (
+                        <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-rose-500/20 text-[9.5px] font-mono-numbers tabular-nums">
+                          <span className={citadelSecrets?.tinClue ? "text-rose-300 font-bold" : "text-slate-500"}>
+                            Tin {citadelSecrets?.tinClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={citadelSecrets?.baoClue ? "text-purple-300 font-bold" : "text-slate-500"}>
+                            Bảo {citadelSecrets?.baoClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={citadelSecrets?.combinedUnlocked ? "text-amber-300 font-bold" : "text-slate-500"}>
+                            {isVi ? "Hầm Ẩn" : "Vault"} {citadelSecrets?.combinedUnlocked ? "✓" : "○"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -686,6 +759,35 @@ export function MobaLobbyMenu({
           </div>
 
           <div className="flex flex-col gap-2.5 my-3">
+            {resumableRun?.active && (
+              <button
+                type="button"
+                onClick={() => {
+                  R.playHeroLockIn();
+                  onResumeRun?.();
+                }}
+                onMouseEnter={() => R.playHover()}
+                className="w-full min-h-[52px] px-3.5 py-2 rounded-xl border border-emerald-400/75 bg-gradient-to-r from-emerald-950/90 via-teal-950/90 to-cyan-950/90 hover:from-emerald-900/95 hover:to-cyan-900/95 text-left shadow-lg transition-all cursor-pointer flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="font-moba text-sm font-black text-emerald-200 tracking-wide truncate">
+                    {resumableRun.heroId === "thien" && !founderUnlocked ? "🔒 " : "▶ "}
+                    {isVi
+                      ? `CHƠI TIẾP · MÀN ${resumableRun.wave}/27`
+                      : `RESUME RUN · WAVE ${resumableRun.wave}/27`}
+                  </div>
+                  <div className="text-[11px] font-mono-numbers text-cyan-200/90 truncate">
+                    {resumeHeroName} · Lv.{resumableRun.level} · HP{" "}
+                    {Number(resumableRun.hp || 0).toLocaleString()}/{Number(resumableRun.maxHp || 0).toLocaleString()} ·{" "}
+                    {resumeMapName}
+                  </div>
+                </div>
+                <span className="shrink-0 px-2 py-1 rounded-md bg-emerald-400/20 border border-emerald-400/50 text-[10px] font-moba font-black text-emerald-200">
+                  {isVi ? "TIẾP TỤC" : "RESUME"}
+                </span>
+              </button>
+            )}
+
             {/* Single Dominant Primary CTA */}
             <button
               type="button"
@@ -843,6 +945,16 @@ export function MobaLobbyMenu({
               type="button"
               onClick={() => {
                 R.playModalOpen();
+                onOpenChronicles?.("world");
+              }}
+              className="hover:text-rose-300 text-rose-200/90 font-semibold transition-colors py-1 cursor-pointer"
+            >
+              {isVi ? "📜 Biên Niên Sử" : "📜 Chronicles"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                R.playModalOpen();
                 onOpenPatchNotes();
               }}
               className="hover:text-amber-300 transition-colors py-1 cursor-pointer"
@@ -889,6 +1001,7 @@ export function MobaHeroSelect({
   onToggleFullscreen,
   founderUnlocked = false,
   onRequireFounderAuth,
+  onOpenChronicles,
 }) {
   const [roleFilter, setRoleFilter] = useState("all");
   const [attackTrigger, setAttackTrigger] = useState(0);
@@ -1142,6 +1255,31 @@ export function MobaHeroSelect({
                     {hero.levelScaling.atk} ATK
                     {hero.levelScaling.ap > 0 ? ` · +${hero.levelScaling.ap} AP` : ""} · +
                     {hero.levelScaling.armor} {lang === "vi" ? "Giáp" : "Armor"}
+                  </div>
+                )}
+
+                {HERO_CHRONICLES[hero.id] && (
+                  <div className="mt-2.5 rounded-lg border border-rose-500/25 bg-rose-950/15 px-2.5 py-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-300">
+                        {HERO_CHRONICLES[hero.id].faction?.[lang] || ""}
+                      </div>
+                      <p className="text-[11px] text-slate-300 italic line-clamp-2 mt-0.5">
+                        {HERO_CHRONICLES[hero.id].epitaph?.[lang] || ""}
+                      </p>
+                    </div>
+                    {onOpenChronicles && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          R.playModalOpen();
+                          onOpenChronicles("heroes", hero.id);
+                        }}
+                        className="shrink-0 text-[10px] font-bold px-2 py-1 rounded border border-rose-400/40 bg-rose-950/50 text-rose-200 hover:text-white transition cursor-pointer"
+                      >
+                        {lang === "vi" ? "Tiểu Sử" : "Lore"}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

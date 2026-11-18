@@ -198,6 +198,46 @@ import {
   sanitizePlayerProfile,
   serializeHeroGearEntries,
 } from './playerAccount.ts';
+import {
+  DEVICE_TRANSFER_PREFIX,
+  decodeDeviceTransferCode,
+  detectStorageEnvironment,
+  encodeDeviceTransferCode,
+  isStaticWebHost,
+  loadDeviceRecord,
+  loadDeviceSettings,
+  normalizeSavedRun,
+  readDeviceKey,
+  recordDeviceSave,
+  removeDeviceKey,
+  saveDeviceSettings,
+  touchDeviceVisit,
+  writeDeviceKey,
+} from './deviceStorage.ts';
+import {
+  ARENA_MAPS,
+  ARENA_MAP_LIST,
+  BLOOD_CITADEL_SIZE,
+  BLOOD_CITADEL_SPAWN,
+  BLOOD_CITADEL_INTERACTABLES,
+  BLOOD_CITADEL_STATIC_OBSTACLES,
+  CITADEL_UNLOCK_WAVE,
+  computeUnlockedMaps,
+  isMapUnlocked,
+  createDefaultCitadelSecrets,
+  createInitialCitadelRuntimeState,
+  getActiveCitadelObstacles,
+  doesPointOverlapAnyObstacle,
+  findClearPointNear,
+  resolveCircleObstacles,
+  evaluateCitadelInteraction,
+} from './bloodCitadelMap.ts';
+import {
+  CHRONICLE_CHAPTERS,
+  HERO_CHRONICLES,
+  BOSS_CHRONICLES,
+  buildCitadelChronicleOverview,
+} from './darkFantasyLore.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
   const w3p1 = getBossCcDuration(0.85, 3, 1, 'stun');
@@ -4203,4 +4243,599 @@ test('Minh (Than Khong Che) and Duc Anh (Co Xe Bat Diet): stats, pure CC/immunit
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & spawn clearance work deterministically', () => {
+  assert.equal(CITADEL_UNLOCK_WAVE, 27);
+  assert.equal(ARENA_MAPS.blood_citadel.width, BLOOD_CITADEL_SIZE);
+  assert.equal(ARENA_MAPS.blood_citadel.height, BLOOD_CITADEL_SIZE);
+  assert.equal(ARENA_MAP_LIST.length, 2);
+
+  // Locked before clearing Wave 27 without Founder access
+  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
+  assert.deepEqual(lockedMaps, ['classic']);
+  assert.equal(isMapUnlocked('classic', lockedMaps, false), true);
+  assert.equal(isMapUnlocked('blood_citadel', lockedMaps, false), false);
+
+  // Unlocks upon clearing Wave 27 on Classic
+  const wave27Unlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
+  assert.equal(wave27Unlocked.includes('blood_citadel'), true);
+  assert.equal(isMapUnlocked('blood_citadel', wave27Unlocked, false), true);
+
+  const classicFlagUnlocked = computeUnlockedMaps({ highestWaveCleared: 5, classicCleared: true, storedUnlocked: [], founderUnlocked: false });
+  assert.equal(isMapUnlocked('blood_citadel', classicFlagUnlocked, false), true);
+
+  // Founder unlock allows free switching to Cổ Thành Huyết Táng even before Wave 27
+  const founderMaps = computeUnlockedMaps({ highestWaveCleared: 0, classicCleared: false, storedUnlocked: [], founderUnlocked: true });
+  assert.equal(founderMaps.includes('blood_citadel'), true);
+  assert.equal(isMapUnlocked('blood_citadel', ['classic'], true), true);
+
+  // Verify spawn & all interactables sit cleanly outside obstacles in 1600x1600 arena
+  const runtime = createInitialCitadelRuntimeState('blood_citadel');
+  const obstacles = getActiveCitadelObstacles(runtime);
+  assert.ok(obstacles.length >= BLOOD_CITADEL_STATIC_OBSTACLES.length);
+  assert.equal(doesPointOverlapAnyObstacle(BLOOD_CITADEL_SPAWN.x, BLOOD_CITADEL_SPAWN.y, 24, obstacles), false);
+  for (const node of BLOOD_CITADEL_INTERACTABLES) {
+    assert.equal(doesPointOverlapAnyObstacle(node.x, node.y, 18, obstacles), false, `Interactable ${node.id} overlaps obstacle`);
+  }
+
+  // Test collision pushback & clear-point search
+  const blockedObstacle = BLOOD_CITADEL_STATIC_OBSTACLES[0];
+  const insideX = blockedObstacle.x + blockedObstacle.w * 0.5;
+  const insideY = blockedObstacle.y + blockedObstacle.h * 0.5;
+  const pushed = resolveCircleObstacles(insideX, insideY, 20, obstacles, BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SIZE);
+  assert.equal(pushed.collided, true);
+  assert.equal(doesPointOverlapAnyObstacle(pushed.x, pushed.y, 19.5, obstacles), false);
+  const clearPt = findClearPointNear(insideX, insideY, 20, obstacles, BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SIZE);
+  assert.equal(doesPointOverlapAnyObstacle(clearPt.x, clearPt.y, 19.5, obstacles), false);
+});
+
+test('Cổ Thành Huyết Táng interactive Easter eggs (Tin, Bảo, and Combined Secret) function accurately', () => {
+  let secrets = createDefaultCitadelSecrets();
+
+  // Inspecting Tin lab with another hero previews dossier without unlocking Tin clue
+  const nonTinPreview = evaluateCitadelInteraction({
+    nodeId: 'tin_lab',
+    heroId: 'dung',
+    secrets,
+    lang: 'vi',
+  });
+  assert.equal(nonTinPreview.nextSecrets.tinClue, false);
+  assert.equal(nonTinPreview.coinBonus, 0);
+  assert.equal(nonTinPreview.payload.heroResonated, false);
+
+  // Inspecting Tin lab as Tin unlocks Ma Thạch & Blood clue + 120 coins + resonance buff
+  const tinUnlock = evaluateCitadelInteraction({
+    nodeId: 'tin_lab',
+    heroId: 'tin',
+    secrets: nonTinPreview.nextSecrets,
+    lang: 'vi',
+  });
+  secrets = tinUnlock.nextSecrets;
+  assert.equal(secrets.tinClue, true);
+  assert.equal(tinUnlock.coinBonus, 120);
+  assert.equal(tinUnlock.buffKind, 'tin_resonance');
+  assert.equal(tinUnlock.payload.unlockedNow, true);
+
+  // Shared altar stays incomplete until Bảo's clue is also unlocked
+  const prematureAltar = evaluateCitadelInteraction({
+    nodeId: 'shared_altar',
+    heroId: 'tin',
+    secrets,
+    lang: 'vi',
+  });
+  assert.equal(prematureAltar.nextSecrets.combinedUnlocked, false);
+  assert.equal(prematureAltar.coinBonus, 0);
+
+  // Inspecting Bảo mirror as Bảo unlocks clue with exact secret quote
+  const baoUnlock = evaluateCitadelInteraction({
+    nodeId: 'bao_mirror',
+    heroId: 'bao',
+    secrets,
+    lang: 'vi',
+  });
+  secrets = baoUnlock.nextSecrets;
+  assert.equal(secrets.baoClue, true);
+  assert.equal(baoUnlock.coinBonus, 120);
+  assert.equal(baoUnlock.buffKind, 'bao_shadow');
+  assert.equal(baoUnlock.payload.quote, '“Liệu ngươi có chắc mình là bản thể gốc?”');
+
+  // Shared altar now triggers hidden joint experiment event
+  const sharedEvent = evaluateCitadelInteraction({
+    nodeId: 'shared_altar',
+    heroId: 'bao',
+    secrets,
+    lang: 'vi',
+  });
+  assert.equal(sharedEvent.nextSecrets.combinedUnlocked, true);
+  assert.equal(sharedEvent.coinBonus, 350);
+  assert.equal(sharedEvent.buffKind, 'combined_relic');
+  assert.equal(sharedEvent.payload.isCombinedEvent, true);
+  assert.equal(sharedEvent.payload.unlockedNow, true);
+});
+
+test('Dark Fantasy lore covers all 21 heroes, all 9 bosses, and Citadel dossier summaries cleanly', async () => {
+  const { Mi, hm } = await import('./gameData.js');
+
+  assert.ok(CHRONICLE_CHAPTERS.length >= 3);
+  for (const ch of CHRONICLE_CHAPTERS) {
+    assert.ok(ch.title.vi && ch.title.en);
+    assert.ok(ch.paragraphs.vi.length >= 2 && ch.paragraphs.en.length >= 2);
+  }
+
+  assert.equal(Mi.length, 21);
+  for (const hero of Mi) {
+    const entry = HERO_CHRONICLES[hero.id];
+    assert.ok(entry, `Missing HERO_CHRONICLES entry for ${hero.id}`);
+    assert.ok(entry.faction.vi.length > 0 && entry.faction.en.length > 0);
+    assert.ok(entry.originTitle.vi.length > 0 && entry.originTitle.en.length > 0);
+    assert.ok(entry.epitaph.vi.length > 0 && entry.epitaph.en.length > 0);
+    assert.ok(entry.story.vi.length > 0 && entry.story.en.length > 0);
+    assert.ok(entry.citadelBond.vi.length > 0 && entry.citadelBond.en.length > 0);
+  }
+
+  const bossWaves = Object.keys(hm).map(Number).sort((a, b) => a - b);
+  assert.deepEqual(bossWaves, BOSS_WAVES);
+  assert.equal(BOSS_CHRONICLES.length, 9);
+  for (const w of bossWaves) {
+    const bLore = BOSS_CHRONICLES.find((b) => b.wave === w);
+    assert.ok(bLore, `Missing BOSS_CHRONICLES entry for wave ${w}`);
+    assert.ok(bLore.name.vi && bLore.name.en && bLore.lore.vi && bLore.lore.en);
+  }
+
+  const overviewVi = buildCitadelChronicleOverview(
+    { tinClue: true, baoClue: true, combinedUnlocked: true, inspectedNodes: ['tin_lab', 'bao_mirror', 'shared_altar'] },
+    'vi'
+  );
+  assert.match(overviewVi.badge, /3\/3/);
+  assert.equal(overviewVi.combinedDossier.locked, false);
+
+  // Also verify playerAccount cloud/local merge preserves citadelSecrets and honors founderUnlocked map access
+  const merged = mergeLocalAndCloudProgress(
+    {
+      coins: 500,
+      highestWave: 10,
+      classicCleared: false,
+      selectedMapId: 'blood_citadel',
+      citadelSecrets: { tinClue: true, baoClue: false, combinedUnlocked: false, inspectedNodes: ['tin_lab'] },
+    } as any,
+    {
+      coins: 400,
+      highestWave: 12,
+      citadelSecrets: { tinClue: false, baoClue: true, combinedUnlocked: false, inspectedNodes: ['bao_mirror'] },
+    } as any,
+    true
+  );
+  assert.equal(merged.selectedMapId, 'blood_citadel');
+  assert.equal(merged.citadelSecrets?.tinClue, true);
+  assert.equal(merged.citadelSecrets?.baoClue, true);
+
+  const mergedLocked = mergeLocalAndCloudProgress(
+    { coins: 500, highestWave: 10, classicCleared: false, selectedMapId: 'blood_citadel' } as any,
+    null,
+    false
+  );
+  assert.equal(mergedLocked.selectedMapId, 'classic');
+});
+
+test('GameEngine executes Cổ Thành Huyết Táng hazards, Founder map switching, and Tin/Bảo/Combined Easter eggs end-to-end', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const { P2PRoomHost } = await import('./webrtcCoop.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const loreEvents: any[] = [];
+    const engine: any = new GameEngine(canvasStub);
+    engine.onCitadelLore = (payload: any) => loreEvents.push(payload);
+
+    // Initially classic-only before Wave 27 & before Founder unlock
+    engine.setFounderUnlocked(false);
+    assert.equal(engine.setSelectedMap('blood_citadel'), false);
+    assert.equal(engine.selectedMapId, 'classic');
+
+    // Founder unlock grants immediate free switching to Cổ Thành Huyết Táng
+    engine.setFounderUnlocked(true);
+    assert.equal(engine.setSelectedMap('blood_citadel'), true);
+    assert.equal(engine.selectedMapId, 'blood_citadel');
+
+    const tinHero = Mi.find((h: any) => h.id === 'tin');
+    const baoHero = Mi.find((h: any) => h.id === 'bao');
+    assert.ok(tinHero && baoHero);
+
+    // 1) Play as Tin -> inspect tin_lab in NE corner
+    engine.startNewGame(tinHero);
+    assert.equal(engine.activeMapId, 'blood_citadel');
+    assert.equal(engine.mapWidth, 1600);
+    assert.equal(engine.mapHeight, 1600);
+    const tinNode = BLOOD_CITADEL_INTERACTABLES.find((n) => n.id === 'tin_lab')!;
+    engine.player.x = tinNode.x;
+    engine.player.y = tinNode.y;
+    engine.player.hp = Math.round(engine.player.maxHp * 0.6);
+    const coinsBeforeTin = engine.playerCoins;
+    const tinRes = engine.interactNearestCitadelNode();
+    assert.ok(tinRes);
+    assert.equal(engine.citadelSecrets.tinClue, true);
+    assert.equal(engine.playerCoins, coinsBeforeTin + 120);
+
+    // Verify enemy obstacle collision + Citadel hazard tick + render() work safely
+    const mob: any = {
+      id: 9101,
+      kind: 'minion',
+      name: 'CitadelGuard',
+      x: 560,
+      y: 150,
+      radius: 16,
+      hp: 500,
+      maxHp: 500,
+      speed: 100,
+      damage: 20,
+      facing: 0,
+      stunTimer: 0,
+      slowFactor: 0,
+      slowTimer: 0,
+      hitFlash: 0,
+      attackCooldown: 1,
+    };
+    engine.enemies = [mob];
+    assert.doesNotThrow(() => engine.updateCitadelMap(0.1));
+    assert.doesNotThrow(() => engine.updateEnemies(0.05));
+    assert.doesNotThrow(() => engine.render());
+
+    // 2) Play as Bảo -> inspect bao_mirror in SW corner
+    engine.startNewGame(baoHero);
+    const baoNode = BLOOD_CITADEL_INTERACTABLES.find((n) => n.id === 'bao_mirror')!;
+    engine.player.x = baoNode.x;
+    engine.player.y = baoNode.y;
+    const coinsBeforeBao = engine.playerCoins;
+    const baoRes = engine.interactNearestCitadelNode();
+    assert.ok(baoRes);
+    assert.equal(engine.citadelSecrets.baoClue, true);
+    assert.equal(engine.playerCoins, coinsBeforeBao + 120);
+    assert.ok(engine.player.bao_stealthTimer > 1.0);
+
+    // 3) Enter Northern Secret Vault -> inspect shared_altar for hidden joint event
+    const altarNode = BLOOD_CITADEL_INTERACTABLES.find((n) => n.id === 'shared_altar')!;
+    engine.player.x = altarNode.x;
+    engine.player.y = altarNode.y;
+    const coinsBeforeAltar = engine.playerCoins;
+    const combinedRes = engine.interactNearestCitadelNode();
+    assert.ok(combinedRes);
+    assert.equal(combinedRes.isCombinedEvent, true);
+    assert.equal(engine.citadelSecrets.combinedUnlocked, true);
+    assert.equal(engine.playerCoins, coinsBeforeAltar + 350);
+    assert.equal(loreEvents.length, 3);
+
+    // Revoking Founder lock reverts unearned Citadel selection back to classic
+    engine.setFounderUnlocked(false);
+    assert.equal(engine.selectedMapId, 'classic');
+
+    // Co-op P2PRoomHost SET_MAP updates room.mapId cleanly in LOBBY
+    const p2pHost = new P2PRoomHost({
+      hostName: 'CitadelHost',
+      heroId: 'tin',
+      mapId: 'classic',
+      onLocalEvent: () => {},
+      onPeersChanged: () => {},
+    });
+    p2pHost.start();
+    assert.equal(p2pHost.serializeRoom().mapId, 'classic');
+    p2pHost.handleMessage(p2pHost.hostId, { type: 'SET_MAP', mapId: 'blood_citadel' });
+    assert.equal(p2pHost.serializeRoom().mapId, 'blood_citadel');
+    p2pHost.destroy();
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('deviceStorage multi-layer persistence, device memory, settings, environment detection, and transfer code roundtrip', () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+
+  try {
+    // 1. Environment detection across file://, GitHub Pages, and localhost
+    assert.equal(
+      isStaticWebHost('thienqn25p0866-svg.github.io', 'https:'),
+      true
+    );
+    assert.equal(isStaticWebHost('', 'file:'), true);
+    assert.equal(isStaticWebHost('localhost', 'http:'), false);
+
+    const ghEnv = detectStorageEnvironment({
+      protocol: 'https:',
+      hostname: 'thienqn25p0866-svg.github.io',
+      origin: 'https://thienqn25p0866-svg.github.io',
+    });
+    assert.equal(ghEnv.environmentType, 'github_web');
+    assert.equal(ghEnv.isStaticHost, true);
+    assert.equal(ghEnv.isLocalFile, false);
+
+    const fileEnv = detectStorageEnvironment({
+      protocol: 'file:',
+      hostname: '',
+      origin: 'null',
+    });
+    assert.equal(fileEnv.environmentType, 'local_file');
+    assert.equal(fileEnv.isLocalFile, true);
+
+    // 2. Multi-layer fallback when localStorage throws SecurityError (like strict file:// browsers)
+    (globalThis as any).window = {
+      name: '',
+      location: { protocol: 'file:', host: '', hostname: '', origin: 'null' },
+    };
+    (globalThis as any).localStorage = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('SecurityError');
+      },
+      removeItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+
+    writeDeviceKey('test_fallback_key', 'persisted_value_123');
+    assert.equal(readDeviceKey('test_fallback_key'), 'persisted_value_123');
+    assert.ok((globalThis as any).window.name.startsWith('__AH_DEV_V1__:'));
+    removeDeviceKey('test_fallback_key');
+    assert.equal(readDeviceKey('test_fallback_key'), null);
+
+    // 3. Normal localStorage + device memory visit/revision tracking
+    const lsMap = new Map<string, string>();
+    (globalThis as any).window = {
+      name: '',
+      location: {
+        protocol: 'https:',
+        host: 'thienqn25p0866-svg.github.io',
+        hostname: 'thienqn25p0866-svg.github.io',
+        origin: 'https://thienqn25p0866-svg.github.io',
+      },
+    };
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => lsMap.get(k) ?? null,
+      setItem: (k: string, v: string) => lsMap.set(k, String(v)),
+      removeItem: (k: string) => lsMap.delete(k),
+    };
+
+    const dev1 = touchDeviceVisit(true);
+    assert.ok(dev1.deviceId.startsWith('DEV-'));
+    assert.equal(dev1.environmentType, 'github_web');
+    assert.equal(dev1.sessionCount, 1);
+
+    const dev2 = touchDeviceVisit(true);
+    assert.equal(dev2.deviceId, dev1.deviceId);
+    assert.equal(dev2.sessionCount, 2);
+
+    const devSaved = recordDeviceSave(7);
+    assert.equal(devSaved.saveRevision, 7);
+    assert.equal(loadDeviceRecord().deviceId, dev1.deviceId);
+
+    // 4. Settings persistence & reload
+    const savedSettings = saveDeviceSettings({
+      lang: 'en',
+      sfxEnabled: false,
+      sfxVolume: 0.4,
+      musicOn: true,
+      musicVol: 0.25,
+      screenShake: false,
+      showDamageNumbers: false,
+      layoutMode: 'portrait',
+      portraitFov: 'wide',
+      qualityMode: 'saver',
+      fpsCapMode: '45',
+    });
+    const loadedSettings = loadDeviceSettings();
+    assert.deepEqual(loadedSettings, savedSettings);
+
+    // 5. Cross-context AH_DEV1 transfer code roundtrip including savedRun + settings
+    const runCheckpoint = normalizeSavedRun({
+      active: true,
+      wave: 14,
+      mapId: 'classic',
+      heroId: 'tin',
+      level: 11,
+      xp: 320,
+      xpToNext: 900,
+      hp: 1450,
+      maxHp: 2100,
+      shield: 200,
+      bonusLevelHp: 400,
+      bonusLevelAtk: 45,
+      bonusLevelAp: 90,
+      totalKilled: 240,
+      totalDamage: 185000,
+      elapsedTime: 412,
+    });
+    assert.ok(runCheckpoint);
+
+    const transferCode = encodeDeviceTransferCode({
+      version: '11.8',
+      deviceId: dev1.deviceId,
+      profile: {
+        displayName: 'Chiến Binh Việt',
+        highestWave: 21,
+        coins: 3450,
+      },
+      progress: {
+        coins: 3450,
+        highestWave: 21,
+        classicCleared: false,
+        selectedMapId: 'classic',
+        selectedHeroId: 'tin',
+      },
+      savedRun: runCheckpoint,
+      settings: savedSettings,
+    });
+    assert.ok(transferCode.startsWith(DEVICE_TRANSFER_PREFIX));
+
+    const decoded = decodeDeviceTransferCode(transferCode);
+    assert.equal(decoded.ok, true);
+    if (decoded.ok) {
+      const parsedPkg = parseSavePackageJson(decoded.jsonText, false);
+      assert.equal(parsedPkg.ok, true);
+      if (parsedPkg.ok) {
+        assert.equal(parsedPkg.profile.displayName, 'Chiến Binh Việt');
+        assert.equal(parsedPkg.progress.coins, 3450);
+        assert.equal(parsedPkg.progress.highestWave, 21);
+        assert.equal(parsedPkg.savedRun?.wave, 14);
+        assert.equal(parsedPkg.savedRun?.heroId, 'tin');
+        assert.equal(parsedPkg.settings?.qualityMode, 'saver');
+        assert.equal(parsedPkg.settings?.lang, 'en');
+      }
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+  }
+});
+
+test('GameEngine preserves coins/inventory/gear across startNewGame and restores solo savedRun checkpoint on revisit', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi, zr } = await import('./gameData.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    name: '',
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'https:', host: 'user.github.io', hostname: 'user.github.io', origin: 'https://user.github.io' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  const makeCanvas = () => ({
+    width: 1280,
+    height: 720,
+    getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+    getContext: () => ctxStub,
+  });
+
+  try {
+    const e1: any = new GameEngine(makeCanvas());
+    const eohyenHero = Mi.find((h: any) => h.id === 'eohyen') || Mi[0];
+    const sampleItem = zr[0];
+
+    // Give coins + inventory + equipped gear in Lobby before starting
+    e1.playerCoins = 2400;
+    const itemInstance = { uid: e1.nextUid++, itemId: sampleItem.id };
+    e1.inventory = [itemInstance];
+    e1.heroGear[eohyenHero.id] = { ...(e1.heroGear[eohyenHero.id] || {}), weapon: itemInstance.uid };
+    e1.highestWaveCleared = 9;
+    e1.saveGame();
+
+    // startNewGame() must NOT wipe lobby coins, inventory, or equipped gear
+    e1.startNewGame(eohyenHero, 'classic');
+    assert.equal(e1.playerCoins, 2400);
+    assert.equal(e1.inventory.length, 1);
+    assert.equal(e1.heroGear[eohyenHero.id]?.weapon, itemInstance.uid);
+    assert.equal(e1.hasResumableRun(), true);
+
+    // Advance player state mid-run and capture checkpoint at wave 6
+    e1.wave = 6;
+    e1.player.level = 7;
+    e1.player.xp = 180;
+    e1.player.hp = Math.min(e1.player.maxHp, 777);
+    e1.totalKilled = 65;
+    e1.captureCurrentRunCheckpoint(6);
+    e1.saveGame();
+
+    // Simulate closing browser tab & opening again with a brand-new GameEngine instance
+    const e2: any = new GameEngine(makeCanvas());
+    assert.equal(e2.playerCoins, 2400);
+    assert.equal(e2.highestWaveCleared, 9);
+    assert.equal(e2.inventory.length, 1);
+    assert.equal(e2.heroGear[eohyenHero.id]?.weapon, itemInstance.uid);
+    assert.equal(e2.hasResumableRun(), true);
+    const snap = e2.getSavedRunSnapshot();
+    assert.equal(snap?.wave, 6);
+    assert.equal(snap?.level, 7);
+    assert.equal(snap?.heroId, eohyenHero.id);
+
+    // Resume mid-run checkpoint cleanly
+    const resumed = e2.resumeSavedGame();
+    assert.equal(resumed, true);
+    assert.equal(e2.gameState, 'PLAYING');
+    assert.equal(e2.wave, 6);
+    assert.equal(e2.player.level, 7);
+    assert.equal(e2.player.hp, 777);
+    assert.equal(e2.totalKilled, 65);
+    assert.equal(e2.playerCoins, 2400);
+
+    // Clear savedRun explicitly and verify fresh engine no longer shows resumable run
+    e2.clearSavedRun(true);
+    const e3: any = new GameEngine(makeCanvas());
+    assert.equal(e3.hasResumableRun(), false);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+
+
 

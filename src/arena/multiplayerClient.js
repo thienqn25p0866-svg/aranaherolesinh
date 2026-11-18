@@ -8,6 +8,7 @@ import {
   isSixDigitCode,
 } from "./combatLogic";
 import { P2PRoomHost, P2PRoomPeerClient } from "./webrtcCoop";
+import { readDeviceKey, writeDeviceKey, removeDeviceKey } from "./deviceStorage";
 
 const CRITICAL_HTTP_TYPES = new Set([
   "CREATE_ROOM",
@@ -117,7 +118,7 @@ class MultiplayerClient {
   _getSavedServerUrl() {
     if (typeof window === "undefined") return "";
     try {
-      const saved = localStorage.getItem("arena_hero_server_url");
+      const saved = readDeviceKey("arena_hero_server_url");
       if (saved && /^https?:\/\//i.test(saved.trim())) return saved.trim();
     } catch {
     }
@@ -129,9 +130,9 @@ class MultiplayerClient {
     try {
       const clean = String(url || "").trim().replace(/\/+$/, "");
       if (clean && /^https?:\/\//i.test(clean)) {
-        localStorage.setItem("arena_hero_server_url", clean);
+        writeDeviceKey("arena_hero_server_url", clean);
       } else {
-        localStorage.removeItem("arena_hero_server_url");
+        removeDeviceKey("arena_hero_server_url");
       }
     } catch {
     }
@@ -1487,7 +1488,7 @@ class MultiplayerClient {
     }
   }
 
-  async startP2PHost(playerName, heroId) {
+  async startP2PHost(playerName, heroId, mapId = "classic") {
     this._assertHeroAuthorized(heroId);
     this.stopHeartbeat();
     this._cleanupSocket(this.ws);
@@ -1501,6 +1502,7 @@ class MultiplayerClient {
     const host = new P2PRoomHost({
       hostName: playerName,
       heroId,
+      mapId,
       founderUnlocked: this.founderUnlocked,
       onLocalEvent: (ev) => this._handleIncomingMessage(ev),
       onPeersChanged: () => this.emit({ type: "P2P_PEERS_CHANGED" }),
@@ -1945,7 +1947,7 @@ class MultiplayerClient {
     }
   }
 
-  async createRoom(playerName, heroId) {
+  async createRoom(playerName, heroId, mapId = "classic") {
     this._assertHeroAuthorized(heroId);
     if (this.transportMode === "p2p_host" && this.p2pHost && this.room) {
       return { mode: "p2p", room: this.room, inviteCode: "" };
@@ -1962,6 +1964,7 @@ class MultiplayerClient {
           type: "CREATE_ROOM",
           playerName,
           heroId,
+          mapId: mapId === "blood_citadel" ? "blood_citadel" : "classic",
           founderToken: this.founderToken || undefined,
         });
         return { mode: "server", room: this.room };
@@ -1970,7 +1973,14 @@ class MultiplayerClient {
       }
     }
 
-    return await this.startP2PHost(playerName, heroId);
+    return await this.startP2PHost(playerName, heroId, mapId);
+  }
+
+  setMap(mapId) {
+    this.send({
+      type: "SET_MAP",
+      mapId: mapId === "blood_citadel" ? "blood_citadel" : "classic",
+    });
   }
 
   async joinRoom(roomId, playerName, heroId) {

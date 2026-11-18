@@ -775,7 +775,7 @@ export async function signInPlayerWithGoogle(): Promise<{
       if (formatted.code === "auth/unauthorized-domain") {
         if (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol)) {
           try {
-            const res = await fetch(`/firebase-applet-config.json?t=${Date.now()}`, {
+            const res = await fetch(`./firebase-applet-config.json?t=${Date.now()}`, {
               cache: "no-store",
             });
             if (res.ok) {

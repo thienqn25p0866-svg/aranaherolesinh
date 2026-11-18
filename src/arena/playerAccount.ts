@@ -7,6 +7,15 @@ import {
   normalizeArenaMapId,
   normalizeCitadelSecrets,
 } from "./bloodCitadelMap";
+import {
+  type DeviceSettings,
+  type SavedRunCheckpoint,
+  normalizeDeviceSettings,
+  normalizeSavedRun,
+  readDeviceKey,
+  recordDeviceSave,
+  writeDeviceKey,
+} from "./deviceStorage";
 
 export const PLAYER_PROFILE_STORAGE_KEY = "arena_player_profile_v1";
 export const MP_PLAYER_NAME_STORAGE_KEY = "arena_hero_mp_name";
@@ -318,7 +327,7 @@ export function loadLocalPlayerProfile(
   options: { founderUnlocked?: boolean; fallbackMpName?: string; minHighestWave?: number } = {}
 ): PlayerProfile {
   try {
-    const rawStr = localStorage.getItem(PLAYER_PROFILE_STORAGE_KEY);
+    const rawStr = readDeviceKey(PLAYER_PROFILE_STORAGE_KEY);
     if (rawStr) {
       const parsed = JSON.parse(rawStr);
       return sanitizePlayerProfile(parsed, options);
@@ -327,7 +336,7 @@ export function loadLocalPlayerProfile(
   }
   const mpSeed = (() => {
     try {
-      return options.fallbackMpName || localStorage.getItem(MP_PLAYER_NAME_STORAGE_KEY) || "Chiến Binh";
+      return options.fallbackMpName || readDeviceKey(MP_PLAYER_NAME_STORAGE_KEY) || "Chiến Binh";
     } catch {
       return options.fallbackMpName || "Chiến Binh";
     }
@@ -341,10 +350,11 @@ export function saveLocalPlayerProfile(
 ): PlayerProfile {
   const safe = sanitizePlayerProfile(profile, options);
   try {
-    localStorage.setItem(PLAYER_PROFILE_STORAGE_KEY, JSON.stringify(safe));
+    writeDeviceKey(PLAYER_PROFILE_STORAGE_KEY, JSON.stringify(safe));
     if (safe.displayName) {
-      localStorage.setItem(MP_PLAYER_NAME_STORAGE_KEY, safe.displayName);
+      writeDeviceKey(MP_PLAYER_NAME_STORAGE_KEY, safe.displayName);
     }
+    recordDeviceSave();
   } catch {
   }
   return safe;
@@ -403,12 +413,13 @@ export function mergeLocalAndCloudProgress(
       highestWaveCleared: local.highestWave,
       classicCleared: localClassicCleared,
       storedUnlocked: local.unlockedMaps,
+      founderUnlocked,
     });
     const rawMap = normalizeArenaMapId(local.selectedMapId);
     return {
       ...local,
       selectedHeroId: safeHero || "eohyen",
-      selectedMapId: isMapUnlocked(rawMap, unlockedMaps) ? rawMap : "classic",
+      selectedMapId: isMapUnlocked(rawMap, unlockedMaps, founderUnlocked) ? rawMap : "classic",
       classicCleared: localClassicCleared,
       unlockedMaps,
       citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
@@ -436,9 +447,13 @@ export function mergeLocalAndCloudProgress(
     highestWaveCleared: highestWave,
     classicCleared,
     storedUnlocked: [...(local.unlockedMaps || []), ...(cloud.unlockedMaps || [])],
+    founderUnlocked,
   });
-  const candidateMap = normalizeArenaMapId(preferCloud ? cloud.selectedMapId : local.selectedMapId);
-  const selectedMapId = isMapUnlocked(candidateMap, unlockedMaps) ? candidateMap : "classic";
+  const rawCandidateMap = preferCloud
+    ? (cloud.selectedMapId ?? local.selectedMapId)
+    : (local.selectedMapId ?? cloud.selectedMapId);
+  const candidateMap = normalizeArenaMapId(rawCandidateMap);
+  const selectedMapId = isMapUnlocked(candidateMap, unlockedMaps, founderUnlocked) ? candidateMap : "classic";
 
   const localSec = normalizeCitadelSecrets(local.citadelSecrets);
   const cloudSec = normalizeCitadelSecrets(cloud.citadelSecrets);
@@ -472,7 +487,16 @@ export function mergeLocalAndCloudProgress(
 export function parseSavePackageJson(
   rawText: string,
   founderUnlocked: boolean
-): { ok: true; profile: Partial<PlayerProfile>; progress: ProgressSnapshot } | { ok: false; error: string } {
+):
+  | {
+      ok: true;
+      profile: Partial<PlayerProfile>;
+      progress: ProgressSnapshot;
+      savedRun: SavedRunCheckpoint | null;
+      settings: DeviceSettings | null;
+      deviceId: string | null;
+    }
+  | { ok: false; error: string } {
   try {
     const parsed = JSON.parse(rawText);
     if (!parsed || typeof parsed !== "object") {
@@ -490,10 +514,20 @@ export function parseSavePackageJson(
       highestWaveCleared: highestWave,
       classicCleared,
       storedUnlocked: p.unlockedMaps,
+      founderUnlocked,
     });
     const rawMap = normalizeArenaMapId(p.selectedMapId);
-    const selectedMapId = isMapUnlocked(rawMap, unlockedMaps) ? rawMap : "classic";
+    const selectedMapId = isMapUnlocked(rawMap, unlockedMaps, founderUnlocked) ? rawMap : "classic";
     const citadelSecrets = p.citadelSecrets ? normalizeCitadelSecrets(p.citadelSecrets) : createDefaultCitadelSecrets();
+    const savedRun = normalizeSavedRun(parsed.savedRun ?? p.savedRun, 27);
+    const settings =
+      parsed.settings && typeof parsed.settings === "object"
+        ? normalizeDeviceSettings(parsed.settings)
+        : null;
+    const deviceId =
+      typeof parsed.deviceId === "string" && parsed.deviceId.trim()
+        ? parsed.deviceId.trim().slice(0, 32)
+        : null;
     const progress: ProgressSnapshot = {
       coins: Math.max(0, Math.min(10000000, Math.floor(Number(p.coins) || 100))),
       currentWave: Math.max(1, Math.min(27, Math.floor(Number(p.currentWave) || 1))),
@@ -529,6 +563,9 @@ export function parseSavePackageJson(
         { founderUnlocked }
       ),
       progress,
+      savedRun,
+      settings,
+      deviceId,
     };
   } catch {
     return { ok: false, error: "Không thể đọc định dạng JSON của file sao lưu." };

@@ -6,6 +6,7 @@ import {
   HERO_ROLE_LABELS,
   filterHeroesByRole,
 } from "./combatLogic.ts";
+import { ARENA_MAP_LIST, isMapUnlocked } from "./bloodCitadelMap.ts";
 
 export function MultiplayerLobbyModal({
   lang = "vi",
@@ -54,6 +55,8 @@ export function MultiplayerLobbyModal({
   onToggleFullscreen,
   founderUnlocked = false,
   onRequireFounderAuth,
+  unlockedMaps = ["classic"],
+  onChangeRoomMap,
 }) {
   const [showManualP2P, setShowManualP2P] = React.useState(false);
   const [roleFilter, setRoleFilter] = React.useState("all");
@@ -521,7 +524,47 @@ export function MultiplayerLobbyModal({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs font-mono-numbers tabular-nums">
+                <div className="flex flex-wrap items-center gap-3 text-xs font-mono-numbers tabular-nums">
+                  <div className="flex items-center gap-1.5">
+                    {ARENA_MAP_LIST.map((m) => {
+                      const roomMapId = room.mapId === "blood_citadel" ? "blood_citadel" : "classic";
+                      const active = roomMapId === m.id;
+                      const unlocked = isMapUnlocked(m.id, unlockedMaps, founderUnlocked);
+                      const disabled = !isHost || !unlocked;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            if (disabled || active) return;
+                            R.playTabSwitch();
+                            onChangeRoomMap?.(m.id);
+                          }}
+                          className={`min-h-[32px] px-2.5 rounded-lg border text-[11px] font-moba font-bold transition ${
+                            active
+                              ? m.id === "blood_citadel"
+                                ? "bg-rose-950/80 border-rose-400/80 text-rose-100"
+                                : "bg-amber-950/70 border-amber-400/80 text-amber-100"
+                              : disabled
+                              ? "bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed"
+                              : "bg-slate-900/90 border-slate-700 text-slate-300 hover:border-slate-500 cursor-pointer"
+                          }`}
+                          title={
+                            !unlocked
+                              ? isVi
+                                ? "Hoàn thành Màn 27 Cổ Điển hoặc mở khóa Thiên để chọn"
+                                : "Clear Classic Wave 27 or unlock Thiên"
+                              : m.name?.[lang]
+                          }
+                        >
+                          {unlocked ? (m.id === "blood_citadel" ? "🏰 " : "⚔️ ") : "🔒 "}
+                          {m.name?.[lang] || m.id}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-slate-700">·</span>
                   <div>
                     <span className="text-slate-400">{isVi ? "Quái:" : "Enemy:"} </span>
                     <strong className="text-amber-300">{powerPct}%</strong>

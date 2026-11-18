@@ -22,6 +22,7 @@ import {
   searchPublicPlayers,
   sendFriendRequest,
 } from "../firebase.ts";
+import { detectStorageEnvironment } from "./deviceStorage.ts";
 
 export default function PlayerAccountModal({
   lang = "vi",
@@ -48,9 +49,15 @@ export default function PlayerAccountModal({
   onCopyText,
   onShowToast,
   onClose,
+  deviceInfo = null,
+  resumableRun = null,
+  onGenerateTransferCode,
 }) {
   const isVi = lang === "vi";
   const [tab, setTab] = useState(initialTab);
+  const storageEnv = useMemo(() => detectStorageEnvironment(), []);
+  const [transferCode, setTransferCode] = useState("");
+  const [restoreCodeInput, setRestoreCodeInput] = useState("");
 
   // Editable Profile draft
   const [draftName, setDraftName] = useState(profile?.displayName || "Chiến Binh");
@@ -929,58 +936,150 @@ export default function PlayerAccountModal({
                 </div>
               </div>
 
-              {/* Browser Local Save + JSON Backup Card */}
+              {/* Browser Local Save + Multi-Layer Device Memory + Transfer Sync Card */}
               <div className="rounded-2xl border border-amber-500/40 bg-[#0B1325] p-5 flex flex-col justify-between gap-4">
                 <div className="space-y-2.5">
                   <div className="text-xs font-moba font-extrabold text-amber-300 uppercase tracking-wider">
-                    {isVi ? "Lưu Trình Duyệt & Sao Lưu Tệp" : "Browser Save & File Backup"}
+                    {isVi ? "Ghi Nhớ Thiết Bị & Sao Lưu Đa Tầng" : "Device Memory & Multi-Layer Save"}
                   </div>
                   <h3 className="font-title text-xl font-black text-white">
-                    {isVi ? "Lưu Tiến Trình Trên Trình Duyệt" : "Local Browser Persistence"}
+                    {isVi ? "Lưu Tiến Trình Trên Thiết Bị Này" : "Remembered Device Storage"}
                   </h3>
                   <p className="text-xs text-slate-300 leading-relaxed">
                     {isVi
-                      ? "Mỗi lần bạn chơi qua màn, mua trang bị, điểm danh hay đổi tên/avatar, game tự động lưu ngay vào bộ nhớ trình duyệt. Bạn cũng có thể xuất file .json để mang sang máy khác."
-                      : "Every wave clear, purchase, check-in, and profile edit automatically persists in your browser. Export a .json backup anytime to transfer across devices."}
+                      ? "Tiến trình (Xu, Màn, Tướng, Đồ, Cổ Thành, Màn đang chơi, Cài đặt) được ghi song song vào LocalStorage, IndexedDB và Bộ nhớ phiên. Bạn có thể tạo Mã Thiết Bị để chuyển giữa file HTML cục bộ và Web GitHub."
+                      : "Progress (Coins, Waves, Heroes, Gear, Citadel Secrets, Active Run, Settings) persists across LocalStorage, IndexedDB, and session mirror. Use Device Transfer Code to sync between local HTML and GitHub Web."}
                   </p>
 
-                  <div className="rounded-xl bg-slate-950/90 border border-slate-800 p-3 text-xs space-y-1 font-mono-numbers">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{isVi ? "Trạng thái lưu trình duyệt:" : "Browser storage:"}</span>
-                      <span className="text-emerald-400 font-bold">{isVi ? "Đang hoạt động" : "Active"}</span>
+                  <div className="rounded-xl bg-slate-950/90 border border-slate-800 p-3 text-xs space-y-1.5 font-mono-numbers">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">{isVi ? "Mã thiết bị:" : "Device ID:"}</span>
+                      <span className="text-emerald-300 font-bold">{deviceInfo?.deviceId || "DEV-LOCAL"}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{isVi ? "Màn cao nhất đã lưu:" : "Saved best wave:"}</span>
-                      <span className="text-amber-300 font-bold">{effectiveHighestWave} / 27</span>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">{isVi ? "Môi trường:" : "Environment:"}</span>
+                      <span className="text-cyan-300 font-bold">
+                        {isVi ? storageEnv.labelVi : storageEnv.labelEn}
+                        {deviceInfo?.platformLabel ? ` · ${deviceInfo.platformLabel}` : ""}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{isVi ? "Xu hiện tại:" : "Current coins:"}</span>
-                      <span className="text-yellow-300 font-bold">{coins.toLocaleString()} Xu</span>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">{isVi ? "Số lần mở / Lưu:" : "Visits / Revisions:"}</span>
+                      <span className="text-slate-200 font-bold">
+                        #{deviceInfo?.sessionCount || 1} · Rev {deviceInfo?.saveRevision || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">{isVi ? "Lưu bền vững OS:" : "Persistent Storage:"}</span>
+                      <span className={deviceInfo?.persistentStorageGranted ? "text-emerald-400 font-bold" : "text-amber-300 font-bold"}>
+                        {deviceInfo?.persistentStorageGranted
+                          ? isVi
+                            ? "Đã khóa chống xóa ✓"
+                            : "Granted ✓"
+                          : isVi
+                            ? "Đa tầng LS + IDB ✓"
+                            : "Multi-layer LS + IDB ✓"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">{isVi ? "Màn cao nhất / Xu:" : "Best wave / Coins:"}</span>
+                      <span className="text-amber-300 font-bold">
+                        {effectiveHighestWave}/27 · {coins.toLocaleString()} Xu
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">{isVi ? "Màn đang chơi dở:" : "Mid-run checkpoint:"}</span>
+                      <span className={resumableRun?.active ? "text-emerald-300 font-bold" : "text-slate-500"}>
+                        {resumableRun?.active
+                          ? isVi
+                            ? `Màn ${resumableRun.wave}/27 (Lv.${resumableRun.level})`
+                            : `Wave ${resumableRun.wave}/27 (Lv.${resumableRun.level})`
+                          : isVi
+                            ? "Không có"
+                            : "None"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        R.playClick();
+                        onExportSaveJson?.();
+                      }}
+                      className="btn-secondary min-h-[42px] text-xs font-bold border-amber-500/45 text-amber-200"
+                    >
+                      {isVi ? "Tải File (.json)" : "Export (.json)"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        R.playClick();
+                        fileInputRef.current?.click();
+                      }}
+                      className="btn-secondary min-h-[42px] text-xs font-bold border-sky-500/45 text-sky-200"
+                    >
+                      {isVi ? "Nạp File (.json)" : "Import (.json)"}
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
                       R.playClick();
-                      onExportSaveJson?.();
+                      const code = onGenerateTransferCode?.();
+                      if (code) {
+                        setTransferCode(code);
+                        onCopyText?.(
+                          code,
+                          isVi ? "Đã tạo & sao chép Mã Đồng Bộ Thiết Bị (AH_DEV1)!" : "Device Transfer Code copied!"
+                        );
+                      }
                     }}
-                    className="btn-secondary min-h-[44px] w-full text-xs font-bold border-amber-500/45 text-amber-200"
+                    className="btn-secondary min-h-[42px] w-full text-xs font-moba font-bold border-emerald-500/50 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/45"
                   >
-                    {isVi ? "Tải Xuống File Sao Lưu (.json)" : "Export Save Backup (.json)"}
+                    {isVi
+                      ? "Tạo & Sao Chép Mã Đồng Bộ Thiết Bị (AH_DEV1)"
+                      : "Generate & Copy Device Transfer Code"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      R.playClick();
-                      fileInputRef.current?.click();
-                    }}
-                    className="btn-secondary min-h-[44px] w-full text-xs font-bold border-sky-500/45 text-sky-200"
-                  >
-                    {isVi ? "Khôi Phục Tiến Trình Từ File (.json)" : "Import Save Backup (.json)"}
-                  </button>
+
+                  {transferCode && (
+                    <input
+                      type="text"
+                      readOnly
+                      value={transferCode}
+                      onFocus={(e) => e.target.select()}
+                      className="w-full rounded-lg bg-slate-950 border border-emerald-500/40 px-2.5 py-1.5 text-[10px] font-mono-numbers text-emerald-200"
+                    />
+                  )}
+
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={restoreCodeInput}
+                      onChange={(e) => setRestoreCodeInput(e.target.value)}
+                      placeholder={
+                        isVi ? "Dán mã AH_DEV1:... để khôi phục từ bản HTML/Web khác" : "Paste AH_DEV1:... code"
+                      }
+                      className="flex-1 min-w-0 rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs text-slate-200 placeholder:text-slate-500"
+                    />
+                    <button
+                      type="button"
+                      disabled={!restoreCodeInput.trim()}
+                      onClick={async () => {
+                        R.playClick();
+                        await onImportSaveJson?.(restoreCodeInput.trim());
+                        setRestoreCodeInput("");
+                      }}
+                      className="btn-secondary px-3 min-h-[38px] text-xs font-moba font-bold border-cyan-500/50 text-cyan-200 disabled:opacity-45 shrink-0"
+                    >
+                      {isVi ? "Khôi Phục" : "Restore"}
+                    </button>
+                  </div>
+
                   <input
                     ref={fileInputRef}
                     type="file"

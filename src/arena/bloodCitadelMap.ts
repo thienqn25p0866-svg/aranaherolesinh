@@ -153,6 +153,8 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
   },
 };
 
+export const ARENA_MAP_LIST: ArenaMapMetadata[] = Object.values(ARENA_MAPS);
+
 export const BLOOD_CITADEL_SPAWN = { x: 800, y: 840 };
 
 export const BLOOD_CITADEL_SECRET_VAULT_RECT = {
@@ -405,10 +407,12 @@ export function computeUnlockedMaps({
   highestWaveCleared = 0,
   classicCleared = false,
   storedUnlocked = [],
+  founderUnlocked = false,
 }: {
   highestWaveCleared?: number;
   classicCleared?: boolean;
   storedUnlocked?: unknown;
+  founderUnlocked?: boolean;
 }): ArenaMapId[] {
   const set = new Set<ArenaMapId>(["classic"]);
   if (Array.isArray(storedUnlocked)) {
@@ -416,14 +420,19 @@ export function computeUnlockedMaps({
       if (m === "blood_citadel") set.add("blood_citadel");
     }
   }
-  if (classicCleared || highestWaveCleared >= CITADEL_UNLOCK_WAVE) {
+  if (classicCleared || highestWaveCleared >= CITADEL_UNLOCK_WAVE || founderUnlocked) {
     set.add("blood_citadel");
   }
   return Array.from(set);
 }
 
-export function isMapUnlocked(mapId: ArenaMapId, unlockedMaps: ArenaMapId[]): boolean {
+export function isMapUnlocked(
+  mapId: ArenaMapId,
+  unlockedMaps: ArenaMapId[],
+  founderUnlocked = false
+): boolean {
   if (mapId === "classic") return true;
+  if (founderUnlocked && mapId === "blood_citadel") return true;
   return Array.isArray(unlockedMaps) && unlockedMaps.includes(mapId);
 }
 
