@@ -1,5 +1,5 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
-import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction } from "./bloodCitadelMap";
+import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction, getCitadelSecretCompassTarget } from "./bloodCitadelMap";
 import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt, drawMinhSanctuaries, drawMinhPrisons, drawDucAnhMeteorLeaps } from "./weaponRenderer";
 import { renderBloodCitadelFloor as drawBloodCitadelFloorScene, renderBloodCitadelStructuresAndProps as drawBloodCitadelStructuresScene, renderBloodCitadelAtmosphere as drawBloodCitadelAtmosphereScene, getBloodCitadelZoneLabel } from "./bloodCitadelRenderer";
 import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal, normalizeQualityMode, normalizeFpsCapMode, detectDeviceHardwareTier, resolvePerformanceProfile, stepAdaptiveQualityGovernor, computeWorldViewBounds, isCircleInViewBounds, isSegmentInViewBounds, swapRemoveAt, computeAdaptiveSyncIntervals, DUNG_BASE_CRIT, DUNG_MAX_CRIT, DUNG_BASE_LIFESTEAL, DUNG_C2_DURATION, DUNG_C3_DURATION, DUNG_C3_BOSS_DMG_MULT, computeDungCritProfile, computeDungHealValues, BOSS_CC_IMMUNITY_WINDOW_SEC, HERO_SHIELD_CAP_RATIO, isBossHardCcImmune, evaluateEnemyHardCcApplication, computeBoundedShieldAdd, MINH_PASSIVE_HEAL_RATIO, MINH_PASSIVE_SHIELD_RATIO, MINH_PASSIVE_SHIELD_DUR, MINH_PASSIVE_ICD, MINH_C1_MOB_ROOT, MINH_C1_BOSS_ROOT, MINH_C1_BOSS27_SLOW, MINH_C1_BOSS27_SLOW_DUR, MINH_C1_RANGE, MINH_C1_WIDTH, MINH_C1_CHAIN_COUNT, MINH_C1_HEAL_RATIO, MINH_C1_MAX_HEAL_RATIO, MINH_C2_MOB_FREEZE, MINH_C2_BOSS_FREEZE, MINH_C2_BOSS_SLOW, MINH_C2_BOSS_SLOW_DUR, MINH_C2_ALLY_HEAL_RATIO, MINH_C2_ALLY_SHIELD_RATIO, MINH_C3_MOB_SEAL, MINH_C3_BOSS_SEAL, MINH_C3_ALLY_HEAL_RATIO, MINH_C3_ALLY_SHIELD_RATIO, computeMinhBasicDamage, computeMinhC1Damage, computeMinhC1CcHeal, computeMinhC2TickDamage, computeMinhC3DetonateDamage, DUCANH_PASSIVE_DR, DUCANH_PASSIVE_HP_THRESHOLD, DUCANH_PASSIVE_REGEN_RATIO, DUCANH_PASSIVE_REGEN_DUR, DUCANH_PASSIVE_SHIELD_RATIO, DUCANH_PASSIVE_CD, DUCANH_C1_DURATION, DUCANH_C1_DR, DUCANH_C1_BOSS_STUN, DUCANH_C1_PER_HIT_PCT, DUCANH_C1_MAX_PCT, DUCANH_C2_DURATION, DUCANH_C2_SHIELD_RATIO, DUCANH_C2_DR, DUCANH_C2_REGEN_RATIO, DUCANH_C2_END_ALLY_HEAL, DUCANH_C2_END_ALLY_SHIELD, DUCANH_C3_MOB_KNOCKUP, DUCANH_C3_BOSS_STUN, DUCANH_C3_SELF_HEAL, DUCANH_C3_SELF_SHIELD, DUCANH_C3_ALLY_HEAL, DUCANH_C3_ALLY_SHIELD, DUCANH_MAX_DR_CAP, computeDucAnhDamageReduction, computeDucAnhC1RollGain, computeDucAnhC1RollDamage, computeDucAnhC2ExplosionDamage, computeDucAnhC3ImpactDamage } from "./combatLogic";
@@ -402,22 +402,51 @@ export class GameEngine {
     if (res.buffKind === "tin_resonance") {
       this.grantTinResonance && this.grantTinResonance(2, true);
       this.healPlayer(Math.round(this.player.maxHp * 0.15), "HEAL", "HUYẾT THẠCH CỘNG HƯỞNG");
-      this.spawnRedCrystals(node.x, node.y, 16, 65, 195);
-      this.slashes.push({ x: node.x, y: node.y, angle: 0, radius: 115, spread: Math.PI * 2, color: "#FB7185", life: 0, maxLife: 0.42, kind: "shockwave" });
+      this.spawnRedCrystals(node.x, node.y, 18, 65, 210);
+      this.slashes.push({ x: node.x, y: node.y, angle: 0, radius: 120, spread: Math.PI * 2, color: "#FB7185", life: 0, maxLife: 0.44, kind: "shockwave" });
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 74, spread: Math.PI * 2, color: "#F43F5E", life: 0, maxLife: 0.36, kind: "shockwave" });
       R.playLevelUp();
     } else if (res.buffKind === "bao_shadow") {
       this.player.bao_stealthTimer = Math.max(this.player.bao_stealthTimer || 0, 2.4);
       this.player.bao_stealthFade = 1;
-      for (let k = 0; k < 10; k++) {
-        this.spawnSmokePuff(node.x + (Math.random() - 0.5) * 42, node.y + (Math.random() - 0.5) * 42, 13, "rgba(168, 85, 247, 0.58)");
+      for (let k = 0; k < 12; k++) {
+        this.spawnSmokePuff(node.x + (Math.random() - 0.5) * 44, node.y + (Math.random() - 0.5) * 44, 13, "rgba(168, 85, 247, 0.58)");
       }
-      this.slashes.push({ x: node.x, y: node.y, angle: 0, radius: 110, spread: Math.PI * 2, color: "#C084FC", life: 0, maxLife: 0.42, kind: "shockwave" });
+      // Spawn two brief visual-only mirror phantoms stepping out from the distorted mirror around Bảo
+      for (let idx = 0; idx < 2; idx++) {
+        let offAng = (idx === 0 ? -0.65 : 0.65) + Math.atan2(this.player.y - node.y, this.player.x - node.x);
+        let tx = this.player.x + Math.cos(offAng) * 52;
+        let ty = this.player.y + Math.sin(offAng) * 52;
+        this.shadowClones.push({
+          id: this.nextEntityId++,
+          visualOnly: true,
+          x: node.x,
+          y: node.y - 8,
+          startX: node.x,
+          startY: node.y - 8,
+          targetX: tx,
+          targetY: ty,
+          facing: Math.atan2(ty - node.y, tx - node.x),
+          delay: idx * 0.08,
+          timer: 0,
+          strikeDur: 0.24,
+          struck: false,
+          dissolved: false,
+          cloneIdx: idx,
+          dmg: 0,
+          life: 0,
+          maxLife: 0.62,
+        });
+      }
+      this.slashes.push({ x: node.x, y: node.y, angle: 0, radius: 115, spread: Math.PI * 2, color: "#C084FC", life: 0, maxLife: 0.44, kind: "shockwave" });
       R.playAmbushSlash();
     } else if (res.buffKind === "combined_relic") {
       this.healPlayer(Math.round(this.player.maxHp * 0.25), "HEAL", "CHỨNG NHÂN HUYẾT ẢNH");
       this.addPlayerShield(Math.round(this.player.maxHp * 0.25), 14);
-      this.spawnRedCrystals(node.x, node.y, 18, 70, 210);
-      this.slashes.push({ x: node.x, y: node.y, angle: 0, radius: 150, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.48, kind: "shockwave" });
+      this.spawnRedCrystals(node.x, node.y, 20, 72, 220);
+      this.slashes.push({ x: node.x, y: node.y, angle: 0, radius: 155, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.52, kind: "shockwave" });
+      this.slashes.push({ x: node.x - 18, y: node.y, angle: 0, radius: 95, spread: Math.PI * 2, color: "#FB7185", life: 0, maxLife: 0.44, kind: "shockwave" });
+      this.slashes.push({ x: node.x + 18, y: node.y, angle: 0, radius: 95, spread: Math.PI * 2, color: "#C084FC", life: 0, maxLife: 0.44, kind: "shockwave" });
       R.playCosmic();
     } else {
       R.playModalOpen();
@@ -705,6 +734,42 @@ export class GameEngine {
           az.state = "armed";
           az.timer = 0;
         }
+      }
+    }
+    // 5. Subtle one-time Easter egg proximity whispers
+    if (playerAlive) {
+      if (!rt._seenWhispers) rt._seenWhispers = new Set();
+      let heroId = this.currentHero?.id || this.selectedHeroId;
+      let tinNode = BLOOD_CITADEL_INTERACTABLES[0];
+      let baoNode = BLOOD_CITADEL_INTERACTABLES[1];
+      let vaultNode = BLOOD_CITADEL_INTERACTABLES[2];
+      if (heroId === "tin" && !this.citadelSecrets?.tinClue && !rt._seenWhispers.has("tin_lab") && Math.hypot(px - tinNode.x, py - tinNode.y) <= 185) {
+        rt._seenWhispers.add("tin_lab");
+        this.addFloatingText(
+          tinNode.x,
+          tinNode.y - 44,
+          this.currentLang === "en" ? "🩸 #MT-07 resonates with Tin..." : "🩸 #MT-07 đang gọi huyết mạch Tin...",
+          "#FDA4AF",
+          13
+        );
+      } else if (heroId === "bao" && !this.citadelSecrets?.baoClue && !rt._seenWhispers.has("bao_mirror") && Math.hypot(px - baoNode.x, py - baoNode.y) <= 185) {
+        rt._seenWhispers.add("bao_mirror");
+        this.addFloatingText(
+          baoNode.x,
+          baoNode.y - 44,
+          this.currentLang === "en" ? "🪞 #BS-04 reflection shifts on its own..." : "🪞 Bóng trong gương #BS-04 đang cử động...",
+          "#F5D0FE",
+          13
+        );
+      } else if (this.citadelSecrets?.tinClue && this.citadelSecrets?.baoClue && !this.citadelSecrets?.combinedUnlocked && !rt._seenWhispers.has("shared_altar") && Math.hypot(px - vaultNode.x, py - vaultNode.y) <= 195) {
+        rt._seenWhispers.add("shared_altar");
+        this.addFloatingText(
+          vaultNode.x,
+          vaultNode.y - 46,
+          this.currentLang === "en" ? "✦ Tin × Bảo sigils awaken the Vault!" : "✦ Ấn ký Tin × Bảo đang hội tụ tại Bệ Thờ!",
+          "#FDE047",
+          14
+        );
       }
     }
     void obstacles;
@@ -7394,6 +7459,24 @@ export class GameEngine {
       let markers = [];
       let liveBoss = this.enemies.find((e) => e.kind === "boss" && e.hp > 0);
       liveBoss && markers.push({ wx: liveBoss.x, wy: liveBoss.y, color: "#EF4444", bg: "rgba(127, 29, 29, 0.9)", icon: "\u{1F451}", tag: "BOSS", urgent: true });
+      if (this.activeMapId === "blood_citadel") {
+        let compassSecret = getCitadelSecretCompassTarget(
+          this.currentHero?.id || this.selectedHeroId,
+          this.citadelSecrets,
+          this.currentLang === "en" ? "en" : "vi"
+        );
+        if (compassSecret) {
+          markers.push({
+            wx: compassSecret.x,
+            wy: compassSecret.y,
+            color: compassSecret.color,
+            bg: compassSecret.bg,
+            icon: compassSecret.icon,
+            tag: compassSecret.tag,
+            urgent: false,
+          });
+        }
+      }
       if (this.multiplayer.active) {
         for (let rp of this.multiplayer.remotePlayers.values()) {
           if (!rp) continue;

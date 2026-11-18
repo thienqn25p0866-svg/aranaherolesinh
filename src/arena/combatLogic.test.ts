@@ -231,6 +231,7 @@ import {
   findClearPointNear,
   resolveCircleObstacles,
   evaluateCitadelInteraction,
+  getCitadelSecretCompassTarget,
 } from './bloodCitadelMap.ts';
 import {
   CHRONICLE_CHAPTERS,
@@ -4351,6 +4352,28 @@ test('Cổ Thành Huyết Táng interactive Easter eggs (Tin, Bảo, and Combine
   assert.equal(sharedEvent.buffKind, 'combined_relic');
   assert.equal(sharedEvent.payload.isCombinedEvent, true);
   assert.equal(sharedEvent.payload.unlockedNow, true);
+
+  // Dossier archive codes, variants, specimen meta, fieldNotes, and compass guidance
+  assert.equal(nonTinPreview.payload.archiveCode, '#MT-07');
+  assert.equal(nonTinPreview.payload.themeVariant, 'dormant');
+  assert.equal(tinUnlock.payload.archiveCode, '#MT-07');
+  assert.equal(tinUnlock.payload.themeVariant, 'tin');
+  assert.ok((tinUnlock.payload.fieldNotes?.length || 0) >= 2);
+  assert.equal(baoUnlock.payload.archiveCode, '#BS-04');
+  assert.equal(baoUnlock.payload.themeVariant, 'bao');
+  assert.ok((baoUnlock.payload.fieldNotes?.length || 0) >= 2);
+  assert.equal(sharedEvent.payload.archiveCode, '#ZERO-00');
+  assert.equal(sharedEvent.payload.themeVariant, 'combined');
+  assert.ok((sharedEvent.payload.fieldNotes?.length || 0) >= 3);
+
+  const tinTarget = getCitadelSecretCompassTarget('tin', createDefaultCitadelSecrets(), 'vi');
+  assert.equal(tinTarget?.nodeId, 'tin_lab');
+  const baoTarget = getCitadelSecretCompassTarget('bao', { tinClue: true, baoClue: false, combinedUnlocked: false, inspectedNodes: [] }, 'vi');
+  assert.equal(baoTarget?.nodeId, 'bao_mirror');
+  const vaultTarget = getCitadelSecretCompassTarget('dung', { tinClue: true, baoClue: true, combinedUnlocked: false, inspectedNodes: [] }, 'en');
+  assert.equal(vaultTarget?.nodeId, 'shared_altar');
+  const doneTarget = getCitadelSecretCompassTarget('tin', sharedEvent.nextSecrets, 'vi');
+  assert.equal(doneTarget, null);
 });
 
 test('Dark Fantasy lore covers all 21 heroes, all 9 bosses, and Citadel dossier summaries cleanly', async () => {

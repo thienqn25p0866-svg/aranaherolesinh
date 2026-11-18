@@ -108,8 +108,12 @@ export interface CitadelLoreModalPayload {
   heroName: string;
   title: string;
   subtitle: string;
+  archiveCode?: string;
+  themeVariant?: "tin" | "bao" | "combined" | "dormant";
+  specimenMeta?: string;
   quote?: string;
   paragraphs: string[];
+  fieldNotes?: string[];
   clueSummary: string;
   rewardText?: string;
   secrets: CitadelSecretsProgress;
@@ -670,6 +674,15 @@ export function evaluateCitadelInteraction({
         isCombinedEvent: false,
         heroResonated: isTin,
         heroName: "Tin",
+        archiveCode: "#MT-07",
+        themeVariant: isTin ? "tin" : "dormant",
+        specimenMeta: isTin
+          ? lang === "vi"
+            ? "ĐỒNG BỘ HUYẾT MẠCH: 99.4% · LÕI MA THẠCH ĐỎ"
+            : "BLOOD SYNC: 99.4% · CRIMSON MA THACH CORE"
+          : lang === "vi"
+          ? "YÊU CẦU ĐỐI TƯỢNG: TIN · KHU ĐÔNG BẮC (1440, 175)"
+          : "SUBJECT REQUIRED: TIN · NE RUINS (1440, 175)",
         title: isTin
           ? lang === "vi"
             ? "Ấn Ký Huyết Thạch Thức Tỉnh"
@@ -702,6 +715,23 @@ export function evaluateCitadelInteraction({
               lang === "vi"
                 ? "Trên bìa hồ sơ còn sót lại cái tên 'TIN'. Dấu ấn Ma Thạch vẫn đang ngủ yên — hãy đưa tướng TIN đến đây để kích hoạt cộng hưởng thật sự!"
                 : "A burned label bears the name 'TIN'. Bring hero TIN here to resonate with the dormant blood sigil!",
+            ],
+        fieldNotes: isTin
+          ? lang === "vi"
+            ? [
+                "Ống nghiệm #MT-07A: Huyết tương tự kết tinh thành lưỡi cắt không gian mỗi khi tiếp xúc Ma Thạch.",
+                "Chú thích biên: 'Chuyển bản ghi kết nối sang nhánh #BS-04 (Bảo) tại Hầm Bí Mật phía Bắc.'",
+              ]
+            : [
+                "Vial #MT-07A: Blood plasma self-crystallizes into spatial blades upon Ma Thach contact.",
+                "Margin Note: 'Cross-link telemetry to #BS-04 (Bảo) inside the Northern Secret Vault.'",
+              ]
+          : lang === "vi"
+          ? [
+              "Ghi chú rách góc: '...mẫu vật #07 chỉ đáp ứng khi chính Tin đứng trước vòng tròn Ma Thạch...'",
+            ]
+          : [
+              "Torn margin: '...Specimen #07 awakens only when Tin himself steps within the Ma Thach circle...'",
             ],
         clueSummary: isTin
           ? lang === "vi"
@@ -739,6 +769,15 @@ export function evaluateCitadelInteraction({
         isCombinedEvent: false,
         heroResonated: isBao,
         heroName: "Bảo",
+        archiveCode: "#BS-04",
+        themeVariant: isBao ? "bao" : "dormant",
+        specimenMeta: isBao
+          ? lang === "vi"
+            ? "ĐỘ LỆCH PHẢN CHIẾU: 0.42s · NHÁNH BẢN SAO ẢNH"
+            : "MIRROR LAG: 0.42s · SHADOW REPLICA BRANCH"
+          : lang === "vi"
+          ? "YÊU CẦU ĐỐI TƯỢNG: BẢO · KHU TÂY NAM (165, 1215)"
+          : "SUBJECT REQUIRED: BẢO · SW ALCOVE (165, 1215)",
         title: isBao
           ? lang === "vi"
             ? "Phân Thân Trong Chiếc Gương Sai Lệch"
@@ -771,6 +810,23 @@ export function evaluateCitadelInteraction({
               lang === "vi"
                 ? "Bên cạnh là hồ sơ rách nát về 'Dự Án Tạo Bản Sao Con Người'. Hãy dùng tướng BẢO đến đây để đối mặt trực tiếp với bóng phân thân!"
                 : "Torn dossiers mention a 'Human Replica Project'. Bring hero BẢO here to confront the mirror phantom!",
+            ],
+        fieldNotes: isBao
+          ? lang === "vi"
+            ? [
+                "Nhật ký Gương #BS-04: Bản sao thứ 4 giữ nguyên kỹ thuật song đoản đao và tàng hình tuyệt đối.",
+                "Ghi chú cuối trang: 'Khi bản thể #MT-07 và #BS-04 hội tụ, Bệ Thờ Hầm Bắc sẽ tự khai mở.'",
+              ]
+            : [
+                "Mirror Log #BS-04: Replica 04 retains full twin-dagger arts and total shadow concealment.",
+                "Bottom Margin: 'When #MT-07 and #BS-04 converge, the Northern Vault Altar unseals.'",
+              ]
+          : lang === "vi"
+          ? [
+              "Mảnh giấy bị ghim bởi đoản đao: '...chiếc gương chỉ phản hồi trước chính chủ nhân của cái bóng — Bảo...'",
+            ]
+          : [
+              "Dagger-pinned note: '...the fractured glass answers only the shadow's true bearer — Bảo...'",
             ],
         clueSummary: isBao
           ? lang === "vi"
@@ -810,6 +866,15 @@ export function evaluateCitadelInteraction({
       isCombinedEvent: bothReady,
       heroResonated: bothReady,
       heroName: "Tin & Bảo",
+      archiveCode: bothReady ? "#ZERO-00" : "#VAULT-SEAL",
+      themeVariant: bothReady ? "combined" : "dormant",
+      specimenMeta: bothReady
+        ? lang === "vi"
+          ? "CHỨNG NHÂN HUYẾT ẢNH · HAI NHÁNH SỐNG SÓT DUY NHẤT"
+          : "BLOODSHADE WITNESS · SOLE SURVIVING BRANCHES"
+        : lang === "vi"
+        ? `PHONG ẤN HẦM BẮC · ${(next.tinClue ? 1 : 0) + (next.baoClue ? 1 : 0)}/2 ẤN KÝ`
+        : `NORTHERN VAULT SEAL · ${(next.tinClue ? 1 : 0) + (next.baoClue ? 1 : 0)}/2 SIGILS`,
       title: bothReady
         ? lang === "vi"
           ? "SỰ KIỆN ẨN: HỒ SƠ BỊ XÓA KHỎI LỊCH SỬ"
@@ -846,6 +911,19 @@ export function evaluateCitadelInteraction({
               ? `Trạng thái hiện tại: ${next.tinClue ? "✓ Đã có manh mối của Tin" : "○ Chưa mở manh mối Tin (góc Đông Bắc, dùng Tin)"} · ${next.baoClue ? "✓ Đã có manh mối của Bảo" : "○ Chưa mở manh mối Bảo (góc Tây Nam, dùng Bảo)"}.`
               : `Progress: ${next.tinClue ? "✓ Tin clue found" : "○ Tin clue missing (NE corner as Tin)"} · ${next.baoClue ? "✓ Bảo clue found" : "○ Bảo clue missing (SW corner as Bảo)"}.`,
           ],
+      fieldNotes: bothReady
+        ? lang === "vi"
+          ? [
+              "Nhánh Huyết (#MT-07 · Tin): Tái tạo sức mạnh Ma Thạch trực tiếp từ huyết tương chủ thể.",
+              "Nhánh Ảnh (#BS-04 · Bảo): Phân tách ý thức qua gương sai lệch, tạo bản thể ẩn mình không dấu vết.",
+              "Kết luận Sổ Cái 0: Không thể tách rời — máu gọi bóng, bóng phản chiếu máu.",
+            ]
+          : [
+              "Blood Branch (#MT-07 · Tin): Channelled raw Ma Thach energy directly through living veins.",
+              "Shadow Branch (#BS-04 · Bảo): Split consciousness through distorted mirrors into traceless stealth replicas.",
+              "Ledger 0 Conclusion: Inseparable — the blood calls the shadow, and the shadow reflects the blood.",
+            ]
+        : undefined,
       clueSummary: bothReady
         ? lang === "vi"
           ? "Đã khám phá trọn vẹn Bí Mật Chung của Tin & Bảo!"
@@ -865,4 +943,57 @@ export function evaluateCitadelInteraction({
       secrets: next,
     },
   };
+}
+
+export function getCitadelSecretCompassTarget(
+  heroId: string | undefined,
+  secrets: CitadelSecretsProgress | undefined,
+  lang: "vi" | "en" = "vi"
+): {
+  nodeId: CitadelInteractableId;
+  x: number;
+  y: number;
+  icon: string;
+  tag: string;
+  color: string;
+  bg: string;
+} | null {
+  if (!secrets) return null;
+  if (heroId === "tin" && !secrets.tinClue) {
+    const node = BLOOD_CITADEL_INTERACTABLES[0];
+    return {
+      nodeId: node.id,
+      x: node.x,
+      y: node.y,
+      icon: "🩸",
+      tag: lang === "en" ? "MA THACH #MT-07" : "MA THẠCH #MT-07",
+      color: "#FB7185",
+      bg: "rgba(136, 19, 55, 0.9)",
+    };
+  }
+  if (heroId === "bao" && !secrets.baoClue) {
+    const node = BLOOD_CITADEL_INTERACTABLES[1];
+    return {
+      nodeId: node.id,
+      x: node.x,
+      y: node.y,
+      icon: "🪞",
+      tag: lang === "en" ? "MIRROR #BS-04" : "GƯƠNG #BS-04",
+      color: "#E879F9",
+      bg: "rgba(88, 28, 135, 0.9)",
+    };
+  }
+  if (secrets.tinClue && secrets.baoClue && !secrets.combinedUnlocked) {
+    const node = BLOOD_CITADEL_INTERACTABLES[2];
+    return {
+      nodeId: node.id,
+      x: node.x,
+      y: node.y,
+      icon: "✦",
+      tag: lang === "en" ? "VAULT #ZERO-00" : "HẦM BÍ MẬT",
+      color: "#FACC15",
+      bg: "rgba(120, 53, 15, 0.92)",
+    };
+  }
+  return null;
 }

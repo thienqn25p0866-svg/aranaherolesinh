@@ -8,6 +8,7 @@ import {
   BOSS_CHRONICLES,
   buildCitadelChronicleOverview,
 } from "./darkFantasyLore";
+import { CitadelBlueprintEmblem, CitadelLoreCrest } from "./CitadelVisuals";
 
 const TAB_LABELS = {
   world: { vi: "Biên Niên Sử", en: "World Lore" },
@@ -285,18 +286,26 @@ export function ChroniclesModal({
 
           {tab === "citadel" && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-rose-500/35 bg-gradient-to-br from-rose-950/35 via-slate-950 to-slate-950 p-4 sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-extrabold text-amber-100">
-                    {citadelOverview.title}
-                  </h3>
-                  <span className="text-xs font-mono font-bold text-amber-300">
-                    {citadelOverview.badge}
-                  </span>
+              <div className="rounded-xl border border-rose-500/35 bg-gradient-to-br from-rose-950/35 via-slate-950 to-slate-950 p-4 sm:p-5 flex items-start gap-4">
+                <CitadelBlueprintEmblem
+                  secrets={citadelSecrets}
+                  unlocked={citadelUnlocked}
+                  active={true}
+                  className="w-16 h-16 sm:w-[72px] sm:h-[72px] hidden sm:block"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-lg font-extrabold text-amber-100">
+                      {citadelOverview.title}
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-amber-300">
+                      {citadelOverview.badge}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    {citadelOverview.summary}
+                  </p>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  {citadelOverview.summary}
-                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -307,10 +316,22 @@ export function ChroniclesModal({
                       : "border-rose-500/55 bg-rose-950/25"
                   }`}
                 >
-                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-rose-400">
-                    {isVi ? "EASTER EGG · TIN (MA THẠCH & MÁU)" : "EASTER EGG · TIN (MA THACH & BLOOD)"}
+                  <div className="flex items-start gap-3">
+                    <CitadelLoreCrest
+                      nodeId="tin_lab"
+                      resonated={!citadelOverview.tinDossier.locked}
+                      className="w-11 h-11"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-rose-400">
+                        #MT-07 · {isVi ? "EASTER EGG · TIN (MA THẠCH & MÁU)" : "EASTER EGG · TIN (MA THACH & BLOOD)"}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                        {isVi ? "Đông Bắc · Tọa độ (1440, 175)" : "NE Ruins · Coords (1440, 175)"}
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                  <p className="mt-2.5 text-sm leading-relaxed text-slate-200">
                     {citadelOverview.tinDossier.text}
                   </p>
                 </div>
@@ -322,10 +343,22 @@ export function ChroniclesModal({
                       : "border-purple-500/55 bg-purple-950/25"
                   }`}
                 >
-                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-300">
-                    {isVi ? "EASTER EGG · BẢO (TÀNG HÌNH & PHÂN THÂN)" : "EASTER EGG · BAO (STEALTH & REPLICA)"}
+                  <div className="flex items-start gap-3">
+                    <CitadelLoreCrest
+                      nodeId="bao_mirror"
+                      resonated={!citadelOverview.baoDossier.locked}
+                      className="w-11 h-11"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                        #BS-04 · {isVi ? "EASTER EGG · BẢO (TÀNG HÌNH & PHÂN THÂN)" : "EASTER EGG · BAO (STEALTH & REPLICA)"}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                        {isVi ? "Tây Nam · Tọa độ (165, 1215)" : "SW Alcove · Coords (165, 1215)"}
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                  <p className="mt-2.5 text-sm leading-relaxed text-slate-200">
                     {citadelOverview.baoDossier.text}
                   </p>
                 </div>
@@ -338,10 +371,23 @@ export function ChroniclesModal({
                     : "border-amber-400/70 bg-amber-950/20"
                 }`}
               >
-                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-300">
-                  {isVi ? "BÍ MẬT CHUNG · HẦM BÍ MẬT PHÍA BẮC" : "SHARED SECRET · NORTHERN SECRET VAULT"}
+                <div className="flex items-start gap-3.5">
+                  <CitadelLoreCrest
+                    nodeId="shared_altar"
+                    resonated={!citadelOverview.tinDossier.locked && !citadelOverview.baoDossier.locked}
+                    combined={!citadelOverview.combinedDossier.locked}
+                    className="w-12 h-12"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-300">
+                      #ZERO-00 · {isVi ? "BÍ MẬT CHUNG · HẦM BÍ MẬT PHÍA BẮC" : "SHARED SECRET · NORTHERN SECRET VAULT"}
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                      {isVi ? "Hầm Bắc · Tọa độ (800, 185)" : "North Vault · Coords (800, 185)"}
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-slate-100">
+                <p className="mt-2.5 text-sm leading-relaxed text-slate-100">
                   {citadelOverview.combinedDossier.text}
                 </p>
 
