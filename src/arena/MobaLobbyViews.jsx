@@ -15,6 +15,7 @@ import { HERO_CHRONICLES } from "./darkFantasyLore.ts";
 import { detectStorageEnvironment } from "./deviceStorage.ts";
 import { CitadelBlueprintEmblem } from "./CitadelVisuals.jsx";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals.jsx";
+import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals.jsx";
 
 export function MobaLobbyMenu({
   lang,
@@ -59,6 +60,7 @@ export function MobaLobbyMenu({
   unlockedMaps = ["classic"],
   citadelSecrets = null,
   infernoProgress = null,
+  frozenTombProgress = null,
   onSelectMap,
   onOpenChronicles,
   resumableRun = null,
@@ -634,10 +636,10 @@ export function MobaLobbyMenu({
             </div>
           </div>
 
-          {/* Map Selector: Classic, Hỏa Ngục Tàn Tro, Cổ Thành Huyết Táng */}
+          {/* Map Selector: Classic, Hỏa Ngục Tàn Tro, Băng Mộ Vĩnh Cửu, Cổ Thành Huyết Táng */}
           <div className="rounded-xl bg-[#070B16]/90 border border-slate-800/90 p-2.5 mt-3">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <span className="text-[11px] font-moba font-bold tracking-wider uppercase text-slate-300 truncate">
                   {isVi ? "Bản Đồ Chiến Trường" : "Battleground Map"}
                 </span>
@@ -649,7 +651,17 @@ export function MobaLobbyMenu({
                   }}
                   className="text-[10px] font-moba font-bold text-orange-300/90 hover:text-amber-300 underline decoration-orange-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  {isVi ? "Hồ Sơ Hỏa Ngục" : "Inferno Lore"}
+                  {isVi ? "Hỏa Ngục" : "Inferno"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playModalOpen();
+                    onOpenChronicles?.("frozenTomb");
+                  }}
+                  className="text-[10px] font-moba font-bold text-sky-300/90 hover:text-cyan-200 underline decoration-sky-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {isVi ? "Băng Mộ" : "Frozen Tomb"}
                 </button>
                 <button
                   type="button"
@@ -669,11 +681,11 @@ export function MobaLobbyMenu({
                       ? "Đổi tự do · Thiên"
                       : "Free Switch · Founder"
                     : isVi
-                      ? "✓ Mở đủ 3 Map"
-                      : "✓ All 3 Maps"
+                      ? "✓ Mở đủ 4 Map"
+                      : "✓ All 4 Maps"
                   : isVi
-                    ? "Hỏa Ngục mở sẵn"
-                    : "Inferno Ready"}
+                    ? "Hỏa Ngục & Băng Mộ mở sẵn"
+                    : "Inferno & Frozen Ready"}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -682,6 +694,7 @@ export function MobaLobbyMenu({
                 const active = selectedMapId === m.id;
                 const isCitadel = m.id === "blood_citadel";
                 const isInferno = m.id === "inferno_ash";
+                const isFrozen = m.id === "frozen_tomb";
                 const mapName = m.name?.[lang] || m.name?.vi || m.id;
                 const mapSub = m.subtitle?.[lang] || m.subtitle?.vi || "";
                 return (
@@ -696,18 +709,22 @@ export function MobaLobbyMenu({
                       R.playTabSwitch();
                       onSelectMap?.(m.id);
                     }}
-                    className={`${m.id === "classic" ? "sm:col-span-2" : ""} text-left rounded-xl p-2.5 border transition cursor-pointer flex items-start gap-2.5 ${
+                    className={`text-left rounded-xl p-2.5 border transition cursor-pointer flex items-start gap-2.5 ${
                       active
                         ? isCitadel
                           ? "bg-gradient-to-br from-[#230916]/95 via-[#150814] to-[#0B0712] border-rose-400/80 text-rose-50 shadow-[0_0_20px_rgba(225,29,72,0.2)]"
                           : isInferno
                           ? "bg-gradient-to-br from-[#260D08]/95 via-[#170907] to-[#0B0709] border-orange-400/85 text-orange-50 shadow-[0_0_20px_rgba(249,115,22,0.22)]"
+                          : isFrozen
+                          ? "bg-gradient-to-br from-[#081C33]/95 via-[#071124] to-[#050814] border-sky-400/85 text-sky-50 shadow-[0_0_20px_rgba(56,189,248,0.22)]"
                           : "bg-gradient-to-br from-amber-950/65 to-slate-950 border-amber-400/80 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
                         : unlocked
                           ? isCitadel
                             ? "bg-[#110812]/90 border-rose-900/50 hover:border-rose-500/60 text-slate-200"
                             : isInferno
                             ? "bg-[#140908]/90 border-orange-900/55 hover:border-orange-500/65 text-slate-200"
+                            : isFrozen
+                            ? "bg-[#071120]/90 border-sky-900/55 hover:border-sky-400/65 text-slate-200"
                             : "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
                           : "bg-slate-950/60 border-slate-800/70 text-slate-500 opacity-80"
                     }`}
@@ -725,6 +742,8 @@ export function MobaLobbyMenu({
                         active={active}
                         className="w-11 h-11 mt-0.5"
                       />
+                    ) : isFrozen ? (
+                      <FrozenTombBlueprintEmblem className="w-11 h-11 mt-0.5 shrink-0" />
                     ) : (
                       <div
                         className={`w-11 h-11 mt-0.5 rounded-md border flex items-center justify-center text-base shrink-0 ${
@@ -745,7 +764,7 @@ export function MobaLobbyMenu({
                         {active && (
                           <span
                             className={`text-[9px] font-mono-numbers font-black uppercase tracking-wider shrink-0 ${
-                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : "text-amber-300"
+                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : isFrozen ? "text-sky-300" : "text-amber-300"
                             }`}
                           >
                             {isVi ? "ĐANG CHỌN" : "ACTIVE"}
@@ -775,6 +794,29 @@ export function MobaLobbyMenu({
                           <span className="text-slate-700">·</span>
                           <span className={infernoProgress?.trungTriggered ? "text-purple-300 font-bold" : infernoProgress?.fourChairsUnlocked ? "text-fuchsia-300 font-bold" : "text-slate-500"}>
                             4G {infernoProgress?.trungTriggered ? "★" : infernoProgress?.fourChairsUnlocked ? "✓" : "○"}
+                          </span>
+                        </div>
+                      )}
+                      {isFrozen && (
+                        <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-sky-500/20 text-[9.5px] font-mono-numbers tabular-nums flex-wrap">
+                          <span className={frozenTombProgress?.eohyenPaintingSeen ? "text-sky-300 font-bold" : "text-slate-500"}>
+                            Éo {frozenTombProgress?.eohyenPaintingSeen ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={frozenTombProgress?.phongMirrorClue ? "text-cyan-300 font-bold" : "text-slate-500"}>
+                            Phong {frozenTombProgress?.phongMirrorClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={frozenTombProgress?.minhSealClue ? "text-amber-300 font-bold" : "text-slate-500"}>
+                            Minh {frozenTombProgress?.minhSealClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={frozenTombProgress?.thanhVialClue ? "text-emerald-300 font-bold" : "text-slate-500"}>
+                            Thanh {frozenTombProgress?.thanhVialClue ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={frozenTombProgress?.linkedDeviceTriggered ? "text-purple-300 font-bold" : "text-slate-500"}>
+                            LK {frozenTombProgress?.linkedDeviceTriggered ? "★" : "○"}
                           </span>
                         </div>
                       )}

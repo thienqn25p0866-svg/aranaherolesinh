@@ -8,15 +8,18 @@ import {
   BOSS_CHRONICLES,
   buildCitadelChronicleOverview,
   buildInfernoChronicleOverview,
+  buildFrozenTombChronicleOverview,
 } from "./darkFantasyLore";
 import { CitadelBlueprintEmblem, CitadelLoreCrest } from "./CitadelVisuals";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals";
+import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals";
 
 const TAB_LABELS = {
   world: { vi: "Biên Niên Sử", en: "World Lore" },
   heroes: { vi: "21 Anh Hùng", en: "21 Heroes" },
   bosses: { vi: "9 Đại Trùm", en: "9 Bosses" },
   inferno: { vi: "Hỏa Ngục Tàn Tro", en: "Inferno of Ashes" },
+  frozenTomb: { vi: "Băng Mộ Vĩnh Cửu", en: "Frozen Tomb" },
   citadel: { vi: "Cổ Thành Huyết Táng", en: "Blood Citadel" },
 };
 
@@ -30,8 +33,10 @@ export function ChroniclesModal({
   citadelUnlocked = false,
   citadelSecrets = { tinClue: false, baoClue: false, combinedUnlocked: false, inspectedNodes: [] },
   infernoProgress = null,
+  frozenTombProgress = null,
   onSelectHero,
   onSelectInfernoMap,
+  onSelectFrozenTombMap,
   onSelectCitadelMap,
   onClose,
 }) {
@@ -65,6 +70,7 @@ export function ChroniclesModal({
   const heroLore = HERO_CHRONICLES[activeHero?.id] || HERO_CHRONICLES.dung;
   const citadelOverview = buildCitadelChronicleOverview(citadelSecrets, safeLang);
   const infernoOverview = buildInfernoChronicleOverview(infernoProgress, safeLang);
+  const frozenTombOverview = buildFrozenTombChronicleOverview(frozenTombProgress, safeLang);
   const canPickHero = activeHero && (!activeHero.isSecretFounder || founderUnlocked);
 
   return (
@@ -366,6 +372,94 @@ export function ChroniclesModal({
                       className="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
                     >
                       {isVi ? "Chọn Map Hỏa Ngục Tàn Tro" : "Select Inferno of Ashes"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tab === "frozenTomb" && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-sky-500/40 bg-gradient-to-br from-sky-950/35 via-slate-950 to-slate-950 p-4 sm:p-5 flex items-start gap-4">
+                <FrozenTombBlueprintEmblem className="w-16 h-16 sm:w-[72px] sm:h-[72px] hidden sm:block shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-lg font-extrabold text-sky-100">
+                      {frozenTombOverview.title}
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-cyan-300">
+                      {frozenTombOverview.badge}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    {frozenTombOverview.summary}
+                  </p>
+                  <div className="mt-2 text-xs font-mono text-sky-300">
+                    {frozenTombOverview.docsProgress}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className={`rounded-xl border p-4 ${frozenTombOverview.eohyenDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-sky-400/55 bg-sky-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-sky-300">
+                    ❄️ ÉO HYÊN · {isVi ? "KHU 5 CUNG ĐIỆN PHONG ẤN" : "ZONE 5 PALACE"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {frozenTombOverview.eohyenDossier.text}
+                  </p>
+                </div>
+
+                <div className={`rounded-xl border p-4 ${frozenTombOverview.phongDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-cyan-400/55 bg-cyan-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-300">
+                    🪞 PHONG · {isVi ? "KHU 3 THÁNH ĐƯỜNG CHUÔNG CÂM" : "ZONE 3 CATHEDRAL"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {frozenTombOverview.phongDossier.text}
+                  </p>
+                </div>
+
+                <div className={`rounded-xl border p-4 ${frozenTombOverview.minhDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-amber-400/55 bg-amber-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-300">
+                    ⛓ MINH · {isVi ? "KHU 7 ĐIỆN PHONG ẤN CUỐI CÙNG" : "ZONE 7 FINAL CHAMBER"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {frozenTombOverview.minhDossier.text}
+                  </p>
+                </div>
+
+                <div className={`rounded-xl border p-4 ${frozenTombOverview.thanhDossier.locked ? "border-slate-800 bg-slate-950/60" : "border-emerald-400/55 bg-emerald-950/20"}`}>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-300">
+                    🐍 THANH · {isVi ? "KHU 5 PHÒNG NGHI THỨC" : "ZONE 5 RITUAL ROOM"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {frozenTombOverview.thanhDossier.text}
+                  </p>
+                </div>
+              </div>
+
+              <div className={`rounded-xl border p-4 sm:p-5 ${frozenTombOverview.linkedDossier.locked ? "border-slate-800 bg-slate-950/65" : "border-purple-400/75 bg-purple-950/25"}`}>
+                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                  📡 {isVi ? "BÍ MẬT LIÊN KẾT · KHU 6 HẦM BĂNG (MAP 2 × MAP 3)" : "CROSS-MAP SECRET · ZONE 6 ICE CAVERNS (MAP 2 × MAP 3)"}
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-100">
+                  {frozenTombOverview.linkedDossier.text}
+                </p>
+                {onSelectFrozenTombMap && (
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">
+                      {isVi ? "Bản đồ mở sẵn cho mọi người chơi (3400×2800 · 7 Khu Vực)." : "Available immediately for all players (3400×2800 · 7 Zones)."}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectFrozenTombMap();
+                        onClose?.();
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-cyan-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
+                    >
+                      {isVi ? "Chọn Map Băng Mộ Vĩnh Cửu" : "Select Eternal Frozen Tomb"}
                     </button>
                   </div>
                 )}

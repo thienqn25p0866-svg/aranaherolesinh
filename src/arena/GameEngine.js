@@ -1,15 +1,17 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
 import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction, getCitadelSecretCompassTarget } from "./bloodCitadelMap";
 import { INFERNO_MAP_WIDTH, INFERNO_MAP_HEIGHT, INFERNO_SPAWN, INFERNO_ZONES, INFERNO_INTERACTABLES, INFERNO_DOCS, createDefaultInfernoProgress, normalizeInfernoProgress, mergeInfernoProgress, createInitialInfernoRuntimeState, getInfernoZoneAt, getActiveInfernoObstacles, findNearestInfernoInteractable, findNearbyLockedGate, tryOpenInfernoGate, damageInfernoDestructibleWalls, evaluateInfernoInteraction, getInfernoCompassTarget, stepInfernoHazards } from "./infernoAshMap";
+import { FROZEN_TOMB_WIDTH, FROZEN_TOMB_HEIGHT, FROZEN_TOMB_SPAWN, FROZEN_TOMB_ZONES, FROZEN_TOMB_DOCS, createDefaultFrozenTombProgress, normalizeFrozenTombProgress, mergeFrozenTombProgress, createInitialFrozenTombRuntimeState, getFrozenTombZoneAt, getActiveFrozenTombObstacles, damageFrozenTombDestructibleWalls, triggerEohyenFrozenTombReaction, findNearestFrozenTombInteractable, evaluateFrozenTombProximityEvents, buildEndingSequencePayload, evaluateFrozenTombInteraction, getFrozenTombCompassTarget, stepFrozenTombHazards, isPointOnFrozenIcePatch } from "./frozenTombMap";
 import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt, drawMinhSanctuaries, drawMinhPrisons, drawDucAnhMeteorLeaps } from "./weaponRenderer";
 import { renderBloodCitadelFloor as drawBloodCitadelFloorScene, renderBloodCitadelStructuresAndProps as drawBloodCitadelStructuresScene, renderBloodCitadelAtmosphere as drawBloodCitadelAtmosphereScene, getBloodCitadelZoneLabel } from "./bloodCitadelRenderer";
 import { renderInfernoAshFloor as drawInfernoAshFloorScene, renderInfernoAshStructuresAndProps as drawInfernoAshStructuresScene, renderInfernoAshAtmosphere as drawInfernoAshAtmosphereScene, getInfernoZoneLabel } from "./infernoAshRenderer";
+import { renderFrozenTombFloor as drawFrozenTombFloorScene, renderFrozenTombStructuresAndProps as drawFrozenTombStructuresScene, renderFrozenTombPlayerEffects as drawFrozenTombPlayerEffectsScene, renderFrozenTombEntityBoss as drawFrozenTombEntityBossScene, renderFrozenTombAtmosphere as drawFrozenTombAtmosphereScene, getFrozenTombZoneLabel } from "./frozenTombRenderer";
 import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal, normalizeQualityMode, normalizeFpsCapMode, detectDeviceHardwareTier, resolvePerformanceProfile, stepAdaptiveQualityGovernor, computeWorldViewBounds, isCircleInViewBounds, isSegmentInViewBounds, swapRemoveAt, computeAdaptiveSyncIntervals, DUNG_BASE_CRIT, DUNG_MAX_CRIT, DUNG_BASE_LIFESTEAL, DUNG_C2_DURATION, DUNG_C3_DURATION, DUNG_C3_BOSS_DMG_MULT, computeDungCritProfile, computeDungHealValues, BOSS_CC_IMMUNITY_WINDOW_SEC, HERO_SHIELD_CAP_RATIO, isBossHardCcImmune, evaluateEnemyHardCcApplication, computeBoundedShieldAdd, MINH_PASSIVE_HEAL_RATIO, MINH_PASSIVE_SHIELD_RATIO, MINH_PASSIVE_SHIELD_DUR, MINH_PASSIVE_ICD, MINH_C1_MOB_ROOT, MINH_C1_BOSS_ROOT, MINH_C1_BOSS27_SLOW, MINH_C1_BOSS27_SLOW_DUR, MINH_C1_RANGE, MINH_C1_WIDTH, MINH_C1_CHAIN_COUNT, MINH_C1_HEAL_RATIO, MINH_C1_MAX_HEAL_RATIO, MINH_C2_MOB_FREEZE, MINH_C2_BOSS_FREEZE, MINH_C2_BOSS_SLOW, MINH_C2_BOSS_SLOW_DUR, MINH_C2_ALLY_HEAL_RATIO, MINH_C2_ALLY_SHIELD_RATIO, MINH_C3_MOB_SEAL, MINH_C3_BOSS_SEAL, MINH_C3_ALLY_HEAL_RATIO, MINH_C3_ALLY_SHIELD_RATIO, computeMinhBasicDamage, computeMinhC1Damage, computeMinhC1CcHeal, computeMinhC2TickDamage, computeMinhC3DetonateDamage, DUCANH_PASSIVE_DR, DUCANH_PASSIVE_HP_THRESHOLD, DUCANH_PASSIVE_REGEN_RATIO, DUCANH_PASSIVE_REGEN_DUR, DUCANH_PASSIVE_SHIELD_RATIO, DUCANH_PASSIVE_CD, DUCANH_C1_DURATION, DUCANH_C1_DR, DUCANH_C1_BOSS_STUN, DUCANH_C1_PER_HIT_PCT, DUCANH_C1_MAX_PCT, DUCANH_C2_DURATION, DUCANH_C2_SHIELD_RATIO, DUCANH_C2_DR, DUCANH_C2_REGEN_RATIO, DUCANH_C2_END_ALLY_HEAL, DUCANH_C2_END_ALLY_SHIELD, DUCANH_C3_MOB_KNOCKUP, DUCANH_C3_BOSS_STUN, DUCANH_C3_SELF_HEAL, DUCANH_C3_SELF_SHIELD, DUCANH_C3_ALLY_HEAL, DUCANH_C3_ALLY_SHIELD, DUCANH_MAX_DR_CAP, computeDucAnhDamageReduction, computeDucAnhC1RollGain, computeDucAnhC1RollDamage, computeDucAnhC2ExplosionDamage, computeDucAnhC3ImpactDamage } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
 import { readDeviceKey, writeDeviceKey, recordDeviceSave, normalizeSavedRun } from "./deviceStorage";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.unlockedMaps = ["classic", "inferno_ash"], this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.unlockedMaps = ["classic", "inferno_ash", "frozen_tomb"], this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
       let hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
       let profile = this.getPerformanceProfile(false, hidden);
       let rawMs = a - this.lastTime;
@@ -225,6 +227,10 @@ export class GameEngine {
     this.infernoProgress = overwriteHigherOnly
       ? mergeInfernoProgress(this.infernoProgress, incomingInferno)
       : incomingInferno;
+    let incomingFrozen = normalizeFrozenTombProgress(a.frozenTombProgress);
+    this.frozenTombProgress = overwriteHigherOnly
+      ? mergeFrozenTombProgress(this.frozenTombProgress, incomingFrozen)
+      : incomingFrozen;
     let incomingRun = normalizeSavedRun(a.savedRun, MAX_WAVES);
     if (!overwriteHigherOnly) {
       this.savedRun = incomingRun;
@@ -322,6 +328,7 @@ export class GameEngine {
         unlockedMaps: persistedMaps,
         citadelSecrets: this.citadelSecrets,
         infernoProgress: this.infernoProgress,
+        frozenTombProgress: this.frozenTombProgress,
         savedRun: this.savedRun || null,
       };
       writeDeviceKey(cm, JSON.stringify(s));
@@ -370,16 +377,25 @@ export class GameEngine {
       this.mapHeight = BLOOD_CITADEL_SIZE;
       this.citadelRuntime = createInitialCitadelRuntimeState("blood_citadel");
       this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
+      this.frozenTombRuntime = null;
     } else if (requested === "inferno_ash") {
       this.mapWidth = INFERNO_MAP_WIDTH;
       this.mapHeight = INFERNO_MAP_HEIGHT;
       this.citadelRuntime = createInitialCitadelRuntimeState("classic");
       this.infernoRuntime = createInitialInfernoRuntimeState("inferno_ash", this.infernoProgress);
+      this.frozenTombRuntime = null;
+    } else if (requested === "frozen_tomb") {
+      this.mapWidth = FROZEN_TOMB_WIDTH;
+      this.mapHeight = FROZEN_TOMB_HEIGHT;
+      this.citadelRuntime = createInitialCitadelRuntimeState("classic");
+      this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
+      this.frozenTombRuntime = createInitialFrozenTombRuntimeState(this.frozenTombProgress);
     } else {
       this.mapWidth = Se;
       this.mapHeight = Ce;
       this.citadelRuntime = createInitialCitadelRuntimeState("classic");
       this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
+      this.frozenTombRuntime = null;
     }
     return this.activeMapId;
   }
@@ -390,10 +406,13 @@ export class GameEngine {
     if (this.activeMapId === "inferno_ash") {
       return getActiveInfernoObstacles(this.infernoRuntime, this.infernoProgress);
     }
+    if (this.activeMapId === "frozen_tomb") {
+      return getActiveFrozenTombObstacles(this.frozenTombRuntime);
+    }
     return [];
   }
   resolveEntityObstacles(entity, margin = 14) {
-    if (!entity || (this.activeMapId !== "blood_citadel" && this.activeMapId !== "inferno_ash")) return;
+    if (!entity || (this.activeMapId !== "blood_citadel" && this.activeMapId !== "inferno_ash" && this.activeMapId !== "frozen_tomb")) return;
     let obstacles = this.getActiveObstacles();
     let res = resolveCircleObstacles(entity.x, entity.y, entity.radius || 20, obstacles, this.mapWidth, this.mapHeight, margin);
     entity.x = res.x;
@@ -411,9 +430,104 @@ export class GameEngine {
     if (this.activeMapId !== "inferno_ash" || !this.player) return null;
     return findNearbyLockedGate(this.player.x, this.player.y, this.infernoProgress);
   }
+  getNearbyFrozenTombInteractable() {
+    if (this.activeMapId !== "frozen_tomb" || !this.player) return null;
+    return findNearestFrozenTombInteractable(this.player.x, this.player.y, this.frozenTombProgress, this.frozenTombRuntime);
+  }
   interactNearestMapNode() {
     if (this.activeMapId === "inferno_ash") return this.interactNearestInfernoNode();
+    if (this.activeMapId === "frozen_tomb") return this.interactNearestFrozenTombNode();
     return this.interactNearestCitadelNode();
+  }
+  interactNearestFrozenTombNode(explicitNodeId = null) {
+    if (this.activeMapId !== "frozen_tomb" || !this.player || this.gameState !== "PLAYING") return null;
+    let lang = this.currentLang === "en" ? "en" : "vi";
+    let nodeId = explicitNodeId || this.getNearbyFrozenTombInteractable()?.id;
+    if (!nodeId) return null;
+    let res = evaluateFrozenTombInteraction({
+      nodeId,
+      heroId: this.currentHero?.id || this.selectedHeroId,
+      progress: this.frozenTombProgress,
+      infernoProgress: this.infernoProgress,
+      runtime: this.frozenTombRuntime,
+      lang,
+    });
+    this.frozenTombProgress = res.nextProgress;
+    if (res.coinBonus > 0) this.playerCoins += res.coinBonus;
+    if (this.frozenTombRuntime) {
+      if (res.spawnPhantom) this.frozenTombRuntime.phantoms.push(res.spawnPhantom);
+      if (res.darknessPulseSec) {
+        this.frozenTombRuntime.darknessPulseSec = Math.max(this.frozenTombRuntime.darknessPulseSec || 0, res.darknessPulseSec);
+        if (nodeId === "frozen_research_device") {
+          this.frozenTombRuntime.trungAudioSilenceSec = Math.max(this.frozenTombRuntime.trungAudioSilenceSec || 0, res.darknessPulseSec);
+        }
+      }
+      if (res.ringCathedralBell) {
+        this.frozenTombRuntime.bellShakeTimer = 0.7;
+        this.addShake(6, 0.35);
+        this.frozenTombRuntime.bellRipples.push({ x: 1800, y: 1165, radius: 18, maxRadius: 560, alpha: 0.92, color: "#818CF8" });
+      }
+      if (res.spawnFinalBoss) {
+        this.spawnFrozenTombBoss(27, { x: 1750, y: 2320 });
+      }
+      if (res.payload.isSecretDiscovery || res.payload.unlockedNow) {
+        this.frozenTombRuntime.lastDiscoveryToast = res.payload.title;
+        this.frozenTombRuntime.lastDiscoveryTimer = 4.4;
+        this.screenFlashWhite = Math.max(this.screenFlashWhite, 0.09);
+        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 120, spread: Math.PI * 2, color: res.payload.themeVariant === "linked" ? "#C084FC" : "#38BDF8", life: 0, maxLife: 0.44, kind: "shockwave" });
+        this.spawnParticles(this.player.x, this.player.y, "#BAE6FD", 14, 40, 150, 2.8, 0.35);
+      }
+    }
+    if (res.payload.audioCue === "bell") R.playFrozenBell?.();
+    else if (res.payload.audioCue === "clock") R.playClockReverse?.();
+    else if (res.payload.audioCue === "tape") R.playResearchTape?.();
+    else if (res.payload.audioCue === "ending") { R.playIceCrack?.(); R.playGhostWhisper?.(); }
+    else if (res.payload.audioCue === "whisper") R.playGhostWhisper?.();
+    else R.playModalOpen?.();
+    this.saveGame();
+    this.addFloatingText(this.player.x, this.player.y - 36, res.payload.title, res.payload.themeVariant === "linked" || res.payload.themeVariant === "ending" ? "#C084FC" : "#7DD3FC", 15);
+    this.onStateChange && this.onStateChange();
+    this.onFrozenTombStory && this.onFrozenTombStory(res.payload);
+    return res.payload;
+  }
+  damageFrozenTombWallAt(x, y, radius, dmg, isEohyenFrost = false) {
+    if (this.activeMapId !== "frozen_tomb" || !this.frozenTombRuntime) return 0;
+    let res = damageFrozenTombDestructibleWalls(this.frozenTombRuntime, this.frozenTombProgress, x, y, radius, dmg, isEohyenFrost);
+    if (res.destroyedWalls.length > 0) {
+      this.frozenTombProgress = res.nextProgress;
+      for (let dw of res.destroyedWalls) {
+        let wx = dw.x + dw.w * 0.5;
+        let wy = dw.y + dw.h * 0.5;
+        R.playIceCrack?.();
+        this.addShake(8, 0.26);
+        this.slashes.push({ x: wx, y: wy, angle: 0, radius: 96, spread: Math.PI * 2, color: "#38BDF8", life: 0, maxLife: 0.36, kind: "shockwave" });
+        this.spawnParticles(wx, wy, "#E0F2FE", 16, 45, 175, 3.2, 0.4);
+        this.addFloatingText(wx, wy - 28, "❄️ ĐÃ PHÁ VỠ TƯỜNG BĂNG!", "#7DD3FC", 15);
+      }
+      this.frozenTombRuntime.lastDiscoveryToast = this.currentLang === "en" ? "Ice Barrier Shattered!" : "Đã phá vỡ bức tường băng bí mật!";
+      this.frozenTombRuntime.lastDiscoveryTimer = 4.0;
+      this.saveGame();
+      this.onStateChange && this.onStateChange();
+    }
+    return res.destroyedWalls.length;
+  }
+  handleEohyenFrozenReaction(x, y, radius, skillIdx = 0) {
+    if (this.activeMapId !== "frozen_tomb" || this.currentHero?.id !== "eohyen" || !this.frozenTombRuntime) return null;
+    let react = triggerEohyenFrozenTombReaction(this.frozenTombRuntime, this.frozenTombProgress, x, y, radius, skillIdx);
+    this.frozenTombProgress = react.nextProgress;
+    if (react.destroyedWalls.length > 0) {
+      for (let dw of react.destroyedWalls) {
+        let wx = dw.x + dw.w * 0.5, wy = dw.y + dw.h * 0.5;
+        R.playIceCrack?.();
+        this.spawnParticles(wx, wy, "#BAE6FD", 14, 40, 165, 3.0, 0.36);
+        this.addFloatingText(wx, wy - 28, "❄️ HÀN KHÍ PHÁ BĂNG!", "#38BDF8", 15);
+      }
+      this.saveGame();
+    }
+    if (react.stabilizedCracks > 0 || react.calmedPhantoms > 0) {
+      this.addFloatingText(x, y - 34, this.currentLang === "en" ? "❄️ Frost Stabilizes the Ice!" : "❄️ Hàn Khí Éo Hyên Ổn Định Mặt Băng!", "#7DD3FC", 14);
+    }
+    return react;
   }
   interactNearestInfernoNode() {
     if (this.activeMapId !== "inferno_ash" || !this.player || this.gameState !== "PLAYING") return null;
@@ -1041,6 +1155,216 @@ export class GameEngine {
   renderInfernoAshStructuresAndProps(ctx, isMono, viewBounds, prof) {
     drawInfernoAshStructuresScene(ctx, this, isMono, viewBounds, prof || this.getPerformanceProfile());
   }
+  spawnFrozenTombAmbushMonsters(zone) {
+    if (!this.isCoopHost() || this.activeMapId !== "frozen_tomb") return 0;
+    let obstacles = this.getActiveObstacles();
+    let mult = this.getCoopPowerMultiplier();
+    let dmgMult = 1 + (mult - 1) * 0.45;
+    let waveScale = 1 + (this.wave - 1) * 0.2;
+    let templates = [
+      { kind: "frost_archer", hp: 150, dmg: 24, spd: 122, r: 17, xp: 28, color: "#38BDF8", name: "Oan Hồn Đóng Băng" },
+      { kind: "assassin", hp: 170, dmg: 30, spd: 158, r: 17, xp: 40, color: "#818CF8", name: "Bóng Ma Nhà Thờ" },
+      { kind: "void_acolyte", hp: 185, dmg: 32, spd: 112, r: 18, xp: 44, color: "#C084FC", name: "Kẻ Canh Phong Ấn" },
+    ];
+    let spawnedList = [];
+    for (let i = 0; i < 3; i++) {
+      let tpl = templates[i % templates.length];
+      let ang = (Math.PI * 2 * i) / 3 + Math.random() * 0.45;
+      let rawX = zone.x + Math.cos(ang) * ((zone.spawnRadius || 140) * 0.7);
+      let rawY = zone.y + Math.sin(ang) * ((zone.spawnRadius || 140) * 0.7);
+      let clearPt = findClearPointNear(rawX, rawY, tpl.r, obstacles, this.mapWidth, this.mapHeight, 24);
+      let hp = Math.round(tpl.hp * waveScale * mult);
+      let enemy = {
+        id: this.nextEntityId++,
+        kind: tpl.kind,
+        name: tpl.name,
+        x: clearPt.x,
+        y: clearPt.y,
+        vx: 0,
+        vy: 0,
+        radius: tpl.r,
+        hp,
+        maxHp: hp,
+        speed: tpl.spd + Math.min(40, this.wave * 1.8),
+        damage: Math.round(tpl.dmg * (1 + (this.wave - 1) * 0.11) * dmgMult),
+        xpValue: Math.round(tpl.xp * (1 + (this.wave - 1) * 0.05)),
+        color: tpl.color,
+        attackCooldown: 0.55,
+        stunTimer: 0,
+        slowFactor: 0,
+        slowTimer: 0,
+        hitFlash: 0,
+        aoeTimer: 0,
+        facing: Math.atan2(this.player.y - clearPt.y, this.player.x - clearPt.x),
+        fuseTimer: 0,
+        dashCd: 2.0 + Math.random() * 1.5,
+      };
+      this.enemies.push(enemy);
+      spawnedList.push(enemy);
+      this.spawnParticles(clearPt.x, clearPt.y, "#BAE6FD", 8, 30, 110, 2.5, 0.3);
+      this.slashes.push({ x: clearPt.x, y: clearPt.y, angle: 0, radius: 56, spread: Math.PI * 2, color: "#7DD3FC", life: 0, maxLife: 0.34, kind: "shockwave" });
+    }
+    if (spawnedList.length > 0) {
+      this.waveTotal += spawnedList.length;
+      this.waveSpawned += spawnedList.length;
+      this.addFloatingText(zone.x, zone.y - 34, "👻 HỒN MA TRONG LỚP BĂNG XUẤT HIỆN!", "#7DD3FC", 17);
+      R.playGhostWhisper?.();
+      if (this.multiplayer.active) {
+        mpClient.send({ type: "WAVE_META", wave: this.wave, waveTotal: this.waveTotal, waveSpawned: this.waveSpawned });
+        mpClient.send({ type: "SPAWN_ENEMIES", enemies: spawnedList, waveSpawned: this.waveSpawned });
+      }
+    }
+    return spawnedList.length;
+  }
+  spawnFrozenTombBoss(waveNum = 27, customPos = null) {
+    if (!this.isCoopHost() || this.activeMapId !== "frozen_tomb") return null;
+    let existing = this.enemies.find((e) => e.isFrozenTombEntityBoss && e.hp > 0);
+    if (existing) return existing;
+    let mult = this.getCoopPowerMultiplier();
+    let bMod = getBossPowerModifiers(27);
+    let c = hm[27] || hm[24] || hm[3];
+    let hp = Math.round((c.baseHP || 2200) * (1 + 0.25 * (Math.max(15, waveNum) - 1)) * mult * bMod.hpMultiplier);
+    let dmg = Math.round((c.baseDMG || 52) * (1 + 0.1 * (Math.max(15, waveNum) - 1)) * (1 + (mult - 1) * 0.45) * bMod.damageMultiplier);
+    let spd = Math.round((c.spd || 130) * bMod.speedMultiplier);
+    let targetX = customPos?.x ?? 1750;
+    let targetY = customPos?.y ?? 2320;
+    let clearPt = findClearPointNear(targetX, targetY, 48, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 36);
+    let boss = {
+      id: this.nextEntityId++,
+      kind: "boss",
+      bossWave: 27,
+      isFrozenTombEntityBoss: true,
+      name: this.currentLang === "en" ? "Nameless Frozen Entity" : "Thực Thể Băng Phong Vô Danh",
+      x: clearPt.x,
+      y: clearPt.y,
+      vx: 0,
+      vy: 0,
+      radius: 48,
+      hp,
+      maxHp: hp,
+      baseDamage: dmg,
+      damage: dmg,
+      speed: spd,
+      baseSpeed: spd,
+      xpValue: 1600,
+      color: "#1E1B4B",
+      accentColor: "#C084FC",
+      attackCooldown: 1.0,
+      stunTimer: 0,
+      slowFactor: 0,
+      slowTimer: 0,
+      hitFlash: 0,
+      aoeTimer: 2.0,
+      facing: 0,
+      phase: 1,
+      phase2Triggered: false,
+      phase3Triggered: false,
+      attackAnimTimer: 0,
+      attackAnimDur: 0.34,
+      attackSwingDir: 1,
+      castWindupTimer: 0,
+      castWindupTotal: 0.4,
+      castSkillIdx: 0,
+      skillReleaseTimer: 0,
+      skillReleaseTotal: 0.46,
+      animWalkPhase: 0,
+      pendingSkill: null,
+    };
+    if (this.frozenTombRuntime) {
+      this.frozenTombRuntime.bossSpawnedThisRun = true;
+    }
+    this.enemies.push(boss);
+    this.waveSpawned++;
+    if (this.waveSpawned > this.waveTotal) this.waveTotal = this.waveSpawned;
+    R.playFrozenBell?.();
+    R.playBossWarn?.();
+    this.addShake(15, 0.45);
+    this.syncMusicState();
+    this.addFloatingText(boss.x, boss.y - boss.radius - 26, `🕯️ ${boss.name} THỨC TỈNH!`, "#C084FC", 20);
+    if (this.multiplayer.active) {
+      mpClient.send({ type: "SPAWN_ENEMIES", enemies: [boss], waveSpawned: this.waveSpawned });
+      this.queueVfx("boss_callout", { x: boss.x, y: boss.y - boss.radius - 26, text: `🕯️ ${boss.name} THỨC TỈNH!`, color: "#C084FC", size: 20, sound: "bossWarn", shakeMag: 15, shakeDur: 0.45 });
+    }
+    this.onStateChange && this.onStateChange();
+    return boss;
+  }
+  updateFrozenTombMap(dt) {
+    if (this.activeMapId !== "frozen_tomb" || !this.frozenTombRuntime || this.frozenTombRuntime.mapId !== "frozen_tomb") return;
+    let rt = this.frozenTombRuntime;
+    let lang = this.currentLang === "en" ? "en" : "vi";
+    let heroId = this.currentHero?.id || this.selectedHeroId;
+    let px = this.player.x, py = this.player.y, pr = this.player.radius || 22;
+    let playerAlive = this.player.hp > 0 && !(this.multiplayer.active && this.multiplayer.localDowned);
+    let zone = getFrozenTombZoneAt(px, py);
+    if (!rt._seenZoneEntries) rt._seenZoneEntries = new Set();
+    if (rt.currentZoneId !== zone.id) {
+      rt.currentZoneId = zone.id;
+      if (!rt._seenZoneEntries.has(zone.id)) {
+        rt._seenZoneEntries.add(zone.id);
+        rt.lastDiscoveryToast = lang === "en" ? zone.name.en : zone.name.vi;
+        rt.lastDiscoveryTimer = 3.5;
+      }
+    }
+    R.updateFrozenTombAmbience?.(zone.id, rt.blizzardIntensity || 0.12, dt, (rt.trungAudioSilenceSec || 0) > 0);
+
+    if (playerAlive) {
+      let prox = evaluateFrozenTombProximityEvents({
+        px,
+        py,
+        heroId,
+        progress: this.frozenTombProgress,
+        runtime: rt,
+        lang,
+      });
+      this.frozenTombProgress = prox.nextProgress;
+      if (prox.storyPayload) {
+        R.playGhostWhisper?.();
+        rt.lastDiscoveryToast = prox.storyPayload.title;
+        rt.lastDiscoveryTimer = 4.2;
+        this.saveGame();
+        this.onStateChange && this.onStateChange();
+        this.onFrozenTombStory && this.onFrozenTombStory(prox.storyPayload);
+      } else if (prox.autoMinhInteraction) {
+        this.interactNearestFrozenTombNode("minh_frozen_dossier");
+      }
+    }
+
+    let res = stepFrozenTombHazards({
+      runtime: rt,
+      dt,
+      playerX: px,
+      playerY: py,
+      playerRadius: pr,
+      playerAlive,
+    });
+    if (res.ringCathedralBell) {
+      this.addShake(5, 0.35);
+    }
+    for (let amb of res.ghostAmbushSpawns) {
+      if (this.isCoopHost()) this.spawnFrozenTombAmbushMonsters(amb);
+    }
+    for (let ev of res.soundEvents) {
+      if (ev === "blizzard_warn") R.playBlizzardWind?.();
+      else if (ev === "ice_crack" || ev === "ice_hands") R.playIceCrack?.();
+      else if (ev === "bell") R.playFrozenBell?.();
+      else if (ev === "ghost_whisper") R.playGhostWhisper?.();
+    }
+    if (playerAlive) {
+      if (res.playerDamage > 0) this.damagePlayer(res.playerDamage);
+      if (res.applySlow) {
+        let slowFactor = heroId === "eohyen" ? res.applySlow.factor * 0.45 : res.applySlow.factor;
+        this.applyPlayerCC("slow", res.applySlow.duration, slowFactor, px, py);
+      }
+      if (res.applyRootSec) this.applyPlayerCC("root", res.applyRootSec, 0, px, py);
+      if (res.applyStunSec) this.applyPlayerCC("stun", res.applyStunSec, 0, px, py);
+    }
+  }
+  renderFrozenTombFloor(ctx, viewBounds) {
+    drawFrozenTombFloorScene(ctx, this, this.elapsedTime, viewBounds);
+  }
+  renderFrozenTombStructuresAndProps(ctx, viewBounds) {
+    drawFrozenTombStructuresScene(ctx, this, this.elapsedTime, viewBounds);
+  }
   getHeroGearStats(s) {
     let a = this.heroGear[s] || {}, l = { atk: 0, matk: 0, hp: 0, hpRegen: 0, ms: 0, as: 0, crit: 0, critExtraDmg: 0, cdr: 0, lifesteal: 0, reflect: 0, dmgRed: 0, lightningChance: 0, lightningDmg: 0, frostThornsChance: 0, killHeal: 0, autoShield20: 0, autoShield20Cd: 45, dashAttackSpeed: 0, skillBurstChance: 0, skillBurstDmg: 0, autoShield30: 0, autoShield30Cd: 50, bossDmgBonus: 0, hitProcCount: 0, hitProcDmg: 0, healAmp: 0, bossSkillExtraDmg: 0, autoShield25: 0, frostSlowDur: 0, aoeAmp: 0, autoHeal20: 0, autoHeal20Cd: 60, waveStartShield: 0, skillMoveSpeedBonus: 0, equippedCount: 0 };
     for (let m of ["weapon", "armor", "boots", "gloves", "necklace", "relic"]) {
@@ -1064,13 +1388,13 @@ export class GameEngine {
   }
   initPlayer() {
     let s = this.getHeroGearStats(this.currentHero.id), a = this.currentHero.stats.hp + s.hp;
-    let spawnX = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.x : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.x : this.mapWidth / 2;
-    let spawnY = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.y : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.y : this.mapHeight / 2;
+    let spawnX = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.x : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.x : this.activeMapId === "frozen_tomb" ? FROZEN_TOMB_SPAWN.x : this.mapWidth / 2;
+    let spawnY = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.y : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.y : this.activeMapId === "frozen_tomb" ? FROZEN_TOMB_SPAWN.y : this.mapHeight / 2;
     this.duccong_pads = [null, null, null];
     this.killStreakCount = 0;
     this.killStreakTimer = 0;
     this._lastComboRank = "D";
-    this.player = { x: spawnX, y: spawnY, vx: 0, vy: 0, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, dung_c1_healed: false, berserkTimer: 0, berserkHealPerHit: 45, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: spawnX - 42, taidu_droneY: spawnY - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, phong_basicStep: 0, phong_dashProtectTimer: 0, phong_c3_flurryTimer: 0, phong_afterimageCd: 0, phong_illHealCd: 0, dang_rage: 0, dang_rageReady: false, dang_c2_timer: 0, dang_c2_recastLock: 0, dang_c2_counterCd: 0, dang_c3_asTimer: 0, dang_c3_flurryTimer: 0, dang_basicStep: 0, thien_energy: 0, thien_ascendedTimer: 0, thien_godMode: false, thien_godInvulnTextCd: 0, thien_regenTimer: 0, thien_c2ZoneId: null, thien_c2RecastLock: 0, thien_c3PortalTimer: 0, thien_c3RecastLock: 0, thien_c3Origin: null, thien_swordHealCd: 0, thien_damageBreakdown: { atk: 0, c1: 0, c2: 0, c3: 0, c4: 0 }, thanh_passiveCd: 0, thanh_dmgEvents: [], thanh_c3Timer: 0, thanh_sacrificeIcd: 0, thanh_c2HealCd: 0, thanh_companionAngle: 0, nhi_passiveCd: 0, nhi_passiveIdx: 0, nhi_ammoType: "purple", nhi_c2HealCd: 0, minh_passiveIcd: 0, ducanh_passiveCd: 0, ducanh_passiveHotTimer: 0, ducanh_passiveHotTick: 0, ducanh_c1Timer: 0, ducanh_c1HitCds: /* @__PURE__ */ new Map(), ducanh_c1GainPct: 0, ducanh_c2Timer: 0, ducanh_c2HotTick: 0, ducanh_c2EndPending: false, ducanh_leapActive: false, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: spawnX, targetY: spawnY }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
+    this.player = { x: spawnX, y: spawnY, vx: 0, vy: 0, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, dung_c1_healed: false, berserkTimer: 0, berserkHealPerHit: 45, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: spawnX - 42, taidu_droneY: spawnY - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, phong_basicStep: 0, phong_dashProtectTimer: 0, phong_c3_flurryTimer: 0, phong_afterimageCd: 0, phong_illHealCd: 0, dang_rage: 0, dang_rageReady: false, dang_c2_timer: 0, dang_c2_recastLock: 0, dang_c2_counterCd: 0, dang_c3_asTimer: 0, dang_c3_flurryTimer: 0, dang_basicStep: 0, thien_energy: 0, thien_ascendedTimer: 0, thien_godMode: false, thien_godInvulnTextCd: 0, thien_regenTimer: 0, thien_c2ZoneId: null, thien_c2RecastLock: 0, thien_c3PortalTimer: 0, thien_c3RecastLock: 0, thien_c3Origin: null, thien_swordHealCd: 0, thien_damageBreakdown: { atk: 0, c1: 0, c2: 0, c3: 0, c4: 0 }, thanh_passiveCd: 0, thanh_dmgEvents: [], thanh_c3Timer: 0, thanh_sacrificeIcd: 0, thanh_c2HealCd: 0, thanh_companionAngle: 0, nhi_passiveCd: 0, nhi_passiveIdx: 0, nhi_ammoType: "purple", nhi_c2HealCd: 0, minh_passiveIcd: 0, ducanh_passiveCd: 0, ducanh_passiveHotTimer: 0, ducanh_passiveHotTick: 0, ducanh_c1Timer: 0, ducanh_c1HitCds: /* @__PURE__ */ new Map(), ducanh_c1GainPct: 0, ducanh_c2Timer: 0, ducanh_c2HotTick: 0, ducanh_c2EndPending: false, ducanh_leapActive: false, frozenTombFrostBuildup: 0, frozenTombStillTimer: 0, frozenTombOnIce: false, frozenTombSlipVx: 0, frozenTombSlipVy: 0, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: spawnX, targetY: spawnY }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
     this.resolveEntityObstacles(this.player, 14);
   }
   computeHeroStats() {
@@ -1741,6 +2065,24 @@ export class GameEngine {
     if (this.waveKilled++, this.waveKilledThisWave++, this.totalKilled++, s.kind === "boss" && (this.waveBossKilledThisWave = true, dropRate > 0 && Math.random() < dropRate)) {
       let l = ["item_71", "item_72", "item_73", "item_74", "item_75", "item_76", "item_77", "item_78", "item_79", "item_80"], m = l[Math.floor(Math.random() * l.length)], c = Si[m];
       c && (this.inventory.push({ uid: this.nextUid++, itemId: m }), this.saveGame(), R.playLevelUp(), this.onToast && this.onToast(`\u{1F389} R\u01A0I \u0110\u1ED2 TH\u1EA6N THO\u1EA0I: ${c.name}!`), this.addFloatingText(this.player.x, this.player.y - 36, `R\u01A0I TH\u1EA6N THO\u1EA0I: ${c.name}!`, "#F59E0B", 18));
+    }
+    if (this.activeMapId === "frozen_tomb" && (s.isFrozenTombEntityBoss || s.bossWave === 27)) {
+      this.frozenTombProgress.bossDefeatedEmptyVoid = true;
+      if (this.frozenTombRuntime) {
+        this.frozenTombRuntime.bossDefeatedThisRun = true;
+        this.frozenTombRuntime.endingShardSpawned = true;
+        this.frozenTombRuntime.lastDiscoveryToast = this.currentLang === "en" ? "Ice Coffin Shattered — Empty Inside" : "Quan Tài Băng Nứt Vỡ — Bên Trong Trống Rỗng";
+        this.frozenTombRuntime.lastDiscoveryTimer = 5.0;
+      }
+      this.addFloatingText(s.x, s.y - s.radius - 28, "❄️ LỚP BĂNG QUAN TÀI VỠ TAN... BÊN TRONG TRỐNG RỖNG!", "#C084FC", 18);
+      if (!this.frozenTombProgress.endingShardSeen) {
+        this.frozenTombProgress.endingShardSeen = true;
+        let endPayload = buildEndingSequencePayload(this.frozenTombProgress, this.currentLang === "en" ? "en" : "vi");
+        R.playGhostWhisper?.();
+        this.onFrozenTombStory && this.onFrozenTombStory(endPayload);
+      }
+      this.saveGame();
+      this.onStateChange && this.onStateChange();
     }
     if (isLocalKill) {
       let a = this.getHeroGearStats(this.currentHero.id);
@@ -3063,6 +3405,7 @@ export class GameEngine {
     a && (l = Math.atan2(a.y - this.player.y, a.x - this.player.x), this.player.facing = l), this.player.attackTimer = this.getEffectiveAttackInterval(), this.player.weaponAttackDuration = 0.22, this.player.attackAnimTimer = 0.22, this.player.attackAnimAngle = l, this.player.attackSwingParity = -(this.player.attackSwingParity || 1), (this.currentHero.id === "kin" || this.currentHero.id === "longhoi") && (this.player.bowRecoilTimer = 0.15);
     let m = this.getEffectiveDamage();
     this.activeMapId === "inferno_ash" && this.damageInfernoWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 54, Math.round(m * 0.48));
+    this.activeMapId === "frozen_tomb" && this.damageFrozenTombWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 54, Math.round(m * 0.52), this.currentHero.id === "eohyen");
     if (this.currentHero.id === "dung") {
       this.player.dung_passive = (this.player.dung_passive || 0) + 1;
       let c = 0, g = false, p = this.player.dung_c3_buff_timer > 0;
@@ -3149,7 +3492,7 @@ export class GameEngine {
     else if (this.currentHero.id === "eohyen") {
       R.playIceSlash(), this.player.eohyen_passive = (this.player.eohyen_passive || 0) + 1;
       let c = 0, g = false;
-      this.player.eohyen_passive >= 4 && (this.player.eohyen_passive = 0, c = 40, g = true, this.addFloatingText(this.player.x, this.player.y - 20, "H\xC0N NGUY\u1EC6T! +40 PH\xC9P", "#38BDF8", 14)), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, color: "#38BDF8", life: 0, maxLife: 0.2, kind: "slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, color: "#38BDF8", maxLife: 0.2, kind: "slash" }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 3, 30, 80);
+      this.player.eohyen_passive >= 4 && (this.player.eohyen_passive = 0, c = 40, g = true, this.addFloatingText(this.player.x, this.player.y - 20, "H\xC0N NGUY\u1EC6T! +40 PH\xC9P", "#38BDF8", 14), this.activeMapId === "frozen_tomb" && this.handleEohyenFrozenReaction(this.player.x + Math.cos(l) * 75, this.player.y + Math.sin(l) * 75, s + 20, 0)), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, color: "#38BDF8", life: 0, maxLife: 0.2, kind: "slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, color: "#38BDF8", maxLife: 0.2, kind: "slash" }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 3, 30, 80);
       let p = false;
       for (let h of [...this.enemies]) {
         let f = h.x - this.player.x, v = h.y - this.player.y, T = Math.hypot(f, v) - h.radius;
@@ -3494,6 +3837,11 @@ export class GameEngine {
       let skillDmg = Math.max(40, Math.round(this.getEffectiveDamage() * 0.85));
       this.damageInfernoWallAt(this.player.x + Math.cos(a) * Math.min(180, g.range || 120), this.player.y + Math.sin(a) * Math.min(180, g.range || 120), Math.max(70, g.radius || 75), skillDmg);
       this.damageInfernoWallAt(this.player.x, this.player.y, 78, skillDmg);
+    } else if (this.activeMapId === "frozen_tomb") {
+      let skillDmg = Math.max(42, Math.round(this.getEffectiveDamage() * 0.85));
+      let isEo = this.currentHero.id === "eohyen";
+      this.damageFrozenTombWallAt(this.player.x + Math.cos(a) * Math.min(180, g.range || 120), this.player.y + Math.sin(a) * Math.min(180, g.range || 120), Math.max(70, g.radius || 75), skillDmg, isEo);
+      this.damageFrozenTombWallAt(this.player.x, this.player.y, 78, skillDmg, isEo);
     }
     let v = this.getEffectiveDamage() / this.currentHero.stats.damage, T = () => {
       p.dashAttackSpeed > 0 && (this.player.dashBuffAsTimer = Math.max(this.player.dashBuffAsTimer, 2), this.addFloatingText(this.player.x, this.player.y - 15, "L\xD4I \u1EA2NH +20% T\u1ED0C \u0110\xC1NH", "#FDE68A", 13));
@@ -3633,6 +3981,7 @@ export class GameEngine {
       if (s === 0) {
         R.playIceSlash();
         let b = g.range || 140;
+        this.activeMapId === "frozen_tomb" && this.handleEohyenFrozenReaction(this.player.x + Math.cos(a) * (b * 0.65), this.player.y + Math.sin(a) * (b * 0.65), 110, 0);
         this.slashes.push({ x: this.player.x, y: this.player.y, angle: a, radius: b, spread: 1.6, color: "#38BDF8", life: 0, maxLife: 0.28, kind: "slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: a, radius: b, spread: 1.6, color: "#38BDF8", maxLife: 0.28, kind: "slash" }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 6, 40, 100);
         for (let x = -1; x <= 1; x++) if (this.icePillars.length < 30) {
           let C = a + x * 0.35, H = this.player.x + b * 0.8 * Math.cos(C), D = this.player.y + b * 0.8 * Math.sin(C), P = x === 0, pRot = Math.random() * Math.PI, pSz = 16 + Math.random() * 8;
@@ -3648,6 +3997,7 @@ export class GameEngine {
       } else if (s === 1) {
         let b = Math.round(this.player.maxHp * 0.08);
         R.playIceShield(), this.addPlayerShield(b, 3, 70 * v, 110, 0.15), this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 14, 40, 120, 3.5, 0.4);
+        this.activeMapId === "frozen_tomb" && this.handleEohyenFrozenReaction(this.player.x, this.player.y, 125, 1);
         for (let x = 0; x < 6; x++) if (this.icePillars.length < 30) {
           let C = Math.PI * 2 / 6 * x, H = this.player.x + Math.cos(C) * 78, D = this.player.y + Math.sin(C) * 78, P = x % 2 == 0, pRot = Math.random() * Math.PI, pSz = 16 + Math.random() * 6;
           this.icePillars.push({ id: this.nextEntityId++, x: H, y: D, rot: pRot, size: pSz, maxSize: 22, active: true, state: P ? "plunging" : "rising", animTimer: 0, maxAnimTimer: 0.28, plungeOffset: P ? 150 : 0, riseProgress: +!!P, levitateHeight: 0, glowAlpha: 0.9 }), this.queueVfx("eohyen_pillar_vis", { ownerId: mpClient.playerId, x: H, y: D, rot: Math.round(pRot * 100) / 100, size: Math.round(pSz), state: P ? "plunging" : "rising" }), this.spawnGroundCrack(H, D, C, 32, "#38BDF8", "#E0F2FE"), this.queueVfx("crack", { x: H, y: D, angle: C, len: 32, color: "#38BDF8", glowColor: "#E0F2FE" }), this.spawnParticles(H, D, "#E0F2FE", 6, 25, 75, 2.5, 0.3);
@@ -3658,6 +4008,7 @@ export class GameEngine {
         this.healPlayer(b, "HEAL", `+${b} HP (BĂNG PHÁN QUYẾT)`), R.playIceStorm();
         let ownPillars = this.icePillars.filter((p) => !p.visualOnly);
         let x = Math.max(40, Math.min(this.mapWidth - 40, l)), C = Math.max(40, Math.min(this.mapHeight - 40, m)), H = ownPillars.length, D = Math.max(3, Math.min(18, 3 + H / 30 * 15)), P = Math.max(25, H * 9 + 18);
+        this.activeMapId === "frozen_tomb" && this.handleEohyenFrozenReaction(x, C, 185, 2);
         for (let N = 0; N < ownPillars.length; N++) {
           let W = ownPillars[N];
           W.state = "levitating", W.animTimer = 0, W.maxAnimTimer = 0.25 + N / Math.max(1, H) * 1.1, W.levitateHeight = 0, W.levitateTarget = { x: x + (Math.random() - 0.5) * 80, y: C + (Math.random() - 0.5) * 80, dmg: 42 * v }, this.spawnParticles(W.x, W.y, "#E0F2FE", 8, 40, 110, 3.5, 0.35), this.spawnGroundCrack(W.x, W.y, Math.random() * Math.PI * 2, 28, "#38BDF8", "#E0F2FE");
@@ -4681,7 +5032,7 @@ export class GameEngine {
     if (myId && spawns[myId]) {
       this.player.x = spawns[myId].x;
       this.player.y = spawns[myId].y;
-      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash") {
+      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
         let pt = findClearPointNear(spawns[myId].x, spawns[myId].y, this.player.radius, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 26);
         this.player.x = pt.x;
         this.player.y = pt.y;
@@ -4852,8 +5203,11 @@ export class GameEngine {
   }
   spawnBoss(s) {
     if (!this.isCoopHost()) return;
+    if (s === 27 && this.activeMapId === "frozen_tomb") {
+      return this.spawnFrozenTombBoss(27);
+    }
     let a = Math.random() * Math.PI * 2, l = Math.max(120, Math.min(this.mapWidth - 120, this.player.x + Math.cos(a) * 360)), m = Math.max(120, Math.min(this.mapHeight - 120, this.player.y + Math.sin(a) * 360)), c = hm[s] || hm[3], mult = this.getCoopPowerMultiplier(), bMod = getBossPowerModifiers(s), g = Math.round(c.baseHP * (1 + 0.25 * (s - 1)) * mult * bMod.hpMultiplier), p = Math.round(c.baseDMG * (1 + 0.1 * (s - 1)) * (1 + (mult - 1) * 0.45) * bMod.damageMultiplier), bSpd = Math.round(c.spd * bMod.speedMultiplier);
-    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash") {
+    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
       let clearPt = findClearPointNear(l, m, c.radius, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 36);
       l = clearPt.x;
       m = clearPt.y;
@@ -4891,7 +5245,7 @@ export class GameEngine {
       shield_knight: { hp: 375, dmg: 30, spd: 84, r: 24, xp: 52, color: "#0EA5E9", name: "Khiên Binh Phản Chấn" },
       void_acolyte: { hp: 190, dmg: 35, spd: 96, r: 19, xp: 54, color: "#818CF8", name: "Tín Đồ Hư Không" }
     }[g];
-    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash") {
+    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
       let clearPt = findClearPointNear(l, m, h.r, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 26);
       l = clearPt.x;
       m = clearPt.y;
@@ -5406,15 +5760,56 @@ export class GameEngine {
         c = Math.sin(this.player.facing) * 0.78;
         g = Math.hypot(m, c);
       }
+      let onIce = this.activeMapId === "frozen_tomb" && isPointOnFrozenIcePatch(this.player.x, this.player.y);
+      this.player.frozenTombOnIce = onIce;
       if (g > 0.05) {
         let p = m / Math.max(1, g), h = c / Math.max(1, g), f = this.getEffectiveMoveSpeed() * Math.min(1, g), v = p * f * a, T = h * f * a;
         this.player.x += v, this.player.y += T, this.player.facing = Math.atan2(h, p);
         this.player.moveSpeedFactor = Math.min(1, g), this.player.walkCyclePhase = (this.player.walkCyclePhase || 0) + a * 13 * this.player.moveSpeedFactor;
+        if (onIce) {
+          this.player.frozenTombSlipVx = (this.player.frozenTombSlipVx || 0) * 0.65 + (v / Math.max(0.001, a)) * 0.35;
+          this.player.frozenTombSlipVy = (this.player.frozenTombSlipVy || 0) * 0.65 + (T / Math.max(0.001, a)) * 0.35;
+        } else {
+          this.player.frozenTombSlipVx = 0;
+          this.player.frozenTombSlipVy = 0;
+        }
+        this.player.frozenTombStillTimer = 0;
       } else {
         this.player.moveSpeedFactor = Math.max(0, (this.player.moveSpeedFactor || 0) - a * 8);
+        if (onIce && (Math.abs(this.player.frozenTombSlipVx || 0) > 4 || Math.abs(this.player.frozenTombSlipVy || 0) > 4)) {
+          this.player.x += (this.player.frozenTombSlipVx || 0) * a * 0.72;
+          this.player.y += (this.player.frozenTombSlipVy || 0) * a * 0.72;
+          let decay = Math.exp(-3.4 * a);
+          this.player.frozenTombSlipVx *= decay;
+          this.player.frozenTombSlipVy *= decay;
+        } else {
+          this.player.frozenTombSlipVx = 0;
+          this.player.frozenTombSlipVy = 0;
+        }
+        this.player.frozenTombStillTimer = (this.player.frozenTombStillTimer || 0) + a;
       }
     } else {
+      this.player.frozenTombOnIce = false;
+      this.player.frozenTombSlipVx = 0;
+      this.player.frozenTombSlipVy = 0;
       this.player.moveSpeedFactor = Math.max(0, (this.player.moveSpeedFactor || 0) - a * 8);
+    }
+    if (this.activeMapId === "frozen_tomb" && !this.waitingReward && !this.waveCleared && this.player.hp > 0) {
+      let inBlizzard = this.frozenTombRuntime?.blizzardState === "active";
+      let coldMult = this.currentHero.id === "eohyen" ? 0.22 : 1;
+      if ((this.player.frozenTombStillTimer || 0) >= 2.2 || inBlizzard) {
+        let rate = ((inBlizzard ? 0.14 : 0) + ((this.player.frozenTombStillTimer || 0) >= 2.2 ? 0.16 : 0)) * coldMult;
+        this.player.frozenTombFrostBuildup = Math.min(1, (this.player.frozenTombFrostBuildup || 0) + rate * a);
+        if (this.player.frozenTombFrostBuildup >= 1) {
+          this.player.frozenTombFrostBuildup = 0.25;
+          this.applyPlayerCC("slow", 1.1, this.currentHero.id === "eohyen" ? 0.15 : 0.28, this.player.x, this.player.y);
+          R.playIceCrack?.();
+        }
+      } else {
+        this.player.frozenTombFrostBuildup = Math.max(0, (this.player.frozenTombFrostBuildup || 0) - 0.35 * a);
+      }
+    } else {
+      this.player.frozenTombFrostBuildup = 0;
     }
     if (this.currentHero.id === "tin" && this.tinCrystals.length > 0) for (let m = this.tinCrystals.length - 1; m >= 0; m--) {
       let c = this.tinCrystals[m];
@@ -5443,7 +5838,7 @@ export class GameEngine {
     this.player.vy = (this.player.vy || 0) * 0.35 + instPlayerVy * 0.65;
     this.multiplayer.active && this.updateRemotePlayers(a);
     let l = 1 - 1e-3 ** a;
-    this.camera.x += (this.player.x - this.camera.x) * l, this.camera.y += (this.player.y - this.camera.y) * l, this.activeMapId === "blood_citadel" && !this.waitingReward && !this.waveCleared && this.updateCitadelMap(a), this.activeMapId === "inferno_ash" && !this.waitingReward && !this.waveCleared && this.updateInfernoMap(a), this.isCoopHost() && !this.waitingReward && !this.waveCleared && this.waveSpawned < this.waveTotal && (this.spawnTimer -= a, this.spawnTimer <= 0 && (this.spawnEnemy(), this.spawnTimer = Math.max(0.45, 1.45 - this.wave * 0.06))), this.updateProjectiles(a), this.updateZones(a), this.updateFrostBarrages(a), this.updateIcePillars(a), this.updateLavaPools(a), this.updateBossWarnings(a), this.updateBossBeams(a), this.updateBossShockRings(a), this.updateEnemies(a), this.updateVFX(a);
+    this.camera.x += (this.player.x - this.camera.x) * l, this.camera.y += (this.player.y - this.camera.y) * l, this.activeMapId === "blood_citadel" && !this.waitingReward && !this.waveCleared && this.updateCitadelMap(a), this.activeMapId === "inferno_ash" && !this.waitingReward && !this.waveCleared && this.updateInfernoMap(a), this.activeMapId === "frozen_tomb" && !this.waitingReward && !this.waveCleared && this.updateFrozenTombMap(a), this.isCoopHost() && !this.waitingReward && !this.waveCleared && this.waveSpawned < this.waveTotal && (this.spawnTimer -= a, this.spawnTimer <= 0 && (this.spawnEnemy(), this.spawnTimer = Math.max(0.45, 1.45 - this.wave * 0.06))), this.updateProjectiles(a), this.updateZones(a), this.updateFrostBarrages(a), this.updateIcePillars(a), this.updateLavaPools(a), this.updateBossWarnings(a), this.updateBossBeams(a), this.updateBossShockRings(a), this.updateEnemies(a), this.updateVFX(a);
     for (let m = this.xpOrbs.length - 1; m >= 0; m--) {
       let c = this.xpOrbs[m];
       c.pulse += a * 5;
@@ -5579,6 +5974,16 @@ export class GameEngine {
           if (hitDestructible) {
             this.damageInfernoWallAt(l.x, l.y, Math.max(28, (l.radius || 10) + 14), Math.max(24, Math.round((l.damage || 35) * 0.55)));
             this.spawnParticles(l.x, l.y, "#F97316", 6, 35, 110, 2.5, 0.24);
+            if ((l.pierceLeft || 1) <= 1) {
+              this.projectiles.splice(a, 1);
+              continue;
+            }
+          }
+        } else if (this.activeMapId === "frozen_tomb" && !l.visualOnly && this.frozenTombRuntime?.destructibles?.length > 0) {
+          let hitFrozenWall = this.frozenTombRuntime.destructibles.find((dw) => !dw.destroyed && l.x + l.radius >= dw.x && l.x - l.radius <= dw.x + dw.w && l.y + l.radius >= dw.y && l.y - l.radius <= dw.y + dw.h);
+          if (hitFrozenWall) {
+            this.damageFrozenTombWallAt(l.x, l.y, Math.max(28, (l.radius || 10) + 14), Math.max(24, Math.round((l.damage || 35) * 0.55)), this.currentHero?.id === "eohyen");
+            this.spawnParticles(l.x, l.y, "#BAE6FD", 6, 35, 110, 2.5, 0.24);
             if ((l.pierceLeft || 1) <= 1) {
               this.projectiles.splice(a, 1);
               continue;
@@ -5900,7 +6305,7 @@ export class GameEngine {
           this.projectiles.splice(a, 1);
           continue;
         }
-        if ((this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash") && !l.ignoreObstacles && doesPointOverlapAnyObstacle(l.x, l.y, Math.max(4, (l.radius || 8) * 0.65), this.getActiveObstacles())) {
+        if ((this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") && !l.ignoreObstacles && doesPointOverlapAnyObstacle(l.x, l.y, Math.max(4, (l.radius || 8) * 0.65), this.getActiveObstacles())) {
           this.spawnParticles(l.x, l.y, l.color || "#EF4444", 6, 30, 95, 2.5, 0.25);
           this.projectiles.splice(a, 1);
           continue;
@@ -6601,6 +7006,49 @@ export class GameEngine {
                 this.slashes.push({ x: a.x, y: a.y, angle: H, radius: 210, spread: Math.PI * 1.8, color: "#E11D48", life: 0, maxLife: 0.34, kind: "boss_blood_slash" });
                 this.queueVfx("slash", { x: a.x, y: a.y, angle: H, radius: 210, spread: Math.PI * 1.8, color: "#E11D48", maxLife: 0.34, kind: "boss_blood_slash" });
               }
+            } else if (a.isFrozenTombEntityBoss || (bw === 27 && this.activeMapId === "frozen_tomb")) {
+              // Map 3 Boss: Thực Thể Băng Phong Vô Danh (indistinct form, ice-void skills, no face revealed)
+              if (C === 0) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "❄️ DỊCH CHUYỂN HƯ KHÔNG BĂNG GIÁ!", "#C084FC", 18), R.playFrozenBell?.(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 20, text: "❄️ DỊCH CHUYỂN HƯ KHÔNG BĂNG GIÁ!", color: "#C084FC", size: 18 });
+                this.afterimages.push({ x: a.x, y: a.y, facing: a.facing, color: "#6366F1", alpha: 0.85, life: 0, maxLife: 0.4, radius: a.radius });
+                let D = Math.atan2(target.y - a.y, target.x - a.x);
+                let blinkD = Math.min(180, Math.max(40, g - 85));
+                a.x = Math.max(a.radius + 32, Math.min(this.mapWidth - a.radius - 32, a.x + Math.cos(D) * blinkD));
+                a.y = Math.max(a.radius + 32, Math.min(this.mapHeight - a.radius - 32, a.y + Math.sin(D) * blinkD));
+                this.summonBossShockRing(a.x, a.y, 340, 430, Math.round(a.damage * 0.85), "#7C3AED", "#BAE6FD", "slow", ccD, 0.45, 26);
+              } else if (C === 1) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🕯️ LOẠT ĐẠN PHONG ẤN BĂNG TÍM!", "#BAE6FD", 18), R.playIceCrack?.(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 20, text: "🕯️ LOẠT ĐẠN PHONG ẤN BĂNG TÍM!", color: "#BAE6FD", size: 18 });
+                let cnt = bp === 3 ? 12 : bp === 2 ? 10 : 8;
+                for (let D = 0; D < cnt; D++) {
+                  let P = Math.PI * 2 / cnt * D + this.elapsedTime * 0.5, pvx = Math.cos(P) * 265, pvy = Math.sin(P) * 265, pdmg = Math.round(a.damage * 0.72);
+                  this.projectiles.push({ id: this.nextEntityId++, kind: "frost_bolt", fromPlayer: false, x: a.x, y: a.y, vx: pvx, vy: pvy, radius: 11, damage: pdmg, color: D % 2 === 0 ? "#BAE6FD" : "#C084FC", angle: P, distanceTraveled: 0, maxDistance: 560, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set(), ccType: "slow", ccDur: ccD, ccFactor: 0.48 });
+                }
+              } else if (C === 2) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🕳️ BÀN TAY BĂNG TỬ THẦN!", "#38BDF8", 18), R.playGhostWhisper?.(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 20, text: "🕳️ BÀN TAY BĂNG TỬ THẦN!", color: "#38BDF8", size: 18 });
+                let wCount = bp >= 2 ? 4 : 3;
+                for (let D = 0; D < wCount; D++) {
+                  let ang = Math.PI * 2 / wCount * D + 0.3, dist = D === 0 ? 0 : 120;
+                  let wx = Math.max(80, Math.min(this.mapWidth - 80, target.x + Math.cos(ang) * dist)), wy = Math.max(80, Math.min(this.mapHeight - 80, target.y + Math.sin(ang) * dist));
+                  this.emitBossWarning({ x: wx, y: wy, radius: 96, timer: 0, duration: b, damage: Math.round(a.damage * 0.92), kind: "ice_prison", color: "#38BDF8", ccType: "root", ccDur: ccD });
+                }
+              } else if (C === 3) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🔮 TIA PHONG ẤN ĐỨT GÃY!", "#E879F9", 18), R.playFrozenBell?.();
+                let rays = bp === 3 ? 4 : 2;
+                for (let D = 0; D < rays; D++) {
+                  let ang = H + (D * Math.PI) / rays;
+                  this.summonBossBeam(a.x - Math.cos(ang) * 460, a.y - Math.sin(ang) * 460, a.x + Math.cos(ang) * 460, a.y + Math.sin(ang) * 460, 44, b + 0.1, Math.round(a.damage * 0.94), "#6366F1", "#BAE6FD", "stun", ccD);
+                }
+              } else if (C === 4) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "👻 TRIỆU HỒI VONG BĂNG MỘ!", "#7DD3FC", 18), R.playGhostWhisper?.();
+                if (this.enemies.length < 18) {
+                  this.spawnFrozenTombAmbushMonsters({ x: a.x, y: a.y, spawnRadius: 150 });
+                }
+                this.summonBossShockRing(a.x, a.y, 380, 470, Math.round(a.damage * 0.78), "#38BDF8", "#C084FC", "slow", ccD, 0.5, 24);
+              } else {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "❄️ BÃO BĂNG VÔ DANH TỊCH DIỆT!", "#C084FC", 19), R.playBlizzardWind?.();
+                this.summonGalaxyVortex(target.x, target.y, 195, 2.8, Math.round(a.damage * 0.3), Math.round(a.damage * 0.96), false, false, -1, ccD);
+                this.summonBossShockRing(a.x, a.y, 440, 490, Math.round(a.damage * 0.85), "#6366F1", "#E0F2FE", "stun", ccD, 0, 28);
+              }
             } else {
               // Wave 27 Final Boss: Fallen Seraphim Lucifer (6 apocalypse skills + Phase 2/3 enhancements)
               if (C === 0) {
@@ -6688,7 +7136,7 @@ export class GameEngine {
           }
         }
       }
-      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash") {
+      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
         for (let a of this.enemies) {
           if (a.hp <= 0) continue;
           this.resolveEntityObstacles(a, 14);
@@ -6999,6 +7447,11 @@ export class GameEngine {
       a.fillStyle = "#0284C7", a.fillRect(-8, -s.radius * 0.28, 4, 3), a.fillRect(4, -s.radius * 0.28, 4, 3);
     }
     let isMono = Boolean(this.player && this.player.tin_monochrome_realm_timer > 0);
+    if (s.isFrozenTombEntityBoss || (s.bossWave === 27 && this.activeMapId === "frozen_tomb")) {
+      a.restore();
+      drawFrozenTombEntityBossScene(a, s, m);
+      return;
+    }
     if ((s.bossWave || 3) >= 15) {
       drawUpgradedBossBody(a, s, m, isMono);
       drawBossWeapon(a, s, m, isMono);
@@ -7029,6 +7482,8 @@ export class GameEngine {
       this.renderBloodCitadelFloor(a, c, viewBounds, prof);
     } else if (this.activeMapId === "inferno_ash") {
       this.renderInfernoAshFloor(a, c, viewBounds, prof);
+    } else if (this.activeMapId === "frozen_tomb") {
+      this.renderFrozenTombFloor(a, viewBounds);
     } else {
       let gs = prof.gridStepPx || 100;
       let gxStart = Math.max(0, Math.floor(viewBounds.minX / gs) * gs), gxEnd = Math.min(this.mapWidth, Math.ceil(viewBounds.maxX / gs) * gs);
@@ -7580,6 +8035,7 @@ export class GameEngine {
     for (let h of this.xpOrbs) if (isCircleInViewBounds(h.x, h.y, (h.radius || 8) + 12, viewBounds)) a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = "#2DD4BF", a.fill(), a.strokeStyle = "#CCFBF1", a.lineWidth = 1.5, a.stroke();
     this.activeMapId === "blood_citadel" && this.renderBloodCitadelStructuresAndProps(a, c, viewBounds);
     this.activeMapId === "inferno_ash" && this.renderInfernoAshStructuresAndProps(a, c, viewBounds, prof);
+    this.activeMapId === "frozen_tomb" && this.renderFrozenTombStructuresAndProps(a, viewBounds);
     this.aimState.active && this.drawAimIndicator();
     for (let h of this.afterimages) if (isCircleInViewBounds(h.x, h.y, (h.radius || 22) + 12, viewBounds)) a.save(), a.globalAlpha = h.alpha * (1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
     for (let h of this.enemies) {
@@ -7802,6 +8258,7 @@ export class GameEngine {
     for (let h of this.floatingTexts) if (isCircleInViewBounds(h.x, h.y, 110, viewBounds)) a.save(), a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife), a.font = `800 ${h.size}px "JetBrains Mono", monospace`, a.fillStyle = "#070B14", a.fillText(h.text, h.x + 1, h.y + 1), a.fillStyle = c ? "#F8FAFC" : h.color, a.fillText(h.text, h.x, h.y), a.restore();
     this.activeMapId === "blood_citadel" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawBloodCitadelAtmosphereScene(a, this, c, prof), a.restore());
     this.activeMapId === "inferno_ash" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawInfernoAshAtmosphereScene(a, this, c, prof), a.restore());
+    this.activeMapId === "frozen_tomb" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawFrozenTombAtmosphereScene(a, this, this.elapsedTime, this.viewW, this.viewH), a.restore());
     if (this.screenFlashWhite > 0) {
       a.save();
       a.setTransform(1, 0, 0, 1, 0, 0);
@@ -7857,6 +8314,23 @@ export class GameEngine {
             bg: compassInferno.bg,
             icon: compassInferno.icon,
             tag: compassInferno.tag,
+            urgent: false,
+          });
+        }
+      } else if (this.activeMapId === "frozen_tomb") {
+        let compassFrozen = getFrozenTombCompassTarget(
+          this.currentHero?.id || this.selectedHeroId,
+          this.frozenTombProgress,
+          this.currentLang === "en" ? "en" : "vi"
+        );
+        if (compassFrozen) {
+          markers.push({
+            wx: compassFrozen.x,
+            wy: compassFrozen.y,
+            color: compassFrozen.color,
+            bg: compassFrozen.bg,
+            icon: compassFrozen.icon,
+            tag: compassFrozen.tag,
             urgent: false,
           });
         }
@@ -8151,6 +8625,7 @@ export class GameEngine {
       }
       s.restore();
     }
+    this.activeMapId === "frozen_tomb" && drawFrozenTombPlayerEffectsScene(s, this.player, this.elapsedTime);
     let h = vy - this.player.radius - 14;
     s.fillStyle = "rgba(15, 23, 42, 0.85)", s.fillRect(vx - 24 - 1, h - 1, 50, 6), s.fillStyle = this.multiplayer.active && this.multiplayer.localDowned ? "#64748B" : "#10B981", s.fillRect(vx - 24, h, 48 * Math.max(0, Math.min(1, this.player.hp / this.player.maxHp)), 4), s.font = '700 11px "Outfit", sans-serif', s.textAlign = "center", s.fillStyle = "#0F172A", s.fillText(this.multiplayer.active && this.multiplayer.localDowned ? "\u{1F480} \u0110\xC3 NG\xC3 XU\u1ED0NG" : `${this.currentHero.name.split("(")[0].trim()} Lv.${this.player.level}`, vx + 1, h - 4), s.fillStyle = this.multiplayer.active && this.multiplayer.localDowned ? "#F87171" : "#FDE68A", s.fillText(this.multiplayer.active && this.multiplayer.localDowned ? "\u{1F480} \u0110\xC3 NG\xC3 XU\u1ED0NG" : `${this.currentHero.name.split("(")[0].trim()} Lv.${this.player.level}`, vx, h - 5);
   }
@@ -9196,7 +9671,7 @@ export class GameEngine {
     } : null;
     let dProf = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(s.taidu_droneMode || "attack") : null;
     let m = s.chargeState.active ? Math.min(1, s.chargeState.elapsed / Math.max(0.1, s.chargeState.maxDur)) : 0, c = "";
-    let liveBossForHud = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash") ? this.enemies.find((e) => e.kind === "boss" && e.hp > 0) : null;
+    let liveBossForHud = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") ? this.enemies.find((e) => e.kind === "boss" && e.hp > 0) : null;
     let citadelHud = this.activeMapId === "blood_citadel" && this.citadelRuntime ? {
       playerX: Math.round(s.x),
       playerY: Math.round(s.y),
@@ -9228,10 +9703,25 @@ export class GameEngine {
       trungTriggered: Boolean(this.infernoProgress?.trungTriggered),
       darknessActive: (this.infernoRuntime.trungDarknessTimer || 0) > 0,
     } : null;
+    let frozenZone = this.activeMapId === "frozen_tomb" ? getFrozenTombZoneAt(s.x, s.y) : null;
+    let frozenTombHud = this.activeMapId === "frozen_tomb" && this.frozenTombRuntime ? {
+      px: Math.round(s.x),
+      py: Math.round(s.y),
+      playerFacing: s.facing || 0,
+      zoneId: frozenZone?.id || "zone_1",
+      zoneLabel: getFrozenTombZoneLabel(s.x, s.y, this.currentLang),
+      blizzardState: this.frozenTombRuntime.blizzardState || "calm",
+      blizzardIntensity: this.frozenTombRuntime.blizzardIntensity || 0.12,
+      bossPos: liveBossForHud ? { x: Math.round(liveBossForHud.x), y: Math.round(liveBossForHud.y) } : null,
+      discoveryToast: this.frozenTombRuntime.lastDiscoveryToast || null,
+      darknessActive: (this.frozenTombRuntime.darknessPulseSec || 0) > 0,
+      frostBuildup: Number((s.frozenTombFrostBuildup || 0).toFixed(2)),
+    } : null;
     let nearbyInfernoNode = this.getNearbyInfernoInteractable();
     let nearbyInfernoGate = this.getNearbyInfernoGate();
+    let nearbyFrozenNode = this.getNearbyFrozenTombInteractable();
     let nearbyCitadelNode = this.getNearbyCitadelInteractable();
-    return s.chargeState.active && (c = s.chargeState.kind === "danh_c2" ? `T\u1EE4 L\u1EF0C LONG H\u1ED2N \xB7 ${s.chargeState.elapsed >= 2.5 ? "T\u1EA6NG 3 (T\u1ED0I \u0110A)" : s.chargeState.elapsed >= 1.5 ? "T\u1EA6NG 2" : "T\u1EA6NG 1"}` : s.chargeState.elapsed >= 0.35 ? "KI\u1EBEM KH\xCD S\u1EB4N S\xC0NG!" : "GI\u1EEE \u0110\u1EC2 PH\xD3NG KI\u1EBEM KH\xCD..."), { skillStates: a, padTeleportCds: pads, chargeProgress: m, chargeActive: s.chargeState.active, chargeLabel: c, resourceText: l, thienState, droneMode: s.taidu_droneMode || "attack", droneLabel: dProf?.label || "T\u1EA5n C\xF4ng", droneColor: dProf?.color || "#38BDF8", combo: this.comboManager.getSnapshot(), mapId: this.activeMapId, nearbyInteractable: this.activeMapId === "inferno_ash" ? (nearbyInfernoNode || nearbyInfernoGate) : nearbyCitadelNode, nearbyInfernoInteractable: nearbyInfernoNode, nearbyInfernoGate, citadelSecrets: { ...this.citadelSecrets }, citadelHud, infernoProgress: { ...this.infernoProgress }, infernoHud };
+    return s.chargeState.active && (c = s.chargeState.kind === "danh_c2" ? `T\u1EE4 L\u1EF0C LONG H\u1ED2N \xB7 ${s.chargeState.elapsed >= 2.5 ? "T\u1EA6NG 3 (T\u1ED0I \u0110A)" : s.chargeState.elapsed >= 1.5 ? "T\u1EA6NG 2" : "T\u1EA6NG 1"}` : s.chargeState.elapsed >= 0.35 ? "KI\u1EBEM KH\xCD S\u1EB4N S\xC0NG!" : "GI\u1EEE \u0110\u1EC2 PH\xD3NG KI\u1EBEM KH\xCD..."), { skillStates: a, padTeleportCds: pads, chargeProgress: m, chargeActive: s.chargeState.active, chargeLabel: c, resourceText: l, thienState, droneMode: s.taidu_droneMode || "attack", droneLabel: dProf?.label || "T\u1EA5n C\xF4ng", droneColor: dProf?.color || "#38BDF8", combo: this.comboManager.getSnapshot(), mapId: this.activeMapId, nearbyInteractable: this.activeMapId === "inferno_ash" ? (nearbyInfernoNode || nearbyInfernoGate) : this.activeMapId === "frozen_tomb" ? nearbyFrozenNode : nearbyCitadelNode, nearbyInfernoInteractable: nearbyInfernoNode, nearbyInfernoGate, nearbyFrozenInteractable: nearbyFrozenNode, citadelSecrets: { ...this.citadelSecrets }, citadelHud, infernoProgress: { ...this.infernoProgress }, infernoHud, frozenTombProgress: { ...this.frozenTombProgress }, frozenTombHud };
   }
   stop() {
     this.animFrameId && (this.animFrameId = (cancelAnimationFrame(this.animFrameId), null));

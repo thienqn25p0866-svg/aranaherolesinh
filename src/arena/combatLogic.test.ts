@@ -239,6 +239,7 @@ import {
   BOSS_CHRONICLES,
   buildCitadelChronicleOverview,
   buildInfernoChronicleOverview,
+  buildFrozenTombChronicleOverview,
 } from './darkFantasyLore.ts';
 import {
   INFERNO_MAP_WIDTH,
@@ -261,6 +262,32 @@ import {
   getInfernoCompassTarget,
   stepInfernoHazards,
 } from './infernoAshMap.ts';
+import {
+  FROZEN_TOMB_WIDTH,
+  FROZEN_TOMB_HEIGHT,
+  FROZEN_TOMB_SPAWN,
+  FROZEN_TOMB_ZONES,
+  FROZEN_TOMB_DESTRUCTIBLES,
+  FROZEN_TOMB_INTERACTABLES,
+  FROZEN_TOMB_DOCS,
+  FROZEN_TOMB_ICE_PATCHES,
+  createDefaultFrozenTombProgress,
+  normalizeFrozenTombProgress,
+  mergeFrozenTombProgress,
+  hasCompletedMap2Links,
+  hasCompletedMap3Links,
+  getFrozenTombZoneAt,
+  isPointOnFrozenIcePatch,
+  createInitialFrozenTombRuntimeState,
+  getActiveFrozenTombObstacles,
+  damageFrozenTombDestructibleWalls,
+  triggerEohyenFrozenTombReaction,
+  evaluateFrozenTombProximityEvents,
+  buildEndingSequencePayload,
+  evaluateFrozenTombInteraction,
+  getFrozenTombCompassTarget,
+  stepFrozenTombHazards,
+} from './frozenTombMap.ts';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
   const w3p1 = getBossCcDuration(0.85, 3, 1, 'stun');
@@ -4271,13 +4298,14 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   assert.equal(CITADEL_UNLOCK_WAVE, 27);
   assert.equal(ARENA_MAPS.blood_citadel.width, BLOOD_CITADEL_SIZE);
   assert.equal(ARENA_MAPS.blood_citadel.height, BLOOD_CITADEL_SIZE);
-  assert.equal(ARENA_MAP_LIST.length, 3);
+  assert.equal(ARENA_MAP_LIST.length, 4);
 
-  // Locked before clearing Wave 27 without Founder access (Classic & Inferno Ash are unlocked by default)
+  // Locked before clearing Wave 27 without Founder access (Classic, Inferno Ash & Frozen Tomb are unlocked by default)
   const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
-  assert.deepEqual(lockedMaps, ['classic', 'inferno_ash']);
+  assert.deepEqual(lockedMaps, ['classic', 'inferno_ash', 'frozen_tomb']);
   assert.equal(isMapUnlocked('classic', lockedMaps, false), true);
   assert.equal(isMapUnlocked('inferno_ash', lockedMaps, false), true);
+  assert.equal(isMapUnlocked('frozen_tomb', lockedMaps, false), true);
   assert.equal(isMapUnlocked('blood_citadel', lockedMaps, false), false);
 
   // Unlocks upon clearing Wave 27 on Classic
@@ -5453,6 +5481,440 @@ test('GameEngine renders Map 3 (blood_citadel) Easter eggs, hazards, and monochr
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Map 3 (frozen_tomb) defines 3400x2800 geometry, 7 zones, clear spawn, and unlock metadata', () => {
+  assert.equal(FROZEN_TOMB_WIDTH, 3400);
+  assert.equal(FROZEN_TOMB_HEIGHT, 2800);
+  assert.deepEqual(FROZEN_TOMB_SPAWN, { x: 480, y: 2490 });
+  assert.equal(FROZEN_TOMB_ZONES.length, 7);
+  assert.ok(ARENA_MAPS.frozen_tomb);
+  assert.equal(ARENA_MAPS.frozen_tomb.width, 3400);
+  assert.equal(ARENA_MAPS.frozen_tomb.height, 2800);
+  assert.ok(ARENA_MAP_LIST.some((m: any) => m.id === 'frozen_tomb'));
+
+  const runtime = createInitialFrozenTombRuntimeState();
+  const obstacles = getActiveFrozenTombObstacles(runtime);
+  assert.equal(doesPointOverlapAnyObstacle(FROZEN_TOMB_SPAWN.x, FROZEN_TOMB_SPAWN.y, 24, obstacles), false);
+
+  const zonePoints = [
+    { id: 'zone_1', x: 480, y: 2490 },
+    { id: 'zone_2', x: 640, y: 1500 },
+    { id: 'zone_3', x: 1800, y: 1350 },
+    { id: 'zone_4', x: 650, y: 420 },
+    { id: 'zone_5', x: 1890, y: 540 },
+    { id: 'zone_6', x: 2820, y: 1620 },
+    { id: 'zone_7', x: 1750, y: 2320 },
+  ];
+  for (const pt of zonePoints) {
+    assert.equal(getFrozenTombZoneAt(pt.x, pt.y).id, pt.id);
+  }
+  assert.ok(FROZEN_TOMB_ICE_PATCHES.length > 0);
+  const firstPatch = FROZEN_TOMB_ICE_PATCHES[0];
+  assert.equal(isPointOnFrozenIcePatch(firstPatch.x, firstPatch.y), true);
+  assert.equal(isPointOnFrozenIcePatch(FROZEN_TOMB_SPAWN.x, FROZEN_TOMB_SPAWN.y), false);
+});
+
+test('Map 3 hero-gated Easter eggs (EE1-EE4), cross-map EE5 research device, narrative & ending', () => {
+  let progress = createDefaultFrozenTombProgress();
+  const runtime = createInitialFrozenTombRuntimeState(progress);
+
+  // Wrong hero on EE1 does not unlock Éo Hyên clue
+  const wrongEohyen = evaluateFrozenTombInteraction({
+    nodeId: 'eohyen_painting',
+    heroId: 'tin',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(wrongEohyen.nextProgress.eohyenPaintingSeen, false);
+  assert.equal(wrongEohyen.coinBonus, 0);
+
+  // Right hero unlocks EE1–EE4
+  const ee1 = evaluateFrozenTombInteraction({
+    nodeId: 'eohyen_painting',
+    heroId: 'eohyen',
+    progress: wrongEohyen.nextProgress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(ee1.nextProgress.eohyenPaintingSeen, true);
+  assert.ok(ee1.nextProgress.collectedDocs.includes('doc_eohyen_painting'));
+  assert.ok(ee1.coinBonus >= 160);
+
+  const ee2 = evaluateFrozenTombInteraction({
+    nodeId: 'phong_faceless_statues',
+    heroId: 'phong',
+    progress: ee1.nextProgress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(ee2.nextProgress.phongMirrorClue, true);
+  assert.equal(ee2.spawnPhantom?.kind, 'phong_ninja_shadow');
+
+  const ee3 = evaluateFrozenTombInteraction({
+    nodeId: 'minh_frozen_dossier',
+    heroId: 'minh',
+    progress: ee2.nextProgress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(ee3.nextProgress.minhSealClue, true);
+
+  const ee4 = evaluateFrozenTombInteraction({
+    nodeId: 'thanh_poison_vial',
+    heroId: 'thanh',
+    progress: ee3.nextProgress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(ee4.nextProgress.thanhVialClue, true);
+  assert.equal(ee4.spawnPhantom?.kind, 'thanh_flashback_snake');
+
+  // EE5 remains locked without all 3 Map 2 clues
+  const partialInferno = { ...createDefaultInfernoProgress(), dungClue: true, longhoiClue: true };
+  assert.equal(hasCompletedMap2Links(partialInferno).allReady, false);
+  assert.equal(hasCompletedMap3Links(ee4.nextProgress).allReady, true);
+
+  const lockedEe5 = evaluateFrozenTombInteraction({
+    nodeId: 'frozen_research_device',
+    heroId: 'minh',
+    progress: ee4.nextProgress,
+    infernoProgress: partialInferno,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(lockedEe5.nextProgress.linkedDeviceTriggered, false);
+  assert.equal(lockedEe5.coinBonus, 0);
+
+  // Full Map 2 + Map 3 unlocks EE5 tape & Trung silence pulse
+  const fullInferno = { ...partialInferno, fourChairsUnlocked: true };
+  assert.equal(hasCompletedMap2Links(fullInferno).allReady, true);
+  const unlockedEe5 = evaluateFrozenTombInteraction({
+    nodeId: 'frozen_research_device',
+    heroId: 'minh',
+    progress: lockedEe5.nextProgress,
+    infernoProgress: fullInferno,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(unlockedEe5.nextProgress.linkedDeviceTriggered, true);
+  assert.ok(unlockedEe5.nextProgress.collectedDocs.includes('doc_linked_experiments'));
+  assert.equal(unlockedEe5.payload.audioCue, 'tape');
+  assert.ok((unlockedEe5.darknessPulseSec || 0) >= 4);
+  assert.ok(unlockedEe5.coinBonus >= 400);
+
+  // Proximity narrative sequences (Gate Intro, Chamber Warning, Minh Auto-Melt)
+  const introRes = evaluateFrozenTombProximityEvents({
+    px: 650,
+    py: 2100,
+    heroId: 'eohyen',
+    progress: unlockedEe5.nextProgress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(introRes.nextProgress.introNarrativeSeen, true);
+  assert.equal(introRes.storyPayload?.nodeId, 'narrative_intro');
+  assert.equal(runtime.rampartWatcherDismissed, true);
+
+  const chamberRes = evaluateFrozenTombProximityEvents({
+    px: 1750,
+    py: 2320,
+    heroId: 'minh',
+    progress: introRes.nextProgress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(chamberRes.nextProgress.chamberWarningSeen, true);
+  assert.equal(chamberRes.storyPayload?.nodeId, 'narrative_chamber_warning');
+
+  const endPayload = buildEndingSequencePayload(chamberRes.nextProgress, 'vi');
+  assert.equal(endPayload.showsMap2Symbol, true);
+  assert.equal(endPayload.endingBoldLine, 'BĂNG CHỈ GIỮ ĐƯỢC NHỮNG THỨ CHƯA THỂ CHẾT.');
+
+  // Compass & Chronicle merge checks
+  const merged = mergeFrozenTombProgress(ee1.nextProgress, unlockedEe5.nextProgress);
+  assert.equal(merged.eohyenPaintingSeen, true);
+  assert.equal(merged.linkedDeviceTriggered, true);
+  const compass = getFrozenTombCompassTarget('minh', createDefaultFrozenTombProgress(), 'vi');
+  assert.ok(compass && compass.x > 0 && compass.y > 0);
+  const overview = buildFrozenTombChronicleOverview(merged, 'vi');
+  assert.ok(
+    overview &&
+      overview.eohyenDossier &&
+      overview.phongDossier &&
+      overview.minhDossier &&
+      overview.thanhDossier &&
+      overview.linkedDossier
+  );
+  assert.equal(overview.eohyenDossier.locked, false);
+  assert.equal(overview.linkedDossier.locked, false);
+  assert.ok(FROZEN_TOMB_DOCS.doc_linked_experiments);
+});
+
+test('Map 3 hazards, destructible ice walls, and Eohyen frost reaction behave deterministically', () => {
+  let progress = createDefaultFrozenTombProgress();
+  const runtime = createInitialFrozenTombRuntimeState(progress);
+
+  // Force Blizzard transition calm -> warning -> active
+  runtime.blizzardTimer = 0.05;
+  let tick = stepFrozenTombHazards({
+    runtime,
+    dt: 0.1,
+    playerX: 480,
+    playerY: 2490,
+    playerRadius: 22,
+    playerAlive: true,
+  });
+  assert.equal(runtime.blizzardState, 'warning');
+  assert.ok(tick.soundEvents.includes('blizzard_warn'));
+
+  runtime.blizzardTimer = 0.05;
+  tick = stepFrozenTombHazards({
+    runtime,
+    dt: 0.1,
+    playerX: 480,
+    playerY: 2490,
+    playerRadius: 22,
+    playerAlive: true,
+  });
+  assert.equal(runtime.blizzardState, 'active');
+  tick = stepFrozenTombHazards({
+    runtime,
+    dt: 0.1,
+    playerX: 480,
+    playerY: 2490,
+    playerRadius: 22,
+    playerAlive: true,
+  });
+  assert.ok(tick.applySlow && tick.applySlow.factor > 0);
+
+  // Cracked Ice collapse
+  const crack = runtime.crackedIceZones[0];
+  tick = stepFrozenTombHazards({ runtime, dt: 0.1, playerX: crack.x, playerY: crack.y, playerRadius: 22, playerAlive: true });
+  assert.equal(crack.state, 'cracking');
+  tick = stepFrozenTombHazards({ runtime, dt: 1.2, playerX: crack.x, playerY: crack.y, playerRadius: 22, playerAlive: true });
+  assert.equal(crack.state, 'collapsed');
+  assert.ok(tick.playerDamage > 0);
+  assert.ok((tick.applyStunSec || 0) > 0);
+
+  // Ice Hands telegraph -> erupt + root
+  const hands = runtime.iceHandsHazards[0];
+  hands.timer = 0.05;
+  stepFrozenTombHazards({ runtime, dt: 0.1, playerX: hands.x, playerY: hands.y, playerRadius: 22, playerAlive: true });
+  assert.equal(hands.state, 'telegraph');
+  hands.timer = 0.05;
+  tick = stepFrozenTombHazards({ runtime, dt: 0.1, playerX: hands.x, playerY: hands.y, playerRadius: 22, playerAlive: true });
+  assert.equal(hands.state, 'erupt');
+  assert.ok((tick.applyRootSec || 0) > 0);
+
+  // Ghost ambush trigger -> spawn
+  const ghost = runtime.ghostAmbushZones[0];
+  stepFrozenTombHazards({ runtime, dt: 0.1, playerX: ghost.x, playerY: ghost.y, playerRadius: 22, playerAlive: true });
+  assert.equal(ghost.state, 'warning');
+  ghost.timer = 0.05;
+  tick = stepFrozenTombHazards({ runtime, dt: 0.1, playerX: ghost.x, playerY: ghost.y, playerRadius: 22, playerAlive: true });
+  assert.equal(tick.ghostAmbushSpawns.length, 1);
+
+  // Purple Sealing Remnant slow + damage + static distortion
+  const rem = runtime.sealingRemnants[0];
+  rem.exposureSec = 1.2;
+  rem.tickCd = 0;
+  tick = stepFrozenTombHazards({ runtime, dt: 0.1, playerX: rem.x, playerY: rem.y, playerRadius: 22, playerAlive: true });
+  assert.ok(tick.playerDamage > 0);
+  assert.ok(tick.staticIntensity > 0);
+
+  // Éo Hyên frost reaction stabilizes cracks, calms telegraphing ice hands & shatters destructible walls
+  crack.state = 'cracking';
+  hands.state = 'telegraph';
+  const targetWall = runtime.destructibles[0];
+  targetWall.hp = 80;
+  const reactCrack = triggerEohyenFrozenTombReaction(runtime, progress, crack.x, crack.y, 90, 2);
+  assert.ok(reactCrack.stabilizedCracks >= 1);
+  assert.equal(crack.state, 'stable');
+  assert.ok(crack.eohyenFrozenTimer > 0);
+
+  const reactHands = triggerEohyenFrozenTombReaction(runtime, reactCrack.nextProgress, hands.x, hands.y, 90, 1);
+  assert.ok(reactHands.calmedPhantoms >= 1);
+  assert.equal(hands.state, 'cooldown');
+
+  const wallSmash = damageFrozenTombDestructibleWalls(
+    runtime,
+    reactHands.nextProgress,
+    targetWall.x + targetWall.w * 0.5,
+    targetWall.y + targetWall.h * 0.5,
+    60,
+    120,
+    true
+  );
+  assert.equal(wallSmash.hitAny, true);
+  assert.equal(wallSmash.destroyedWalls.length, 1);
+  assert.ok(wallSmash.nextProgress.destroyedWalls.includes(targetWall.id));
+});
+
+test('GameEngine runs Map 3 (frozen_tomb) boss wave 27, ending sequence, ice physics, and 7-zone render without shadowBlur', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const { P2PRoomHost } = await import('./webrtcCoop.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  let shadowBlurWrites = 0;
+  let maxFullWhiteFillAlpha = 0;
+  let structureFillRects = 0;
+  let structureStrokeRects = 0;
+
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {},
+    fillRect(x: number, y: number, w: number, h: number) {
+      if (
+        w >= 1200 &&
+        h >= 700 &&
+        typeof rawCtx.fillStyle === 'string' &&
+        (rawCtx.fillStyle.includes('255, 255, 255') || rawCtx.fillStyle.toLowerCase() === '#ffffff')
+      ) {
+        maxFullWhiteFillAlpha = Math.max(maxFullWhiteFillAlpha, Number(rawCtx.globalAlpha || 1));
+      }
+      if (w > 2 && w < 1100 && h > 2 && h < 1100) {
+        structureFillRects++;
+      }
+    },
+    strokeRect(x: number, y: number, w: number, h: number) {
+      if (w > 2 && w < 1100 && h > 2 && h < 1100) {
+        structureStrokeRects++;
+      }
+    },
+    clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  const ctxStub: any = new Proxy(rawCtx, {
+    set(target, prop, value) {
+      if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+      target[prop] = value;
+      return true;
+    },
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const storyEvents: any[] = [];
+    const engine: any = new GameEngine(canvasStub);
+    engine.onFrozenTombStory = (payload: any) => storyEvents.push(payload);
+    engine.setFounderUnlocked(true);
+    engine.setSelectedMap('frozen_tomb');
+
+    const eohyenHero = Mi.find((h: any) => h.id === 'eohyen') || Mi[0];
+    engine.startNewGame(eohyenHero, 'frozen_tomb');
+    assert.equal(engine.activeMapId, 'frozen_tomb');
+    assert.equal(engine.mapWidth, 3400);
+    assert.equal(engine.mapHeight, 2800);
+    assert.equal(engine.player.x, FROZEN_TOMB_SPAWN.x);
+    assert.equal(engine.player.y, FROZEN_TOMB_SPAWN.y);
+
+    // Trigger Éo Hyên reaction & destructible ice wall smash
+    const destr = engine.frozenTombRuntime.destructibles[0];
+    destr.hp = 50;
+    const smashed = engine.damageFrozenTombWallAt(destr.x + destr.w * 0.5, destr.y + destr.h * 0.5, 40, 120, true);
+    assert.equal(smashed, 1);
+    assert.ok(engine.frozenTombProgress.destroyedWalls.includes(destr.id));
+
+    // Spawn & kill Wave 27 Entity Boss -> triggers empty coffin & ending shard payload
+    const boss = engine.spawnBoss(27);
+    assert.ok(boss && boss.isFrozenTombEntityBoss === true);
+    engine.damageEnemy(boss, boss.hp + 99999, 0, 0, true);
+    assert.equal(engine.frozenTombProgress.bossDefeatedEmptyVoid, true);
+    assert.equal(engine.frozenTombProgress.endingShardSeen, true);
+    const endingEvent = storyEvents.find((ev) => ev?.isEndingSequence);
+    assert.ok(endingEvent && endingEvent.showsMap2Symbol === true);
+
+    // Sweep render across all 7 zones of Map 3 & verify HUD snapshot + non-zero visible walls/architecture
+    const zoneSweep = [
+      { name: 'Zone 1 Gate', x: 480, y: 2340, minFills: 20, minStrokes: 10 },
+      { name: 'Zone 1-7 Divider Wall', x: 1100, y: 2150, minFills: 10, minStrokes: 4 },
+      { name: 'Zone 2 Old Town', x: 640, y: 1380, minFills: 20, minStrokes: 10 },
+      { name: 'Zone 3 Cathedral', x: 1800, y: 1350, minFills: 25, minStrokes: 10 },
+      { name: 'Zone 4 Graveyard', x: 650, y: 420, minFills: 15, minStrokes: 8 },
+      { name: 'Zone 5 Palace', x: 1890, y: 440, minFills: 20, minStrokes: 10 },
+      { name: 'Zone 6 Cavern', x: 2820, y: 1520, minFills: 10, minStrokes: 4 },
+      { name: 'Zone 7 Chamber', x: 1750, y: 2320, minFills: 15, minStrokes: 6 },
+    ];
+    for (const pos of zoneSweep) {
+      engine.player.x = pos.x;
+      engine.player.y = pos.y;
+      engine.camera.x = pos.x;
+      engine.camera.y = pos.y;
+      structureFillRects = 0;
+      structureStrokeRects = 0;
+      assert.doesNotThrow(() => engine.render());
+      assert.ok(
+        structureFillRects >= pos.minFills,
+        `Expected >= ${pos.minFills} visible structure fillRects in ${pos.name}, got ${structureFillRects}`,
+      );
+      assert.ok(
+        structureStrokeRects >= pos.minStrokes,
+        `Expected >= ${pos.minStrokes} visible structure strokeRects in ${pos.name}, got ${structureStrokeRects}`,
+      );
+    }
+    const hud = engine.getHudSnapshot();
+    assert.equal(hud.mapId, 'frozen_tomb');
+    assert.ok(hud.frozenTombHud && hud.frozenTombProgress);
+    assert.equal(shadowBlurWrites, 0);
+    assert.equal(maxFullWhiteFillAlpha, 0);
+
+    // Verify P2PRoomHost supports frozen_tomb mapId and spawn coordinates
+    const p2pHost: any = new P2PRoomHost({
+      hostName: 'Host',
+      heroId: 'eohyen',
+      mapId: 'frozen_tomb',
+      onLocalEvent: () => {},
+      onPeersChanged: () => {},
+    });
+    assert.equal(p2pHost.serializeRoom().mapId, 'frozen_tomb');
+    const spawns: Record<string, any> = p2pHost._buildSpawnsMap();
+    const hostSpawn = spawns[p2pHost.hostId];
+    assert.ok(hostSpawn && Math.hypot(hostSpawn.x - FROZEN_TOMB_SPAWN.x, hostSpawn.y - FROZEN_TOMB_SPAWN.y) < 120);
+    p2pHost.destroy();
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
 
 
 

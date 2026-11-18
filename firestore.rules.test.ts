@@ -22,6 +22,8 @@ test("Firestore rules include all required Eight Pillars protections", () => {
   assert.match(rulesSrc, /existing\(\)\.isPublic == true/);
   assert.match(rulesSrc, /data\.selectedHeroId != "thien" \|\| isBootstrappedFounder\(\)/);
   assert.match(rulesSrc, /!data\.isFounderBadge \|\| isBootstrappedFounder\(\)/);
+  assert.match(rulesSrc, /'heroStatsEntries'/);
+  assert.match(rulesSrc, /isValidStringList\(data\.heroStatsEntries,\s*40\)/);
 });
 
 test("Dirty Dozen + social adversarial payloads violate documented invariants", () => {

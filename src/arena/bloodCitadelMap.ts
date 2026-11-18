@@ -1,4 +1,4 @@
-export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel";
+export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb";
 
 export interface ArenaMapMetadata {
   id: ArenaMapId;
@@ -126,6 +126,9 @@ export const INFERNO_ASH_HEIGHT = 2100;
 export const BLOOD_CITADEL_SIZE = 1600;
 export const CITADEL_UNLOCK_WAVE = 27;
 
+export const FROZEN_TOMB_WIDTH = 3400;
+export const FROZEN_TOMB_HEIGHT = 2800;
+
 export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
   classic: {
     id: "classic",
@@ -153,6 +156,21 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
     subtitle: {
       vi: "2400×2100 · Thành phố tro tàn 8 khu vực, mật thất 4 ghế & bí mật thảm họa",
       en: "2400×2100 · 8-zone ruined city, Four Chairs Sanctum & catastrophe secrets",
+    },
+    unlockWaveRequired: 0,
+    unlockFromMap: null,
+  },
+  frozen_tomb: {
+    id: "frozen_tomb",
+    width: FROZEN_TOMB_WIDTH,
+    height: FROZEN_TOMB_HEIGHT,
+    name: {
+      vi: "Băng Mộ Vĩnh Cửu",
+      en: "Eternal Frozen Tomb",
+    },
+    subtitle: {
+      vi: "3400×2800 · Vương quốc băng cổ 7 khu vực, bão tuyết, 5 bí mật & điện phong ấn",
+      en: "3400×2800 · 7-zone frozen kingdom, blizzards, 5 secrets & final seal chamber",
     },
     unlockWaveRequired: 0,
     unlockFromMap: null,
@@ -423,6 +441,7 @@ export function normalizeCitadelSecrets(raw: unknown): CitadelSecretsProgress {
 export function normalizeArenaMapId(raw: unknown): ArenaMapId {
   if (raw === "blood_citadel") return "blood_citadel";
   if (raw === "inferno_ash") return "inferno_ash";
+  if (raw === "frozen_tomb") return "frozen_tomb";
   return "classic";
 }
 
@@ -437,11 +456,12 @@ export function computeUnlockedMaps({
   storedUnlocked?: unknown;
   founderUnlocked?: boolean;
 }): ArenaMapId[] {
-  const set = new Set<ArenaMapId>(["classic", "inferno_ash"]);
+  const set = new Set<ArenaMapId>(["classic", "inferno_ash", "frozen_tomb"]);
   if (Array.isArray(storedUnlocked)) {
     for (const m of storedUnlocked) {
       if (m === "blood_citadel") set.add("blood_citadel");
       if (m === "inferno_ash") set.add("inferno_ash");
+      if (m === "frozen_tomb") set.add("frozen_tomb");
     }
   }
   if (classicCleared || highestWaveCleared >= CITADEL_UNLOCK_WAVE || founderUnlocked) {
@@ -455,7 +475,7 @@ export function isMapUnlocked(
   unlockedMaps: ArenaMapId[],
   founderUnlocked = false
 ): boolean {
-  if (mapId === "classic" || mapId === "inferno_ash") return true;
+  if (mapId === "classic" || mapId === "inferno_ash" || mapId === "frozen_tomb") return true;
   if (founderUnlocked && mapId === "blood_citadel") return true;
   return Array.isArray(unlockedMaps) && unlockedMaps.includes(mapId);
 }

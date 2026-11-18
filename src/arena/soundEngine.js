@@ -2134,6 +2134,73 @@ class SoundEngine {
       this.playFilteredNoise({ duration: 0.68, filterType: "lowpass", freqStart: 780, freqEnd: 260, q: 1.1, gainPeak: 0.05, sendAmbiance: true });
     }
   }
+
+  // =========================================================
+  // MAP 3: BĂNG MỘ VĨNH CỬU (FROZEN TOMB) AUDIO CUES & AMBIENCE
+  // =========================================================
+
+  playFrozenBell() {
+    if (this.canThrottle("ftBell", 420)) return;
+    this.playSubPunch(86, 36, 0.65, 0.28);
+    this.playChord([196.0, 293.66, 466.16, 587.33], 1.15, {
+      type: "triangle",
+      vol: 0.11,
+      stagger: 0.025,
+      sendAmbiance: true,
+    });
+    this.playMetallicClang(523.25, 0.55, 0.12);
+  }
+
+  playIceCrack() {
+    if (this.canThrottle("ftCrack", 140)) return;
+    this.playFilteredNoise({ duration: 0.22, filterType: "highpass", freqStart: 2800, freqEnd: 820, q: 1.6, gainPeak: 0.24, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 1420, endFreq: 420, duration: 0.16, type: "triangle", vol: 0.14, sendAmbiance: true });
+  }
+
+  playBlizzardWind() {
+    if (this.canThrottle("ftBlizzard", 700)) return;
+    this.playFilteredNoise({ duration: 0.95, filterType: "bandpass", freqStart: 420, freqEnd: 1250, q: 1.4, gainPeak: 0.16, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 185, endFreq: 120, duration: 0.72, type: "sine", vol: 0.07, sendAmbiance: true });
+  }
+
+  playGhostWhisper() {
+    if (this.canThrottle("ftWhisper", 380)) return;
+    this.playFilteredNoise({ duration: 0.48, filterType: "bandpass", freqStart: 1950, freqEnd: 880, q: 4.8, gainPeak: 0.09, sendAmbiance: true });
+    this.playLayerTone({ startFreq: this.jitter(659.25, 0.04), endFreq: 523.25, duration: 0.42, type: "sine", vol: 0.065, delay: 0.05, sendAmbiance: true });
+  }
+
+  playClockReverse() {
+    if (this.canThrottle("ftClock", 280)) return;
+    this.playMetallicClang(1380, 0.06, 0.1);
+    this.playMetallicClang(960, 0.07, 0.09, 0.16);
+  }
+
+  playResearchTape() {
+    if (this.canThrottle("ftTape", 350)) return;
+    this.playMetallicClang(780, 0.07, 0.12);
+    this.playFilteredNoise({ duration: 0.42, filterType: "bandpass", freqStart: 1450, freqEnd: 680, q: 3.2, gainPeak: 0.075, delay: 0.06, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 311.13, endFreq: 207.65, duration: 0.48, type: "sine", vol: 0.09, delay: 0.1, sendAmbiance: true });
+  }
+
+  updateFrozenTombAmbience(zoneId, inCombat, dt) {
+    if (!this.enabled || this._pageHidden) return;
+    this._frozenAmbTimer = (this._frozenAmbTimer ?? 2.8) - Math.max(0, Number(dt) || 0);
+    if (this._frozenAmbTimer > 0) return;
+    this._frozenAmbTimer = inCombat ? 6.8 : 5.0;
+    if (!this._canSpawnVoice(false)) return;
+
+    if (zoneId === "zone_6" || zoneId === "zone_7") {
+      this.playLayerTone({ startFreq: this.jitter(82, 0.06), endFreq: 68, duration: 0.95, type: "sine", vol: 0.055, sendAmbiance: true });
+      this.playFilteredNoise({ duration: 0.65, filterType: "bandpass", freqStart: 380, freqEnd: 240, q: 2.5, gainPeak: 0.038, sendAmbiance: true });
+    } else if (zoneId === "zone_3" || zoneId === "zone_4") {
+      this.playFilteredNoise({ duration: 0.78, filterType: "bandpass", freqStart: 960, freqEnd: 480, q: 2.0, gainPeak: 0.048, sendAmbiance: true });
+      if (Math.random() < 0.38) {
+        this.playLayerTone({ startFreq: 587.33, endFreq: 523.25, duration: 0.35, type: "sine", vol: 0.036, delay: 0.1, sendAmbiance: true });
+      }
+    } else {
+      this.playFilteredNoise({ duration: 0.72, filterType: "bandpass", freqStart: 640, freqEnd: 320, q: 1.5, gainPeak: 0.045, sendAmbiance: true });
+    }
+  }
 }
 
 export const R = new SoundEngine();

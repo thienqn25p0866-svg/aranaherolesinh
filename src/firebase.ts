@@ -1282,6 +1282,7 @@ export async function fetchPrivatePlayerSave(
       unlockedTitles: Array.isArray(d.unlockedTitles) ? d.unlockedTitles : [],
       inventoryItemIds: Array.isArray(d.inventoryItemIds) ? d.inventoryItemIds : [],
       heroGearEntries: Array.isArray(d.heroGearEntries) ? d.heroGearEntries : [],
+      heroStatsEntries: Array.isArray(d.heroStatsEntries) ? d.heroStatsEntries : [],
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -1318,6 +1319,9 @@ export async function savePrivatePlayerSave(
     heroGearEntries: (progress.heroGearEntries || [])
       .filter((x): x is string => typeof x === "string" && x.length > 0)
       .slice(0, 110),
+    heroStatsEntries: (progress.heroStatsEntries || [])
+      .filter((x): x is string => typeof x === "string" && x.length > 0)
+      .slice(0, 40),
   };
 
   const bridged = getActiveBridgedToken();

@@ -14,6 +14,12 @@ import {
   normalizeInfernoProgress,
 } from "./infernoAshMap";
 import {
+  type FrozenTombProgressState,
+  createDefaultFrozenTombProgress,
+  mergeFrozenTombProgress,
+  normalizeFrozenTombProgress,
+} from "./frozenTombMap";
+import {
   type DeviceSettings,
   type SavedRunCheckpoint,
   normalizeDeviceSettings,
@@ -126,6 +132,24 @@ export const PLAYER_TITLES = [
   { id: "Đấng Sáng Thế", en: "Genesis Creator", minWave: 0, founderOnly: true, color: "#FDE047" },
 ] as const;
 
+export interface HeroStatsRecord {
+  heroId: string;
+  matchesPlayed: number;
+  victories: number;
+  highestWave: number;
+  kills: number;
+  bestDamage: number;
+  coopMatches: number;
+  coopVictories: number;
+}
+
+export interface HeroAchievementBadge {
+  id: string;
+  labelVi: string;
+  labelEn: string;
+  color: string;
+}
+
 export interface PlayerProfile {
   uid: string | null;
   friendCode: string;
@@ -143,6 +167,7 @@ export interface PlayerProfile {
   victories: number;
   dailyCheckInDate: string;
   unlockedTitles: string[];
+  heroStats: Record<string, HeroStatsRecord>;
   lastSyncedAt: string;
   accountSource: "local" | "google";
   googlePhotoUrl: string;
@@ -160,11 +185,13 @@ export interface ProgressSnapshot {
   victories: number;
   dailyCheckInDate: string;
   unlockedTitles: string[];
+  heroStatsEntries?: string[];
   selectedMapId?: ArenaMapId;
   classicCleared?: boolean;
   unlockedMaps?: ArenaMapId[];
   citadelSecrets?: CitadelSecretsProgress;
   infernoProgress?: InfernoProgressState;
+  frozenTombProgress?: FrozenTombProgressState;
 }
 
 export function getTodayDateKey(now: Date = new Date()): string {
@@ -231,6 +258,182 @@ export function isFrameUnlocked(frameId: string, highestWave: number, founderUnl
   return highestWave >= frame.minWave;
 }
 
+export function sanitizeHeroStatsRecord(
+  heroIdRaw: string,
+  raw: Partial<HeroStatsRecord> | null | undefined
+): HeroStatsRecord {
+  const heroId = String(heroIdRaw || raw?.heroId || "eohyen")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 24) || "eohyen";
+  const matchesPlayed = Math.max(0, Math.min(1000000, Math.floor(Number(raw?.matchesPlayed) || 0)));
+  const victories = Math.max(0, Math.min(matchesPlayed || 1000000, Math.floor(Number(raw?.victories) || 0)));
+  const highestWave = Math.max(0, Math.min(27, Math.floor(Number(raw?.highestWave) || 0)));
+  const kills = Math.max(0, Math.min(100000000, Math.floor(Number(raw?.kills) || 0)));
+  const bestDamage = Math.max(0, Math.min(2000000000, Math.floor(Number(raw?.bestDamage) || 0)));
+  const coopMatches = Math.max(0, Math.min(matchesPlayed || 1000000, Math.floor(Number(raw?.coopMatches) || 0)));
+  const coopVictories = Math.max(0, Math.min(coopMatches || 1000000, Math.floor(Number(raw?.coopVictories) || 0)));
+  return {
+    heroId,
+    matchesPlayed,
+    victories,
+    highestWave,
+    kills,
+    bestDamage,
+    coopMatches,
+    coopVictories,
+  };
+}
+
+export function normalizeHeroStatsMap(
+  raw: Record<string, Partial<HeroStatsRecord>> | null | undefined
+): Record<string, HeroStatsRecord> {
+  const out: Record<string, HeroStatsRecord> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const key of Object.keys(raw)) {
+    const cleanKey = String(key || "").trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24);
+    if (!cleanKey) continue;
+    const item = raw[key];
+    if (!item || typeof item !== "object") continue;
+    const rec = sanitizeHeroStatsRecord(cleanKey, item);
+    if (
+      rec.matchesPlayed > 0 ||
+      rec.victories > 0 ||
+      rec.highestWave > 0 ||
+      rec.kills > 0 ||
+      rec.bestDamage > 0
+    ) {
+      out[rec.heroId] = rec;
+    }
+    if (Object.keys(out).length >= 40) break;
+  }
+  return out;
+}
+
+export function serializeHeroStatsEntries(
+  heroStats: Record<string, Partial<HeroStatsRecord>> | null | undefined
+): string[] {
+  const map = normalizeHeroStatsMap(heroStats);
+  const out: string[] = [];
+  for (const heroId of Object.keys(map)) {
+    const s = map[heroId];
+    out.push(
+      `${s.heroId}:${s.matchesPlayed}:${s.victories}:${s.highestWave}:${s.kills}:${s.bestDamage}:${s.coopMatches}:${s.coopVictories}`.slice(
+        0,
+        96
+      )
+    );
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+
+export function deserializeHeroStatsEntries(
+  entries: string[] | null | undefined
+): Record<string, HeroStatsRecord> {
+  const out: Record<string, HeroStatsRecord> = {};
+  if (!Array.isArray(entries)) return out;
+  for (const row of entries) {
+    if (typeof row !== "string") continue;
+    const parts = row.split(":");
+    if (parts.length < 6) continue;
+    const heroId = String(parts[0] || "").trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24);
+    if (!heroId) continue;
+    out[heroId] = sanitizeHeroStatsRecord(heroId, {
+      heroId,
+      matchesPlayed: Number(parts[1]) || 0,
+      victories: Number(parts[2]) || 0,
+      highestWave: Number(parts[3]) || 0,
+      kills: Number(parts[4]) || 0,
+      bestDamage: Number(parts[5]) || 0,
+      coopMatches: Number(parts[6]) || 0,
+      coopVictories: Number(parts[7]) || 0,
+    });
+    if (Object.keys(out).length >= 40) break;
+  }
+  return out;
+}
+
+export function mergeHeroStatsMaps(
+  a: Record<string, Partial<HeroStatsRecord>> | null | undefined,
+  b: Record<string, Partial<HeroStatsRecord>> | null | undefined
+): Record<string, HeroStatsRecord> {
+  const left = normalizeHeroStatsMap(a);
+  const right = normalizeHeroStatsMap(b);
+  const keys = Array.from(new Set([...Object.keys(left), ...Object.keys(right)])).slice(0, 40);
+  const out: Record<string, HeroStatsRecord> = {};
+  for (const heroId of keys) {
+    const l = left[heroId];
+    const r = right[heroId];
+    if (!l && !r) continue;
+    out[heroId] = sanitizeHeroStatsRecord(heroId, {
+      heroId,
+      matchesPlayed: Math.max(l?.matchesPlayed || 0, r?.matchesPlayed || 0),
+      victories: Math.max(l?.victories || 0, r?.victories || 0),
+      highestWave: Math.max(l?.highestWave || 0, r?.highestWave || 0),
+      kills: Math.max(l?.kills || 0, r?.kills || 0),
+      bestDamage: Math.max(l?.bestDamage || 0, r?.bestDamage || 0),
+      coopMatches: Math.max(l?.coopMatches || 0, r?.coopMatches || 0),
+      coopVictories: Math.max(l?.coopVictories || 0, r?.coopVictories || 0),
+    });
+  }
+  return out;
+}
+
+export function recordHeroMatchProgress(
+  curMap: Record<string, Partial<HeroStatsRecord>> | null | undefined,
+  params: {
+    heroId: string;
+    waveReached: number;
+    deltaKills: number;
+    totalDamage: number;
+    isMatchEnd: boolean;
+    victory: boolean;
+    isCoop: boolean;
+  }
+): Record<string, HeroStatsRecord> {
+  const next = normalizeHeroStatsMap(curMap);
+  const heroId = String(params.heroId || "eohyen").trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) || "eohyen";
+  const prev = next[heroId] || sanitizeHeroStatsRecord(heroId, {});
+  const isEnd = Boolean(params.isMatchEnd);
+  const isWin = isEnd && Boolean(params.victory);
+  const isCoop = Boolean(params.isCoop);
+  next[heroId] = sanitizeHeroStatsRecord(heroId, {
+    heroId,
+    matchesPlayed: prev.matchesPlayed + (isEnd ? 1 : 0),
+    victories: prev.victories + (isWin ? 1 : 0),
+    highestWave: Math.max(prev.highestWave, Math.max(0, Math.min(27, Math.floor(Number(params.waveReached) || 0)))),
+    kills: prev.kills + Math.max(0, Math.floor(Number(params.deltaKills) || 0)),
+    bestDamage: Math.max(prev.bestDamage, Math.max(0, Math.floor(Number(params.totalDamage) || 0))),
+    coopMatches: prev.coopMatches + (isEnd && isCoop ? 1 : 0),
+    coopVictories: prev.coopVictories + (isWin && isCoop ? 1 : 0),
+  });
+  return next;
+}
+
+export function computeHeroAchievementBadges(stat: HeroStatsRecord | null | undefined): HeroAchievementBadge[] {
+  if (!stat) return [];
+  const badges: HeroAchievementBadge[] = [];
+  if (stat.highestWave >= 27) {
+    badges.push({ id: "clear_27", labelVi: "Chinh Phục Màn 27", labelEn: "Wave 27 Cleared", color: "#FACC15" });
+  }
+  if (stat.victories >= 1) {
+    badges.push({ id: "victor", labelVi: `Khải Hoàn ×${stat.victories}`, labelEn: `Wins ×${stat.victories}`, color: "#34D399" });
+  }
+  if (stat.coopVictories >= 1) {
+    badges.push({ id: "coop_victor", labelVi: "Đồng Đội Bất Bại", labelEn: "Co-op Victor", color: "#38BDF8" });
+  } else if (stat.coopMatches >= 1) {
+    badges.push({ id: "coop_ally", labelVi: "Chiến Hữu Co-op", labelEn: "Co-op Ally", color: "#22D3EE" });
+  }
+  if (stat.kills >= 200) {
+    badges.push({ id: "slayer", labelVi: "Đồ Sát 200+", labelEn: "200+ Slain", color: "#FB7185" });
+  }
+  if (stat.bestDamage >= 100000) {
+    badges.push({ id: "high_dmg", labelVi: "Sát Thương 100K+", labelEn: "100K+ DMG", color: "#C084FC" });
+  }
+  return badges;
+}
+
 export function createDefaultPlayerProfile(seedName?: string): PlayerProfile {
   return {
     uid: null,
@@ -249,6 +452,7 @@ export function createDefaultPlayerProfile(seedName?: string): PlayerProfile {
     victories: 0,
     dailyCheckInDate: "",
     unlockedTitles: ["Tân Binh Đấu Trường"],
+    heroStats: {},
     lastSyncedAt: "",
     accountSource: "local",
     googlePhotoUrl: "",
@@ -324,6 +528,7 @@ export function sanitizePlayerProfile(
     victories: Math.max(0, Math.min(1000000, Math.floor(Number(raw?.victories) || 0))),
     dailyCheckInDate: String(raw?.dailyCheckInDate || "").slice(0, 16),
     unlockedTitles,
+    heroStats: normalizeHeroStatsMap(raw?.heroStats),
     lastSyncedAt: String(raw?.lastSyncedAt || "").slice(0, 40),
     accountSource: raw?.accountSource === "google" ? "google" : "local",
     googlePhotoUrl: sanitizeGooglePhotoUrl(raw?.googlePhotoUrl),
@@ -431,6 +636,7 @@ export function mergeLocalAndCloudProgress(
       unlockedMaps,
       citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
       infernoProgress: normalizeInfernoProgress(local.infernoProgress),
+      frozenTombProgress: normalizeFrozenTombProgress(local.frozenTombProgress),
     };
   }
   const cloudWave = Math.max(0, Math.min(27, Math.floor(Number(cloud.highestWave) || 0)));
@@ -473,6 +679,11 @@ export function mergeLocalAndCloudProgress(
     inspectedNodes: Array.from(new Set([...localSec.inspectedNodes, ...cloudSec.inspectedNodes])),
   });
 
+  const mergedHeroStats = mergeHeroStatsMaps(
+    deserializeHeroStatsEntries(local.heroStatsEntries),
+    deserializeHeroStatsEntries(cloud.heroStatsEntries)
+  );
+
   return {
     coins: Math.max(0, Math.min(10000000, Math.floor(Math.max(Number(local.coins) || 0, Number(cloud.coins) || 0)))),
     currentWave: Math.max(1, Math.min(27, Math.floor((preferCloud ? cloud.currentWave : local.currentWave) || 1))),
@@ -485,11 +696,13 @@ export function mergeLocalAndCloudProgress(
     victories: Math.max(0, Math.min(1000000, Math.floor(Math.max(Number(local.victories) || 0, Number(cloud.victories) || 0)))),
     dailyCheckInDate,
     unlockedTitles,
+    heroStatsEntries: serializeHeroStatsEntries(mergedHeroStats),
     selectedMapId,
     classicCleared,
     unlockedMaps,
     citadelSecrets,
     infernoProgress: mergeInfernoProgress(local.infernoProgress, cloud.infernoProgress),
+    frozenTombProgress: mergeFrozenTombProgress(local.frozenTombProgress, cloud.frozenTombProgress),
   };
 }
 
@@ -529,6 +742,7 @@ export function parseSavePackageJson(
     const selectedMapId = isMapUnlocked(rawMap, unlockedMaps, founderUnlocked) ? rawMap : "classic";
     const citadelSecrets = p.citadelSecrets ? normalizeCitadelSecrets(p.citadelSecrets) : createDefaultCitadelSecrets();
     const infernoProgress = p.infernoProgress ? normalizeInfernoProgress(p.infernoProgress) : createDefaultInfernoProgress();
+    const frozenTombProgress = p.frozenTombProgress ? normalizeFrozenTombProgress(p.frozenTombProgress) : createDefaultFrozenTombProgress();
     const savedRun = normalizeSavedRun(parsed.savedRun ?? p.savedRun, 27);
     const settings =
       parsed.settings && typeof parsed.settings === "object"
@@ -538,6 +752,10 @@ export function parseSavePackageJson(
       typeof parsed.deviceId === "string" && parsed.deviceId.trim()
         ? parsed.deviceId.trim().slice(0, 32)
         : null;
+    const parsedHeroStats = mergeHeroStatsMaps(
+      prof?.heroStats,
+      deserializeHeroStatsEntries(Array.isArray(p.heroStatsEntries) ? p.heroStatsEntries : [])
+    );
     const progress: ProgressSnapshot = {
       coins: Math.max(0, Math.min(10000000, Math.floor(Number(p.coins) || 100))),
       currentWave: Math.max(1, Math.min(27, Math.floor(Number(p.currentWave) || 1))),
@@ -554,11 +772,13 @@ export function parseSavePackageJson(
       victories: Math.max(0, Math.min(1000000, Math.floor(Number(p.victories) || 0))),
       dailyCheckInDate: typeof p.dailyCheckInDate === "string" ? p.dailyCheckInDate.slice(0, 16) : "",
       unlockedTitles: computeUnlockedTitles(highestWave, founderUnlocked),
+      heroStatsEntries: serializeHeroStatsEntries(parsedHeroStats),
       selectedMapId,
       classicCleared,
       unlockedMaps,
       citadelSecrets,
       infernoProgress,
+      frozenTombProgress,
     };
     return {
       ok: true,
@@ -570,6 +790,7 @@ export function parseSavePackageJson(
           matchesPlayed: Math.max(progress.matchesPlayed, Number(prof?.matchesPlayed) || 0),
           victories: Math.max(progress.victories, Number(prof?.victories) || 0),
           dailyCheckInDate: progress.dailyCheckInDate || prof?.dailyCheckInDate || "",
+          heroStats: parsedHeroStats,
         },
         { founderUnlocked }
       ),

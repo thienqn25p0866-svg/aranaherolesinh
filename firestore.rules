@@ -127,6 +127,7 @@ service cloud.firestore {
           'unlockedTitles',
           'inventoryItemIds',
           'heroGearEntries',
+          'heroStatsEntries',
           'createdAt',
           'updatedAt'
         ]) &&
@@ -161,6 +162,7 @@ service cloud.firestore {
         isValidStringList(data.unlockedTitles, 32) &&
         isValidStringList(data.inventoryItemIds, 250) &&
         isValidStringList(data.heroGearEntries, 110) &&
+        (!('heroStatsEntries' in data) || isValidStringList(data.heroStatsEntries, 40)) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -368,6 +370,7 @@ service cloud.firestore {
           'unlockedTitles',
           'inventoryItemIds',
           'heroGearEntries',
+          'heroStatsEntries',
           'updatedAt'
         ]) &&
         incoming().uid == existing().uid &&

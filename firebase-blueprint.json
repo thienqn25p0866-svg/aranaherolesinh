@@ -145,6 +145,11 @@
           "maxItems": 110,
           "items": { "type": "string" }
         },
+        "heroStatsEntries": {
+          "type": "array",
+          "maxItems": 40,
+          "items": { "type": "string" }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

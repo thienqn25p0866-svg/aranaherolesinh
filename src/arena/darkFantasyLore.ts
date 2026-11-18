@@ -828,3 +828,103 @@ export function buildInfernoChronicleOverview(
   };
 }
 
+import {
+  type FrozenTombProgressState,
+  FROZEN_TOMB_DOCS,
+  normalizeFrozenTombProgress,
+} from "./frozenTombMap";
+
+export interface FrozenTombChronicleBlock {
+  title: string;
+  badge: string;
+  summary: string;
+  docsProgress: string;
+  eohyenDossier: { locked: boolean; text: string };
+  phongDossier: { locked: boolean; text: string };
+  minhDossier: { locked: boolean; text: string };
+  thanhDossier: { locked: boolean; text: string };
+  linkedDossier: { locked: boolean; text: string };
+}
+
+export function buildFrozenTombChronicleOverview(
+  progressRaw: FrozenTombProgressState | null | undefined,
+  lang: LoreLang = "vi"
+): FrozenTombChronicleBlock {
+  const isVi = lang !== "en";
+  const progress = normalizeFrozenTombProgress(progressRaw);
+  const clueCount =
+    (progress.minhSealClue ? 1 : 0) +
+    (progress.phongMirrorClue ? 1 : 0) +
+    (progress.thanhVialClue ? 1 : 0);
+  const docsTotal = Object.keys(FROZEN_TOMB_DOCS).length;
+
+  return {
+    title: isVi
+      ? "Băng Mộ Vĩnh Cửu · Hồ Sơ Vương Quốc Bị Chôn Vùi"
+      : "Eternal Frozen Tomb · Buried Kingdom Dossier",
+    badge: progress.linkedDeviceTriggered
+      ? isVi
+        ? "★ ĐÃ KẾT NỐI LIÊN BẢN ĐỒ (MAP 2 × MAP 3)"
+        : "★ CROSS-MAP TRUTH LINKED"
+      : isVi
+      ? `BÍ MẬT PHONG ẤN (${clueCount}/3)`
+      : `SEALING SECRETS (${clueCount}/3)`,
+    summary: isVi
+      ? "Vương quốc cổ rộng 3400×2800 bị chôn vùi dưới lớp băng tuyết với 7 khu vực liên kết, bão tuyết, băng nứt, bàn tay từ băng, hồn ma và 5 bí mật gắn liền Éo Hyên, Minh, Phong, Thanh cùng mối liên kết với Hỏa Ngục Tàn Tro."
+      : "A 3400×2800 buried kingdom of 7 zones, blizzards, cracking ice, ice hands, frozen ghosts, and 5 linked secrets involving Éo Hyên, Minh, Phong, Thanh, and Map 2.",
+    docsProgress: isVi
+      ? `Tài liệu đã thu thập: ${progress.collectedDocs.length}/${docsTotal}`
+      : `Collected Records: ${progress.collectedDocs.length}/${docsTotal}`,
+    eohyenDossier: {
+      locked: !progress.eohyenPaintingSeen,
+      text: progress.eohyenPaintingSeen
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 5 · Cung Điện Phong Ấn] Bức tranh cào xước phát sáng hình ảnh Éo Hyên bị những vòng băng siết chặt cùng lời thì thầm cũ."
+          : "UNLOCKED · [Zone 5 · Palace] The scraped portrait reveals Éo Hyên bound in frost rings with an echoing whisper."
+        : isVi
+        ? "CHƯA MỞ · Đưa ÉO HYÊN tới bức tranh ba bóng đen trong Cung Điện Phong Ấn."
+        : "LOCKED · Bring ÉO HYÊN to the portrait inside the Palace of Sealing.",
+    },
+    phongDossier: {
+      locked: !progress.phongMirrorClue,
+      text: progress.phongMirrorClue
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 3 · Phòng Gương Thánh Đường] Hình phản chiếu của Phong cử động lệch nhịp, xác nhận hắn từng dùng ảo ảnh che giấu dấu vết."
+          : "UNLOCKED · [Zone 3 · Mirror Room] Phong's unsynced reflection exposes the illusions cast to bury the truth."
+        : isVi
+        ? "CHƯA MỞ · Đưa PHONG tới hàng tượng không mặt tại Thánh Đường Chuông Câm."
+        : "LOCKED · Bring PHONG to the faceless statues inside the Cathedral.",
+    },
+    minhDossier: {
+      locked: !progress.minhSealClue,
+      text: progress.minhSealClue
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 7 · Điện Phong Ấn Cuối Cùng] Lớp băng tự tan chảy để lộ quyết định phong ấn toàn vương quốc nhằm nhốt thứ bên dưới."
+          : "UNLOCKED · [Zone 7 · Final Chamber] Ice melts to reveal Minh's desperate choice to seal the abyss beneath."
+        : isVi
+        ? "CHƯA MỞ · Đưa MINH tiến vào Điện Phong Ấn Cuối Cùng để hồ sơ băng tự tan."
+        : "LOCKED · Bring MINH into the Final Sealing Chamber.",
+    },
+    thanhDossier: {
+      locked: !progress.thanhVialClue,
+      text: progress.thanhVialClue
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 5 · Phòng Nghi Thức] Chiếc lọ cạn đáy tái hiện cảnh Thanh dùng rắn xanh nhỏ độc vào vật phát sáng sau lưng Éo Hyên."
+          : "UNLOCKED · [Zone 5 · Ritual Room] The empty vial replays Thanh pouring serpent venom behind Éo Hyên."
+        : isVi
+        ? "CHƯA MỞ · Đưa THANH kiểm tra chiếc lọ độc cạn đáy trong Cung Điện."
+        : "LOCKED · Bring THANH to inspect the empty vial in the Palace.",
+    },
+    linkedDossier: {
+      locked: !progress.linkedDeviceTriggered,
+      text: progress.linkedDeviceTriggered
+        ? isVi
+          ? "ĐÃ GIẢI MÃ · [Khu 6 · Hầm Băng] Cuộn băng 3 thí nghiệm của Trung xác nhận thảm họa thành phố và vương quốc băng chỉ là hai chương của cùng một câu chuyện."
+          : "DECODED · [Zone 6 · Ice Caverns] Trung's 3-experiment log links Inferno of Ashes and Frozen Tomb into a single story."
+        : isVi
+        ? "BỊ KHÓA · Thu thập đủ 3 manh mối Map 2 (Dũng, Long Hói, 4 Chiếc Ghế) & 3 bí mật Map 3 (Minh, Phong, Thanh) rồi kích hoạt Thiết Bị Nghiên Cứu ở Hầm Băng."
+        : "LOCKED · Gather 3 clues from Map 2 & 3 secrets from Map 3, then activate the Frozen Research Device in Zone 6.",
+    },
+  };
+}
+
