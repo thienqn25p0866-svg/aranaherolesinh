@@ -154,6 +154,7 @@
         "bloodCitadelCleared": { "type": "boolean" },
         "infernoCleared": { "type": "boolean" },
         "frozenTombCleared": { "type": "boolean" },
+        "grudgeForestCleared": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

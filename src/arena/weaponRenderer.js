@@ -7513,6 +7513,117 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.beginPath();
     ctx.arc(r * 0.32, 0, 2.4, 0, Math.PI * 2);
     ctx.fill();
+  } else if (enemy.kind === "root_woodfolk") {
+    // Cây Sống Bị Ám — Gnarled Bark Husk with Twisting Antler Branches & Emerald Sap Eyes
+    ctx.strokeStyle = isMono ? "#333333" : "#14532D";
+    ctx.lineWidth = 3.2;
+    for (let s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(0, s * r * 0.55);
+      ctx.quadraticCurveTo(r * 0.45, s * r * 1.15, r * 0.95, s * r * 0.92);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#29201B";
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#444444" : "#34D399";
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.fillStyle = "#4ADE80";
+    ctx.beginPath();
+    ctx.arc(r * 0.44, -r * 0.25, 2.5, 0, Math.PI * 2);
+    ctx.arc(r * 0.44, r * 0.25, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (enemy.kind === "faceless_wraith") {
+    // Bóng Ma Không Mặt — Drifting Pale Violet Shroud & Smooth Blank Mask
+    ctx.beginPath();
+    ctx.moveTo(r * 0.95, 0);
+    ctx.lineTo(0, -r * 0.85);
+    ctx.lineTo(-r * 1.05, -r * 0.42);
+    ctx.lineTo(-r * 0.85, 0);
+    ctx.lineTo(-r * 1.05, r * 0.42);
+    ctx.lineTo(0, r * 0.85);
+    ctx.closePath();
+    ctx.fillStyle = isMono ? "#111111" : hit ? "#F8FAFC" : "#3B0764";
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#666666" : "#C084FC";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Blank faceless oval mask
+    ctx.fillStyle = isMono ? "#CBD5E1" : "#E2E8F0";
+    ctx.beginPath();
+    ctx.ellipse(r * 0.28, 0, r * 0.36, r * 0.46, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (enemy.kind === "root_burrower") {
+    // Sinh Vật Ẩn Nấp Dưới Rễ — Spiked Subterranean Burrower (renders quivering dirt mound if burrowed)
+    if (enemy.burrowed) {
+      ctx.strokeStyle = "#34D399";
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#1E293B";
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+      ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#1B2E26";
+      ctx.fill();
+      ctx.strokeStyle = "#10B981";
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      for (let k = 0; k < 4; k++) {
+        const a = -0.6 + k * 0.4;
+        ctx.fillStyle = "#A3E635";
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6);
+        ctx.lineTo(Math.cos(a) * r * 1.25, Math.sin(a) * r * 1.25);
+        ctx.lineTo(Math.cos(a + 0.16) * r * 0.7, Math.sin(a + 0.16) * r * 0.7);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  } else if (enemy.kind === "hero_mimic") {
+    // Rối Hóa Hình Nhân Vật — Twisted Wood-Stitched Hero Mimic with Puppet Strings
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#4A1D2C";
+    ctx.fill();
+    ctx.strokeStyle = "#F472B6";
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+    ctx.fillStyle = "#FDE047";
+    ctx.beginPath();
+    ctx.arc(r * 0.42, -r * 0.22, 2.3, 0, Math.PI * 2);
+    ctx.arc(r * 0.42, r * 0.22, 2.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#F472B6";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(r * 0.25, 0, r * 0.35, -0.7, 0.7);
+    ctx.stroke();
+  } else if (enemy.kind === "fog_stalker") {
+    // Kẻ Săn Trong Sương — Sleek Indigo-Teal Ambush Predator
+    ctx.beginPath();
+    ctx.moveTo(r * 1.15, 0);
+    ctx.lineTo(r * 0.1, -r * 0.85);
+    ctx.lineTo(-r * 0.95, -r * 0.32);
+    ctx.lineTo(-r * 0.95, r * 0.32);
+    ctx.lineTo(r * 0.1, r * 0.85);
+    ctx.closePath();
+    ctx.fillStyle = isMono ? "#000000" : hit ? "#CBD5E1" : "#0F2A36";
+    ctx.fill();
+    ctx.strokeStyle = "#2DD4BF";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#5EEAD4";
+    ctx.fillRect(r * 0.38, -3.5, 4.5, 2.2);
+    ctx.fillRect(r * 0.38, 1.3, 4.5, 2.2);
   } else {
     // Quái Nhỏ — Armed Goblin Raider with Jagged Cleaver Blade
     // Jagged Cleaver

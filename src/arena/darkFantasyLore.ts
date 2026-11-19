@@ -928,3 +928,114 @@ export function buildFrozenTombChronicleOverview(
   };
 }
 
+import {
+  type GrudgeForestProgressState,
+  GRUDGE_FOREST_DOCS,
+  countGrudgeForestSecrets,
+  normalizeGrudgeForestProgress,
+} from "./grudgeForestMap";
+
+export interface GrudgeForestChronicleBlock {
+  title: string;
+  badge: string;
+  summary: string;
+  docsProgress: string;
+  ee1Dossier: { locked: boolean; text: string };
+  ee2Dossier: { locked: boolean; text: string };
+  ee3Dossier: { locked: boolean; text: string };
+  ee4Dossier: { locked: boolean; text: string };
+  ee5Dossier: { locked: boolean; text: string };
+  ee6Dossier: { locked: boolean; text: string };
+}
+
+export function buildGrudgeForestChronicleOverview(
+  progressRaw: GrudgeForestProgressState | null | undefined,
+  lang: LoreLang = "vi"
+): GrudgeForestChronicleBlock {
+  const isVi = lang !== "en";
+  const progress = normalizeGrudgeForestProgress(progressRaw);
+  const secretCount = countGrudgeForestSecrets(progress);
+  const docsTotal = Object.keys(GRUDGE_FOREST_DOCS).length;
+
+  return {
+    title: isVi
+      ? "Rừng Oán Niệm · Biên Niên Khu Rừng Cổ Đại"
+      : "Forest of Grudges · Ancient Woods Chronicle",
+    badge: progress.ee6FourMapSecretSeen
+      ? isVi
+        ? "★ ĐÃ HỘI TỤ BÍ MẬT 4 BẢN ĐỒ"
+        : "★ FOUR REALMS CONVERGED"
+      : isVi
+      ? `BÍ ẨN RỪNG SÂU (${secretCount}/6)`
+      : `DEEP WOODS SECRETS (${secretCount}/6)`,
+    summary: isVi
+      ? "Khu rừng cổ đại rộng 4800×4000 với 8 khu vực liên kết, Mê Cung Cổ Thụ tự dịch chuyển, Hồ Gương phản chiếu sai lệch, tượng đá xoay hướng và bí mật chưa lời giải giữa Duy, Trung cùng 4 bản đồ."
+      : "A 4800×4000 ancient forest spanning 8 interconnected zones, a shifting tree labyrinth, black Mirror Lake, rotatable idols, and the unresolved thread linking Duy, Trung, and all four realms.",
+    docsProgress: isVi
+      ? `Ghi chép đã thu thập: ${progress.collectedDocs.length}/${docsTotal}`
+      : `Collected Logs: ${progress.collectedDocs.length}/${docsTotal}`,
+    ee1Dossier: {
+      locked: !progress.ee1SecretHouseSeen,
+      text: progress.ee1SecretHouseSeen
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 2 · Nhà Rối Bí Mật] Con rối tự bước đi dẫn Duy tới căn phòng chứa hình nộm các tướng cùng dòng chữ: “Ngươi tưởng mình đang điều khiển chúng sao?”"
+          : "UNLOCKED · [Zone 2 · Puppet Room] A rogue puppet leads Duy to hero-shaped dolls and a carved warning: “Did you think you were controlling them?”"
+        : isVi
+        ? "CHƯA MỞ · Điều khiển DUY đứng yên gần những con rối rồi đi theo con rối tự ý rời hàng."
+        : "LOCKED · Stand still as DUY near puppets and follow the rogue one into the hidden house.",
+    },
+    ee2Dossier: {
+      locked: !progress.ee2MirrorLakeSeen,
+      text: progress.ee2MirrorLakeSeen
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 3 · Hồ Gương Oán Niệm] Mặt hồ đen hiện bóng người lạ sau lưng và phản chiếu Cổ Thành / Hỏa Ngục bị rễ cây đâm xuyên."
+          : "UNLOCKED · [Zone 3 · Mirror Lake] Black waters reveal a figure behind you and root-pierced visions of Map 1 and Map 2."
+        : isVi
+        ? "CHƯA MỞ · Tương tác tại Hồ Gương khi vòng gợn tím phát sáng."
+        : "LOCKED · Interact with Mirror Lake during a violet resonance ripple.",
+    },
+    ee3Dossier: {
+      locked: !(progress.ee3DuyLaughHeard || progress.ee3MaThachStoneSeen),
+      text:
+        progress.ee3DuyLaughHeard || progress.ee3MaThachStoneSeen
+          ? isVi
+            ? "ĐÃ MỞ · [Khu 4 · Nghĩa Địa Rễ Cây] Bia mộ mang tên các tướng, tiếng cười của Duy vang khắp tán cây và dấu ấn Ma Thạch không lời giải."
+            : "UNLOCKED · [Zone 4 · Graveyard] Hero tombstones, Duy's echoing laugh, and an unexplained Ma Thạch crest."
+          : isVi
+          ? "CHƯA MỞ · Kiểm tra bia mộ mang tên Duy và bia đá dấu ấn Ma Thạch ở Nghĩa Địa Rễ Cây."
+          : "LOCKED · Inspect Duy's headstone and the Ma Thạch monument in Zone 4.",
+    },
+    ee4Dossier: {
+      locked: !progress.ee4ValleyCallSeen,
+      text: progress.ee4ValleyCallSeen
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 7 · Thung Lũng Tiếng Gọi] Tiếng gọi quen thuộc dẫn tới bóng dáng biến dạng — không thể xác nhận ký ức là thật hay ảo."
+          : "UNLOCKED · [Zone 7 · Echo Valley] A familiar voice leads to a warped mimic figure — leaving memory authenticity unresolved."
+        : isVi
+        ? "CHƯA MỞ · Đi một mình qua Thung Lũng Tiếng Gọi và tiến lại bóng người trong sương."
+        : "LOCKED · Walk alone through Calling Valley and approach the misty figure.",
+    },
+    ee5Dossier: {
+      locked: !progress.ee5TrungRoomSeen,
+      text: progress.ee5TrungRoomSeen
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 3 · Phòng Kín Của Trung] Bản đồ 4 vùng đánh dấu sẵn, chiếc ghế trống và bức thư dang dở: “Duy không phải kẻ đầu tiên muốn sở hữu khu rừng. Và cũng sẽ không phải kẻ cuối cùng.”"
+          : "UNLOCKED · [Zone 3 · Trung's Study] Pre-marked 4-region map, empty chair, and unfinished letter warning Duy is neither the first nor the last."
+        : isVi
+        ? "BỊ KHÓA · Kích hoạt EE2 (Hồ Gương) + EE3 (Nghĩa Địa) để mở cánh cửa rễ dẫn vào Phòng Kín Của Trung."
+        : "LOCKED · Complete EE2 (Mirror Lake) and EE3 (Graveyard) to unseal Trung's study.",
+    },
+    ee6Dossier: {
+      locked: !progress.ee6FourMapSecretSeen,
+      text: progress.ee6FourMapSecretSeen
+        ? isVi
+          ? "ĐÃ HỘI TỤ · [Khu 8 · Đài 4 Bản Đồ] “Máu có thể đánh thức. Ký ức có thể thay đổi. Phong ấn có thể giam giữ. Nhưng rễ cây... có thể giữ lại những gì cả thế giới muốn quên.”"
+          : "CONVERGED · [Zone 8 · Four-Map Altar] “Blood can awaken. Memory can be altered. Seals can imprison. Yet the roots... can preserve whatever the entire world wished to forget.”"
+        : isVi
+        ? "BỊ KHÓA · Hội tụ bí mật liên kết từ Map 1, Map 2, Map 3 và Map 4 tại Đài Liên Kết dưới gốc Cổ Thụ (Zone 8)."
+        : "LOCKED · Gather linked secrets from Maps 1–4 and resonate at Zone 8's altar.",
+    },
+  };
+}
+
+

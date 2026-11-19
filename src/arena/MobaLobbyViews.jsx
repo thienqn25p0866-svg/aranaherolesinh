@@ -16,6 +16,7 @@ import { detectStorageEnvironment } from "./deviceStorage.ts";
 import { CitadelBlueprintEmblem } from "./CitadelVisuals.jsx";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals.jsx";
 import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals.jsx";
+import { GrudgeForestBlueprintEmblem } from "./GrudgeForestVisuals.jsx";
 
 export function MobaLobbyMenu({
   lang,
@@ -61,6 +62,7 @@ export function MobaLobbyMenu({
   citadelSecrets = null,
   infernoProgress = null,
   frozenTombProgress = null,
+  grudgeForestProgress = null,
   onSelectMap,
   onOpenChronicles,
   resumableRun = null,
@@ -667,6 +669,16 @@ export function MobaLobbyMenu({
                   type="button"
                   onClick={() => {
                     R.playModalOpen();
+                    onOpenChronicles?.("grudgeForest");
+                  }}
+                  className="text-[10px] font-moba font-bold text-emerald-300/90 hover:text-purple-200 underline decoration-emerald-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  {isVi ? "Rừng Oán Niệm" : "Grudge Forest"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    R.playModalOpen();
                     onOpenChronicles?.("citadel");
                   }}
                   className="text-[10px] font-moba font-bold text-rose-300/90 hover:text-amber-300 underline decoration-rose-500/40 underline-offset-2 whitespace-nowrap shrink-0 cursor-pointer"
@@ -680,8 +692,8 @@ export function MobaLobbyMenu({
                     ? "Đổi tự do · Thiên"
                     : "Free Switch · Founder"
                   : isVi
-                    ? `Đã mở ${unlockedMaps.length}/4 Map · Cổ Điển → Máu → Lửa → Băng`
-                    : `${unlockedMaps.length}/4 Maps · Classic → Blood → Fire → Ice`}
+                    ? `Đã mở ${unlockedMaps.length}/5 Map · Cổ Điển → Máu → Lửa → Băng → Rừng`
+                    : `${unlockedMaps.length}/5 Maps · Classic → Blood → Fire → Ice → Forest`}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -691,6 +703,7 @@ export function MobaLobbyMenu({
                 const isCitadel = m.id === "blood_citadel";
                 const isInferno = m.id === "inferno_ash";
                 const isFrozen = m.id === "frozen_tomb";
+                const isForest = m.id === "grudge_forest";
                 const mapName = m.name?.[lang] || m.name?.vi || m.id;
                 const mapSub = m.subtitle?.[lang] || m.subtitle?.vi || "";
                 return (
@@ -714,6 +727,8 @@ export function MobaLobbyMenu({
                           ? "bg-gradient-to-br from-[#260D08]/95 via-[#170907] to-[#0B0709] border-orange-400/85 text-orange-50 shadow-[0_0_20px_rgba(249,115,22,0.22)]"
                           : isFrozen
                           ? "bg-gradient-to-br from-[#081C33]/95 via-[#071124] to-[#050814] border-sky-400/85 text-sky-50 shadow-[0_0_20px_rgba(56,189,248,0.22)]"
+                          : isForest
+                          ? "bg-gradient-to-br from-[#062319]/95 via-[#130921] to-[#04080B] border-emerald-400/85 text-emerald-50 shadow-[0_0_20px_rgba(16,185,129,0.22)]"
                           : "bg-gradient-to-br from-amber-950/65 to-slate-950 border-amber-400/80 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.16)]"
                         : unlocked
                           ? isCitadel
@@ -722,6 +737,8 @@ export function MobaLobbyMenu({
                             ? "bg-[#140908]/90 border-orange-900/55 hover:border-orange-500/65 text-slate-200"
                             : isFrozen
                             ? "bg-[#071120]/90 border-sky-900/55 hover:border-sky-400/65 text-slate-200"
+                            : isForest
+                            ? "bg-[#071913]/90 border-emerald-900/55 hover:border-emerald-400/65 text-slate-200"
                             : "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
                           : "bg-slate-950/60 border-slate-800/70 text-slate-500 opacity-80"
                     }`}
@@ -741,6 +758,8 @@ export function MobaLobbyMenu({
                       />
                     ) : isFrozen ? (
                       <FrozenTombBlueprintEmblem className="w-11 h-11 mt-0.5 shrink-0" />
+                    ) : isForest ? (
+                      <GrudgeForestBlueprintEmblem className="w-11 h-11 mt-0.5 shrink-0" />
                     ) : (
                       <div
                         className={`w-11 h-11 mt-0.5 rounded-md border flex items-center justify-center text-base shrink-0 ${
@@ -761,7 +780,7 @@ export function MobaLobbyMenu({
                         {active && (
                           <span
                             className={`text-[9px] font-mono-numbers font-black uppercase tracking-wider shrink-0 ${
-                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : isFrozen ? "text-sky-300" : "text-amber-300"
+                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : isFrozen ? "text-sky-300" : isForest ? "text-emerald-300" : "text-amber-300"
                             }`}
                           >
                             {isVi ? "ĐANG CHỌN" : "ACTIVE"}
@@ -810,6 +829,29 @@ export function MobaLobbyMenu({
                           <span className="text-slate-700">·</span>
                           <span className={frozenTombProgress?.linkedDeviceTriggered ? "text-purple-300 font-bold" : "text-slate-500"}>
                             LK {frozenTombProgress?.linkedDeviceTriggered ? "★" : "○"}
+                          </span>
+                        </div>
+                      )}
+                      {isForest && unlocked && (
+                        <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-emerald-500/20 text-[9.5px] font-mono-numbers tabular-nums flex-wrap">
+                          <span className={grudgeForestProgress?.ee1SecretHouseSeen ? "text-pink-300 font-bold" : "text-slate-500"}>
+                            Rối {grudgeForestProgress?.ee1SecretHouseSeen ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={grudgeForestProgress?.ee2MirrorLakeSeen ? "text-purple-300 font-bold" : "text-slate-500"}>
+                            Hồ {grudgeForestProgress?.ee2MirrorLakeSeen ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={grudgeForestProgress?.ee3DuyLaughHeard || grudgeForestProgress?.ee3MaThachStoneSeen ? "text-slate-200 font-bold" : "text-slate-500"}>
+                            Mộ {grudgeForestProgress?.ee3DuyLaughHeard || grudgeForestProgress?.ee3MaThachStoneSeen ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={grudgeForestProgress?.ee5TrungRoomSeen ? "text-amber-300 font-bold" : "text-slate-500"}>
+                            Trung {grudgeForestProgress?.ee5TrungRoomSeen ? "✓" : "○"}
+                          </span>
+                          <span className="text-slate-700">·</span>
+                          <span className={grudgeForestProgress?.ee6FourMapSecretSeen ? "text-emerald-300 font-bold" : "text-slate-500"}>
+                            4BĐ {grudgeForestProgress?.ee6FourMapSecretSeen ? "★" : "○"}
                           </span>
                         </div>
                       )}

@@ -132,6 +132,7 @@ service cloud.firestore {
           'bloodCitadelCleared',
           'infernoCleared',
           'frozenTombCleared',
+          'grudgeForestCleared',
           'createdAt',
           'updatedAt'
         ]) &&
@@ -171,6 +172,7 @@ service cloud.firestore {
         (!('bloodCitadelCleared' in data) || data.bloodCitadelCleared is bool) &&
         (!('infernoCleared' in data) || data.infernoCleared is bool) &&
         (!('frozenTombCleared' in data) || data.frozenTombCleared is bool) &&
+        (!('grudgeForestCleared' in data) || data.grudgeForestCleared is bool) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -383,6 +385,7 @@ service cloud.firestore {
           'bloodCitadelCleared',
           'infernoCleared',
           'frozenTombCleared',
+          'grudgeForestCleared',
           'updatedAt'
         ]) &&
         incoming().uid == existing().uid &&

@@ -20,6 +20,12 @@ import {
   normalizeFrozenTombProgress,
 } from "./frozenTombMap";
 import {
+  type GrudgeForestProgressState,
+  createDefaultGrudgeForestProgress,
+  mergeGrudgeForestProgress,
+  normalizeGrudgeForestProgress,
+} from "./grudgeForestMap";
+import {
   type DeviceSettings,
   type SavedRunCheckpoint,
   normalizeDeviceSettings,
@@ -191,10 +197,12 @@ export interface ProgressSnapshot {
   bloodCitadelCleared?: boolean;
   infernoCleared?: boolean;
   frozenTombCleared?: boolean;
+  grudgeForestCleared?: boolean;
   unlockedMaps?: ArenaMapId[];
   citadelSecrets?: CitadelSecretsProgress;
   infernoProgress?: InfernoProgressState;
   frozenTombProgress?: FrozenTombProgressState;
+  grudgeForestProgress?: GrudgeForestProgressState;
 }
 
 export function getTodayDateKey(now: Date = new Date()): string {
@@ -625,6 +633,7 @@ export function mergeLocalAndCloudProgress(
   const localBloodCitadelCleared = Boolean(local.bloodCitadelCleared);
   const localInfernoCleared = Boolean(local.infernoCleared);
   const localFrozenTombCleared = Boolean(local.frozenTombCleared);
+  const localGrudgeForestCleared = Boolean(local.grudgeForestCleared);
   if (!cloud) {
     const safeHero = local.selectedHeroId === "thien" && !founderUnlocked ? "eohyen" : local.selectedHeroId;
     const unlockedMaps = computeUnlockedMaps({
@@ -633,6 +642,7 @@ export function mergeLocalAndCloudProgress(
       bloodCitadelCleared: localBloodCitadelCleared,
       infernoCleared: localInfernoCleared,
       frozenTombCleared: localFrozenTombCleared,
+      grudgeForestCleared: localGrudgeForestCleared,
       storedUnlocked: local.unlockedMaps,
       founderUnlocked,
     });
@@ -645,10 +655,12 @@ export function mergeLocalAndCloudProgress(
       bloodCitadelCleared: localBloodCitadelCleared,
       infernoCleared: localInfernoCleared,
       frozenTombCleared: localFrozenTombCleared,
+      grudgeForestCleared: localGrudgeForestCleared,
       unlockedMaps,
       citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
       infernoProgress: normalizeInfernoProgress(local.infernoProgress),
       frozenTombProgress: normalizeFrozenTombProgress(local.frozenTombProgress),
+      grudgeForestProgress: normalizeGrudgeForestProgress(local.grudgeForestProgress),
     };
   }
   const cloudWave = Math.max(0, Math.min(27, Math.floor(Number(cloud.highestWave) || 0)));
@@ -672,12 +684,14 @@ export function mergeLocalAndCloudProgress(
   const bloodCitadelCleared = Boolean(localBloodCitadelCleared || cloud.bloodCitadelCleared);
   const infernoCleared = Boolean(localInfernoCleared || cloud.infernoCleared);
   const frozenTombCleared = Boolean(localFrozenTombCleared || cloud.frozenTombCleared);
+  const grudgeForestCleared = Boolean(localGrudgeForestCleared || cloud.grudgeForestCleared);
   const unlockedMaps = computeUnlockedMaps({
     highestWaveCleared: highestWave,
     classicCleared,
     bloodCitadelCleared,
     infernoCleared,
     frozenTombCleared,
+    grudgeForestCleared,
     storedUnlocked: [...(local.unlockedMaps || []), ...(cloud.unlockedMaps || [])],
     founderUnlocked,
   });
@@ -720,10 +734,12 @@ export function mergeLocalAndCloudProgress(
     bloodCitadelCleared,
     infernoCleared,
     frozenTombCleared,
+    grudgeForestCleared,
     unlockedMaps,
     citadelSecrets,
     infernoProgress: mergeInfernoProgress(local.infernoProgress, cloud.infernoProgress),
     frozenTombProgress: mergeFrozenTombProgress(local.frozenTombProgress, cloud.frozenTombProgress),
+    grudgeForestProgress: mergeGrudgeForestProgress(local.grudgeForestProgress, cloud.grudgeForestProgress),
   };
 }
 
@@ -756,12 +772,14 @@ export function parseSavePackageJson(
     const bloodCitadelCleared = Boolean(p.bloodCitadelCleared);
     const infernoCleared = Boolean(p.infernoCleared);
     const frozenTombCleared = Boolean(p.frozenTombCleared);
+    const grudgeForestCleared = Boolean(p.grudgeForestCleared);
     const unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: highestWave,
       classicCleared,
       bloodCitadelCleared,
       infernoCleared,
       frozenTombCleared,
+      grudgeForestCleared,
       storedUnlocked: p.unlockedMaps,
       founderUnlocked,
     });
@@ -770,6 +788,7 @@ export function parseSavePackageJson(
     const citadelSecrets = p.citadelSecrets ? normalizeCitadelSecrets(p.citadelSecrets) : createDefaultCitadelSecrets();
     const infernoProgress = p.infernoProgress ? normalizeInfernoProgress(p.infernoProgress) : createDefaultInfernoProgress();
     const frozenTombProgress = p.frozenTombProgress ? normalizeFrozenTombProgress(p.frozenTombProgress) : createDefaultFrozenTombProgress();
+    const grudgeForestProgress = p.grudgeForestProgress ? normalizeGrudgeForestProgress(p.grudgeForestProgress) : createDefaultGrudgeForestProgress();
     const savedRun = normalizeSavedRun(parsed.savedRun ?? p.savedRun, 27);
     const settings =
       parsed.settings && typeof parsed.settings === "object"
@@ -805,10 +824,12 @@ export function parseSavePackageJson(
       bloodCitadelCleared,
       infernoCleared,
       frozenTombCleared,
+      grudgeForestCleared,
       unlockedMaps,
       citadelSecrets,
       infernoProgress,
       frozenTombProgress,
+      grudgeForestProgress,
     };
     return {
       ok: true,

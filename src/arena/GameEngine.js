@@ -2,16 +2,18 @@ import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameDat
 import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction, getCitadelSecretCompassTarget } from "./bloodCitadelMap";
 import { INFERNO_MAP_WIDTH, INFERNO_MAP_HEIGHT, INFERNO_SPAWN, INFERNO_ZONES, INFERNO_INTERACTABLES, INFERNO_DOCS, createDefaultInfernoProgress, normalizeInfernoProgress, mergeInfernoProgress, createInitialInfernoRuntimeState, getInfernoZoneAt, getActiveInfernoObstacles, findNearestInfernoInteractable, findNearbyLockedGate, tryOpenInfernoGate, damageInfernoDestructibleWalls, evaluateInfernoInteraction, getInfernoCompassTarget, stepInfernoHazards } from "./infernoAshMap";
 import { FROZEN_TOMB_WIDTH, FROZEN_TOMB_HEIGHT, FROZEN_TOMB_SPAWN, FROZEN_TOMB_ZONES, FROZEN_TOMB_DOCS, createDefaultFrozenTombProgress, normalizeFrozenTombProgress, mergeFrozenTombProgress, createInitialFrozenTombRuntimeState, getFrozenTombZoneAt, getActiveFrozenTombObstacles, damageFrozenTombDestructibleWalls, triggerEohyenFrozenTombReaction, findNearestFrozenTombInteractable, evaluateFrozenTombProximityEvents, buildEndingSequencePayload, evaluateFrozenTombInteraction, getFrozenTombCompassTarget, stepFrozenTombHazards, isPointOnFrozenIcePatch } from "./frozenTombMap";
+import { GRUDGE_FOREST_WIDTH, GRUDGE_FOREST_HEIGHT, GRUDGE_FOREST_SPAWN, GRUDGE_FOREST_DOCS, createDefaultGrudgeForestProgress, normalizeGrudgeForestProgress, mergeGrudgeForestProgress, countGrudgeForestSecrets, createInitialGrudgeForestRuntimeState, getGrudgeForestZoneAt, getActiveGrudgeForestObstacles, damageGrudgeForestVinesAt, findNearestGrudgeForestInteractable, evaluateGrudgeForestProximityEvents, buildGrudgeForestEndingPayload, evaluateGrudgeForestInteraction, getGrudgeForestCompassTarget, stepGrudgeForestHazards } from "./grudgeForestMap";
 import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt, drawMinhSanctuaries, drawMinhPrisons, drawDucAnhMeteorLeaps } from "./weaponRenderer";
 import { renderBloodCitadelFloor as drawBloodCitadelFloorScene, renderBloodCitadelStructuresAndProps as drawBloodCitadelStructuresScene, renderBloodCitadelAtmosphere as drawBloodCitadelAtmosphereScene, getBloodCitadelZoneLabel } from "./bloodCitadelRenderer";
 import { renderInfernoAshFloor as drawInfernoAshFloorScene, renderInfernoAshStructuresAndProps as drawInfernoAshStructuresScene, renderInfernoAshAtmosphere as drawInfernoAshAtmosphereScene, getInfernoZoneLabel } from "./infernoAshRenderer";
 import { renderFrozenTombFloor as drawFrozenTombFloorScene, renderFrozenTombStructuresAndProps as drawFrozenTombStructuresScene, renderFrozenTombPlayerEffects as drawFrozenTombPlayerEffectsScene, renderFrozenTombEntityBoss as drawFrozenTombEntityBossScene, renderFrozenTombAtmosphere as drawFrozenTombAtmosphereScene, getFrozenTombZoneLabel } from "./frozenTombRenderer";
+import { renderGrudgeForestFloor as drawGrudgeForestFloorScene, renderGrudgeForestStructures as drawGrudgeForestStructuresScene, renderGrudgeForestPlayerEffects as drawGrudgeForestPlayerEffectsScene, renderGrudgeForestBossEntity as drawGrudgeForestBossEntityScene, renderGrudgeForestAtmosphere as drawGrudgeForestAtmosphereScene, getGrudgeForestZoneLabel } from "./grudgeForestRenderer";
 import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal, normalizeQualityMode, normalizeFpsCapMode, detectDeviceHardwareTier, resolvePerformanceProfile, stepAdaptiveQualityGovernor, computeWorldViewBounds, isCircleInViewBounds, isSegmentInViewBounds, swapRemoveAt, computeAdaptiveSyncIntervals, DUNG_BASE_CRIT, DUNG_MAX_CRIT, DUNG_BASE_LIFESTEAL, DUNG_C2_DURATION, DUNG_C3_DURATION, DUNG_C3_BOSS_DMG_MULT, computeDungCritProfile, computeDungHealValues, BOSS_CC_IMMUNITY_WINDOW_SEC, HERO_SHIELD_CAP_RATIO, isBossHardCcImmune, evaluateEnemyHardCcApplication, computeBoundedShieldAdd, MINH_PASSIVE_HEAL_RATIO, MINH_PASSIVE_SHIELD_RATIO, MINH_PASSIVE_SHIELD_DUR, MINH_PASSIVE_ICD, MINH_C1_MOB_ROOT, MINH_C1_BOSS_ROOT, MINH_C1_BOSS27_SLOW, MINH_C1_BOSS27_SLOW_DUR, MINH_C1_RANGE, MINH_C1_WIDTH, MINH_C1_CHAIN_COUNT, MINH_C1_HEAL_RATIO, MINH_C1_MAX_HEAL_RATIO, MINH_C2_MOB_FREEZE, MINH_C2_BOSS_FREEZE, MINH_C2_BOSS_SLOW, MINH_C2_BOSS_SLOW_DUR, MINH_C2_ALLY_HEAL_RATIO, MINH_C2_ALLY_SHIELD_RATIO, MINH_C3_MOB_SEAL, MINH_C3_BOSS_SEAL, MINH_C3_ALLY_HEAL_RATIO, MINH_C3_ALLY_SHIELD_RATIO, computeMinhBasicDamage, computeMinhC1Damage, computeMinhC1CcHeal, computeMinhC2TickDamage, computeMinhC3DetonateDamage, DUCANH_PASSIVE_DR, DUCANH_PASSIVE_HP_THRESHOLD, DUCANH_PASSIVE_REGEN_RATIO, DUCANH_PASSIVE_REGEN_DUR, DUCANH_PASSIVE_SHIELD_RATIO, DUCANH_PASSIVE_CD, DUCANH_C1_DURATION, DUCANH_C1_DR, DUCANH_C1_BOSS_STUN, DUCANH_C1_PER_HIT_PCT, DUCANH_C1_MAX_PCT, DUCANH_C2_DURATION, DUCANH_C2_SHIELD_RATIO, DUCANH_C2_DR, DUCANH_C2_REGEN_RATIO, DUCANH_C2_END_ALLY_HEAL, DUCANH_C2_END_ALLY_SHIELD, DUCANH_C3_MOB_KNOCKUP, DUCANH_C3_BOSS_STUN, DUCANH_C3_SELF_HEAL, DUCANH_C3_SELF_SHIELD, DUCANH_C3_ALLY_HEAL, DUCANH_C3_ALLY_SHIELD, DUCANH_MAX_DR_CAP, computeDucAnhDamageReduction, computeDucAnhC1RollGain, computeDucAnhC1RollDamage, computeDucAnhC2ExplosionDamage, computeDucAnhC3ImpactDamage } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
 import { readDeviceKey, writeDeviceKey, recordDeviceSave, normalizeSavedRun } from "./deviceStorage";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this._matchEndedPendingReset = false, this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.bloodCitadelCleared = false, this.infernoCleared = false, this.frozenTombCleared = false, this.unlockedMaps = computeUnlockedMaps({ founderUnlocked: this.founderUnlocked }), this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this._matchEndedPendingReset = false, this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.bloodCitadelCleared = false, this.infernoCleared = false, this.frozenTombCleared = false, this.grudgeForestCleared = false, this.unlockedMaps = computeUnlockedMaps({ founderUnlocked: this.founderUnlocked }), this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.grudgeForestProgress = createDefaultGrudgeForestProgress(), this.grudgeForestRuntime = null, this.grudgeForestVisionDim = 0, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onGrudgeForestStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
       let hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
       let profile = this.getPerformanceProfile(false, hidden);
       let rawMs = a - this.lastTime;
@@ -207,12 +209,14 @@ export class GameEngine {
     this.bloodCitadelCleared = Boolean(this.bloodCitadelCleared && overwriteHigherOnly) || Boolean(a.bloodCitadelCleared);
     this.infernoCleared = Boolean(this.infernoCleared && overwriteHigherOnly) || Boolean(a.infernoCleared);
     this.frozenTombCleared = Boolean(this.frozenTombCleared && overwriteHigherOnly) || Boolean(a.frozenTombCleared);
+    this.grudgeForestCleared = Boolean(this.grudgeForestCleared && overwriteHigherOnly) || Boolean(a.grudgeForestCleared);
     this.unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: this.highestWaveCleared,
       classicCleared: this.classicCleared,
       bloodCitadelCleared: this.bloodCitadelCleared,
       infernoCleared: this.infernoCleared,
       frozenTombCleared: this.frozenTombCleared,
+      grudgeForestCleared: this.grudgeForestCleared,
       storedUnlocked: overwriteHigherOnly ? [...(this.unlockedMaps || []), ...(Array.isArray(a.unlockedMaps) ? a.unlockedMaps : [])] : a.unlockedMaps,
       founderUnlocked: this.founderUnlocked,
     });
@@ -237,6 +241,10 @@ export class GameEngine {
     this.frozenTombProgress = overwriteHigherOnly
       ? mergeFrozenTombProgress(this.frozenTombProgress, incomingFrozen)
       : incomingFrozen;
+    let incomingGrudge = normalizeGrudgeForestProgress(a.grudgeForestProgress);
+    this.grudgeForestProgress = overwriteHigherOnly
+      ? mergeGrudgeForestProgress(this.grudgeForestProgress, incomingGrudge)
+      : incomingGrudge;
     let incomingRun = normalizeSavedRun(a.savedRun, MAX_WAVES);
     if (!overwriteHigherOnly) {
       this.savedRun = incomingRun;
@@ -307,6 +315,7 @@ export class GameEngine {
       bloodCitadelCleared: this.bloodCitadelCleared,
       infernoCleared: this.infernoCleared,
       frozenTombCleared: this.frozenTombCleared,
+      grudgeForestCleared: this.grudgeForestCleared,
     });
     this.unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: this.highestWaveCleared,
@@ -314,6 +323,7 @@ export class GameEngine {
       bloodCitadelCleared: this.bloodCitadelCleared,
       infernoCleared: this.infernoCleared,
       frozenTombCleared: this.frozenTombCleared,
+      grudgeForestCleared: this.grudgeForestCleared,
       storedUnlocked: persistedMaps,
       founderUnlocked: this.founderUnlocked,
     });
@@ -344,10 +354,12 @@ export class GameEngine {
         bloodCitadelCleared: this.bloodCitadelCleared,
         infernoCleared: this.infernoCleared,
         frozenTombCleared: this.frozenTombCleared,
+        grudgeForestCleared: this.grudgeForestCleared,
         unlockedMaps: persistedMaps,
         citadelSecrets: this.citadelSecrets,
         infernoProgress: this.infernoProgress,
         frozenTombProgress: this.frozenTombProgress,
+        grudgeForestProgress: this.grudgeForestProgress,
         savedRun: this.savedRun || null,
       };
       writeDeviceKey(cm, JSON.stringify(s));
@@ -387,24 +399,40 @@ export class GameEngine {
       this.citadelRuntime = createInitialCitadelRuntimeState("blood_citadel");
       this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
       this.frozenTombRuntime = null;
+      this.grudgeForestRuntime = null;
+      this.grudgeForestVisionDim = 0;
     } else if (requested === "inferno_ash") {
       this.mapWidth = INFERNO_MAP_WIDTH;
       this.mapHeight = INFERNO_MAP_HEIGHT;
       this.citadelRuntime = createInitialCitadelRuntimeState("classic");
       this.infernoRuntime = createInitialInfernoRuntimeState("inferno_ash", this.infernoProgress);
       this.frozenTombRuntime = null;
+      this.grudgeForestRuntime = null;
+      this.grudgeForestVisionDim = 0;
     } else if (requested === "frozen_tomb") {
       this.mapWidth = FROZEN_TOMB_WIDTH;
       this.mapHeight = FROZEN_TOMB_HEIGHT;
       this.citadelRuntime = createInitialCitadelRuntimeState("classic");
       this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
       this.frozenTombRuntime = createInitialFrozenTombRuntimeState(this.frozenTombProgress);
+      this.grudgeForestRuntime = null;
+      this.grudgeForestVisionDim = 0;
+    } else if (requested === "grudge_forest") {
+      this.mapWidth = GRUDGE_FOREST_WIDTH;
+      this.mapHeight = GRUDGE_FOREST_HEIGHT;
+      this.citadelRuntime = createInitialCitadelRuntimeState("classic");
+      this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
+      this.frozenTombRuntime = null;
+      this.grudgeForestRuntime = createInitialGrudgeForestRuntimeState(this.grudgeForestProgress);
+      this.grudgeForestVisionDim = 0;
     } else {
       this.mapWidth = Se;
       this.mapHeight = Ce;
       this.citadelRuntime = createInitialCitadelRuntimeState("classic");
       this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress);
       this.frozenTombRuntime = null;
+      this.grudgeForestRuntime = null;
+      this.grudgeForestVisionDim = 0;
     }
     return this.activeMapId;
   }
@@ -418,10 +446,13 @@ export class GameEngine {
     if (this.activeMapId === "frozen_tomb") {
       return getActiveFrozenTombObstacles(this.frozenTombRuntime);
     }
+    if (this.activeMapId === "grudge_forest") {
+      return getActiveGrudgeForestObstacles(this.grudgeForestProgress, this.grudgeForestRuntime);
+    }
     return [];
   }
   resolveEntityObstacles(entity, margin = 14) {
-    if (!entity || (this.activeMapId !== "blood_citadel" && this.activeMapId !== "inferno_ash" && this.activeMapId !== "frozen_tomb")) return;
+    if (!entity || (this.activeMapId !== "blood_citadel" && this.activeMapId !== "inferno_ash" && this.activeMapId !== "frozen_tomb" && this.activeMapId !== "grudge_forest")) return;
     let obstacles = this.getActiveObstacles();
     let res = resolveCircleObstacles(entity.x, entity.y, entity.radius || 20, obstacles, this.mapWidth, this.mapHeight, margin);
     entity.x = res.x;
@@ -443,6 +474,10 @@ export class GameEngine {
     if (this.activeMapId !== "frozen_tomb" || !this.player) return null;
     return findNearestFrozenTombInteractable(this.player.x, this.player.y, this.frozenTombProgress, this.frozenTombRuntime);
   }
+  getNearbyGrudgeForestInteractable() {
+    if (this.activeMapId !== "grudge_forest" || !this.player) return null;
+    return findNearestGrudgeForestInteractable(this.player.x, this.player.y, this.grudgeForestProgress, this.grudgeForestRuntime);
+  }
   broadcastMapProgressSync() {
     if (!this.multiplayer?.active || !mpClient?.isConnected?.()) return;
     mpClient.send({
@@ -451,12 +486,98 @@ export class GameEngine {
       citadelSecrets: normalizeCitadelSecrets(this.citadelSecrets),
       infernoProgress: normalizeInfernoProgress(this.infernoProgress),
       frozenTombProgress: normalizeFrozenTombProgress(this.frozenTombProgress),
+      grudgeForestProgress: normalizeGrudgeForestProgress(this.grudgeForestProgress),
     });
   }
   interactNearestMapNode() {
     if (this.activeMapId === "inferno_ash") return this.interactNearestInfernoNode();
     if (this.activeMapId === "frozen_tomb") return this.interactNearestFrozenTombNode();
+    if (this.activeMapId === "grudge_forest") return this.interactNearestGrudgeForestNode();
     return this.interactNearestCitadelNode();
+  }
+  interactNearestGrudgeForestNode(explicitNodeId = null) {
+    if (this.activeMapId !== "grudge_forest" || !this.player || this.gameState !== "PLAYING") return null;
+    let lang = this.currentLang === "en" ? "en" : "vi";
+    let nodeId = explicitNodeId || this.getNearbyGrudgeForestInteractable()?.id;
+    if (!nodeId) return null;
+    let res = evaluateGrudgeForestInteraction({
+      nodeId,
+      heroId: this.currentHero?.id || this.selectedHeroId,
+      progress: this.grudgeForestProgress,
+      citadelSecrets: this.citadelSecrets,
+      infernoProgress: this.infernoProgress,
+      frozenTombProgress: this.frozenTombProgress,
+      runtime: this.grudgeForestRuntime,
+      lang,
+    });
+    this.grudgeForestProgress = res.nextProgress;
+    if (res.coinBonus > 0) this.playerCoins += res.coinBonus;
+    if (res.healPct > 0 && this.player.hp > 0) {
+      let healAmt = Math.max(40, Math.round(this.player.maxHp * res.healPct));
+      this.healPlayer(healAmt, "HEAL", `+${healAmt} HP`);
+    }
+    if (this.grudgeForestRuntime) {
+      if (res.darknessPulseSec) {
+        this.grudgeForestRuntime.darknessPulseSec = Math.max(this.grudgeForestRuntime.darknessPulseSec || 0, res.darknessPulseSec);
+      }
+      if (res.spawnMimicAmbush && this.isCoopHost()) {
+        this.spawnGrudgeForestAmbushMonsters({ x: this.player.x, y: this.player.y, spawnRadius: 170 }, true);
+      }
+      if (res.spawnForestBoss) {
+        this.spawnGrudgeForestBoss(27, { x: 2360, y: 2060 });
+      }
+      if (res.spawnRootTrapWarning) {
+        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 110, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.42, kind: "shockwave" });
+        this.spawnParticles(this.player.x, this.player.y, "#34D399", 12, 35, 130, 2.8, 0.35);
+      }
+      if (res.payload?.isSecretDiscovery || res.payload?.unlockedNow) {
+        this.grudgeForestRuntime.lastDiscoveryToast = res.payload.title;
+        this.grudgeForestRuntime.lastDiscoveryTimer = 4.5;
+        this.screenFlashWhite = Math.max(this.screenFlashWhite, 0.08);
+        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 130, spread: Math.PI * 2, color: res.payload.themeVariant === "four_maps" ? "#FACC15" : "#34D399", life: 0, maxLife: 0.46, kind: "shockwave" });
+        this.spawnParticles(this.player.x, this.player.y, "#A7F3D0", 14, 40, 150, 2.8, 0.36);
+      }
+    }
+    if (res.payload?.audioCue === "flute") R.playGrudgeFlute?.();
+    else if (res.payload?.audioCue === "chime") R.playGrudgeChime?.();
+    else if (res.payload?.audioCue === "twig") R.playGrudgeTwigSnap?.();
+    else if (res.payload?.audioCue === "whisper") R.playGrudgeWhisper?.();
+    else if (res.payload?.audioCue === "duy_laugh") R.playGrudgeDuyLaugh?.();
+    else if (res.payload?.audioCue === "root_erupt") R.playGrudgeRootErupt?.();
+    else if (res.payload?.audioCue === "secret") R.playGrudgeSecretDiscovery?.();
+    else R.playModalOpen?.();
+    this.saveGame();
+    this.broadcastMapProgressSync();
+    this.addFloatingText(this.player.x, this.player.y - 36, res.payload.title, res.payload.themeVariant === "four_maps" ? "#FACC15" : res.payload.themeVariant === "duy_puppet" ? "#F472B6" : "#34D399", 15);
+    this.onStateChange && this.onStateChange();
+    this.onGrudgeForestStory && this.onGrudgeForestStory(res.payload);
+    return res.payload;
+  }
+  damageGrudgeForestWallAt(x, y, radius, dmg) {
+    if (this.activeMapId !== "grudge_forest" || !this.grudgeForestRuntime) return 0;
+    let res = damageGrudgeForestVinesAt(this.grudgeForestRuntime, this.grudgeForestProgress, x, y, radius, dmg);
+    if (res.destroyedIds.length > 0) {
+      this.grudgeForestProgress = res.nextProgress;
+      for (let vid of res.destroyedIds) {
+        let vine = this.grudgeForestRuntime.destructibles?.find((d) => d.id === vid);
+        let vx = vine ? vine.x + vine.w * 0.5 : x;
+        let vy = vine ? vine.y + vine.h * 0.5 : y;
+        R.playGrudgeRootErupt?.();
+        this.addShake(7, 0.25);
+        this.slashes.push({ x: vx, y: vy, angle: 0, radius: 92, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.34, kind: "shockwave" });
+        this.spawnParticles(vx, vy, "#4ADE80", 16, 45, 175, 3.2, 0.4);
+        this.addFloatingText(vx, vy - 28, "🌿 ĐÃ CHẶT ĐỨT DÂY LEO CỔ!", "#4ADE80", 15);
+      }
+      this.grudgeForestRuntime.lastDiscoveryToast = this.currentLang === "en" ? "Living Vines Cleared!" : "Đã dọn sạch dây leo cổ thụ!";
+      this.grudgeForestRuntime.lastDiscoveryTimer = 4.0;
+      this.saveGame();
+      this.broadcastMapProgressSync();
+      this.onStateChange && this.onStateChange();
+    } else if (res.hitAny) {
+      R.playGrudgeTwigSnap?.();
+      this.spawnParticles(x, y, "#4ADE80", 6, 30, 100, 2.4, 0.22);
+    }
+    return res.destroyedIds.length;
   }
   interactNearestFrozenTombNode(explicitNodeId = null) {
     if (this.activeMapId !== "frozen_tomb" || !this.player || this.gameState !== "PLAYING") return null;
@@ -789,7 +910,18 @@ export class GameEngine {
       this.classicCleared = true;
       this.bloodCitadelCleared = true;
       this.infernoCleared = true;
+      if (!this.frozenTombCleared) {
+        newlyUnlocked = true;
+        unlockedLabelVi = "RỪNG OÁN NIỆM (Map 4)";
+        unlockedLabelEn = "Forest of Grudges";
+      }
       this.frozenTombCleared = true;
+    } else if (curMap === "grudge_forest") {
+      this.classicCleared = true;
+      this.bloodCitadelCleared = true;
+      this.infernoCleared = true;
+      this.frozenTombCleared = true;
+      this.grudgeForestCleared = true;
     }
 
     this.syncUnlockedMaps();
@@ -1444,6 +1576,279 @@ export class GameEngine {
   renderFrozenTombStructuresAndProps(ctx, viewBounds) {
     drawFrozenTombStructuresScene(ctx, this, this.elapsedTime, viewBounds);
   }
+  spawnGrudgeForestAmbushMonsters(zone, mimicOnly = false) {
+    if (!this.isCoopHost() || this.activeMapId !== "grudge_forest") return 0;
+    let obstacles = this.getActiveObstacles();
+    let mult = this.getCoopPowerMultiplier();
+    let dmgMult = 1 + (mult - 1) * 0.45;
+    let waveScale = 1 + (this.wave - 1) * 0.2;
+    let templates = mimicOnly
+      ? [
+          { kind: "hero_mimic", hp: 185, dmg: 30, spd: 148, r: 18, xp: 42, color: "#F472B6", name: "Rối Hóa Hình Nhân Vật" },
+          { kind: "fog_stalker", hp: 175, dmg: 32, spd: 162, r: 17, xp: 44, color: "#2DD4BF", name: "Kẻ Săn Trong Sương" },
+        ]
+      : [
+          { kind: "root_woodfolk", hp: 195, dmg: 27, spd: 118, r: 19, xp: 34, color: "#34D399", name: "Cây Sống Bị Ám" },
+          { kind: "faceless_wraith", hp: 165, dmg: 30, spd: 108, r: 18, xp: 38, color: "#C084FC", name: "Bóng Ma Không Mặt" },
+          { kind: "root_burrower", hp: 185, dmg: 29, spd: 136, r: 18, xp: 40, color: "#10B981", name: "Sinh Vật Dưới Rễ" },
+          { kind: "fog_stalker", hp: 170, dmg: 33, spd: 160, r: 17, xp: 44, color: "#2DD4BF", name: "Kẻ Săn Trong Sương" },
+        ];
+    let spawnedList = [];
+    for (let i = 0; i < 3; i++) {
+      let tpl = templates[i % templates.length];
+      let ang = (Math.PI * 2 * i) / 3 + Math.random() * 0.45;
+      let rawX = zone.x + Math.cos(ang) * ((zone.spawnRadius || 150) * 0.72);
+      let rawY = zone.y + Math.sin(ang) * ((zone.spawnRadius || 150) * 0.72);
+      let clearPt = findClearPointNear(rawX, rawY, tpl.r, obstacles, this.mapWidth, this.mapHeight, 24);
+      let hp = Math.round(tpl.hp * waveScale * mult);
+      let enemy = {
+        id: this.nextEntityId++,
+        kind: tpl.kind,
+        name: tpl.name,
+        x: clearPt.x,
+        y: clearPt.y,
+        vx: 0,
+        vy: 0,
+        radius: tpl.r,
+        hp,
+        maxHp: hp,
+        speed: tpl.spd + Math.min(44, this.wave * 1.9),
+        damage: Math.round(tpl.dmg * (1 + (this.wave - 1) * 0.12) * dmgMult),
+        xpValue: Math.round(tpl.xp * (1 + (this.wave - 1) * 0.05)),
+        color: tpl.color,
+        attackCooldown: 0.55,
+        stunTimer: 0,
+        slowFactor: 0,
+        slowTimer: 0,
+        hitFlash: 0,
+        aoeTimer: 0,
+        facing: Math.atan2(this.player.y - clearPt.y, this.player.x - clearPt.x),
+        fuseTimer: 0,
+        dashCd: 2.2 + Math.random() * 1.4,
+        burrowed: false,
+        burrowTimer: tpl.kind === "root_burrower" ? 1.8 + Math.random() * 1.6 : 0,
+      };
+      this.enemies.push(enemy);
+      spawnedList.push(enemy);
+      this.spawnParticles(clearPt.x, clearPt.y, tpl.color, 8, 30, 110, 2.5, 0.3);
+      this.slashes.push({ x: clearPt.x, y: clearPt.y, angle: 0, radius: 56, spread: Math.PI * 2, color: tpl.color, life: 0, maxLife: 0.34, kind: "shockwave" });
+    }
+    if (spawnedList.length > 0) {
+      this.waveTotal += spawnedList.length;
+      this.waveSpawned += spawnedList.length;
+      this.addFloatingText(
+        zone.x,
+        zone.y - 34,
+        mimicOnly ? "🎭 RỐI HÓA HÌNH ĐỒNG ĐỘI PHỤC KÍCH!" : "🌿 SINH VẬT TRONG SƯƠNG TRỒI LÊN!",
+        mimicOnly ? "#F472B6" : "#34D399",
+        17
+      );
+      R.playGrudgeWhisper?.();
+      if (this.multiplayer.active) {
+        mpClient.send({ type: "WAVE_META", wave: this.wave, waveTotal: this.waveTotal, waveSpawned: this.waveSpawned });
+        mpClient.send({ type: "SPAWN_ENEMIES", enemies: spawnedList, waveSpawned: this.waveSpawned });
+      }
+    }
+    return spawnedList.length;
+  }
+  spawnGrudgeForestBoss(waveNum = 27, customPos = null) {
+    if (!this.isCoopHost() || this.activeMapId !== "grudge_forest") return null;
+    let existing = this.enemies.find((e) => e.isGrudgeForestBoss && e.hp > 0);
+    if (existing) return existing;
+    let mult = this.getCoopPowerMultiplier();
+    let bMod = getBossPowerModifiers(27);
+    let c = hm[27] || hm[24] || hm[3];
+    let hp = Math.round((c.baseHP || 2400) * (1 + 0.25 * (Math.max(15, waveNum) - 1)) * mult * bMod.hpMultiplier);
+    let dmg = Math.round((c.baseDMG || 54) * (1 + 0.1 * (Math.max(15, waveNum) - 1)) * (1 + (mult - 1) * 0.45) * bMod.damageMultiplier);
+    let spd = Math.round((c.spd || 132) * bMod.speedMultiplier);
+    let targetX = customPos?.x ?? 2360;
+    let targetY = customPos?.y ?? 2060;
+    let clearPt = findClearPointNear(targetX, targetY, 50, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 36);
+    let boss = {
+      id: this.nextEntityId++,
+      kind: "boss",
+      bossWave: 27,
+      isGrudgeForestBoss: true,
+      name: this.currentLang === "en" ? "The Sleeper Beneath the Roots" : "Kẻ Ngủ Dưới Rễ Cây",
+      x: clearPt.x,
+      y: clearPt.y,
+      vx: 0,
+      vy: 0,
+      radius: 50,
+      hp,
+      maxHp: hp,
+      baseDamage: dmg,
+      damage: dmg,
+      speed: spd,
+      baseSpeed: spd,
+      xpValue: 1800,
+      color: "#171C19",
+      accentColor: "#C084FC",
+      attackCooldown: 1.0,
+      stunTimer: 0,
+      slowFactor: 0,
+      slowTimer: 0,
+      hitFlash: 0,
+      aoeTimer: 2.0,
+      facing: 0,
+      phase: 1,
+      phase2Triggered: false,
+      phase3Triggered: false,
+      attackAnimTimer: 0,
+      attackAnimDur: 0.34,
+      attackSwingDir: 1,
+      castWindupTimer: 0,
+      castWindupTotal: 0.4,
+      castSkillIdx: 0,
+      skillReleaseTimer: 0,
+      skillReleaseTotal: 0.46,
+      animWalkPhase: 0,
+      pendingSkill: null,
+    };
+    if (this.grudgeForestRuntime) {
+      this.grudgeForestRuntime.bossSpawnedThisRun = true;
+    }
+    this.enemies.push(boss);
+    this.waveSpawned++;
+    if (this.waveSpawned > this.waveTotal) this.waveTotal = this.waveSpawned;
+    R.playGrudgeRootErupt?.();
+    R.playBossWarn?.();
+    this.addShake(16, 0.45);
+    this.syncMusicState();
+    this.addFloatingText(boss.x, boss.y - boss.radius - 26, `🌳 ${boss.name} THỨC TỈNH!`, "#C084FC", 20);
+    if (this.multiplayer.active) {
+      mpClient.send({ type: "SPAWN_ENEMIES", enemies: [boss], waveSpawned: this.waveSpawned });
+      this.queueVfx("boss_callout", { x: boss.x, y: boss.y - boss.radius - 26, text: `🌳 ${boss.name} THỨC TỈNH!`, color: "#C084FC", size: 20, sound: "bossWarn", shakeMag: 16, shakeDur: 0.45 });
+    }
+    this.onStateChange && this.onStateChange();
+    return boss;
+  }
+  updateGrudgeForestMap(dt) {
+    if (this.activeMapId !== "grudge_forest" || !this.grudgeForestRuntime || this.grudgeForestRuntime.mapId !== "grudge_forest") return;
+    let rt = this.grudgeForestRuntime;
+    let lang = this.currentLang === "en" ? "en" : "vi";
+    let heroId = this.currentHero?.id || this.selectedHeroId;
+    let px = this.player.x, py = this.player.y, pr = this.player.radius || 22;
+    this.player.heroId = heroId;
+    let playerAlive = this.player.hp > 0 && !(this.multiplayer.active && this.multiplayer.localDowned);
+    rt.lastPlayerAngle = this.player.facing || 0;
+    let zone = getGrudgeForestZoneAt(px, py);
+    if (!rt._seenZoneEntries) rt._seenZoneEntries = new Set();
+    if (rt.currentZoneId !== zone.id) {
+      rt.currentZoneId = zone.id;
+      if (!rt._seenZoneEntries.has(zone.id)) {
+        rt._seenZoneEntries.add(zone.id);
+        rt.lastDiscoveryToast = lang === "en" ? zone.name.en : zone.name.vi;
+        rt.lastDiscoveryTimer = 3.6;
+      }
+    }
+    R.updateGrudgeForestAmbience?.(zone.id, Boolean(rt.inSilenceZone), this.enemies.length > 0, dt);
+
+    let nearestAllyDist = Infinity;
+    if (this.multiplayer?.active && this.multiplayer.remotePlayers?.size > 0) {
+      for (let rp of this.multiplayer.remotePlayers.values()) {
+        if (!rp || !rp.alive || rp.hp <= 0) continue;
+        let d = Math.hypot(rp.x - px, rp.y - py);
+        if (d < nearestAllyDist) nearestAllyDist = d;
+      }
+    }
+
+    if (playerAlive) {
+      let prox = evaluateGrudgeForestProximityEvents({
+        px,
+        py,
+        heroId,
+        progress: this.grudgeForestProgress,
+        runtime: rt,
+        dt,
+        nearestAllyDist,
+        lang,
+      });
+      this.grudgeForestProgress = prox.nextProgress;
+      if (prox.soundCue === "whisper") R.playGrudgeWhisper?.();
+      else if (prox.soundCue === "twig") R.playGrudgeTwigSnap?.();
+      else if (prox.soundCue === "flute") R.playGrudgeFlute?.();
+      else if (prox.soundCue === "secret") R.playGrudgeSecretDiscovery?.();
+      if (prox.toastText) {
+        rt.lastDiscoveryToast = prox.toastText;
+        rt.lastDiscoveryTimer = 4.4;
+        this.addFloatingText(px, py - 34, prox.toastText, "#34D399", 15);
+      }
+      if (prox.storyPayload) {
+        rt.lastDiscoveryToast = prox.storyPayload.title;
+        rt.lastDiscoveryTimer = 4.2;
+        this.saveGame();
+        this.onStateChange && this.onStateChange();
+        this.onGrudgeForestStory && this.onGrudgeForestStory(prox.storyPayload);
+      }
+    }
+
+    let entitiesForMazeSafety = [];
+    if (this.player) entitiesForMazeSafety.push({ x: px, y: py, radius: pr });
+    if (this.multiplayer?.active && this.multiplayer.remotePlayers?.size > 0) {
+      for (let rp of this.multiplayer.remotePlayers.values()) {
+        if (rp && rp.alive && rp.hp > 0) entitiesForMazeSafety.push({ x: rp.x, y: rp.y, radius: 22 });
+      }
+    }
+    for (let e of this.enemies) {
+      if (e && e.hp > 0) entitiesForMazeSafety.push({ x: e.x, y: e.y, radius: e.radius || 20 });
+    }
+
+    let res = stepGrudgeForestHazards({
+      runtime: rt,
+      dt,
+      playerX: px,
+      playerY: py,
+      playerRadius: pr,
+      playerAlive,
+      entitiesForMazeSafety,
+    });
+    this.grudgeForestVisionDim = res.visionDimFactor || 0;
+    if (res.mazeShifted) {
+      this.resolveEntityObstacles(this.player, 14);
+      for (let e of this.enemies) {
+        if (e && e.hp > 0) this.resolveEntityObstacles(e, 14);
+      }
+      if (zone.id === "zone_5") {
+        this.addFloatingText(px, py - 36, lang === "en" ? "🌿 The Tree Maze Shifted!" : "🌿 Mê Cung Cổ Thụ Vừa Đổi Lối!", "#34D399", 15);
+      }
+    }
+    for (let ev of res.soundEvents) {
+      if (ev === "root_erupt") R.playGrudgeRootErupt?.();
+      else if (ev === "twig") R.playGrudgeTwigSnap?.();
+      else if (ev === "whisper") R.playGrudgeWhisper?.();
+      else if (ev === "chime") {
+        R.playGrudgeChime?.();
+        if (playerAlive && this.player.hp < this.player.maxHp) {
+          let nearGuide = rt.mushrooms?.some((m) => m.kind === "guide" && Math.hypot(px - m.x, py - m.y) <= m.radius + pr + 20);
+          if (nearGuide) this.healPlayer(Math.max(24, Math.round(this.player.maxHp * 0.05)), "HEAL", "🍄 +5% HP");
+        }
+      } else if (ev === "flute") R.playGrudgeFlute?.();
+    }
+    if (this.isCoopHost() && this.enemies.length < 22) {
+      for (let amb of res.ambushSpawns) {
+        this.spawnGrudgeForestAmbushMonsters(amb, false);
+      }
+      for (let lure of res.mushroomLureSpawns) {
+        this.spawnGrudgeForestAmbushMonsters({ x: lure.x, y: lure.y, spawnRadius: 140 }, false);
+      }
+    }
+    if (playerAlive) {
+      if (res.playerDamage > 0) this.damagePlayer(res.playerDamage);
+      if (res.applySlow) this.applyPlayerCC("slow", res.applySlow.duration, res.applySlow.factor, px, py);
+      if (res.applyRootSec) this.applyPlayerCC("root", res.applyRootSec, 0, px, py);
+      if (res.applyPoison) {
+        this.player.poisonTimer = Math.max(this.player.poisonTimer || 0, res.applyPoison.duration);
+        this.player.poisonDps = Math.max(this.player.poisonDps || 0, res.applyPoison.dps);
+      }
+    }
+  }
+  renderGrudgeForestFloor(ctx, viewBounds) {
+    drawGrudgeForestFloorScene(ctx, this, this.elapsedTime, viewBounds);
+  }
+  renderGrudgeForestStructuresAndProps(ctx, viewBounds) {
+    drawGrudgeForestStructuresScene(ctx, this, this.elapsedTime, viewBounds);
+  }
   getHeroGearStats(s) {
     let a = this.heroGear[s] || {}, l = { atk: 0, matk: 0, hp: 0, hpRegen: 0, ms: 0, as: 0, crit: 0, critExtraDmg: 0, cdr: 0, lifesteal: 0, reflect: 0, dmgRed: 0, lightningChance: 0, lightningDmg: 0, frostThornsChance: 0, killHeal: 0, autoShield20: 0, autoShield20Cd: 45, dashAttackSpeed: 0, skillBurstChance: 0, skillBurstDmg: 0, autoShield30: 0, autoShield30Cd: 50, bossDmgBonus: 0, hitProcCount: 0, hitProcDmg: 0, healAmp: 0, bossSkillExtraDmg: 0, autoShield25: 0, frostSlowDur: 0, aoeAmp: 0, autoHeal20: 0, autoHeal20Cd: 60, waveStartShield: 0, skillMoveSpeedBonus: 0, equippedCount: 0 };
     for (let m of ["weapon", "armor", "boots", "gloves", "necklace", "relic"]) {
@@ -1467,13 +1872,13 @@ export class GameEngine {
   }
   initPlayer() {
     let s = this.getHeroGearStats(this.currentHero.id), a = this.currentHero.stats.hp + s.hp;
-    let spawnX = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.x : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.x : this.activeMapId === "frozen_tomb" ? FROZEN_TOMB_SPAWN.x : this.mapWidth / 2;
-    let spawnY = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.y : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.y : this.activeMapId === "frozen_tomb" ? FROZEN_TOMB_SPAWN.y : this.mapHeight / 2;
+    let spawnX = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.x : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.x : this.activeMapId === "frozen_tomb" ? FROZEN_TOMB_SPAWN.x : this.activeMapId === "grudge_forest" ? GRUDGE_FOREST_SPAWN.x : this.mapWidth / 2;
+    let spawnY = this.activeMapId === "blood_citadel" ? BLOOD_CITADEL_SPAWN.y : this.activeMapId === "inferno_ash" ? INFERNO_SPAWN.y : this.activeMapId === "frozen_tomb" ? FROZEN_TOMB_SPAWN.y : this.activeMapId === "grudge_forest" ? GRUDGE_FOREST_SPAWN.y : this.mapHeight / 2;
     this.duccong_pads = [null, null, null];
     this.killStreakCount = 0;
     this.killStreakTimer = 0;
     this._lastComboRank = "D";
-    this.player = { x: spawnX, y: spawnY, vx: 0, vy: 0, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, dung_c1_healed: false, berserkTimer: 0, berserkHealPerHit: 45, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: spawnX - 42, taidu_droneY: spawnY - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, phong_basicStep: 0, phong_dashProtectTimer: 0, phong_c3_flurryTimer: 0, phong_afterimageCd: 0, phong_illHealCd: 0, dang_rage: 0, dang_rageReady: false, dang_c2_timer: 0, dang_c2_recastLock: 0, dang_c2_counterCd: 0, dang_c3_asTimer: 0, dang_c3_flurryTimer: 0, dang_basicStep: 0, thien_energy: 0, thien_ascendedTimer: 0, thien_godMode: false, thien_godInvulnTextCd: 0, thien_regenTimer: 0, thien_c2ZoneId: null, thien_c2RecastLock: 0, thien_c3PortalTimer: 0, thien_c3RecastLock: 0, thien_c3Origin: null, thien_swordHealCd: 0, thien_damageBreakdown: { atk: 0, c1: 0, c2: 0, c3: 0, c4: 0 }, thanh_passiveCd: 0, thanh_dmgEvents: [], thanh_c3Timer: 0, thanh_sacrificeIcd: 0, thanh_c2HealCd: 0, thanh_companionAngle: 0, nhi_passiveCd: 0, nhi_passiveIdx: 0, nhi_ammoType: "purple", nhi_c2HealCd: 0, minh_passiveIcd: 0, ducanh_passiveCd: 0, ducanh_passiveHotTimer: 0, ducanh_passiveHotTick: 0, ducanh_c1Timer: 0, ducanh_c1HitCds: /* @__PURE__ */ new Map(), ducanh_c1GainPct: 0, ducanh_c2Timer: 0, ducanh_c2HotTick: 0, ducanh_c2EndPending: false, ducanh_leapActive: false, frozenTombFrostBuildup: 0, frozenTombStillTimer: 0, frozenTombOnIce: false, frozenTombSlipVx: 0, frozenTombSlipVy: 0, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: spawnX, targetY: spawnY }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, ccResistTimer: 0 };
+    this.player = { heroId: this.currentHero.id, x: spawnX, y: spawnY, vx: 0, vy: 0, radius: 22, facing: 0, hp: a, maxHp: a, shield: 0, shieldTimer: 0, shieldExplodeDmg: 0, shieldExplodeRadius: 0, shieldDmgRed: 0, xp: 0, xpToNext: 100, level: 1, damageMultiplier: 1, attackSpeedBonus: 0, attackTimer: 0, attackAnimTimer: 0, attackAnimAngle: 0, weaponAttackDuration: 0.22, weaponSkillTimer: 0, weaponSkillDur: 0.46, weaponSkillIdx: -1, weaponCritTimer: 0, walkCyclePhase: 0, moveSpeedFactor: 0, attackSwingParity: 1, bowRecoilTimer: 0, cooldowns: [0, 0, 0, 0], dung_passive: 0, dung_c3_buff_timer: 0, dung_c1_healed: false, berserkTimer: 0, berserkHealPerHit: 45, tin_c1_charges: 0, tin_c1_recast_timer: 0, tin_c1_refunded_c2: false, tin_c1_shieldGranted: false, tin_monochrome_realm_timer: 0, tin_moveAccumulator: 0, tin_resonance_stacks: 0, tin_resonance_timer: 0, tin_empowered: false, tin_basicCount: 0, tin_afterSlashes: [], kin_passive: 0, kin_asBuffTimer: 0, kin_c2_lifestealTimer: 0, trung_passive: 0, trung_orbs: null, eohyen_passive: 0, eohyen_heal_cd: 0, longhoi_msBuffTimer: 0, longhoi_nextAtkBonus: 0, longhoi_sustain_sec_timer: 0, longhoi_sustain_pool: 0, duccong_passive: 0, duccong_regen_timer: 5, skillRefundAccumulated: [0, 0, 0, 0], bonusLevelHp: 0, bonusLevelAtk: 0, bonusLevelAp: 0, armor: 0, gau_rage: 0, gau_cuongHungTimer: 0, gau_noDmgTimer: 0, gau_basicStep: 0, gau_basicResetTimer: 0, gau_c1_step: 0, gau_c1_windowTimer: 0, gau_c1_basicCancelPrimed: false, gau_c1_comboHits: {}, gau_c1_afterStep3Timer: 0, gau_c2_guardTimer: 0, gau_c2_stacks: 0, gau_c2_recastLock: 0, gau_c3_pendingImpact: null, gau_animTimer: 0, gau_animDur: 0.22, gau_animAngle: 0, gau_animKind: "none", gau_c2_counterWaveTimer: 0, gau_leapElapsed: 0, gau_leapDur: 0.24, gau_landBounceTimer: 0, bao_basicStep: 0, bao_basicResetTimer: 0, bao_c1_recastTimer: 0, bao_c1_awaitingSecond: false, bao_c1_refundedThisCycle: false, bao_stealthTimer: 0, bao_stealthLockTimer: 0, bao_queuedC1Hits: [], bao_queuedC3Finisher: null, bao_basicDir: 1, bao_glideTimer: 0, bao_stealthFade: 0, bao_emergeTimer: 0, danh_basicStep: 0, danh_basicResetTimer: 0, danh_basicHitCount: 0, danh_khaiSonTimer: 0, danh_c1_step: 0, danh_c1_windowTimer: 0, danh_c1_hitSteps: 0, danh_longNgamTimer: 0, danh_thienPhatTimer: 0, danh_dragonTimer: 0, danh_swingDir: 1, danh_animKind: "none", danh_animTimer: 0, danh_animDur: 0.22, luan_c2_recastLock: 0, luan_c3Charge: null, luan_lastRiftPt: null, luan_vampTextCd: 0, taidu_droneMode: "attack", taidu_droneAngle: 0, taidu_droneX: spawnX - 42, taidu_droneY: spawnY - 30, taidu_droneFacing: 0, taidu_droneFireTimer: 0, taidu_droneHealTimer: 0, taidu_droneMuzzleTimer: 0, taidu_droneShieldAccum: 0, taidu_droneOverdriveTimer: 0, taidu_droneTargetX: null, taidu_droneTargetY: null, taidu_barrelParity: 1, taidu_basicCount: 0, nguyen_rescueCd: 0, nguyen_rescueFlashTimer: 0, nguyen_satellitesTimer: 0, nguyen_satellitesRot: 0, nguyen_satellitesHealTimer: 0, nguyen_hotQueue: [], duy_idleTime: 0, duy_quietHealTimer: 0, duy_healTextCd: 0, phong_basicStep: 0, phong_dashProtectTimer: 0, phong_c3_flurryTimer: 0, phong_afterimageCd: 0, phong_illHealCd: 0, dang_rage: 0, dang_rageReady: false, dang_c2_timer: 0, dang_c2_recastLock: 0, dang_c2_counterCd: 0, dang_c3_asTimer: 0, dang_c3_flurryTimer: 0, dang_basicStep: 0, thien_energy: 0, thien_ascendedTimer: 0, thien_godMode: false, thien_godInvulnTextCd: 0, thien_regenTimer: 0, thien_c2ZoneId: null, thien_c2RecastLock: 0, thien_c3PortalTimer: 0, thien_c3RecastLock: 0, thien_c3Origin: null, thien_swordHealCd: 0, thien_damageBreakdown: { atk: 0, c1: 0, c2: 0, c3: 0, c4: 0 }, thanh_passiveCd: 0, thanh_dmgEvents: [], thanh_c3Timer: 0, thanh_sacrificeIcd: 0, thanh_c2HealCd: 0, thanh_companionAngle: 0, nhi_passiveCd: 0, nhi_passiveIdx: 0, nhi_ammoType: "purple", nhi_c2HealCd: 0, minh_passiveIcd: 0, ducanh_passiveCd: 0, ducanh_passiveHotTimer: 0, ducanh_passiveHotTick: 0, ducanh_c1Timer: 0, ducanh_c1HitCds: /* @__PURE__ */ new Map(), ducanh_c1GainPct: 0, ducanh_c2Timer: 0, ducanh_c2HotTick: 0, ducanh_c2EndPending: false, ducanh_leapActive: false, frozenTombFrostBuildup: 0, frozenTombStillTimer: 0, frozenTombOnIce: false, frozenTombSlipVx: 0, frozenTombSlipVy: 0, chargeState: { active: false, skillIdx: 0, kind: null, elapsed: 0, maxDur: 2.5, angle: 0, targetX: spawnX, targetY: spawnY }, dashBuffAsTimer: 0, autoShield20Timer: 0, autoShield30Timer: 0, autoHeal20Timer: 0, hpRegenTick: 0, dashActive: false, dashVx: 0, dashVy: 0, dashTimer: 0, dashDamage: 0, dashHitIds: /* @__PURE__ */ new Set(), dashKind: "none", hitFlash: 0, totalDamage: 0, stunTimer: 0, rootTimer: 0, slowTimer: 0, slowFactor: 0, burnTimer: 0, burnDps: 0, burnTickTimer: 0, poisonTimer: 0, poisonDps: 0, poisonTickTimer: 0, ccResistTimer: 0 };
     this.resolveEntityObstacles(this.player, 14);
   }
   computeHeroStats() {
@@ -2160,6 +2565,25 @@ export class GameEngine {
         let endPayload = buildEndingSequencePayload(this.frozenTombProgress, this.currentLang === "en" ? "en" : "vi");
         R.playGhostWhisper?.();
         this.onFrozenTombStory && this.onFrozenTombStory(endPayload);
+      }
+      this.saveGame();
+      this.broadcastMapProgressSync();
+      this.onStateChange && this.onStateChange();
+    } else if (this.activeMapId === "grudge_forest" && (s.isGrudgeForestBoss || s.bossWave === 27)) {
+      this.grudgeForestProgress.bossClearedAmbiguous = true;
+      this.grudgeForestCleared = true;
+      if (this.grudgeForestRuntime) {
+        this.grudgeForestRuntime.bossDefeatedThisRun = true;
+        this.grudgeForestRuntime.endingRootSpawned = true;
+        this.grudgeForestRuntime.lastDiscoveryToast = this.currentLang === "en" ? "Empty Clearing — One Solitary Root Still Moves" : "Bãi Đất Trống — Một Sợi Rễ Vẫn Khẽ Cử Động";
+        this.grudgeForestRuntime.lastDiscoveryTimer = 5.0;
+      }
+      this.addFloatingText(s.x, s.y - s.radius - 28, "🌿 KHÔNG CÓ XÁC CHẾT... CHỈ CÒN MỘT SỢI RỄ KHẼ CỬ ĐỘNG!", "#C084FC", 18);
+      if (!this.grudgeForestProgress.endingRootSeen) {
+        this.grudgeForestProgress.endingRootSeen = true;
+        let endPayload = buildGrudgeForestEndingPayload(this.grudgeForestProgress, this.currentLang === "en" ? "en" : "vi");
+        R.playGrudgeFlute?.();
+        this.onGrudgeForestStory && this.onGrudgeForestStory(endPayload);
       }
       this.saveGame();
       this.broadcastMapProgressSync();
@@ -3487,6 +3911,7 @@ export class GameEngine {
     let m = this.getEffectiveDamage();
     this.activeMapId === "inferno_ash" && this.damageInfernoWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 54, Math.round(m * 0.48));
     this.activeMapId === "frozen_tomb" && this.damageFrozenTombWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 54, Math.round(m * 0.52), this.currentHero.id === "eohyen");
+    this.activeMapId === "grudge_forest" && this.damageGrudgeForestWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 56, Math.round(m * 0.54));
     if (this.currentHero.id === "dung") {
       this.player.dung_passive = (this.player.dung_passive || 0) + 1;
       let c = 0, g = false, p = this.player.dung_c3_buff_timer > 0;
@@ -3923,6 +4348,10 @@ export class GameEngine {
       let isEo = this.currentHero.id === "eohyen";
       this.damageFrozenTombWallAt(this.player.x + Math.cos(a) * Math.min(180, g.range || 120), this.player.y + Math.sin(a) * Math.min(180, g.range || 120), Math.max(70, g.radius || 75), skillDmg, isEo);
       this.damageFrozenTombWallAt(this.player.x, this.player.y, 78, skillDmg, isEo);
+    } else if (this.activeMapId === "grudge_forest") {
+      let skillDmg = Math.max(42, Math.round(this.getEffectiveDamage() * 0.85));
+      this.damageGrudgeForestWallAt(this.player.x + Math.cos(a) * Math.min(180, g.range || 120), this.player.y + Math.sin(a) * Math.min(180, g.range || 120), Math.max(70, g.radius || 75), skillDmg);
+      this.damageGrudgeForestWallAt(this.player.x, this.player.y, 78, skillDmg);
     }
     let v = this.getEffectiveDamage() / this.currentHero.stats.damage, T = () => {
       p.dashAttackSpeed > 0 && (this.player.dashBuffAsTimer = Math.max(this.player.dashBuffAsTimer, 2), this.addFloatingText(this.player.x, this.player.y - 15, "L\xD4I \u1EA2NH +20% T\u1ED0C \u0110\xC1NH", "#FDE68A", 13));
@@ -5114,7 +5543,7 @@ export class GameEngine {
     if (myId && spawns[myId]) {
       this.player.x = spawns[myId].x;
       this.player.y = spawns[myId].y;
-      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
+      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
         let pt = findClearPointNear(spawns[myId].x, spawns[myId].y, this.player.radius, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 26);
         this.player.x = pt.x;
         this.player.y = pt.y;
@@ -5289,8 +5718,11 @@ export class GameEngine {
     if (s === 27 && this.activeMapId === "frozen_tomb") {
       return this.spawnFrozenTombBoss(27);
     }
+    if (s === 27 && this.activeMapId === "grudge_forest") {
+      return this.spawnGrudgeForestBoss(27);
+    }
     let a = Math.random() * Math.PI * 2, l = Math.max(120, Math.min(this.mapWidth - 120, this.player.x + Math.cos(a) * 360)), m = Math.max(120, Math.min(this.mapHeight - 120, this.player.y + Math.sin(a) * 360)), c = hm[s] || hm[3], mult = this.getCoopPowerMultiplier(), bMod = getBossPowerModifiers(s), g = Math.round(c.baseHP * (1 + 0.25 * (s - 1)) * mult * bMod.hpMultiplier), p = Math.round(c.baseDMG * (1 + 0.1 * (s - 1)) * (1 + (mult - 1) * 0.45) * bMod.damageMultiplier), bSpd = Math.round(c.spd * bMod.speedMultiplier);
-    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
+    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
       let clearPt = findClearPointNear(l, m, c.radius, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 36);
       l = clearPt.x;
       m = clearPt.y;
@@ -5308,14 +5740,22 @@ export class GameEngine {
     if (!this.isCoopHost() || this.waveSpawned >= this.waveTotal) return;
     let s = Math.random() * Math.PI * 2, a = 400 + Math.random() * 200, l = Math.max(60, Math.min(this.mapWidth - 60, this.player.x + Math.cos(s) * a)), m = Math.max(60, Math.min(this.mapHeight - 60, this.player.y + Math.sin(s) * a)), c = 1 + (this.wave - 1) * 0.22, mult = this.getCoopPowerMultiplier(), dmgMult = 1 + (mult - 1) * 0.45;
     let pool = ["minion"];
-    this.wave >= 2 && pool.push("brute");
-    this.wave >= 3 && pool.push("frost_archer");
-    this.wave >= 4 && pool.push("charger");
-    this.wave >= 5 && pool.push("bomber");
-    this.wave >= 6 && pool.push("caster");
-    this.wave >= 7 && pool.push("assassin");
-    this.wave >= 8 && pool.push("shield_knight");
-    this.wave >= 10 && pool.push("void_acolyte");
+    if (this.activeMapId === "grudge_forest") {
+      pool = ["root_woodfolk", "faceless_wraith"];
+      this.wave >= 2 && pool.push("root_burrower");
+      this.wave >= 3 && pool.push("fog_stalker");
+      this.wave >= 4 && pool.push("hero_mimic");
+      this.wave >= 6 && pool.push("root_burrower", "fog_stalker");
+    } else {
+      this.wave >= 2 && pool.push("brute");
+      this.wave >= 3 && pool.push("frost_archer");
+      this.wave >= 4 && pool.push("charger");
+      this.wave >= 5 && pool.push("bomber");
+      this.wave >= 6 && pool.push("caster");
+      this.wave >= 7 && pool.push("assassin");
+      this.wave >= 8 && pool.push("shield_knight");
+      this.wave >= 10 && pool.push("void_acolyte");
+    }
     let g = pool[Math.floor(Math.random() * pool.length)];
     let h = {
       minion: { hp: 130, dmg: 21, spd: 125, r: 16, xp: 24, color: "#22C55E", name: "Quái Nhỏ" },
@@ -5326,14 +5766,19 @@ export class GameEngine {
       bomber: { hp: 135, dmg: 38, spd: 168, r: 17, xp: 42, color: "#F97316", name: "Quái Bom Cảm Tử" },
       assassin: { hp: 165, dmg: 34, spd: 154, r: 17, xp: 46, color: "#A855F7", name: "Sát Thủ Bóng Đêm" },
       shield_knight: { hp: 375, dmg: 30, spd: 84, r: 24, xp: 52, color: "#0EA5E9", name: "Khiên Binh Phản Chấn" },
-      void_acolyte: { hp: 190, dmg: 35, spd: 96, r: 19, xp: 54, color: "#818CF8", name: "Tín Đồ Hư Không" }
+      void_acolyte: { hp: 190, dmg: 35, spd: 96, r: 19, xp: 54, color: "#818CF8", name: "Tín Đồ Hư Không" },
+      root_woodfolk: { hp: 205, dmg: 26, spd: 118, r: 19, xp: 36, color: "#34D399", name: "Cây Sống Bị Ám" },
+      faceless_wraith: { hp: 165, dmg: 31, spd: 104, r: 18, xp: 42, color: "#C084FC", name: "Bóng Ma Không Mặt" },
+      root_burrower: { hp: 190, dmg: 30, spd: 136, r: 18, xp: 44, color: "#10B981", name: "Sinh Vật Dưới Rễ" },
+      hero_mimic: { hp: 200, dmg: 34, spd: 148, r: 18, xp: 48, color: "#F472B6", name: "Rối Hóa Hình" },
+      fog_stalker: { hp: 170, dmg: 35, spd: 162, r: 17, xp: 46, color: "#2DD4BF", name: "Kẻ Săn Trong Sương" }
     }[g];
-    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
+    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
       let clearPt = findClearPointNear(l, m, h.r, this.getActiveObstacles(), this.mapWidth, this.mapHeight, 26);
       l = clearPt.x;
       m = clearPt.y;
     }
-    let enemy = { id: this.nextEntityId++, kind: g, name: h.name, x: l, y: m, vx: 0, vy: 0, radius: h.r, hp: Math.round(h.hp * c * mult), maxHp: Math.round(h.hp * c * mult), speed: h.spd + Math.min(48, this.wave * 2.2), damage: Math.round(h.dmg * (1 + (this.wave - 1) * 0.13) * dmgMult), xpValue: Math.round(h.xp * (1 + (this.wave - 1) * 0.06)), color: h.color, attackCooldown: 0.6, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, aoeTimer: 0, facing: 0, fuseTimer: 0, dashCd: 2.2 + Math.random() * 2 };
+    let enemy = { id: this.nextEntityId++, kind: g, name: h.name, x: l, y: m, vx: 0, vy: 0, radius: h.r, hp: Math.round(h.hp * c * mult), maxHp: Math.round(h.hp * c * mult), speed: h.spd + Math.min(48, this.wave * 2.2), damage: Math.round(h.dmg * (1 + (this.wave - 1) * 0.13) * dmgMult), xpValue: Math.round(h.xp * (1 + (this.wave - 1) * 0.06)), color: h.color, attackCooldown: 0.6, stunTimer: 0, slowFactor: 0, slowTimer: 0, hitFlash: 0, aoeTimer: 0, facing: 0, fuseTimer: 0, dashCd: 2.2 + Math.random() * 2, burrowed: false, burrowTimer: g === "root_burrower" ? 1.8 + Math.random() * 1.5 : 0 };
     this.enemies.push(enemy), this.waveSpawned++;
     this.multiplayer.active && mpClient.send({ type: "SPAWN_ENEMIES", enemies: [enemy], waveSpawned: this.waveSpawned });
   }
@@ -5479,7 +5924,7 @@ export class GameEngine {
       }
       for (let m of [...this.enemies]) Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 125 + m.radius && this.damageEnemy(m, dungBurstDmg, 0, 0, true);
     }
-    if (this.player.dung_c3_buff_timer > 0 && (this.player.dung_c3_buff_timer = Math.max(0, this.player.dung_c3_buff_timer - a)), this.player.kin_asBuffTimer > 0 && (this.player.kin_asBuffTimer = Math.max(0, this.player.kin_asBuffTimer - a)), this.player.kin_c2_lifestealTimer > 0 && (this.player.kin_c2_lifestealTimer = Math.max(0, this.player.kin_c2_lifestealTimer - a)), this.player.longhoi_msBuffTimer > 0 && (this.player.longhoi_msBuffTimer = Math.max(0, this.player.longhoi_msBuffTimer - a)), this.player.dashBuffAsTimer > 0 && (this.player.dashBuffAsTimer = Math.max(0, this.player.dashBuffAsTimer - a)), this.player.autoShield20Timer > 0 && (this.player.autoShield20Timer = Math.max(0, this.player.autoShield20Timer - a)), this.player.autoShield30Timer > 0 && (this.player.autoShield30Timer = Math.max(0, this.player.autoShield30Timer - a)), this.player.ccResistTimer > 0 && (this.player.ccResistTimer = Math.max(0, this.player.ccResistTimer - a)), this.player.stunTimer > 0 && (this.player.stunTimer = Math.max(0, this.player.stunTimer - a), this.player.dashActive = false, this.player.dashKind = "none"), this.player.rootTimer > 0 && (this.player.rootTimer = Math.max(0, this.player.rootTimer - a), this.player.dashActive && (this.player.dashActive = false, this.player.dashKind = "none")), this.player.slowTimer > 0 && (this.player.slowTimer = Math.max(0, this.player.slowTimer - a), this.player.slowTimer === 0 && (this.player.slowFactor = 0)), this.player.burnTimer > 0 && (this.player.burnTimer = Math.max(0, this.player.burnTimer - a), this.player.burnTickTimer += a, Math.random() < 0.28 && this.spawnFlameParticles(this.player.x, this.player.y, "red", 1, 20, 55), this.player.burnTickTimer >= 0.5 && (this.player.burnTickTimer -= 0.5, this.damagePlayer(Math.max(4, Math.round(this.player.burnDps * 0.5)))), this.player.burnTimer === 0 && (this.player.burnDps = 0, this.player.burnTickTimer = 0)), this.player.shieldTimer > 0 && (this.player.shieldTimer = Math.max(0, this.player.shieldTimer - a), this.player.shieldTimer === 0 && this.player.shield > 0 && (this.player.shield = 0, this.player.shieldExplodeDmg > 0 && this.player.shieldExplodeRadius > 0 && this.triggerShieldExplosion())), this.comboManager.update(a), this.currentHero.id === "gau") {
+    if (this.player.dung_c3_buff_timer > 0 && (this.player.dung_c3_buff_timer = Math.max(0, this.player.dung_c3_buff_timer - a)), this.player.kin_asBuffTimer > 0 && (this.player.kin_asBuffTimer = Math.max(0, this.player.kin_asBuffTimer - a)), this.player.kin_c2_lifestealTimer > 0 && (this.player.kin_c2_lifestealTimer = Math.max(0, this.player.kin_c2_lifestealTimer - a)), this.player.longhoi_msBuffTimer > 0 && (this.player.longhoi_msBuffTimer = Math.max(0, this.player.longhoi_msBuffTimer - a)), this.player.dashBuffAsTimer > 0 && (this.player.dashBuffAsTimer = Math.max(0, this.player.dashBuffAsTimer - a)), this.player.autoShield20Timer > 0 && (this.player.autoShield20Timer = Math.max(0, this.player.autoShield20Timer - a)), this.player.autoShield30Timer > 0 && (this.player.autoShield30Timer = Math.max(0, this.player.autoShield30Timer - a)), this.player.ccResistTimer > 0 && (this.player.ccResistTimer = Math.max(0, this.player.ccResistTimer - a)), this.player.stunTimer > 0 && (this.player.stunTimer = Math.max(0, this.player.stunTimer - a), this.player.dashActive = false, this.player.dashKind = "none"), this.player.rootTimer > 0 && (this.player.rootTimer = Math.max(0, this.player.rootTimer - a), this.player.dashActive && (this.player.dashActive = false, this.player.dashKind = "none")), this.player.slowTimer > 0 && (this.player.slowTimer = Math.max(0, this.player.slowTimer - a), this.player.slowTimer === 0 && (this.player.slowFactor = 0)), this.player.burnTimer > 0 && (this.player.burnTimer = Math.max(0, this.player.burnTimer - a), this.player.burnTickTimer += a, Math.random() < 0.28 && this.spawnFlameParticles(this.player.x, this.player.y, "red", 1, 20, 55), this.player.burnTickTimer >= 0.5 && (this.player.burnTickTimer -= 0.5, this.damagePlayer(Math.max(4, Math.round(this.player.burnDps * 0.5)))), this.player.burnTimer === 0 && (this.player.burnDps = 0, this.player.burnTickTimer = 0)), this.player.poisonTimer > 0 && (this.player.poisonTimer = Math.max(0, this.player.poisonTimer - a), this.player.poisonTickTimer = (this.player.poisonTickTimer || 0) + a, Math.random() < 0.24 && this.spawnParticles(this.player.x, this.player.y, "#A855F7", 1, 16, 48, 2.2, 0.3), this.player.poisonTickTimer >= 0.5 && (this.player.poisonTickTimer -= 0.5, this.damagePlayer(Math.max(3, Math.round((this.player.poisonDps || 8) * 0.5)))), this.player.poisonTimer === 0 && (this.player.poisonDps = 0, this.player.poisonTickTimer = 0)), this.player.shieldTimer > 0 && (this.player.shieldTimer = Math.max(0, this.player.shieldTimer - a), this.player.shieldTimer === 0 && this.player.shield > 0 && (this.player.shield = 0, this.player.shieldExplodeDmg > 0 && this.player.shieldExplodeRadius > 0 && this.triggerShieldExplosion())), this.comboManager.update(a), this.currentHero.id === "gau") {
       if (this.player.hp > 0 && this.player.hp < this.player.maxHp) {
         this.player.gau_noDmgTimer = (this.player.gau_noDmgTimer || 0) + a;
         if (this.player.gau_noDmgTimer >= 3) {
@@ -5925,7 +6370,7 @@ export class GameEngine {
     this.player.vy = (this.player.vy || 0) * 0.35 + instPlayerVy * 0.65;
     this.multiplayer.active && this.updateRemotePlayers(a);
     let l = 1 - 1e-3 ** a;
-    this.camera.x += (this.player.x - this.camera.x) * l, this.camera.y += (this.player.y - this.camera.y) * l, this.activeMapId === "blood_citadel" && !this.waitingReward && !this.waveCleared && this.updateCitadelMap(a), this.activeMapId === "inferno_ash" && !this.waitingReward && !this.waveCleared && this.updateInfernoMap(a), this.activeMapId === "frozen_tomb" && !this.waitingReward && !this.waveCleared && this.updateFrozenTombMap(a), this.isCoopHost() && !this.waitingReward && !this.waveCleared && this.waveSpawned < this.waveTotal && (this.spawnTimer -= a, this.spawnTimer <= 0 && (this.spawnEnemy(), this.spawnTimer = Math.max(0.45, 1.45 - this.wave * 0.06))), this.updateProjectiles(a), this.updateZones(a), this.updateFrostBarrages(a), this.updateIcePillars(a), this.updateLavaPools(a), this.updateBossWarnings(a), this.updateBossBeams(a), this.updateBossShockRings(a), this.updateEnemies(a), this.updateVFX(a);
+    this.camera.x += (this.player.x - this.camera.x) * l, this.camera.y += (this.player.y - this.camera.y) * l, this.activeMapId === "blood_citadel" && !this.waitingReward && !this.waveCleared && this.updateCitadelMap(a), this.activeMapId === "inferno_ash" && !this.waitingReward && !this.waveCleared && this.updateInfernoMap(a), this.activeMapId === "frozen_tomb" && !this.waitingReward && !this.waveCleared && this.updateFrozenTombMap(a), this.activeMapId === "grudge_forest" && !this.waitingReward && !this.waveCleared && this.updateGrudgeForestMap(a), this.isCoopHost() && !this.waitingReward && !this.waveCleared && this.waveSpawned < this.waveTotal && (this.spawnTimer -= a, this.spawnTimer <= 0 && (this.spawnEnemy(), this.spawnTimer = Math.max(0.45, 1.45 - this.wave * 0.06))), this.updateProjectiles(a), this.updateZones(a), this.updateFrostBarrages(a), this.updateIcePillars(a), this.updateLavaPools(a), this.updateBossWarnings(a), this.updateBossBeams(a), this.updateBossShockRings(a), this.updateEnemies(a), this.updateVFX(a);
     for (let m = this.xpOrbs.length - 1; m >= 0; m--) {
       let c = this.xpOrbs[m];
       c.pulse += a * 5;
@@ -6072,6 +6517,16 @@ export class GameEngine {
           if (hitFrozenWall) {
             this.damageFrozenTombWallAt(l.x, l.y, Math.max(28, (l.radius || 10) + 14), Math.max(24, Math.round((l.damage || 35) * 0.55)), this.currentHero?.id === "eohyen");
             this.spawnParticles(l.x, l.y, "#BAE6FD", 6, 35, 110, 2.5, 0.24);
+            if ((l.pierceLeft || 1) <= 1) {
+              this.projectiles.splice(a, 1);
+              continue;
+            }
+          }
+        } else if (this.activeMapId === "grudge_forest" && !l.visualOnly && this.grudgeForestRuntime?.destructibles?.length > 0) {
+          let hitVine = this.grudgeForestRuntime.destructibles.find((dw) => !dw.destroyed && l.x + l.radius >= dw.x && l.x - l.radius <= dw.x + dw.w && l.y + l.radius >= dw.y && l.y - l.radius <= dw.y + dw.h);
+          if (hitVine) {
+            this.damageGrudgeForestWallAt(l.x, l.y, Math.max(28, (l.radius || 10) + 14), Math.max(24, Math.round((l.damage || 35) * 0.55)));
+            this.spawnParticles(l.x, l.y, "#4ADE80", 6, 35, 110, 2.5, 0.24);
             if ((l.pierceLeft || 1) <= 1) {
               this.projectiles.splice(a, 1);
               continue;
@@ -6393,7 +6848,7 @@ export class GameEngine {
           this.projectiles.splice(a, 1);
           continue;
         }
-        if ((this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") && !l.ignoreObstacles && doesPointOverlapAnyObstacle(l.x, l.y, Math.max(4, (l.radius || 8) * 0.65), this.getActiveObstacles())) {
+        if ((this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") && !l.ignoreObstacles && doesPointOverlapAnyObstacle(l.x, l.y, Math.max(4, (l.radius || 8) * 0.65), this.getActiveObstacles())) {
           this.spawnParticles(l.x, l.y, l.color || "#EF4444", 6, 30, 95, 2.5, 0.25);
           this.projectiles.splice(a, 1);
           continue;
@@ -6792,6 +7247,61 @@ export class GameEngine {
               this.queueVfx("enemy_proj", { kind: "void_bolt", x: a.x, y: a.y, vx, vy, radius: 9, damage: a.damage, color: "#818CF8", angle: a.facing, maxDistance: 450 });
             }
           }
+        } else if (a.kind === "faceless_wraith") {
+          g > 255 && (a.x += m / g * f * s, a.y += c / g * f * s);
+          g < 145 && (a.x -= m / g * f * 0.5 * s, a.y -= c / g * f * 0.5 * s);
+          if (a.attackCooldown <= 0 && g < 420) {
+            a.attackCooldown = 2.05;
+            a.attackAnimTimer = 0.28, a.attackAnimDur = 0.28;
+            let vx = m / g * 270, vy = c / g * 270;
+            this.projectiles.push({ id: this.nextEntityId++, fromPlayer: false, kind: "enemy_orb", x: a.x, y: a.y, vx, vy, radius: 8, damage: a.damage, color: "#C084FC", angle: a.facing, distanceTraveled: 0, maxDistance: 450, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+            this.queueVfx("enemy_proj", { kind: "enemy_orb", x: a.x, y: a.y, vx, vy, radius: 8, damage: a.damage, color: "#C084FC", angle: a.facing, maxDistance: 450 });
+          }
+        } else if (a.kind === "root_burrower") {
+          a.burrowTimer = (a.burrowTimer ?? 2.2) - s;
+          if (a.burrowTimer <= 0) {
+            a.burrowed = !a.burrowed;
+            a.burrowTimer = a.burrowed ? 1.55 : 2.9;
+            if (!a.burrowed) {
+              R.playGrudgeRootErupt?.();
+              this.slashes.push({ x: a.x, y: a.y, angle: 0, radius: 68, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.3, kind: "shockwave" });
+              this.spawnParticles(a.x, a.y, "#34D399", 8, 30, 110, 2.5, 0.28);
+              if (target.isLocal && g <= 68 + this.player.radius) {
+                this.damagePlayer(Math.round(a.damage * 1.15), a);
+                this.applyPlayerCC("slow", 1.1, 0.35, a.x, a.y);
+              }
+            }
+          }
+          let burrowSpd = a.burrowed ? f * 1.38 : f;
+          g > a.radius + target.radius - 4 && (a.x += m / g * burrowSpd * s, a.y += c / g * burrowSpd * s);
+          if (!a.burrowed && g <= a.radius + target.radius + 8 && a.attackCooldown <= 0) {
+            a.attackCooldown = 0.95;
+            a.attackAnimTimer = 0.28, a.attackAnimDur = 0.28;
+            if (target.isLocal) this.damagePlayer(a.damage, a);
+            else if (target.isDecoy && target.decoyRef) this.damageDuyDecoy(target.decoyRef, a.damage, a);
+          }
+        } else if (a.kind === "fog_stalker") {
+          a.dashCd = Math.max(0, (a.dashCd || 0) - s);
+          if (a.dashCd <= 0 && g <= 265 && g >= 70) {
+            a.dashCd = 4.2;
+            a.attackAnimTimer = 0.28, a.attackAnimDur = 0.28;
+            this.afterimages.push({ x: a.x, y: a.y, facing: a.facing, color: "#2DD4BF", alpha: 0.85, life: 0, maxLife: 0.34, radius: a.radius });
+            this.queueVfx("afterimage", { x: a.x, y: a.y, facing: a.facing, color: "#2DD4BF", alpha: 0.85, maxLife: 0.34 });
+            a.x = Math.max(a.radius + 18, Math.min(this.mapWidth - a.radius - 18, target.x + (m / g) * (target.radius + 22)));
+            a.y = Math.max(a.radius + 18, Math.min(this.mapHeight - a.radius - 18, target.y + (c / g) * (target.radius + 22)));
+            R.playGrudgeTwigSnap?.();
+            if (target.isLocal) this.damagePlayer(Math.round(a.damage * 1.15), a);
+            else if (target.isDecoy && target.decoyRef) this.damageDuyDecoy(target.decoyRef, Math.round(a.damage * 1.15), a);
+            a.attackCooldown = 1.0;
+          } else {
+            g > a.radius + target.radius - 4 && (a.x += m / g * f * s, a.y += c / g * f * s);
+            if (g <= a.radius + (target.isLocal ? this.player.radius : target.radius) + 8 && a.attackCooldown <= 0) {
+              a.attackCooldown = 0.85;
+              a.attackAnimTimer = 0.28, a.attackAnimDur = 0.28;
+              if (target.isLocal) this.damagePlayer(a.damage, a);
+              else if (target.isDecoy && target.decoyRef) this.damageDuyDecoy(target.decoyRef, a.damage, a);
+            }
+          }
         } else {
           let moveSlow = a.kind === "boss" && a.castWindupTimer > 0 ? 0.28 : 1;
           g > a.radius + target.radius - 4 && (a.x += m / g * f * moveSlow * s, a.y += c / g * f * moveSlow * s);
@@ -7137,6 +7647,49 @@ export class GameEngine {
                 this.summonGalaxyVortex(target.x, target.y, 195, 2.8, Math.round(a.damage * 0.3), Math.round(a.damage * 0.96), false, false, -1, ccD);
                 this.summonBossShockRing(a.x, a.y, 440, 490, Math.round(a.damage * 0.85), "#6366F1", "#E0F2FE", "stun", ccD, 0, 28);
               }
+            } else if (a.isGrudgeForestBoss || (bw === 27 && this.activeMapId === "grudge_forest")) {
+              // Map 4 Boss: Kẻ Ngủ Dưới Rễ Cây (6 forest/root/illusion skills, ambiguous open ending)
+              if (C === 0) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🌿 RỄ CÂY VÂY HÃM TỪ LÒNG ĐẤT!", "#34D399", 18), R.playGrudgeRootErupt?.(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 20, text: "🌿 RỄ CÂY VÂY HÃM TỪ LÒNG ĐẤT!", color: "#34D399", size: 18 });
+                let wCount = bp >= 2 ? 5 : 3;
+                for (let D = 0; D < wCount; D++) {
+                  let ang = Math.PI * 2 / wCount * D + 0.25, dist = D === 0 ? 0 : 125;
+                  let wx = Math.max(80, Math.min(this.mapWidth - 80, target.x + Math.cos(ang) * dist)), wy = Math.max(80, Math.min(this.mapHeight - 80, target.y + Math.sin(ang) * dist));
+                  this.emitBossWarning({ x: wx, y: wy, radius: 98, timer: 0, duration: b, damage: Math.round(a.damage * 0.9), kind: "root_snare", color: "#34D399", ccType: "root", ccDur: ccD });
+                }
+              } else if (C === 1) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🌫️ SÓNG OÁN NIỆM RỪNG SÂU!", "#C084FC", 18), R.playGrudgeWhisper?.(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 20, text: "🌫️ SÓNG OÁN NIỆM RỪNG SÂU!", color: "#C084FC", size: 18 });
+                let cnt = bp === 3 ? 12 : bp === 2 ? 10 : 8;
+                for (let D = 0; D < cnt; D++) {
+                  let P = Math.PI * 2 / cnt * D + this.elapsedTime * 0.5, pvx = Math.cos(P) * 265, pvy = Math.sin(P) * 265, pdmg = Math.round(a.damage * 0.72);
+                  this.projectiles.push({ id: this.nextEntityId++, kind: "enemy_orb", fromPlayer: false, x: a.x, y: a.y, vx: pvx, vy: pvy, radius: 11, damage: pdmg, color: D % 2 === 0 ? "#34D399" : "#C084FC", angle: P, distanceTraveled: 0, maxDistance: 580, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set(), ccType: "slow", ccDur: ccD, ccFactor: 0.45 });
+                }
+              } else if (C === 2) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🪞 DỊCH CHUYỂN QUA GƯƠNG RỄ!", "#E879F9", 18), R.playGrudgeChime?.(), this.queueVfx("boss_callout", { x: a.x, y: a.y - a.radius - 20, text: "🪞 DỊCH CHUYỂN QUA GƯƠNG RỄ!", color: "#E879F9", size: 18 });
+                this.afterimages.push({ x: a.x, y: a.y, facing: a.facing, color: "#10B981", alpha: 0.85, life: 0, maxLife: 0.4, radius: a.radius });
+                let D = Math.atan2(target.y - a.y, target.x - a.x);
+                let blinkD = Math.min(185, Math.max(45, g - 85));
+                a.x = Math.max(a.radius + 32, Math.min(this.mapWidth - a.radius - 32, a.x + Math.cos(D) * blinkD));
+                a.y = Math.max(a.radius + 32, Math.min(this.mapHeight - a.radius - 32, a.y + Math.sin(D) * blinkD));
+                this.summonBossShockRing(a.x, a.y, 350, 440, Math.round(a.damage * 0.86), "#10B981", "#C084FC", "slow", ccD, 0.45, 26);
+              } else if (C === 3) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "⚡ TIA RỄ HẮC ÁM CẮT NGANG!", "#A855F7", 18), R.playGrudgeRootErupt?.();
+                let rays = bp === 3 ? 4 : 2;
+                for (let D = 0; D < rays; D++) {
+                  let ang = H + (D * Math.PI) / rays;
+                  this.summonBossBeam(a.x - Math.cos(ang) * 470, a.y - Math.sin(ang) * 470, a.x + Math.cos(ang) * 470, a.y + Math.sin(ang) * 470, 44, b + 0.1, Math.round(a.damage * 0.94), "#10B981", "#E879F9", "stun", ccD);
+                }
+              } else if (C === 4) {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🎭 RỐI RỪNG SÂU BƯỚC RA TỪ BÓNG TỐI!", "#F472B6", 18), R.playGrudgeDuyLaugh?.();
+                if (this.enemies.length < 18) {
+                  this.spawnGrudgeForestAmbushMonsters({ x: a.x, y: a.y, spawnRadius: 155 }, true);
+                }
+                this.summonBossShockRing(a.x, a.y, 370, 460, Math.round(a.damage * 0.78), "#F472B6", "#34D399", "slow", ccD, 0.48, 24);
+              } else {
+                this.addFloatingText(a.x, a.y - a.radius - 20, "🌳 CƠN BÃO RỄ CỔ THỤ NUỐT CHỬNG!", "#34D399", 19), R.playGrudgeFlute?.();
+                this.summonGalaxyVortex(target.x, target.y, 200, 2.9, Math.round(a.damage * 0.3), Math.round(a.damage * 0.96), false, false, -1, ccD);
+                this.summonBossShockRing(a.x, a.y, 440, 490, Math.round(a.damage * 0.85), "#10B981", "#C084FC", "stun", ccD, 0, 28);
+              }
             } else {
               // Wave 27 Final Boss: Fallen Seraphim Lucifer (6 apocalypse skills + Phase 2/3 enhancements)
               if (C === 0) {
@@ -7224,7 +7777,7 @@ export class GameEngine {
           }
         }
       }
-      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") {
+      if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
         for (let a of this.enemies) {
           if (a.hp <= 0) continue;
           this.resolveEntityObstacles(a, 14);
@@ -7540,6 +8093,11 @@ export class GameEngine {
       drawFrozenTombEntityBossScene(a, s, m);
       return;
     }
+    if (s.isGrudgeForestBoss || (s.bossWave === 27 && this.activeMapId === "grudge_forest")) {
+      a.restore();
+      drawGrudgeForestBossEntityScene(a, s, m);
+      return;
+    }
     if ((s.bossWave || 3) >= 15) {
       drawUpgradedBossBody(a, s, m, isMono);
       drawBossWeapon(a, s, m, isMono);
@@ -7572,6 +8130,8 @@ export class GameEngine {
       this.renderInfernoAshFloor(a, c, viewBounds, prof);
     } else if (this.activeMapId === "frozen_tomb") {
       this.renderFrozenTombFloor(a, viewBounds);
+    } else if (this.activeMapId === "grudge_forest") {
+      this.renderGrudgeForestFloor(a, viewBounds);
     } else {
       let gs = prof.gridStepPx || 100;
       let gxStart = Math.max(0, Math.floor(viewBounds.minX / gs) * gs), gxEnd = Math.min(this.mapWidth, Math.ceil(viewBounds.maxX / gs) * gs);
@@ -8124,6 +8684,7 @@ export class GameEngine {
     this.activeMapId === "blood_citadel" && this.renderBloodCitadelStructuresAndProps(a, c, viewBounds);
     this.activeMapId === "inferno_ash" && this.renderInfernoAshStructuresAndProps(a, c, viewBounds, prof);
     this.activeMapId === "frozen_tomb" && this.renderFrozenTombStructuresAndProps(a, viewBounds);
+    this.activeMapId === "grudge_forest" && this.renderGrudgeForestStructuresAndProps(a, viewBounds);
     this.aimState.active && this.drawAimIndicator();
     for (let h of this.afterimages) if (isCircleInViewBounds(h.x, h.y, (h.radius || 22) + 12, viewBounds)) a.save(), a.globalAlpha = h.alpha * (1 - h.life / h.maxLife), a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.color, a.fill(), a.restore();
     for (let h of this.enemies) {
@@ -8347,6 +8908,7 @@ export class GameEngine {
     this.activeMapId === "blood_citadel" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawBloodCitadelAtmosphereScene(a, this, c, prof), a.restore());
     this.activeMapId === "inferno_ash" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawInfernoAshAtmosphereScene(a, this, c, prof), a.restore());
     this.activeMapId === "frozen_tomb" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawFrozenTombAtmosphereScene(a, this, this.elapsedTime, this.viewW, this.viewH), a.restore());
+    this.activeMapId === "grudge_forest" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawGrudgeForestAtmosphereScene(a, this, this.elapsedTime, this.viewW, this.viewH), a.restore());
     if (this.screenFlashWhite > 0) {
       a.save();
       a.setTransform(1, 0, 0, 1, 0, 0);
@@ -8419,6 +8981,23 @@ export class GameEngine {
             bg: compassFrozen.bg,
             icon: compassFrozen.icon,
             tag: compassFrozen.tag,
+            urgent: false,
+          });
+        }
+      } else if (this.activeMapId === "grudge_forest") {
+        let compassForest = getGrudgeForestCompassTarget(
+          this.currentHero?.id || this.selectedHeroId,
+          this.grudgeForestProgress,
+          this.currentLang === "en" ? "en" : "vi"
+        );
+        if (compassForest) {
+          markers.push({
+            wx: compassForest.x,
+            wy: compassForest.y,
+            color: compassForest.color,
+            bg: compassForest.bg,
+            icon: compassForest.icon,
+            tag: compassForest.tag,
             urgent: false,
           });
         }
@@ -8714,6 +9293,7 @@ export class GameEngine {
       s.restore();
     }
     this.activeMapId === "frozen_tomb" && drawFrozenTombPlayerEffectsScene(s, this.player, this.elapsedTime);
+    this.activeMapId === "grudge_forest" && drawGrudgeForestPlayerEffectsScene(s, this.player, this.elapsedTime, this.grudgeForestRuntime);
     let h = vy - this.player.radius - 14;
     s.fillStyle = "rgba(15, 23, 42, 0.85)", s.fillRect(vx - 24 - 1, h - 1, 50, 6), s.fillStyle = this.multiplayer.active && this.multiplayer.localDowned ? "#64748B" : "#10B981", s.fillRect(vx - 24, h, 48 * Math.max(0, Math.min(1, this.player.hp / this.player.maxHp)), 4), s.font = '700 11px "Outfit", sans-serif', s.textAlign = "center", s.fillStyle = "#0F172A", s.fillText(this.multiplayer.active && this.multiplayer.localDowned ? "\u{1F480} \u0110\xC3 NG\xC3 XU\u1ED0NG" : `${this.currentHero.name.split("(")[0].trim()} Lv.${this.player.level}`, vx + 1, h - 4), s.fillStyle = this.multiplayer.active && this.multiplayer.localDowned ? "#F87171" : "#FDE68A", s.fillText(this.multiplayer.active && this.multiplayer.localDowned ? "\u{1F480} \u0110\xC3 NG\xC3 XU\u1ED0NG" : `${this.currentHero.name.split("(")[0].trim()} Lv.${this.player.level}`, vx, h - 5);
   }
@@ -9530,6 +10110,44 @@ export class GameEngine {
         }
       }
 
+      if (msg.grudgeForestProgress) {
+        const prevGf = normalizeGrudgeForestProgress(this.grudgeForestProgress);
+        const mergedGf = mergeGrudgeForestProgress(prevGf, msg.grudgeForestProgress);
+        const prevSecrets = countGrudgeForestSecrets(prevGf);
+        const nowSecrets = countGrudgeForestSecrets(mergedGf);
+        if (
+          nowSecrets !== prevSecrets ||
+          mergedGf.bossClearedAmbiguous !== prevGf.bossClearedAmbiguous ||
+          mergedGf.endingRootSeen !== prevGf.endingRootSeen ||
+          mergedGf.statuesAligned !== prevGf.statuesAligned ||
+          mergedGf.ee5TrungRoomUnlocked !== prevGf.ee5TrungRoomUnlocked ||
+          mergedGf.destroyedVines.length !== prevGf.destroyedVines.length ||
+          mergedGf.collectedDocs.length !== prevGf.collectedDocs.length
+        ) {
+          changed = true;
+          this.grudgeForestProgress = mergedGf;
+          if (this.grudgeForestRuntime?.destructibles && mergedGf.destroyedVines.length > 0) {
+            for (const dv of this.grudgeForestRuntime.destructibles) {
+              if (mergedGf.destroyedVines.includes(dv.id)) {
+                dv.destroyed = true;
+                dv.hp = 0;
+              }
+            }
+          }
+          if ((mergedGf.bossClearedAmbiguous || mergedGf.endingRootSeen) && this.grudgeForestRuntime) {
+            this.grudgeForestRuntime.bossDefeatedThisRun = true;
+            this.grudgeForestRuntime.endingRootSpawned = true;
+          }
+          if (mergedGf.ee6FourMapSecretSeen && !prevGf.ee6FourMapSecretSeen) {
+            R.playGrudgeSecretDiscovery?.();
+            this.onToast && this.onToast(lang === "en" ? "🌿 Four-Map Convergence unlocked in Grudge Forest!" : "🌿 Bí mật liên kết 4 bản đồ đã mở khóa trong Rừng Oán Niệm!");
+          } else if (mergedGf.endingRootSeen && !prevGf.endingRootSeen) {
+            R.playGrudgeFlute?.();
+            this.onToast && this.onToast(lang === "en" ? "🌿 Forest Heart Finale recorded for the squad!" : "🌿 Kết cục Trái Tim Rừng Sâu đã được ghi nhận cho cả đội!");
+          }
+        }
+      }
+
       if (changed) {
         this.saveGame();
         this.onStateChange && this.onStateChange();
@@ -9899,7 +10517,7 @@ export class GameEngine {
     } : null;
     let dProf = this.currentHero.id === "taidu" ? getTaiDuDroneProfile(s.taidu_droneMode || "attack") : null;
     let m = s.chargeState.active ? Math.min(1, s.chargeState.elapsed / Math.max(0.1, s.chargeState.maxDur)) : 0, c = "";
-    let liveBossForHud = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb") ? this.enemies.find((e) => e.kind === "boss" && e.hp > 0) : null;
+    let liveBossForHud = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") ? this.enemies.find((e) => e.kind === "boss" && e.hp > 0) : null;
     let citadelHud = this.activeMapId === "blood_citadel" && this.citadelRuntime ? {
       playerX: Math.round(s.x),
       playerY: Math.round(s.y),
@@ -9945,11 +10563,30 @@ export class GameEngine {
       darknessActive: (this.frozenTombRuntime.darknessPulseSec || 0) > 0,
       frostBuildup: Number((s.frozenTombFrostBuildup || 0).toFixed(2)),
     } : null;
+    let grudgeZone = this.activeMapId === "grudge_forest" ? getGrudgeForestZoneAt(s.x, s.y) : null;
+    let grudgeForestHud = this.activeMapId === "grudge_forest" && this.grudgeForestRuntime ? {
+      px: Math.round(s.x),
+      py: Math.round(s.y),
+      playerFacing: s.facing || 0,
+      zoneId: grudgeZone?.id || "zone_1",
+      zoneLabel: getGrudgeForestZoneLabel(s.x, s.y, this.currentLang),
+      mazePhase: this.grudgeForestRuntime.mazePhase || 0,
+      inSilenceZone: Boolean(this.grudgeForestRuntime.inSilenceZone),
+      mirrorResonance: (this.grudgeForestRuntime.mirrorResonanceWindow || 0) > 0,
+      bossPos: liveBossForHud ? { x: Math.round(liveBossForHud.x), y: Math.round(liveBossForHud.y) } : null,
+      discoveryToast: this.grudgeForestRuntime.lastDiscoveryToast || null,
+      docsCount: this.grudgeForestProgress?.collectedDocs?.length || 0,
+      docsTotal: Object.keys(GRUDGE_FOREST_DOCS).length,
+      secretCount: countGrudgeForestSecrets(this.grudgeForestProgress),
+      darknessActive: (this.grudgeForestRuntime.darknessPulseSec || 0) > 0,
+      visionDim: Number((this.grudgeForestVisionDim || 0).toFixed(2)),
+    } : null;
     let nearbyInfernoNode = this.getNearbyInfernoInteractable();
     let nearbyInfernoGate = this.getNearbyInfernoGate();
     let nearbyFrozenNode = this.getNearbyFrozenTombInteractable();
+    let nearbyGrudgeForestNode = this.getNearbyGrudgeForestInteractable();
     let nearbyCitadelNode = this.getNearbyCitadelInteractable();
-    return s.chargeState.active && (c = s.chargeState.kind === "danh_c2" ? `T\u1EE4 L\u1EF0C LONG H\u1ED2N \xB7 ${s.chargeState.elapsed >= 2.5 ? "T\u1EA6NG 3 (T\u1ED0I \u0110A)" : s.chargeState.elapsed >= 1.5 ? "T\u1EA6NG 2" : "T\u1EA6NG 1"}` : s.chargeState.elapsed >= 0.35 ? "KI\u1EBEM KH\xCD S\u1EB4N S\xC0NG!" : "GI\u1EEE \u0110\u1EC2 PH\xD3NG KI\u1EBEM KH\xCD..."), { skillStates: a, padTeleportCds: pads, chargeProgress: m, chargeActive: s.chargeState.active, chargeLabel: c, resourceText: l, thienState, droneMode: s.taidu_droneMode || "attack", droneLabel: dProf?.label || "T\u1EA5n C\xF4ng", droneColor: dProf?.color || "#38BDF8", combo: this.comboManager.getSnapshot(), mapId: this.activeMapId, nearbyInteractable: this.activeMapId === "inferno_ash" ? (nearbyInfernoNode || nearbyInfernoGate) : this.activeMapId === "frozen_tomb" ? nearbyFrozenNode : nearbyCitadelNode, nearbyInfernoInteractable: nearbyInfernoNode, nearbyInfernoGate, nearbyFrozenInteractable: nearbyFrozenNode, citadelSecrets: { ...this.citadelSecrets }, citadelHud, infernoProgress: { ...this.infernoProgress }, infernoHud, frozenTombProgress: { ...this.frozenTombProgress }, frozenTombHud };
+    return s.chargeState.active && (c = s.chargeState.kind === "danh_c2" ? `T\u1EE4 L\u1EF0C LONG H\u1ED2N \xB7 ${s.chargeState.elapsed >= 2.5 ? "T\u1EA6NG 3 (T\u1ED0I \u0110A)" : s.chargeState.elapsed >= 1.5 ? "T\u1EA6NG 2" : "T\u1EA6NG 1"}` : s.chargeState.elapsed >= 0.35 ? "KI\u1EBEM KH\xCD S\u1EB4N S\xC0NG!" : "GI\u1EEE \u0110\u1EC2 PH\xD3NG KI\u1EBEM KH\xCD..."), { skillStates: a, padTeleportCds: pads, chargeProgress: m, chargeActive: s.chargeState.active, chargeLabel: c, resourceText: l, thienState, droneMode: s.taidu_droneMode || "attack", droneLabel: dProf?.label || "T\u1EA5n C\xF4ng", droneColor: dProf?.color || "#38BDF8", combo: this.comboManager.getSnapshot(), mapId: this.activeMapId, nearbyInteractable: this.activeMapId === "inferno_ash" ? (nearbyInfernoNode || nearbyInfernoGate) : this.activeMapId === "frozen_tomb" ? nearbyFrozenNode : this.activeMapId === "grudge_forest" ? nearbyGrudgeForestNode : nearbyCitadelNode, nearbyInfernoInteractable: nearbyInfernoNode, nearbyInfernoGate, nearbyFrozenInteractable: nearbyFrozenNode, nearbyGrudgeForestInteractable: nearbyGrudgeForestNode, citadelSecrets: { ...this.citadelSecrets }, citadelHud, infernoProgress: { ...this.infernoProgress }, infernoHud, frozenTombProgress: { ...this.frozenTombProgress }, frozenTombHud, grudgeForestProgress: normalizeGrudgeForestProgress(this.grudgeForestProgress), grudgeForestHud };
   }
   stop() {
     this.animFrameId && (this.animFrameId = (cancelAnimationFrame(this.animFrameId), null));

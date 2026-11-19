@@ -1287,6 +1287,7 @@ export async function fetchPrivatePlayerSave(
       bloodCitadelCleared: Boolean(d.bloodCitadelCleared),
       infernoCleared: Boolean(d.infernoCleared),
       frozenTombCleared: Boolean(d.frozenTombCleared),
+      grudgeForestCleared: Boolean(d.grudgeForestCleared),
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -1330,6 +1331,7 @@ export async function savePrivatePlayerSave(
     bloodCitadelCleared: Boolean(progress.bloodCitadelCleared),
     infernoCleared: Boolean(progress.infernoCleared),
     frozenTombCleared: Boolean(progress.frozenTombCleared),
+    grudgeForestCleared: Boolean(progress.grudgeForestCleared),
   };
 
   const bridged = getActiveBridgedToken();

@@ -2201,6 +2201,78 @@ class SoundEngine {
       this.playFilteredNoise({ duration: 0.72, filterType: "bandpass", freqStart: 640, freqEnd: 320, q: 1.5, gainPeak: 0.045, sendAmbiance: true });
     }
   }
+
+  // =========================================================
+  // MAP 4: RỪNG OÁN NIỆM (GRUDGE FOREST) AUDIO CUES & AMBIENCE
+  // =========================================================
+
+  playGrudgeFlute() {
+    if (this.canThrottle("gfFlute", 520)) return;
+    this.playLayerTone({ startFreq: 392.0, endFreq: 369.99, duration: 0.62, type: "sine", vol: 0.085, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 523.25, endFreq: 493.88, duration: 0.56, type: "sine", vol: 0.06, delay: 0.24, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.55, filterType: "bandpass", freqStart: 920, freqEnd: 620, q: 5.5, gainPeak: 0.03, sendAmbiance: true });
+  }
+
+  playGrudgeChime() {
+    if (this.canThrottle("gfChime", 260)) return;
+    this.playChord([587.33, 880, 1174.66], 0.52, { type: "sine", vol: 0.07, stagger: 0.045, sendAmbiance: true });
+  }
+
+  playGrudgeTwigSnap() {
+    if (this.canThrottle("gfTwig", 180)) return;
+    this.playFilteredNoise({ duration: 0.09, filterType: "bandpass", freqStart: 2400, freqEnd: 920, q: 2.2, gainPeak: 0.24 });
+    this.playLayerTone({ startFreq: 640, endFreq: 190, duration: 0.075, type: "triangle", vol: 0.12 });
+  }
+
+  playGrudgeWhisper() {
+    if (this.canThrottle("gfWhisper", 440)) return;
+    this.playFilteredNoise({ duration: 0.52, filterType: "bandpass", freqStart: 1750, freqEnd: 780, q: 4.5, gainPeak: 0.09, sendAmbiance: true });
+    this.playLayerTone({ startFreq: this.jitter(523.25, 0.04), endFreq: 440, duration: 0.44, type: "sine", vol: 0.058, delay: 0.06, sendAmbiance: true });
+  }
+
+  playGrudgeDuyLaugh() {
+    if (this.canThrottle("gfDuyLaugh", 600)) return;
+    this.playSubPunch(74, 30, 0.42, 0.22);
+    const notes = [262, 238, 214, 186];
+    notes.forEach((f, idx) => {
+      const delay = idx * 0.16;
+      this.playLayerTone({ startFreq: f, endFreq: f * 0.85, duration: 0.14, type: "sawtooth", vol: 0.07, delay, filterFreq: 720, sendAmbiance: true });
+      this.playLayerTone({ startFreq: f * 1.48, endFreq: f * 1.32, duration: 0.13, type: "sine", vol: 0.05, delay, sendAmbiance: true });
+    });
+  }
+
+  playGrudgeRootErupt() {
+    if (this.canThrottle("gfRoot", 180)) return;
+    this.playSubPunch(92, 28, 0.38, 0.3);
+    this.playFilteredNoise({ duration: 0.34, filterType: "lowpass", freqStart: 1600, freqEnd: 200, q: 1.1, gainPeak: 0.26, sendAmbiance: true });
+  }
+
+  playGrudgeSecretDiscovery() {
+    if (this.canThrottle("gfSecret", 300)) return;
+    this.playSubPunch(104, 42, 0.32, 0.22);
+    this.playChord([246.94, 369.99, 493.88, 659.25], 0.58, { type: "triangle", vol: 0.1, stagger: 0.04, sendAmbiance: true });
+    this.playChord([783.99, 1046.5], 0.42, { type: "sine", vol: 0.075, delay: 0.15, stagger: 0.05, sendAmbiance: true });
+  }
+
+  updateGrudgeForestAmbience(zoneId, inSilenceZone, hasDanger, dt) {
+    if (!this.enabled || this._pageHidden) return;
+    if (inSilenceZone) return; // Sudden Silence Zones drop ambient sound cleanly
+    this._grudgeAmbTimer = (this._grudgeAmbTimer ?? 2.6) - Math.max(0, Number(dt) || 0);
+    if (this._grudgeAmbTimer > 0) return;
+    this._grudgeAmbTimer = hasDanger ? 6.2 : 4.6;
+    if (!this._canSpawnVoice(false)) return;
+
+    if (zoneId === "zone_8" || zoneId === "zone_3") {
+      this.playLayerTone({ startFreq: this.jitter(76, 0.06), endFreq: 62, duration: 0.95, type: "sine", vol: 0.055, sendAmbiance: true });
+      if (Math.random() < 0.35) this.playGrudgeFlute();
+    } else if (zoneId === "zone_2" || zoneId === "zone_7") {
+      this.playFilteredNoise({ duration: 0.72, filterType: "bandpass", freqStart: 880, freqEnd: 420, q: 2.2, gainPeak: 0.045, sendAmbiance: true });
+      if (Math.random() < 0.38) this.playGrudgeWhisper();
+    } else {
+      this.playFilteredNoise({ duration: 0.76, filterType: "lowpass", freqStart: 640, freqEnd: 240, q: 1.3, gainPeak: 0.048, sendAmbiance: true });
+      if (Math.random() < 0.28) this.playGrudgeChime();
+    }
+  }
 }
 
 export const R = new SoundEngine();

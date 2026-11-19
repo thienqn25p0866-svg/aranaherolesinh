@@ -9,10 +9,12 @@ import {
   buildCitadelChronicleOverview,
   buildInfernoChronicleOverview,
   buildFrozenTombChronicleOverview,
+  buildGrudgeForestChronicleOverview,
 } from "./darkFantasyLore";
 import { CitadelBlueprintEmblem, CitadelLoreCrest } from "./CitadelVisuals";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals";
 import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals";
+import { GrudgeForestBlueprintEmblem } from "./GrudgeForestVisuals";
 import { getMapUnlockRequirement } from "./bloodCitadelMap";
 
 const TAB_LABELS = {
@@ -21,6 +23,7 @@ const TAB_LABELS = {
   bosses: { vi: "9 Đại Trùm", en: "9 Bosses" },
   inferno: { vi: "Hỏa Ngục Tàn Tro", en: "Inferno of Ashes" },
   frozenTomb: { vi: "Băng Mộ Vĩnh Cửu", en: "Frozen Tomb" },
+  grudgeForest: { vi: "Rừng Oán Niệm", en: "Grudge Forest" },
   citadel: { vi: "Cổ Thành Huyết Táng", en: "Blood Citadel" },
 };
 
@@ -34,12 +37,15 @@ export function ChroniclesModal({
   citadelUnlocked = false,
   infernoUnlocked = false,
   frozenTombUnlocked = false,
+  grudgeForestUnlocked = false,
   citadelSecrets = { tinClue: false, baoClue: false, combinedUnlocked: false, inspectedNodes: [] },
   infernoProgress = null,
   frozenTombProgress = null,
+  grudgeForestProgress = null,
   onSelectHero,
   onSelectInfernoMap,
   onSelectFrozenTombMap,
+  onSelectGrudgeForestMap,
   onSelectCitadelMap,
   onClose,
 }) {
@@ -74,6 +80,7 @@ export function ChroniclesModal({
   const citadelOverview = buildCitadelChronicleOverview(citadelSecrets, safeLang);
   const infernoOverview = buildInfernoChronicleOverview(infernoProgress, safeLang);
   const frozenTombOverview = buildFrozenTombChronicleOverview(frozenTombProgress, safeLang);
+  const grudgeForestOverview = buildGrudgeForestChronicleOverview(grudgeForestProgress, safeLang);
   const canPickHero = activeHero && (!activeHero.isSecretFounder || founderUnlocked);
 
   return (
@@ -482,6 +489,83 @@ export function ChroniclesModal({
                         className="px-4 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-cyan-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
                       >
                         {isVi ? "Chọn Map Băng Mộ Vĩnh Cửu" : "Select Eternal Frozen Tomb"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tab === "grudgeForest" && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/35 via-slate-950 to-slate-950 p-4 sm:p-5 flex items-start gap-4">
+                <GrudgeForestBlueprintEmblem className="w-16 h-16 sm:w-[72px] sm:h-[72px] hidden sm:block shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-lg font-extrabold text-emerald-100">
+                      {grudgeForestOverview.title}
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-purple-300">
+                      {grudgeForestOverview.badge}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    {grudgeForestOverview.summary}
+                  </p>
+                  <div className="mt-2 text-xs font-mono text-emerald-300">
+                    {grudgeForestOverview.docsProgress}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {[
+                  { tag: "🎭 EE1 · DUY & RỐI", data: grudgeForestOverview.ee1Dossier, col: "border-pink-400/55 bg-pink-950/20", titleCol: "text-pink-300" },
+                  { tag: "🪞 EE2 · HỒ GƯƠNG OÁN NIỆM", data: grudgeForestOverview.ee2Dossier, col: "border-purple-400/55 bg-purple-950/20", titleCol: "text-purple-300" },
+                  { tag: "🪦 EE3 · NGHĨA ĐỊA RỄ CÂY", data: grudgeForestOverview.ee3Dossier, col: "border-slate-400/55 bg-slate-800/35", titleCol: "text-slate-300" },
+                  { tag: "🌫️ EE4 · THUNG LŨNG TIẾNG GỌI", data: grudgeForestOverview.ee4Dossier, col: "border-blue-400/55 bg-blue-950/20", titleCol: "text-blue-300" },
+                  { tag: "🕯️ EE5 · CĂN PHÒNG CỦA TRUNG", data: grudgeForestOverview.ee5Dossier, col: "border-amber-400/55 bg-amber-950/20", titleCol: "text-amber-300" },
+                ].map((item) => (
+                  <div key={item.tag} className={`rounded-xl border p-4 ${item.data.locked ? "border-slate-800 bg-slate-950/60" : item.col}`}>
+                    <div className={`text-[11px] font-mono font-bold uppercase tracking-wider ${item.titleCol}`}>
+                      {item.tag}
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-200">{item.data.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className={`rounded-xl border p-4 sm:p-5 ${grudgeForestOverview.ee6Dossier.locked ? "border-slate-800 bg-slate-950/65" : "border-emerald-400/75 bg-emerald-950/25"}`}>
+                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-300">
+                  ✦ {isVi ? "EE6 · BÍ MẬT LIÊN KẾT BỐN BẢN ĐỒ" : "EE6 · FOUR-MAP CONVERGENCE"}
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-100">
+                  {grudgeForestOverview.ee6Dossier.text}
+                </p>
+                {onSelectGrudgeForestMap && (
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400">
+                      {grudgeForestUnlocked
+                        ? founderUnlocked
+                          ? isVi
+                            ? "Đang bật quyền Nhà Sáng Lập: có thể chọn tự do (4800×4000 · 8 Khu Vực)."
+                            : "Founder access active: free map switching unlocked."
+                          : isVi
+                          ? "Đã mở khóa sau khi vượt Màn 27 Băng Mộ Vĩnh Cửu."
+                          : "Unlocked by clearing Eternal Frozen Tomb Wave 27."
+                        : `🔒 ${getMapUnlockRequirement("grudge_forest", isVi ? "vi" : "en")}`}
+                    </span>
+                    {grudgeForestUnlocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectGrudgeForestMap();
+                          onClose?.();
+                        }}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-purple-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
+                      >
+                        {isVi ? "Chọn Map Rừng Oán Niệm" : "Select Forest of Grudges"}
                       </button>
                     )}
                   </div>

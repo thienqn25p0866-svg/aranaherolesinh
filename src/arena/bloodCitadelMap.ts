@@ -1,4 +1,4 @@
-export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb";
+export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest";
 
 export interface ArenaMapMetadata {
   id: ArenaMapId;
@@ -128,6 +128,8 @@ export const CITADEL_UNLOCK_WAVE = 27;
 
 export const FROZEN_TOMB_WIDTH = 3400;
 export const FROZEN_TOMB_HEIGHT = 2800;
+export const GRUDGE_FOREST_MAP_WIDTH = 4800;
+export const GRUDGE_FOREST_MAP_HEIGHT = 4000;
 
 export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
   classic: {
@@ -190,6 +192,21 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
     unlockWaveRequired: CITADEL_UNLOCK_WAVE,
     unlockFromMap: "inferno_ash",
   },
+  grudge_forest: {
+    id: "grudge_forest",
+    width: GRUDGE_FOREST_MAP_WIDTH,
+    height: GRUDGE_FOREST_MAP_HEIGHT,
+    name: {
+      vi: "Rừng Oán Niệm",
+      en: "Forest of Grudges",
+    },
+    subtitle: {
+      vi: "4800×4000 · Map Rừng · Khu rừng cổ 8 khu vực, mê cung tự dịch chuyển, Hồ Gương & 6 bí mật liên bản đồ",
+      en: "4800×4000 · Forest Map · 8-zone ancient forest, shifting maze, Mirror Lake & 6 cross-map mysteries",
+    },
+    unlockWaveRequired: CITADEL_UNLOCK_WAVE,
+    unlockFromMap: "frozen_tomb",
+  },
 };
 
 export const ARENA_MAP_LIST: ArenaMapMetadata[] = [
@@ -197,6 +214,7 @@ export const ARENA_MAP_LIST: ArenaMapMetadata[] = [
   ARENA_MAPS.blood_citadel,
   ARENA_MAPS.inferno_ash,
   ARENA_MAPS.frozen_tomb,
+  ARENA_MAPS.grudge_forest,
 ];
 
 export const BLOOD_CITADEL_SPAWN = { x: 800, y: 840 };
@@ -447,6 +465,7 @@ export function normalizeArenaMapId(raw: unknown): ArenaMapId {
   if (raw === "blood_citadel") return "blood_citadel";
   if (raw === "inferno_ash") return "inferno_ash";
   if (raw === "frozen_tomb") return "frozen_tomb";
+  if (raw === "grudge_forest") return "grudge_forest";
   return "classic";
 }
 
@@ -456,6 +475,7 @@ export function computeUnlockedMaps({
   bloodCitadelCleared = false,
   infernoCleared = false,
   frozenTombCleared = false,
+  grudgeForestCleared = false,
   storedUnlocked = [],
   founderUnlocked = false,
 }: {
@@ -464,16 +484,18 @@ export function computeUnlockedMaps({
   bloodCitadelCleared?: boolean;
   infernoCleared?: boolean;
   frozenTombCleared?: boolean;
+  grudgeForestCleared?: boolean;
   storedUnlocked?: unknown;
   founderUnlocked?: boolean;
 }): ArenaMapId[] {
-  void frozenTombCleared;
+  void grudgeForestCleared;
   const hasClassicClear =
     Boolean(classicCleared) ||
     highestWaveCleared >= CITADEL_UNLOCK_WAVE ||
     (Array.isArray(storedUnlocked) && storedUnlocked.includes("blood_citadel"));
   const hasBloodClear = Boolean(bloodCitadelCleared);
   const hasInfernoClear = Boolean(infernoCleared);
+  const hasFrozenTombClear = Boolean(frozenTombCleared);
 
   const set = new Set<ArenaMapId>(["classic"]);
   if (hasClassicClear || founderUnlocked) {
@@ -484,6 +506,9 @@ export function computeUnlockedMaps({
   }
   if ((hasClassicClear && hasBloodClear && hasInfernoClear) || founderUnlocked) {
     set.add("frozen_tomb");
+  }
+  if ((hasClassicClear && hasBloodClear && hasInfernoClear && hasFrozenTombClear) || founderUnlocked) {
+    set.add("grudge_forest");
   }
   return Array.from(set);
 }
@@ -502,6 +527,7 @@ export function getNextCampaignMapId(mapId: ArenaMapId | string): ArenaMapId | n
   if (mapId === "classic") return "blood_citadel";
   if (mapId === "blood_citadel") return "inferno_ash";
   if (mapId === "inferno_ash") return "frozen_tomb";
+  if (mapId === "frozen_tomb") return "grudge_forest";
   return null;
 }
 
@@ -524,6 +550,11 @@ export function getMapUnlockRequirement(
     return isVi
       ? "Hoàn thành 27 màn Hỏa Ngục Tàn Tro / Map Lửa (hoặc mở khóa Thiên)"
       : "Complete all 27 waves in Inferno of Ashes (or unlock Thiên)";
+  }
+  if (mapId === "grudge_forest") {
+    return isVi
+      ? "Hoàn thành 27 màn Băng Mộ Vĩnh Cửu / Map Băng (hoặc mở khóa Thiên)"
+      : "Complete all 27 waves in Eternal Frozen Tomb (or unlock Thiên)";
   }
   return "";
 }

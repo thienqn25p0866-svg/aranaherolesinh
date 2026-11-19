@@ -139,6 +139,9 @@ function getSpawnPosition(slot, mapId = "classic") {
     { dx: 75, dy: 55 },
   ];
   const off = offsets[slot % offsets.length];
+  if (mapId === "grudge_forest") {
+    return { x: 460 + off.dx, y: 3560 + off.dy };
+  }
   if (mapId === "frozen_tomb") {
     return { x: 480 + off.dx, y: 2490 + off.dy };
   }
@@ -183,7 +186,9 @@ export class P2PRoomHost {
     this.syncRetryTimer = null;
 
     const safeMapId =
-      mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" ? mapId : "classic";
+      mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" || mapId === "grudge_forest"
+        ? mapId
+        : "classic";
     const safeHeroId = heroId === "thien" && !this.founderUnlocked ? "eohyen" : heroId || "eohyen";
     const pos = getSpawnPosition(0, safeMapId);
     const codeSuffix = generateRandomSixDigitCode();
@@ -986,7 +991,7 @@ export class P2PRoomHost {
     if (msg.type === "SET_MAP") {
       if (playerId !== this.hostId || this.room.status !== "LOBBY") return;
       this.room.mapId =
-        msg.mapId === "blood_citadel" || msg.mapId === "inferno_ash" || msg.mapId === "frozen_tomb"
+        msg.mapId === "blood_citadel" || msg.mapId === "inferno_ash" || msg.mapId === "frozen_tomb" || msg.mapId === "grudge_forest"
           ? msg.mapId
           : "classic";
       this.broadcastRoomUpdate();
@@ -1119,8 +1124,8 @@ export class P2PRoomHost {
       const knockY = Number(msg.knockY) || 0;
       if (knockX !== 0 || knockY !== 0) {
         const factor = enemy.kind === "boss" ? 0.25 : 1;
-        const mapW = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2400 : this.room.mapId === "frozen_tomb" ? 3400 : 2000;
-        const mapH = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2100 : this.room.mapId === "frozen_tomb" ? 2800 : 1400;
+        const mapW = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2400 : this.room.mapId === "frozen_tomb" ? 3400 : this.room.mapId === "grudge_forest" ? 4800 : 2000;
+        const mapH = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2100 : this.room.mapId === "frozen_tomb" ? 2800 : this.room.mapId === "grudge_forest" ? 4000 : 1400;
         enemy.x = Math.max(enemy.radius, Math.min(mapW - enemy.radius, enemy.x + knockX * factor));
         enemy.y = Math.max(enemy.radius, Math.min(mapH - enemy.radius, enemy.y + knockY * factor));
       }
@@ -1299,8 +1304,8 @@ export class P2PRoomHost {
       const s = msg.state;
       if (!s || typeof s !== "object") return;
       const wasAlive = player.alive;
-      const mapW = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2400 : this.room.mapId === "frozen_tomb" ? 3400 : 2000;
-      const mapH = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2100 : this.room.mapId === "frozen_tomb" ? 2800 : 1400;
+      const mapW = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2400 : this.room.mapId === "frozen_tomb" ? 3400 : this.room.mapId === "grudge_forest" ? 4800 : 2000;
+      const mapH = this.room.mapId === "blood_citadel" ? 1600 : this.room.mapId === "inferno_ash" ? 2100 : this.room.mapId === "frozen_tomb" ? 2800 : this.room.mapId === "grudge_forest" ? 4000 : 1400;
       player.x = Math.max(20, Math.min(mapW - 20, Number(s.x) || player.x));
       player.y = Math.max(20, Math.min(mapH - 20, Number(s.y) || player.y));
       player.vx = Number(s.vx) || 0;
@@ -1385,6 +1390,7 @@ export class P2PRoomHost {
           citadelSecrets: msg.citadelSecrets || null,
           infernoProgress: msg.infernoProgress || null,
           frozenTombProgress: msg.frozenTombProgress || null,
+          grudgeForestProgress: msg.grudgeForestProgress || null,
         },
         playerId
       );

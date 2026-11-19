@@ -290,6 +290,33 @@ import {
   getFrozenTombCompassTarget,
   stepFrozenTombHazards,
 } from './frozenTombMap.ts';
+import {
+  GRUDGE_FOREST_WIDTH,
+  GRUDGE_FOREST_HEIGHT,
+  GRUDGE_FOREST_SPAWN,
+  GRUDGE_FOREST_TREE_CENTER,
+  GRUDGE_FOREST_ZONES,
+  GRUDGE_FOREST_INTERACTABLES,
+  GRUDGE_FOREST_DOCS,
+  createDefaultGrudgeForestProgress,
+  normalizeGrudgeForestProgress,
+  mergeGrudgeForestProgress,
+  countGrudgeForestSecrets,
+  createInitialGrudgeForestRuntimeState,
+  getGrudgeForestZoneAt,
+  getActiveGrudgeForestObstacles,
+  shiftGrudgeMazeSafely,
+  damageGrudgeForestVinesAt,
+  findNearestGrudgeForestInteractable,
+  evaluateGrudgeForestProximityEvents,
+  checkFourMapLinkReadiness,
+  buildGrudgeForestEndingPayload,
+  evaluateGrudgeForestInteraction,
+  getGrudgeForestCompassTarget,
+  stepGrudgeForestHazards,
+} from './grudgeForestMap.ts';
+import fs from 'node:fs';
+import path from 'node:path';
 
 test('Boss CC scaling increases with wave and phase while strictly capped at 2.6s', () => {
   const w3p1 = getBossCcDuration(0.85, 3, 1, 'stun');
@@ -4300,15 +4327,16 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   assert.equal(CITADEL_UNLOCK_WAVE, 27);
   assert.equal(ARENA_MAPS.blood_citadel.width, BLOOD_CITADEL_SIZE);
   assert.equal(ARENA_MAPS.blood_citadel.height, BLOOD_CITADEL_SIZE);
-  assert.equal(ARENA_MAP_LIST.length, 4);
+  assert.equal(ARENA_MAP_LIST.length, 5);
 
-  // Strict sequential progression without Founder access: Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb
-  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: ['inferno_ash', 'frozen_tomb'], founderUnlocked: false });
+  // Strict sequential progression without Founder access: Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb -> Grudge Forest
+  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: ['inferno_ash', 'frozen_tomb', 'grudge_forest'], founderUnlocked: false });
   assert.deepEqual(lockedMaps, ['classic']);
   assert.equal(isMapUnlocked('classic', lockedMaps, false), true);
   assert.equal(isMapUnlocked('blood_citadel', lockedMaps, false), false);
   assert.equal(isMapUnlocked('inferno_ash', lockedMaps, false), false);
   assert.equal(isMapUnlocked('frozen_tomb', lockedMaps, false), false);
+  assert.equal(isMapUnlocked('grudge_forest', lockedMaps, false), false);
 
   // Clearing Classic Wave 27 unlocks only Blood Citadel (Fire & Ice remain locked)
   const wave27Unlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
@@ -4319,14 +4347,17 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   const classicFlagUnlocked = computeUnlockedMaps({ highestWaveCleared: 5, classicCleared: true, storedUnlocked: [], founderUnlocked: false });
   assert.deepEqual(classicFlagUnlocked, ['classic', 'blood_citadel']);
 
-  // Clearing Blood Citadel unlocks Inferno Ash; clearing Inferno Ash unlocks Frozen Tomb
+  // Clearing Blood Citadel unlocks Inferno Ash; clearing Inferno Ash unlocks Frozen Tomb; clearing Frozen Tomb unlocks Grudge Forest
   const infernoUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, founderUnlocked: false });
   assert.deepEqual(infernoUnlocked, ['classic', 'blood_citadel', 'inferno_ash']);
   assert.equal(isMapUnlocked('inferno_ash', infernoUnlocked, false), true);
   assert.equal(isMapUnlocked('frozen_tomb', infernoUnlocked, false), false);
 
-  const allSequentialUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, founderUnlocked: false });
-  assert.deepEqual(allSequentialUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
+  const frozenUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, founderUnlocked: false });
+  assert.deepEqual(frozenUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
+
+  const allSequentialUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, frozenTombCleared: true, founderUnlocked: false });
+  assert.deepEqual(allSequentialUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
 
   // Cannot skip directly from Inferno clear without Blood Citadel clear
   const cannotSkipBlood = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: false, infernoCleared: true, founderUnlocked: false });
@@ -4334,10 +4365,11 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
 
   // Founder unlock allows free switching to all maps even before Wave 27
   const founderMaps = computeUnlockedMaps({ highestWaveCleared: 0, classicCleared: false, storedUnlocked: [], founderUnlocked: true });
-  assert.deepEqual(founderMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
+  assert.deepEqual(founderMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
   assert.equal(isMapUnlocked('blood_citadel', ['classic'], true), true);
   assert.equal(isMapUnlocked('inferno_ash', ['classic'], true), true);
   assert.equal(isMapUnlocked('frozen_tomb', ['classic'], true), true);
+  assert.equal(isMapUnlocked('grudge_forest', ['classic'], true), true);
 
   // Verify spawn & all interactables sit cleanly outside obstacles in 1600x1600 arena
   const runtime = createInitialCitadelRuntimeState('blood_citadel');
@@ -6324,17 +6356,19 @@ test('Map 2 (inferno_ash) 8-zone upgraded render and Map 3 (frozen_tomb) upgrade
   }
 });
 
-test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb) across legacy saves, solo Wave 27, Co-op MATCH_OVER, and cloud merge', async () => {
+test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb -> Grudge Forest) across legacy saves, solo Wave 27, Co-op MATCH_OVER, and cloud merge', async () => {
   const { GameEngine } = await import('./GameEngine.js');
   const { Mi } = await import('./gameData.js');
 
   assert.equal(getNextCampaignMapId('classic'), 'blood_citadel');
   assert.equal(getNextCampaignMapId('blood_citadel'), 'inferno_ash');
   assert.equal(getNextCampaignMapId('inferno_ash'), 'frozen_tomb');
-  assert.equal(getNextCampaignMapId('frozen_tomb'), null);
+  assert.equal(getNextCampaignMapId('frozen_tomb'), 'grudge_forest');
+  assert.equal(getNextCampaignMapId('grudge_forest'), null);
   assert.match(getMapUnlockRequirement('blood_citadel', 'vi'), /Đấu Trường Cổ Điển/);
   assert.match(getMapUnlockRequirement('inferno_ash', 'vi'), /Cổ Thành Huyết Táng/);
   assert.match(getMapUnlockRequirement('frozen_tomb', 'vi'), /Hỏa Ngục Tàn Tro/);
+  assert.match(getMapUnlockRequirement('grudge_forest', 'vi'), /Băng Mộ Vĩnh Cửu/);
 
   const prevWindow = (globalThis as any).window;
   const prevLocalStorage = (globalThis as any).localStorage;
@@ -6422,11 +6456,19 @@ test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash
     assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
     assert.equal(engine.setSelectedMap('frozen_tomb'), true);
 
-    // 4. Clear Frozen Tomb Wave 27 -> sets frozenTombCleared
+    // 4. Clear Frozen Tomb Wave 27 -> sets frozenTombCleared & unlocks Grudge Forest
     engine.activeMapId = 'frozen_tomb';
     engine.wave = 27;
     engine.unlockCitadelIfEligible();
     assert.equal(engine.frozenTombCleared, true);
+    assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
+    assert.equal(engine.setSelectedMap('grudge_forest'), true);
+
+    // 4b. Clear Grudge Forest Wave 27 -> sets grudgeForestCleared
+    engine.activeMapId = 'grudge_forest';
+    engine.wave = 27;
+    engine.unlockCitadelIfEligible();
+    assert.equal(engine.grudgeForestCleared, true);
 
     // 5. Verify Co-op MATCH_OVER on Host or Guest triggers sequential unlock on active map
     storageMap.clear();
@@ -6459,6 +6501,32 @@ test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash
     assert.equal(merged.bloodCitadelCleared, true);
     assert.equal(merged.infernoCleared, false);
     assert.deepEqual(merged.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash']);
+
+    const mergedAll = mergeLocalAndCloudProgress(
+      {
+        coins: 300,
+        highestWave: 27,
+        classicCleared: true,
+        bloodCitadelCleared: true,
+        infernoCleared: true,
+        frozenTombCleared: true,
+        grudgeForestCleared: false,
+        grudgeForestProgress: { ee2MirrorLakeSeen: true, collectedDocs: ['doc_ee2_mirror_lake'] },
+      } as any,
+      {
+        coins: 250,
+        highestWave: 27,
+        grudgeForestCleared: true,
+        grudgeForestProgress: { ee3DuyLaughHeard: true, collectedDocs: ['doc_ee3_duy_stone'] },
+      } as any,
+      false
+    );
+    assert.equal(mergedAll.frozenTombCleared, true);
+    assert.equal(mergedAll.grudgeForestCleared, true);
+    assert.deepEqual(mergedAll.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
+    assert.equal(mergedAll.grudgeForestProgress?.ee2MirrorLakeSeen, true);
+    assert.equal(mergedAll.grudgeForestProgress?.ee3DuyLaughHeard, true);
+    assert.equal(mergedAll.grudgeForestProgress?.ee5TrungRoomUnlocked, true);
     assert.ok(toasts.length >= 3);
   } finally {
     (globalThis as any).window = prevWindow;
@@ -6467,6 +6535,427 @@ test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Map 4 (grudge_forest) geometry, 8 zones, shifting maze safety, breakable vines, and all 6 Easter Eggs work deterministically', () => {
+  // Dimensions > 2x Map 3 (3400*2800 = 9,520,000; Map 4 = 4800*4000 = 19,200,000)
+  assert.equal(GRUDGE_FOREST_WIDTH, 4800);
+  assert.equal(GRUDGE_FOREST_HEIGHT, 4000);
+  assert.ok(GRUDGE_FOREST_WIDTH * GRUDGE_FOREST_HEIGHT > 2 * FROZEN_TOMB_WIDTH * FROZEN_TOMB_HEIGHT);
+  assert.equal(GRUDGE_FOREST_ZONES.length, 8);
+  assert.equal(new Set(GRUDGE_FOREST_ZONES.map((z) => z.id)).size, 8);
+  for (const z of GRUDGE_FOREST_ZONES) {
+    const resolved = getGrudgeForestZoneAt(z.x + z.w * 0.5, z.y + z.h * 0.5);
+    assert.equal(resolved.id, z.id);
+  }
+
+  let progress = createDefaultGrudgeForestProgress();
+  const runtime = createInitialGrudgeForestRuntimeState(progress);
+
+  // Shifting Maze Safety: never shifts onto an entity sitting in the candidate wall rectangle
+  const initialPhase = runtime.mazePhase;
+  const safeShift = shiftGrudgeMazeSafely(runtime, [{ x: GRUDGE_FOREST_SPAWN.x, y: GRUDGE_FOREST_SPAWN.y, radius: 22 }]);
+  assert.equal(safeShift.shifted, true);
+  assert.notEqual(safeShift.newPhase, initialPhase);
+
+  // Breakable Living Vines
+  const firstVine = runtime.destructibles[0];
+  assert.equal(firstVine.destroyed, false);
+  const beforeObsCount = getActiveGrudgeForestObstacles(progress, runtime).length;
+  const dmgRes = damageGrudgeForestVinesAt(
+    runtime,
+    progress,
+    firstVine.x + firstVine.w * 0.5,
+    firstVine.y + firstVine.h * 0.5,
+    55,
+    firstVine.maxHp + 50
+  );
+  assert.equal(dmgRes.hitAny, true);
+  assert.deepEqual(dmgRes.destroyedIds, [firstVine.id]);
+  progress = dmgRes.nextProgress;
+  assert.ok(progress.destroyedVines.includes(firstVine.id));
+  assert.ok(getActiveGrudgeForestObstacles(progress, runtime).length < beforeObsCount);
+
+  // First proximity call entering forest clears introNarrativeSeen
+  runtime.duyLastX = 840;
+  runtime.duyLastY = 2040;
+  let prox = evaluateGrudgeForestProximityEvents({
+    px: 840,
+    py: 2040,
+    heroId: 'duy',
+    progress,
+    runtime,
+    dt: 0.1,
+    nearestAllyDist: 9999,
+    lang: 'vi',
+  });
+  progress = prox.nextProgress;
+  assert.equal(progress.introNarrativeSeen, true);
+
+  // EE1: Duy standing idle near puppets spawns rogue puppet & unlocks secret puppet house
+  prox = evaluateGrudgeForestProximityEvents({
+    px: 840,
+    py: 2040,
+    heroId: 'duy',
+    progress,
+    runtime,
+    dt: 3.5,
+    nearestAllyDist: 9999,
+    lang: 'vi',
+  });
+  progress = prox.nextProgress;
+  assert.equal(runtime.roguePuppet.active, true);
+  assert.equal(progress.ee1RoguePuppetSeen, true);
+
+  const nonDuyHouse = evaluateGrudgeForestInteraction({
+    nodeId: 'ee1_secret_puppet_house',
+    heroId: 'eohyen',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(nonDuyHouse.nextProgress.ee1SecretHouseSeen, false);
+
+  const duyHouse = evaluateGrudgeForestInteraction({
+    nodeId: 'ee1_secret_puppet_house',
+    heroId: 'duy',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  progress = duyHouse.nextProgress;
+  assert.equal(progress.ee1SecretHouseSeen, true);
+  assert.ok(duyHouse.payload.steps.some((s) => s.text.includes('Ngươi tưởng mình đang điều khiển chúng sao?')));
+
+  // EE2: Mirror Lake requires resonance window, reveals Map 1 or Map 2 vision
+  runtime.mirrorResonanceWindow = 0;
+  const lakeMissed = evaluateGrudgeForestInteraction({
+    nodeId: 'ee2_mirror_lake_bank',
+    heroId: 'duy',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(lakeMissed.nextProgress.ee2MirrorLakeSeen, false);
+
+  runtime.mirrorResonanceWindow = 2.5;
+  const lakeHit = evaluateGrudgeForestInteraction({
+    nodeId: 'ee2_mirror_lake_bank',
+    heroId: 'duy',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  progress = lakeHit.nextProgress;
+  assert.equal(progress.ee2MirrorLakeSeen, true);
+  assert.ok(lakeHit.payload.mirrorVisionTag === 'map1' || lakeHit.payload.mirrorVisionTag === 'map2');
+
+  // EE3: Graveyard + Duy tombstone (with Duy laugh cue) + Ma Thạch monolith -> unlocks Trung door (EE5)
+  const duyStone = evaluateGrudgeForestInteraction({
+    nodeId: 'ee3_duy_tombstone',
+    heroId: 'duy',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  progress = duyStone.nextProgress;
+  assert.equal(progress.ee3DuyLaughHeard, true);
+  assert.equal(duyStone.payload.audioCue, 'duy_laugh');
+  assert.equal(progress.ee5TrungRoomUnlocked, true);
+
+  const maThachStone = evaluateGrudgeForestInteraction({
+    nodeId: 'ee3_mathach_tombstone',
+    heroId: 'tin',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  progress = maThachStone.nextProgress;
+  assert.equal(progress.ee3MaThachStoneSeen, true);
+
+  // Align all 3 maze statues -> removes root_door_maze_vault obstacle
+  for (const st of runtime.statues) {
+    st.angleIndex = (st.targetIndex + 3) % 4;
+    const res = evaluateGrudgeForestInteraction({
+      nodeId: st.id,
+      heroId: 'duy',
+      progress,
+      runtime,
+      lang: 'vi',
+    });
+    progress = res.nextProgress;
+  }
+  assert.equal(progress.statuesAligned, true);
+  assert.equal(
+    getActiveGrudgeForestObstacles(progress, runtime).some((o) => o.doorId === 'root_door_maze_vault'),
+    false
+  );
+
+  // EE4: Thung Lũng Tiếng Gọi lone walk + mimic ambush
+  prox = evaluateGrudgeForestProximityEvents({
+    px: 2380,
+    py: 3320,
+    heroId: 'duy',
+    progress,
+    runtime,
+    dt: 2.5,
+    nearestAllyDist: 9999,
+    lang: 'vi',
+  });
+  assert.ok(runtime.phantoms.length >= 1);
+  const valleyAmbush = evaluateGrudgeForestInteraction({
+    nodeId: 'ee4_valley_echo_shrine',
+    heroId: 'duy',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  progress = valleyAmbush.nextProgress;
+  assert.equal(progress.ee4ValleyCallSeen, true);
+  assert.equal(valleyAmbush.spawnMimicAmbush, true);
+
+  // EE5: Trung's hidden room -> reveals unfinished letter
+  const trungRoom = evaluateGrudgeForestInteraction({
+    nodeId: 'ee5_trung_hidden_room',
+    heroId: 'duy',
+    progress,
+    runtime,
+    lang: 'vi',
+  });
+  progress = trungRoom.nextProgress;
+  assert.equal(progress.ee5TrungRoomSeen, true);
+  assert.ok(trungRoom.payload.steps.some((s) => s.text.includes('Duy không phải kẻ đầu tiên')));
+
+  // EE6: 4-Map Convergence Altar requires Map 1, Map 2, Map 3, Map 4 readiness
+  const notReady = checkFourMapLinkReadiness({
+    citadelSecrets: {},
+    infernoProgress: {},
+    frozenTombProgress: {},
+    grudgeProgress: progress,
+  });
+  assert.equal(notReady.map1Ready, false);
+  assert.equal(notReady.map4Ready, true);
+  assert.equal(notReady.allReady, false);
+
+  const fourMapRes = evaluateGrudgeForestInteraction({
+    nodeId: 'ee6_four_map_altar',
+    heroId: 'duy',
+    progress,
+    citadelSecrets: { tinClue: true, baoClue: true, combinedUnlocked: true },
+    infernoProgress: { trungTriggered: true },
+    frozenTombProgress: { linkedDeviceTriggered: true },
+    runtime,
+    lang: 'vi',
+  });
+  progress = fourMapRes.nextProgress;
+  assert.equal(progress.ee6FourMapSecretSeen, true);
+  assert.equal(countGrudgeForestSecrets(progress), 6);
+  assert.ok(fourMapRes.coinBonus >= 500);
+
+  // Poison Trap Mushroom Hazard & Open Boss Ending
+  const trapMush = runtime.mushrooms.find((m) => m.kind === 'lure_trap')!;
+  const hazardTick = stepGrudgeForestHazards({
+    runtime,
+    dt: 0.1,
+    playerX: trapMush.x,
+    playerY: trapMush.y,
+    playerRadius: 22,
+    playerAlive: true,
+    entitiesForMazeSafety: [{ x: trapMush.x, y: trapMush.y, radius: 22 }],
+  });
+  assert.ok(hazardTick.playerDamage > 0);
+  assert.ok(hazardTick.applyPoison && hazardTick.applyPoison.duration > 0);
+
+  const endingPayload = buildGrudgeForestEndingPayload(progress, 'vi');
+  assert.equal(endingPayload.isEndingSequence, true);
+  assert.ok(endingPayload.paragraphs.some((p) => p.includes('Không có xác nhận')));
+});
+
+test('GameEngine runs Map 4 (grudge_forest) monsters, Wave 27 Boss open ending, Co-op sync, P2P spawns, and 8-zone render with zero shadowBlur', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const { P2PRoomHost } = await import('./webrtcCoop.js');
+
+  const rendererSrc = fs.readFileSync(path.join(process.cwd(), 'src/arena/grudgeForestRenderer.js'), 'utf8');
+  assert.equal(/shadowBlur\s*=/.test(rendererSrc), false, 'grudgeForestRenderer.js must contain zero ctx.shadowBlur assignments');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  let shadowBlurWrites = 0;
+  let maxFullWhiteFillAlpha = 0;
+  let structureFillRects = 0;
+  let structureStrokeRects = 0;
+
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {},
+    fillRect(x: number, y: number, w: number, h: number) {
+      if (
+        w >= 1200 &&
+        h >= 700 &&
+        typeof rawCtx.fillStyle === 'string' &&
+        (rawCtx.fillStyle.includes('255, 255, 255') || rawCtx.fillStyle.toLowerCase() === '#ffffff')
+      ) {
+        maxFullWhiteFillAlpha = Math.max(maxFullWhiteFillAlpha, Number(rawCtx.globalAlpha || 1));
+      }
+      if (w > 2 && w < 1100 && h > 2 && h < 1100) {
+        structureFillRects++;
+      }
+    },
+    strokeRect(x: number, y: number, w: number, h: number) {
+      if (w > 2 && w < 1100 && h > 2 && h < 1100) {
+        structureStrokeRects++;
+      }
+    },
+    clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+  const ctxStub: any = new Proxy(rawCtx, {
+    set(target, prop, value) {
+      if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+      target[prop] = value;
+      return true;
+    },
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const storyEvents: any[] = [];
+    const engine: any = new GameEngine(canvasStub);
+    engine.onGrudgeForestStory = (payload: any) => storyEvents.push(payload);
+    engine.setFounderUnlocked(true);
+    engine.setSelectedMap('grudge_forest');
+
+    const duyHero = Mi.find((h: any) => h.id === 'duy') || Mi[0];
+    engine.startNewGame(duyHero, 'grudge_forest');
+    assert.equal(engine.activeMapId, 'grudge_forest');
+    assert.equal(engine.mapWidth, 4800);
+    assert.equal(engine.mapHeight, 4000);
+    assert.equal(engine.player.x, GRUDGE_FOREST_SPAWN.x);
+    assert.equal(engine.player.y, GRUDGE_FOREST_SPAWN.y);
+    assert.equal(engine.player.heroId, 'duy');
+
+    // Living vine destruction via GameEngine helper
+    const targetVine = engine.grudgeForestRuntime.destructibles[0];
+    targetVine.hp = 40;
+    const broken = engine.damageGrudgeForestWallAt(
+      targetVine.x + targetVine.w * 0.5,
+      targetVine.y + targetVine.h * 0.5,
+      45,
+      100
+    );
+    assert.equal(broken, 1);
+    assert.ok(engine.grudgeForestProgress.destroyedVines.includes(targetVine.id));
+
+    // Spawn & defeat Wave 27 Boss -> ambiguous ending + solitary moving root node
+    const boss = engine.spawnBoss(27);
+    assert.ok(boss && boss.isGrudgeForestBoss === true);
+    assert.match(boss.name, /Kẻ Ngủ Dưới Rễ Cây/i);
+    engine.damageEnemy(boss, boss.hp + 999999, 0, 0, true);
+    assert.equal(engine.grudgeForestProgress.bossClearedAmbiguous, true);
+    assert.equal(engine.grudgeForestCleared, true);
+    assert.equal(engine.grudgeForestRuntime.endingRootSpawned, true);
+    assert.ok(storyEvents.some((ev) => ev?.isEndingSequence === true));
+
+    const movingRoot = GRUDGE_FOREST_INTERACTABLES.find((x) => x.id === 'ending_moving_root')!;
+    const nearRoot = findNearestGrudgeForestInteractable(
+      movingRoot.x,
+      movingRoot.y,
+      engine.grudgeForestProgress,
+      engine.grudgeForestRuntime
+    );
+    assert.equal(nearRoot?.id, 'ending_moving_root');
+
+    // Sweep render across all 8 zones of Map 4
+    for (const z of GRUDGE_FOREST_ZONES) {
+      const cx = z.x + z.w * 0.5;
+      const cy = z.y + z.h * 0.5;
+      engine.player.x = cx;
+      engine.player.y = cy;
+      engine.camera.x = cx;
+      engine.camera.y = cy;
+      structureFillRects = 0;
+      structureStrokeRects = 0;
+      assert.doesNotThrow(() => engine.render());
+      assert.ok(structureFillRects + structureStrokeRects >= 2, `Expected rendered geometry in ${z.id}`);
+    }
+    assert.equal(shadowBlurWrites, 0);
+    assert.equal(maxFullWhiteFillAlpha, 0);
+
+    // Co-op MAP_PROGRESS_SYNC merges Map 4 secrets across teammates
+    engine.multiplayer.active = true;
+    engine.handleMultiplayerMessage({
+      type: 'MAP_PROGRESS_SYNC',
+      fromName: 'Đồng Đội Trung',
+      grudgeForestProgress: {
+        ee2MirrorLakeSeen: true,
+        ee3DuyLaughHeard: true,
+        ee5TrungRoomSeen: true,
+        collectedDocs: ['doc_ee5_trung_room'],
+      },
+    });
+    assert.equal(engine.grudgeForestProgress.ee2MirrorLakeSeen, true);
+    assert.equal(engine.grudgeForestProgress.ee5TrungRoomUnlocked, true);
+    assert.equal(engine.grudgeForestProgress.ee5TrungRoomSeen, true);
+
+    // HUD snapshot exposes Map 4 state
+    const hud = engine.getHudSnapshot();
+    assert.equal(hud.mapId, 'grudge_forest');
+    assert.ok(hud.grudgeForestHud && hud.grudgeForestProgress);
+    assert.equal(hud.grudgeForestHud.docsTotal, Object.keys(GRUDGE_FOREST_DOCS).length);
+
+    // P2PRoomHost builds spawns near GRUDGE_FOREST_SPAWN
+    const p2pHost: any = new P2PRoomHost({
+      hostName: 'HostDuy',
+      heroId: 'duy',
+      mapId: 'grudge_forest',
+      onLocalEvent: () => {},
+      onPeersChanged: () => {},
+    });
+    assert.equal(p2pHost.serializeRoom().mapId, 'grudge_forest');
+    const spawns: Record<string, any> = p2pHost._buildSpawnsMap();
+    const hostSpawn = spawns[p2pHost.hostId];
+    assert.ok(hostSpawn && Math.hypot(hostSpawn.x - GRUDGE_FOREST_SPAWN.x, hostSpawn.y - GRUDGE_FOREST_SPAWN.y) < 120);
+    p2pHost.destroy();
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
 
 
 
