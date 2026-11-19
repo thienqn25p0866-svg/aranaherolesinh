@@ -2290,6 +2290,9 @@ export function computeDucAnhC3ImpactDamage({
   return Math.max(1, Math.round(140 + (atk || 0) * 1.55 + (ap || 0) * 1.35 + (maxHp || 0) * 0.08));
 }
 
+export const FOUNDER_PIN_CODE = "68920111";
 
-
-
+export function verifyFounderPinInput(rawPin: unknown): boolean {
+  if (typeof rawPin !== "string") return false;
+  return rawPin.replace(/\D/g, "").trim() === FOUNDER_PIN_CODE;
+}

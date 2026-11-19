@@ -6956,6 +6956,165 @@ test('GameEngine runs Map 4 (grudge_forest) monsters, Wave 27 Boss open ending, 
   }
 });
 
+test('mid-match exit resets match gold to 100 on startNewGame while resumeSavedGame restores checkpoint gold', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+    ellipse() {}, rect() {}, roundRect() {}, fillRect() {}, strokeRect() {},
+    clearRect() {}, fill() {}, stroke() {}, clip() {}, setTransform() {},
+    setLineDash() {}, fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    const hero = Mi[0];
+
+    // 1) Start a match, earn extra gold mid-match, pause & quit to menu
+    engine.startNewGame(hero, 'classic');
+    assert.equal(engine.playerCoins, 100);
+    engine.playerCoins = 1850;
+    engine.wave = 5;
+    engine.gameState = 'PAUSED';
+    engine.captureCurrentRunCheckpoint();
+    engine._midMatchExited = true;
+    engine.gameState = 'MENU';
+
+    // 2) Starting a brand new match after mid-match exit must reset match gold to 100 (NOT carry over 1850)
+    engine.startNewGame(hero, 'classic');
+    assert.equal(engine.playerCoins, 100);
+
+    // 3) Starting a match where checkpoint exists and explicitly calling resumeSavedGame restores saved gold
+    engine.playerCoins = 2250;
+    engine.wave = 7;
+    engine.gameState = 'PAUSED';
+    engine.captureCurrentRunCheckpoint();
+    engine._midMatchExited = true;
+    engine.gameState = 'MENU';
+    const resumed = engine.resumeSavedGame();
+    assert.equal(resumed, true);
+    assert.equal(engine.playerCoins, 2250);
+    assert.equal(engine.wave, 7);
+
+    // 4) Even if caller does not pass resetCoins:true, startNewGame after resuming/exiting a run resets gold to 100
+    engine._midMatchExited = true;
+    engine.gameState = 'MENU';
+    engine.startNewGame(hero, 'classic');
+    assert.equal(engine.playerCoins, 100);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Easter egg reading grants invulnerability to damage and CC plus 1.5s post-close grace', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+    ellipse() {}, rect() {}, roundRect() {}, fillRect() {}, strokeRect() {},
+    clearRect() {}, fill() {}, stroke() {}, clip() {}, setTransform() {},
+    setLineDash() {}, fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.startNewGame(Mi[0], 'classic');
+    const initialHp = engine.player.hp;
+
+    // While reading Easter egg -> immune to damage & crowd control
+    engine.setEasterEggReading(true);
+    assert.equal(engine.isEasterEggInvulnerable(), true);
+    engine.damagePlayer(500);
+    engine.applyPlayerCC('stun', 2.0, 0.5);
+    assert.equal(engine.player.hp, initialHp);
+    assert.equal(engine.player.stunTimer || 0, 0);
+
+    // Closing Easter egg grants 1.5s grace window
+    engine.setEasterEggReading(false);
+    assert.equal(engine.isEasterEggInvulnerable(), true);
+    engine.damagePlayer(500);
+    assert.equal(engine.player.hp, initialHp);
+
+    // While grace is active (e.g. after 1.0s = 20 frames * 0.05s), player remains protected
+    for (let i = 0; i < 20; i += 1) engine.update(0.05);
+    assert.equal(engine.isEasterEggInvulnerable(), true);
+
+    // After 1.6s total elapses (12 more frames * 0.05s), grace expires and damage + CC apply normally
+    for (let i = 0; i < 12; i += 1) engine.update(0.05);
+    assert.equal(engine.isEasterEggInvulnerable(), false);
+    engine.damagePlayer(200);
+    engine.applyPlayerCC('stun', 1.2, 0.5);
+    assert.ok(engine.player.hp < initialHp);
+    assert.ok((engine.player.stunTimer || 0) > 0);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
 
 
 

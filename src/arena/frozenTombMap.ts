@@ -2231,7 +2231,7 @@ export function stepFrozenTombHazards({
         result.soundEvents.push("ice_crack");
         if (onIce && !cr.didHit) {
           cr.didHit = true;
-          result.playerDamage += 26;
+          result.playerDamage += 68;
           result.applyStunSec = Math.max(result.applyStunSec || 0, 0.35);
           result.applySlow = { duration: 1.4, factor: 0.35 };
         }
@@ -2269,7 +2269,7 @@ export function stepFrozenTombHazards({
         hz.timer = 1.4;
         if (playerAlive && !hz.didRoot && Math.hypot(playerX - hz.x, playerY - hz.y) <= hz.radius + playerRadius * 0.7) {
           hz.didRoot = true;
-          result.playerDamage += 24;
+          result.playerDamage += 64;
           result.applyRootSec = Math.max(result.applyRootSec || 0, 1.05);
         }
       }
@@ -2316,7 +2316,7 @@ export function stepFrozenTombHazards({
       }
       if (rem.exposureSec >= 1.1 && rem.tickCd <= 0) {
         rem.tickCd = 0.65;
-        result.playerDamage += Math.round(12 + Math.min(18, rem.exposureSec * 4));
+        result.playerDamage += Math.round(28 + Math.min(38, rem.exposureSec * 9));
       }
     } else {
       rem.exposureSec = Math.max(0, rem.exposureSec - dt * 1.4);

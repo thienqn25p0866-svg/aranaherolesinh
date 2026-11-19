@@ -1945,6 +1945,48 @@ export function renderGrudgeForestFloor(ctx, engine, t, viewBounds) {
       ctx.beginPath();
       ctx.arc(4388, 514, 36, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Ancient Mythic Weapon Pedestal at (4388, 514)
+      const px = 4388;
+      const py = 514;
+      const claimed = Boolean(rt.mazeVaultWeaponClaimed);
+      const pulse = 0.55 + Math.sin(time * 3.2) * 0.45;
+      ctx.fillStyle = mono ? "#334155" : "#1E293B";
+      ctx.strokeStyle = mono ? "#E2E8F0" : claimed ? "#34D399" : "#FACC15";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(px, py, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      if (!claimed) {
+        ctx.fillStyle = mono ? "rgba(226, 232, 240, 0.14)" : `rgba(250, 204, 21, ${(0.14 + pulse * 0.14).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(px, py, 34, 0, Math.PI * 2);
+        ctx.fill();
+
+        const bobY = Math.sin(time * 3.6) * 4;
+        ctx.save();
+        ctx.translate(px, py - 4 + bobY);
+        ctx.rotate(-Math.PI * 0.25);
+        // Sword blade
+        ctx.fillStyle = mono ? "#F8FAFC" : "#FEF08A";
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(4.2, 4);
+        ctx.lineTo(-4.2, 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = mono ? "#94A3B8" : "#F59E0B";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        // Crossguard & hilt
+        ctx.fillStyle = mono ? "#CBD5E1" : "#F59E0B";
+        ctx.fillRect(-8, 4, 16, 3.2);
+        ctx.fillStyle = mono ? "#475569" : "#78350F";
+        ctx.fillRect(-2, 7.2, 4, 7.5);
+        ctx.restore();
+      }
       ctx.restore();
     }
   }

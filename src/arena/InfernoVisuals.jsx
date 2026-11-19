@@ -452,22 +452,24 @@ export function InfernoStoryModal({ payload, lang = "vi", onClose }) {
 
   return (
     <div
-      className={`fixed inset-0 flex items-center justify-center p-3 sm:p-5 ${
-        isTrung ? "bg-black/92 backdrop-blur-md" : "bg-black/82 backdrop-blur-sm"
-      }`}
+      className="fixed inset-x-0 bottom-2 sm:bottom-3.5 flex justify-center px-2.5 sm:px-4 pointer-events-none"
       style={{ zIndex: 10070 }}
     >
       <div
-        className={`w-full max-w-[580px] rounded-2xl border p-4 sm:p-5 text-slate-100 shadow-[0_24px_80px_rgba(0,0,0,0.9)] ${borderClass}`}
+        className={`pointer-events-auto w-full max-w-[430px] rounded-xl border p-2.5 sm:p-3 text-slate-100 shadow-[0_14px_40px_rgba(0,0,0,0.88)] backdrop-blur-md ${borderClass}`}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
+        <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[10px] font-mono-numbers font-bold uppercase tracking-widest text-orange-300">
+            <div className="flex items-center gap-1.5 text-[9.5px] font-mono-numbers font-bold uppercase tracking-wider text-orange-300">
               <span>{payload.code || "HN-LOG"}</span>
               <span className="text-slate-600">·</span>
               <span className="truncate">{payload.subtitle}</span>
+              <span className="text-slate-600">·</span>
+              <span className="text-cyan-300 shrink-0">
+                🛡️ {isEn ? "Invuln" : "Bất tử"}
+              </span>
             </div>
-            <h3 className="mt-1 font-moba text-lg sm:text-xl font-black text-white leading-tight">
+            <h3 className="mt-0.5 font-moba text-sm sm:text-base font-black text-white leading-tight truncate">
               {payload.title}
             </h3>
           </div>
@@ -477,56 +479,57 @@ export function InfernoStoryModal({ payload, lang = "vi", onClose }) {
               R.playModalClose();
               onClose?.();
             }}
-            className="btn-secondary px-2.5 py-1 text-xs shrink-0"
+            className="btn-secondary min-h-[28px] px-2 py-0.5 text-xs shrink-0"
+            aria-label={isEn ? "Close" : "Đóng"}
           >
             ✕
           </button>
         </div>
 
         {/* Sequential Story Step Body */}
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between text-[11px] font-mono-numbers">
+        <div className="mt-2 space-y-2 max-h-[24vh] overflow-y-auto pr-0.5">
+          <div className="flex items-center justify-between text-[10.5px] font-mono-numbers">
             <span
-              className="font-extrabold uppercase tracking-wider"
+              className="font-extrabold uppercase tracking-wider truncate"
               style={{ color: currentStep.speakerColor || "#FDBA74" }}
             >
               ▸ {currentStep.speaker}
             </span>
-            <span className="text-slate-400 tabular-nums">
+            <span className="text-slate-400 tabular-nums shrink-0">
               {safeIdx + 1} / {steps.length}
             </span>
           </div>
 
           <div
-            className={`rounded-xl border p-4 text-sm leading-relaxed ${
+            className={`rounded-lg border px-2.5 py-2 text-xs leading-relaxed ${
               isTrung
                 ? "border-purple-500/45 bg-black/70 text-purple-100"
-                : "border-white/10 bg-black/45 text-slate-200"
+                : "border-white/10 bg-black/50 text-slate-200"
             }`}
           >
             <p>{currentStep.text}</p>
             {currentStep.subtext && (
-              <p className="mt-2.5 pt-2.5 border-t border-white/10 text-xs italic text-amber-200/90">
+              <p className="mt-1.5 pt-1.5 border-t border-white/10 text-[11px] italic text-amber-200/90">
                 {currentStep.subtext}
               </p>
             )}
           </div>
 
           {isLast && payload.clueSummary && (
-            <div className="rounded-xl border border-orange-500/35 bg-orange-950/25 px-3 py-2 text-xs font-semibold text-amber-200">
+            <div className="rounded-lg border border-orange-500/35 bg-orange-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200">
               {payload.clueSummary}
             </div>
           )}
 
           {isLast && payload.rewardText && (
-            <div className="rounded-xl border border-emerald-400/45 bg-emerald-950/30 px-3 py-2 text-xs font-bold text-emerald-200">
+            <div className="rounded-lg border border-emerald-400/45 bg-emerald-950/35 px-2.5 py-1.5 text-[11px] font-bold text-emerald-200">
               {payload.rewardText}
             </div>
           )}
         </div>
 
         {/* Footer Controls */}
-        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+        <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2">
           <button
             type="button"
             disabled={safeIdx === 0}
@@ -534,7 +537,7 @@ export function InfernoStoryModal({ payload, lang = "vi", onClose }) {
               R.playClick();
               setStepIdx((i) => Math.max(0, i - 1));
             }}
-            className="btn-secondary px-3 py-2 text-xs disabled:opacity-40"
+            className="btn-secondary min-h-[34px] px-3 py-1 text-[11px] disabled:opacity-40"
           >
             ← {isEn ? "Prev" : "Trước"}
           </button>
@@ -546,7 +549,7 @@ export function InfernoStoryModal({ payload, lang = "vi", onClose }) {
                 R.playInfernoTerminalLog?.();
                 setStepIdx((i) => Math.min(steps.length - 1, i + 1));
               }}
-              className="flex-1 btn-primary py-2 text-xs font-black"
+              className="flex-1 btn-primary min-h-[34px] py-1 text-[11px] font-black"
             >
               {isEn ? "Next Log Entry →" : "Đọc Tiếp →"}
             </button>
@@ -557,9 +560,9 @@ export function InfernoStoryModal({ payload, lang = "vi", onClose }) {
                 R.playModalClose();
                 onClose?.();
               }}
-              className="flex-1 btn-primary py-2 text-xs font-black"
+              className="flex-1 btn-primary min-h-[34px] py-1 text-[11px] font-black"
             >
-              {isEn ? "Resume Battle" : "Tiếp Tục Chiến Đấu"}
+              {isEn ? "Done Reading" : "Đóng & Chiến Tiếp"}
             </button>
           )}
         </div>

@@ -213,14 +213,21 @@ export function GrudgeForestStoryModal({ payload, lang = "vi", onClose }) {
       : "border-emerald-400/65 from-[#071D16] to-[#030709]";
 
   return (
-    <div className="modal-backdrop" style={{ zIndex: 10075 }}>
-      <div className={`modal-box max-w-[600px] bg-gradient-to-b ${borderTheme} border relative overflow-hidden`}>
-        <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3">
+    <div
+      className="fixed inset-x-0 bottom-2 sm:bottom-3.5 flex justify-center px-2.5 sm:px-4 pointer-events-none"
+      style={{ zIndex: 10075 }}
+    >
+      <div className={`pointer-events-auto w-full max-w-[430px] rounded-xl bg-gradient-to-b ${borderTheme} border p-2.5 sm:p-3 text-slate-100 shadow-[0_14px_40px_rgba(0,0,0,0.88)] backdrop-blur-md relative overflow-hidden`}>
+        <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-2">
           <div className="min-w-0">
-            <div className="text-[10px] font-mono-numbers font-bold uppercase tracking-wider text-emerald-300 truncate">
-              {payload.code} · {payload.subtitle}
+            <div className="flex items-center gap-1.5 text-[9.5px] font-mono-numbers font-bold uppercase tracking-wider text-emerald-300">
+              <span className="truncate">{payload.code} · {payload.subtitle}</span>
+              <span className="text-slate-600">·</span>
+              <span className="text-cyan-300 shrink-0">
+                🛡️ {lang === "en" ? "Invuln" : "Bất tử"}
+              </span>
             </div>
-            <h3 className="font-moba text-lg font-black text-white mt-0.5 truncate">{payload.title}</h3>
+            <h3 className="font-moba text-sm sm:text-base font-black text-white mt-0.5 truncate">{payload.title}</h3>
           </div>
           <button
             type="button"
@@ -228,34 +235,33 @@ export function GrudgeForestStoryModal({ payload, lang = "vi", onClose }) {
               R.playModalClose();
               onClose?.();
             }}
-            className="btn-secondary px-2.5 py-1 text-sm shrink-0"
+            className="btn-secondary min-h-[28px] px-2 py-0.5 text-xs shrink-0"
+            aria-label={lang === "en" ? "Close" : "Đóng"}
           >
             ✕
           </button>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-2 space-y-2 max-h-[24vh] overflow-y-auto pr-0.5">
           {payload.showsFourMapMatrix && payload.fourMapStatus && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {[
-                { key: "map1Ready", icon: "🩸", label: "Map 1", name: "Cổ Thành" },
-                { key: "map2Ready", icon: "🔥", label: "Map 2", name: "Hỏa Ngục" },
-                { key: "map3Ready", icon: "❄️", label: "Map 3", name: "Băng Mộ" },
-                { key: "map4Ready", icon: "🌿", label: "Map 4", name: "Rừng Sâu" },
+                { key: "map1Ready", icon: "🩸", label: "M1" },
+                { key: "map2Ready", icon: "🔥", label: "M2" },
+                { key: "map3Ready", icon: "❄️", label: "M3" },
+                { key: "map4Ready", icon: "🌿", label: "M4" },
               ].map((m) => {
                 const ok = Boolean(payload.fourMapStatus[m.key]);
                 return (
                   <div
                     key={m.key}
-                    className={`rounded-lg border p-2 text-center ${
+                    className={`rounded-md border px-1.5 py-1 text-center text-[10px] font-bold ${
                       ok
                         ? "bg-emerald-950/55 border-emerald-400/70 text-emerald-100"
                         : "bg-slate-950/75 border-slate-800 text-slate-500"
                     }`}
                   >
-                    <div className="text-base">{m.icon}</div>
-                    <div className="text-[10px] font-bold">{m.label}</div>
-                    <div className="text-[9.5px] opacity-80">{m.name} {ok ? "✓" : "○"}</div>
+                    {m.icon} {m.label} {ok ? "✓" : "○"}
                   </div>
                 );
               })}
@@ -263,7 +269,7 @@ export function GrudgeForestStoryModal({ payload, lang = "vi", onClose }) {
           )}
 
           {payload.mirrorVisionTag && (
-            <div className="rounded-xl bg-[#070512] border border-purple-400/45 p-3 text-xs text-purple-200">
+            <div className="rounded-lg bg-[#070512] border border-purple-400/45 px-2.5 py-1.5 text-[11px] text-purple-200">
               {payload.mirrorVisionTag === "map1"
                 ? lang === "en"
                   ? "Mirror Refraction: Crimson Blood Citadel ruins pierced by black tree roots."
@@ -274,69 +280,68 @@ export function GrudgeForestStoryModal({ payload, lang = "vi", onClose }) {
             </div>
           )}
 
-          <div className="rounded-xl bg-slate-950/85 border border-slate-800/90 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs font-moba font-extrabold">
-              <span style={{ color: current.speakerColor || "#34D399" }}>{current.speaker}</span>
-              <span className="font-mono-numbers text-[11px] text-slate-400">
+          <div className="rounded-lg bg-slate-950/85 border border-slate-800/90 px-2.5 py-2 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-moba font-extrabold">
+              <span className="truncate" style={{ color: current.speakerColor || "#34D399" }}>{current.speaker}</span>
+              <span className="font-mono-numbers text-[10px] text-slate-400 shrink-0 tabular-nums">
                 {safeIdx + 1}/{steps.length}
               </span>
             </div>
-            <p className="text-sm text-slate-100 leading-relaxed font-medium">{current.text}</p>
+            <p className="text-xs text-slate-100 leading-relaxed font-medium">{current.text}</p>
             {current.subtext && (
-              <p className="text-xs text-slate-400 italic leading-relaxed border-t border-slate-800/70 pt-2">
+              <p className="text-[11px] text-slate-400 italic leading-snug border-t border-slate-800/70 pt-1.5">
                 {current.subtext}
               </p>
             )}
           </div>
 
           {payload.rewardText && isLast && (
-            <div className="px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-400/50 text-xs font-bold text-emerald-200">
+            <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/50 text-[11px] font-bold text-emerald-200">
               {payload.rewardText}
             </div>
           )}
 
-          <div className="text-[11px] font-mono-numbers text-slate-400">{payload.clueSummary}</div>
+          {payload.clueSummary && (
+            <div className="text-[10.5px] font-mono-numbers text-slate-400">{payload.clueSummary}</div>
+          )}
+        </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1">
-            {safeIdx > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  R.playClick();
-                  setStepIdx((i) => Math.max(0, i - 1));
-                }}
-                className="btn-secondary px-4 py-2 text-xs whitespace-nowrap"
-              >
-                {lang === "en" ? "← Back" : "← Trước"}
-              </button>
-            ) : (
-              <span />
-            )}
+        <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            disabled={safeIdx === 0}
+            onClick={() => {
+              R.playClick();
+              setStepIdx((i) => Math.max(0, i - 1));
+            }}
+            className="btn-secondary min-h-[34px] px-3 py-1 text-[11px] whitespace-nowrap disabled:opacity-40"
+          >
+            {lang === "en" ? "← Back" : "← Trước"}
+          </button>
 
-            {!isLast ? (
-              <button
-                type="button"
-                onClick={() => {
-                  R.playClick();
-                  setStepIdx((i) => Math.min(steps.length - 1, i + 1));
-                }}
-                className="btn-primary px-5 py-2 text-xs font-black whitespace-nowrap"
-              >
-                {lang === "en" ? "Next →" : "Tiếp Theo →"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  R.playModalClose();
-                  onClose?.();
-                }}
-                className="btn-primary px-6 py-2 text-xs font-black whitespace-nowrap"
-              >
-                {lang === "en" ? "Continue" : "Tiếp Tục"}
-              </button>
-            )}
-          </div>
+          {!isLast ? (
+            <button
+              type="button"
+              onClick={() => {
+                R.playClick();
+                setStepIdx((i) => Math.min(steps.length - 1, i + 1));
+              }}
+              className="flex-1 btn-primary min-h-[34px] px-4 py-1 text-[11px] font-black whitespace-nowrap"
+            >
+              {lang === "en" ? "Next →" : "Tiếp Theo →"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                R.playModalClose();
+                onClose?.();
+              }}
+              className="flex-1 btn-primary min-h-[34px] px-4 py-1 text-[11px] font-black whitespace-nowrap"
+            >
+              {lang === "en" ? "Done Reading" : "Đóng & Chiến Tiếp"}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -448,8 +448,8 @@ export const INFERNO_STATIC_OBSTACLES: InfernoRectObstacle[] = [
   { id: "k4_col_2", x: 2210, y: 1110, w: 46, h: 46, kind: "pillar", label: "Cột Đá Long Hỏa" },
   { id: "k4_col_3", x: 1800, y: 1410, w: 46, h: 46, kind: "pillar", label: "Cột Đá Nứt" },
   { id: "k4_col_4", x: 2210, y: 1410, w: 46, h: 46, kind: "pillar", label: "Cột Đá Nứt" },
-  { id: "k4_south_w1", x: 1550, y: 1595, w: 310, h: 40, kind: "ruin_wall", label: "Tường Nam Điện Thờ" },
-  { id: "k4_south_w2", x: 2010, y: 1595, w: 180, h: 40, kind: "ruin_wall", label: "Tường Nam Điện Thờ" },
+  { id: "k4_south_w1", x: 1380, y: 1595, w: 480, h: 40, kind: "ruin_wall", label: "Tường Nam Điện Thờ" },
+  { id: "k4_south_w2", x: 2010, y: 1595, w: 390, h: 40, kind: "ruin_wall", label: "Tường Nam Điện Thờ" },
 
   // Khu 5: Pháo Đài Thiên Hỏa
   { id: "k5_bunker_w1", x: 1550, y: 620, w: 44, h: 320, kind: "bunker_wall", label: "Tường Pháo Đài Tây" },
@@ -460,16 +460,17 @@ export const INFERNO_STATIC_OBSTACLES: InfernoRectObstacle[] = [
   { id: "k5_console_box", x: 2092, y: 618, w: 62, h: 44, kind: "bunker_wall", label: "Trạm Máy Tính Thiên Hỏa" },
 
   // Khu 6: Thư Khố Bị Thiêu
-  { id: "k6_wall_w1", x: 1380, y: 1620, w: 38, h: 170, kind: "ruin_wall", label: "Tường Thư Khố" },
-  { id: "k6_wall_w2", x: 1380, y: 1940, w: 38, h: 150, kind: "ruin_wall", label: "Tường Thư Khố" },
+  { id: "k6_wall_w1", x: 1380, y: 1595, w: 38, h: 195, kind: "ruin_wall", label: "Tường Thư Khố" },
+  { id: "k6_wall_w2", x: 1380, y: 1940, w: 38, h: 160, kind: "ruin_wall", label: "Tường Thư Khố" },
   { id: "k6_shelf_1", x: 1605, y: 1715, w: 110, h: 36, kind: "bookshelf", label: "Kệ Sách Cháy" },
   { id: "k6_shelf_2", x: 1875, y: 1715, w: 110, h: 36, kind: "bookshelf", label: "Kệ Hồ Sơ Đổ" },
   { id: "k6_shelf_3", x: 1605, y: 1965, w: 110, h: 36, kind: "bookshelf", label: "Giá Sách Tro Tàn" },
   { id: "k6_shelf_4", x: 2085, y: 1785, w: 40, h: 135, kind: "bookshelf", label: "Tủ Lưu Trữ Sắt" },
 
   // Khu 7: Căn Phòng Bốn Chiếc Ghế
-  { id: "k7_wall_w", x: 785, y: 40, w: 40, h: 400, kind: "bunker_wall", label: "Vách Mật Thất Tây" },
-  { id: "k7_wall_e", x: 1455, y: 40, w: 40, h: 400, kind: "bunker_wall", label: "Vách Mật Thất Đông" },
+  { id: "k7_wall_n", x: 785, y: 0, w: 710, h: 36, kind: "bunker_wall", label: "Vách Mật Thất Bắc" },
+  { id: "k7_wall_w", x: 785, y: 0, w: 40, h: 441, kind: "bunker_wall", label: "Vách Mật Thất Tây" },
+  { id: "k7_wall_e", x: 1455, y: 0, w: 40, h: 441, kind: "bunker_wall", label: "Vách Mật Thất Đông" },
   { id: "k7_wall_sw", x: 825, y: 405, w: 225, h: 36, kind: "bunker_wall", label: "Cổng Mật Thất Trái" },
   { id: "k7_wall_se", x: 1230, y: 405, w: 225, h: 36, kind: "bunker_wall", label: "Cổng Mật Thất Phải" },
 
@@ -1734,7 +1735,7 @@ export function stepInfernoHazards({
         result.soundEvents.push("lightning");
         if (playerAlive && !lt.didHit && Math.hypot(playerX - lt.x, playerY - lt.y) <= lt.radius + playerRadius * 0.7) {
           lt.didHit = true;
-          result.playerDamage += 36;
+          result.playerDamage += 78;
           result.applyStunSec = Math.max(result.applyStunSec || 0, 0.35);
         }
       }
@@ -1773,8 +1774,8 @@ export function stepInfernoHazards({
         const hitY = Math.abs(playerY - cy) <= ff.h * 0.5 + playerRadius * 0.65;
         if (hitX && hitY) {
           ff.tickCd = 0.45;
-          result.playerDamage += 18;
-          result.applyBurn = { duration: 2.0, dps: 12 };
+          result.playerDamage += 38;
+          result.applyBurn = { duration: 2.0, dps: 24 };
         }
       }
       if (ff.timer <= 0) {
@@ -1823,10 +1824,10 @@ export function stepInfernoHazards({
       const dist = Math.hypot(dx, dy);
       const stepDist = 560 * dt;
       if (dist <= stepDist || ms.timer <= 0) {
-        result.missileImpacts.push({ x: ms.targetX, y: ms.targetY, radius: ms.blastRadius, damage: 42 });
+        result.missileImpacts.push({ x: ms.targetX, y: ms.targetY, radius: ms.blastRadius, damage: 92 });
         result.soundEvents.push("missile_boom");
         if (playerAlive && Math.hypot(playerX - ms.targetX, playerY - ms.targetY) <= ms.blastRadius + playerRadius * 0.65) {
-          result.playerDamage += 42;
+          result.playerDamage += 92;
         }
         const smash = damageInfernoDestructibleWalls(runtime, nextProg, ms.targetX, ms.targetY, ms.blastRadius + 16, 220);
         nextProg = smash.nextProgress;
@@ -1866,7 +1867,7 @@ export function stepInfernoHazards({
         br.timer = 5.5;
         result.soundEvents.push("bridge_crack");
         if (onBridge) {
-          result.playerDamage += 24;
+          result.playerDamage += 64;
           result.applySlow = { duration: 1.0, factor: 0.35 };
         }
       }
@@ -1909,7 +1910,7 @@ export function stepInfernoHazards({
       result.applySlow = { duration: 0.45, factor: 0.28 };
       if (arc.exposureSec >= 0.75 && arc.tickCd <= 0) {
         arc.tickCd = 0.55;
-        result.playerDamage += Math.round(14 + Math.min(20, arc.exposureSec * 5));
+        result.playerDamage += Math.round(32 + Math.min(44, arc.exposureSec * 10));
       }
     } else {
       arc.exposureSec = Math.max(0, arc.exposureSec - dt * 1.5);

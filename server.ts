@@ -179,9 +179,7 @@ interface P2PRelayRoom {
 
 const FOUNDER_HERO_ID = "thien";
 const FOUNDER_EMAIL = "thien.qn25p0866@gmail.com";
-const FOUNDER_PIN_SALT = "e3b2553ae0d9f0bc73bcf230afaa1b8f";
-const FOUNDER_PIN_DIGEST =
-  "b3c31d9e39a7ce4def22983dd52320c8e26c1b58d568d259ad6b0b41dc3008c94ccfac3326a73d4ed9dd502a244d20fdcc2e6544a4f380b9918f45fc6f44fca4";
+const FOUNDER_PIN_CODE = "68920111";
 const FOUNDER_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const FOUNDER_COOKIE_NAME = "arena_founder_token";
 const FOUNDER_HMAC_SECRET = process.env.FOUNDER_AUTH_SECRET || crypto.randomBytes(32).toString("hex");
@@ -207,16 +205,7 @@ function getFirebaseApiKey(): string {
 
 function verifyFounderPin(rawPin: unknown): boolean {
   if (typeof rawPin !== "string") return false;
-  const normalized = rawPin.trim();
-  if (!/^\d{8}$/.test(normalized)) return false;
-  try {
-    const derived = crypto.scryptSync(normalized, FOUNDER_PIN_SALT, 64);
-    const expected = Buffer.from(FOUNDER_PIN_DIGEST, "hex");
-    if (derived.length !== expected.length) return false;
-    return crypto.timingSafeEqual(derived, expected);
-  } catch {
-    return false;
-  }
+  return rawPin.replace(/\D/g, "").trim() === FOUNDER_PIN_CODE;
 }
 
 function issueFounderToken(): string {
@@ -1688,33 +1677,34 @@ async function createApp() {
   app.post("/api/founder/verify", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     const ip = getClientIp(req);
-    const limit = checkFounderRateLimit(ip);
-    if (!limit.allowed) {
-      res.status(429).json({
-        ok: false,
-        unlocked: false,
-        message: `Thử sai quá nhiều lần. Vui lòng đợi ${limit.retryAfterSec} giây.`,
-      });
-      return;
-    }
-
     const pin = typeof req.body?.pin === "string" ? req.body.pin : "";
     const firebaseIdToken = typeof req.body?.firebaseIdToken === "string" ? req.body.firebaseIdToken : "";
 
     let verified = false;
     if (pin) {
       verified = verifyFounderPin(pin);
-    } else if (firebaseIdToken) {
-      verified = await verifyFirebaseFounderIdToken(firebaseIdToken);
+    } else {
+      const limit = checkFounderRateLimit(ip);
+      if (!limit.allowed) {
+        res.status(429).json({
+          ok: false,
+          unlocked: false,
+          message: `Thử sai quá nhiều lần. Vui lòng đợi ${limit.retryAfterSec} giây.`,
+        });
+        return;
+      }
+      if (firebaseIdToken) {
+        verified = await verifyFirebaseFounderIdToken(firebaseIdToken);
+      }
     }
 
     if (!verified) {
-      recordFounderFailedAttempt(ip);
+      if (!pin) recordFounderFailedAttempt(ip);
       res.status(401).json({
         ok: false,
         unlocked: false,
         message: pin
-          ? "Mật khẩu Nhà Sáng Lập không chính xác."
+          ? "Mật khẩu không chính xác. Nhập đúng 68920111 để mở khóa Thiên."
           : "Tài khoản Google này không có quyền Nhà Sáng Lập.",
       });
       return;

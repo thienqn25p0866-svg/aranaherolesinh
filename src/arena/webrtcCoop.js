@@ -1,4 +1,4 @@
-import { computeCoopWaveReward, MAX_WAVES } from "./combatLogic";
+import { computeCoopWaveReward, MAX_WAVES, verifyFounderPinInput } from "./combatLogic";
 
 const MAX_PLAYERS = 4;
 const RTC_ICE_SERVERS = [
@@ -178,6 +178,8 @@ export class P2PRoomHost {
   constructor({ hostName, heroId, mapId = "classic", founderUnlocked = false, onLocalEvent, onPeersChanged }) {
     this.hostId = `p2p_${Math.random().toString(36).slice(2, 10)}`;
     this.founderUnlocked = Boolean(founderUnlocked);
+    this.founderVerifiedPeers = new Set();
+    if (this.founderUnlocked) this.founderVerifiedPeers.add(this.hostId);
     this.onLocalEvent = onLocalEvent;
     this.onPeersChanged = onPeersChanged;
     this.relaySender = null;
@@ -247,6 +249,8 @@ export class P2PRoomHost {
 
   setFounderUnlocked(unlocked) {
     this.founderUnlocked = Boolean(unlocked);
+    if (this.founderUnlocked) this.founderVerifiedPeers.add(this.hostId);
+    else this.founderVerifiedPeers.delete(this.hostId);
   }
 
   start() {
@@ -826,6 +830,18 @@ export class P2PRoomHost {
       return;
     }
 
+    if (msg.type === "AUTH_FOUNDER") {
+      const ok = verifyFounderPinInput(msg.pin) || (playerId === this.hostId && this.founderUnlocked);
+      if (ok) {
+        this.founderVerifiedPeers.add(playerId);
+        if (playerId === this.hostId) this.founderUnlocked = true;
+        this.sendToPlayer(playerId, { type: "FOUNDER_AUTH_RESULT", unlocked: true });
+      } else {
+        this.sendToPlayer(playerId, { type: "FOUNDER_AUTH_RESULT", unlocked: false, message: "Mật khẩu mở khóa Thiên không chính xác." });
+      }
+      return;
+    }
+
     if (msg.type === "P2P_JOIN_ACK") {
       const peer = this.peers.get(playerId);
       const player = this.room.players.get(playerId);
@@ -864,7 +880,8 @@ export class P2PRoomHost {
           }
         }
         if (typeof msg.heroId === "string" && msg.heroId && msg.heroId !== existing.heroId && this.room.status === "LOBBY") {
-          const canPickHero = msg.heroId !== "thien" || (playerId === this.hostId && this.founderUnlocked);
+          const isFounderAuthorized = this.founderVerifiedPeers.has(playerId) || (playerId === this.hostId && this.founderUnlocked);
+          const canPickHero = msg.heroId !== "thien" || isFounderAuthorized;
           if (canPickHero) {
             existing.heroId = msg.heroId;
             updated = true;
@@ -891,7 +908,8 @@ export class P2PRoomHost {
       const slot = this.getNextFreeSlot();
       const pos = getSpawnPosition(slot, this.room.mapId);
       const requestedHero = typeof msg.heroId === "string" && msg.heroId ? msg.heroId : "dung";
-      const safePeerHero = requestedHero === "thien" ? "dung" : requestedHero;
+      const isFounderAuthorized = this.founderVerifiedPeers.has(playerId) || (playerId === this.hostId && this.founderUnlocked);
+      const safePeerHero = requestedHero === "thien" && !isFounderAuthorized ? "dung" : requestedHero;
       const joined = {
         id: playerId,
         name: sanitizeName(msg.playerName, slot + 1),
@@ -968,7 +986,8 @@ export class P2PRoomHost {
 
     if (msg.type === "SELECT_HERO") {
       if (typeof msg.heroId === "string" && msg.heroId) {
-        if (msg.heroId === "thien" && !(playerId === this.hostId && this.founderUnlocked)) {
+        const isFounderAuthorized = this.founderVerifiedPeers.has(playerId) || (playerId === this.hostId && this.founderUnlocked);
+        if (msg.heroId === "thien" && !isFounderAuthorized) {
           this.sendToPlayer(playerId, {
             type: "ROOM_ERROR",
             code: "FOUNDER_LOCKED",

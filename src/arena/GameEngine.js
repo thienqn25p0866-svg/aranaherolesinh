@@ -13,7 +13,7 @@ import { mpClient } from "./multiplayerClient";
 import { readDeviceKey, writeDeviceKey, recordDeviceSave, normalizeSavedRun } from "./deviceStorage";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this._matchEndedPendingReset = false, this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.bloodCitadelCleared = false, this.infernoCleared = false, this.frozenTombCleared = false, this.grudgeForestCleared = false, this.unlockedMaps = computeUnlockedMaps({ founderUnlocked: this.founderUnlocked }), this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.grudgeForestProgress = createDefaultGrudgeForestProgress(), this.grudgeForestRuntime = null, this.grudgeForestVisionDim = 0, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onGrudgeForestStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this._matchEndedPendingReset = false, this._midMatchExited = false, this.isReadingEasterEgg = false, this.easterEggInvulnGrace = 0, this.easterEggInvulnTextCd = 0, this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.bloodCitadelCleared = false, this.infernoCleared = false, this.frozenTombCleared = false, this.grudgeForestCleared = false, this.unlockedMaps = computeUnlockedMaps({ founderUnlocked: this.founderUnlocked }), this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.grudgeForestProgress = createDefaultGrudgeForestProgress(), this.grudgeForestRuntime = null, this.grudgeForestVisionDim = 0, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onGrudgeForestStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
       let hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
       let profile = this.getPerformanceProfile(false, hidden);
       let rawMs = a - this.lastTime;
@@ -97,6 +97,16 @@ export class GameEngine {
   }
   isCoopHost() {
     return !this.multiplayer.active || this.multiplayer.isHost;
+  }
+  setEasterEggReading(active) {
+    const next = Boolean(active);
+    if (this.isReadingEasterEgg && !next) {
+      this.easterEggInvulnGrace = Math.max(this.easterEggInvulnGrace || 0, 1.5);
+    }
+    this.isReadingEasterEgg = next;
+  }
+  isEasterEggInvulnerable() {
+    return Boolean(this.isReadingEasterEgg || (this.easterEggInvulnGrace || 0) > 0);
   }
   queueVfx(type, data) {
     if (!this.multiplayer.active) return;
@@ -1974,6 +1984,13 @@ export class GameEngine {
     this.player.chargeState.active = false, this.player.chargeState.kind = null, this.player.chargeState.elapsed = 0, this.aimState.active = false, this.player.cooldowns[s] = Math.max(this.player.cooldowns[s], l), this.currentHero.id === "danh" && s === 0 && (this.player.danh_c1_step = 0, this.player.danh_c1_windowTimer = 0, this.player.danh_c1_hitSteps = 0), this.comboManager.record({ heroId: this.currentHero.id, action: "charge_interrupted", hitCount: 0 }), this.addFloatingText(this.player.x, this.player.y - 38, `\u26A0\uFE0F NG\u1EAET T\u1EE4 L\u1EF0C! H\u1ED2I ${l.toFixed(1)}s`, "#F87171", 15);
   }
   applyPlayerCC(s, a, l = 0, m = this.player.x, c = this.player.y) {
+    if (this.isEasterEggInvulnerable()) {
+      if ((this.easterEggInvulnTextCd || 0) <= 0) {
+        this.easterEggInvulnTextCd = 0.85;
+        this.addFloatingText(this.player.x, this.player.y - 36, this.currentLang === "en" ? "\u{1F6E1}\uFE0F INVULN \xB7 READING SECRET" : "\u{1F6E1}\uFE0F B\u1EA4T T\u1EEC \xB7 \u0110\u1ECCC B\xCD M\u1EACT", "#67E8F9", 13);
+      }
+      return;
+    }
     if (this.currentHero.id === "ducanh" && this.player.ducanh_leapActive && s !== "burn") return;
     if (this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0 && s !== "burn") {
       this.player.ccResistTimer <= 0 && (this.player.ccResistTimer = 0.6, this.addFloatingText(this.player.x, this.player.y - 30, "\u{1F6E1}\uFE0F MI\u1EC4N KH\u1ED0NG!", "#FDE047", 14));
@@ -2357,6 +2374,13 @@ export class GameEngine {
   }
   damagePlayer(s, a = null) {
     if (this.player.dashActive || this.player.ducanh_leapActive || this.player.hp <= 0 || (this.multiplayer.active && this.multiplayer.localDowned)) return;
+    if (this.isEasterEggInvulnerable()) {
+      if (s > 0 && (this.easterEggInvulnTextCd || 0) <= 0) {
+        this.easterEggInvulnTextCd = 0.85;
+        this.addFloatingText(this.player.x, this.player.y - 36, this.currentLang === "en" ? "\u{1F6E1}\uFE0F INVULN \xB7 READING SECRET" : "\u{1F6E1}\uFE0F B\u1EA4T T\u1EEC \xB7 \u0110\u1ECCC B\xCD M\u1EACT", "#67E8F9", 13);
+      }
+      return;
+    }
     if (this.currentHero.id === "thien" && s > 0) {
       for (let tz of this.thienTimeZones) {
         if (!tz.visualOnly && Math.hypot(tz.x - this.player.x, tz.y - this.player.y) <= (tz.radius || 220) + 45) {
@@ -5536,6 +5560,10 @@ export class GameEngine {
     this.applyMapLayout(roomData?.mapId || this.selectedMapId, !roomData?.mapId);
     this.playerCoins = 100;
     this._matchEndedPendingReset = false;
+    this._midMatchExited = false;
+    this.isReadingEasterEgg = false;
+    this.easterEggInvulnGrace = 0;
+    this.easterEggInvulnTextCd = 0;
     this.inventory = [];
     this.heroGear = um();
     this.duccong_pads = [null, null, null];
@@ -5669,6 +5697,13 @@ export class GameEngine {
     this.onStateChange && this.onStateChange();
   }
   stopCoopMode() {
+    if (this.multiplayer?.active && (this.gameState === "PLAYING" || this.gameState === "PAUSED")) {
+      this._matchEndedPendingReset = true;
+      this._midMatchExited = true;
+    }
+    this.isReadingEasterEgg = false;
+    this.easterEggInvulnGrace = 0;
+    this.easterEggInvulnTextCd = 0;
     this.multiplayer.active = false;
     this.multiplayer.isHost = false;
     this.multiplayer.roomId = null;
@@ -5783,6 +5818,7 @@ export class GameEngine {
     this.multiplayer.active && mpClient.send({ type: "SPAWN_ENEMIES", enemies: [enemy], waveSpawned: this.waveSpawned });
   }
   startNewGame(s, mapId = this.selectedMapId, options = {}) {
+    let hasAbandonedPriorRun = Boolean(normalizeSavedRun(this.savedRun, MAX_WAVES)) || this._midMatchExited === true;
     this.stopCoopMode();
     this.applyMapLayout(mapId, true);
     s && (this.currentHero = s, this.selectedHeroId = s.id);
@@ -5790,10 +5826,14 @@ export class GameEngine {
       this.playerCoins = 100;
       this.inventory = [];
       this.heroGear = um();
-    } else if ((options && options.resetCoins === true) || this._matchEndedPendingReset === true) {
+    } else if ((options && options.resetCoins === true) || this._matchEndedPendingReset === true || (hasAbandonedPriorRun && options?.preserveCoins !== true)) {
       this.playerCoins = 100;
     }
     this._matchEndedPendingReset = false;
+    this._midMatchExited = false;
+    this.isReadingEasterEgg = false;
+    this.easterEggInvulnGrace = 0;
+    this.easterEggInvulnTextCd = 0;
     this.duccong_pads = [null, null, null];
     this.savedRun = null;
     this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.captureCurrentRunCheckpoint(1), this.saveGame(), this.syncMusicState(), this.onStateChange && this.onStateChange();
@@ -5803,6 +5843,10 @@ export class GameEngine {
     if (!run) return false;
     this.stopCoopMode();
     this._matchEndedPendingReset = false;
+    this._midMatchExited = false;
+    this.isReadingEasterEgg = false;
+    this.easterEggInvulnGrace = 0;
+    this.easterEggInvulnTextCd = 0;
     let heroObj = Mi.find((m) => m.id === run.heroId) || this.currentHero || Mi[4];
     if (heroObj?.isSecretFounder && !this.founderUnlocked) {
       heroObj = Mi[4];
@@ -5843,6 +5887,8 @@ export class GameEngine {
   update(s) {
     if (this.gameState !== "PLAYING") return;
     let a = Math.min(s, 0.05);
+    if (this.easterEggInvulnGrace > 0) this.easterEggInvulnGrace = Math.max(0, this.easterEggInvulnGrace - a);
+    if (this.easterEggInvulnTextCd > 0) this.easterEggInvulnTextCd = Math.max(0, this.easterEggInvulnTextCd - a);
     !this.waitingReward && !this.waveCleared && (this.elapsedTime += a, this.waveElapsedTime += a);
     if (this.killStreakTimer > 0) {
       this.killStreakTimer = Math.max(0, this.killStreakTimer - a);
@@ -9198,6 +9244,19 @@ export class GameEngine {
         }
         s.restore();
       }
+    }
+    if (this.isEasterEggInvulnerable()) {
+      let pulse = 0.72 + Math.sin(this.elapsedTime * 7) * 0.25;
+      s.save(), s.translate(vx, vy);
+      s.fillStyle = `rgba(34, 211, 238, ${0.14 * pulse})`;
+      s.beginPath(), s.arc(0, 0, this.player.radius + 17, 0, Math.PI * 2), s.fill();
+      s.rotate(this.elapsedTime * 2.4);
+      s.strokeStyle = "#67E8F9", s.lineWidth = 2.4, s.setLineDash([10, 6]);
+      s.beginPath(), s.arc(0, 0, this.player.radius + 17, 0, Math.PI * 2), s.stroke();
+      s.rotate(-this.elapsedTime * 4.2);
+      s.strokeStyle = "#FDE047", s.lineWidth = 1.6, s.setLineDash([6, 8]);
+      s.beginPath(), s.arc(0, 0, this.player.radius + 22, 0, Math.PI * 2), s.stroke();
+      s.setLineDash([]), s.restore();
     }
     if (hid === "nguyen" && this.player.nguyen_satellitesTimer > 0) {
       drawNguyenSatellites(s, vx, vy, this.player.nguyen_satellitesRot || 0, this.elapsedTime, 56, a);

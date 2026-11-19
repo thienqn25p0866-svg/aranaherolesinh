@@ -92,7 +92,8 @@ export type GrudgeForestInteractableId =
   | "ee5_trung_hidden_room"
   | "ee6_four_map_altar"
   | "forest_heart_boss_altar"
-  | "ending_moving_root";
+  | "ending_moving_root"
+  | "maze_vault_weapon";
 
 export interface GrudgeForestInteractableDef {
   id: GrudgeForestInteractableId;
@@ -112,7 +113,8 @@ export interface GrudgeForestInteractableDef {
     | "ee5"
     | "ee6"
     | "boss_altar"
-    | "ending_root";
+    | "ending_root"
+    | "vault_weapon";
   heroIdRequired: "duy" | null;
   docId?: string;
   title: { vi: string; en: string };
@@ -326,6 +328,7 @@ export interface GrudgeForestRuntimeState {
   lastDiscoveryToast: string | null;
   lastDiscoveryTimer: number;
   darknessPulseSec: number;
+  mazeVaultWeaponClaimed: boolean;
 }
 
 export interface GrudgeForestStoryStep {
@@ -548,7 +551,7 @@ export const GRUDGE_FOREST_STATIC_OBSTACLES: GrudgeForestRectObstacle[] = [
   { id: "z2_puppet_house_w", x: 180, y: 1554, w: 34, h: 240, kind: "abandoned_house", label: "Tường Nhà Búp Bê (Tây)" },
   { id: "z2_puppet_house_e", x: 446, y: 1554, w: 34, h: 120, kind: "abandoned_house", label: "Tường Nhà Búp Bê (Đông)" },
   { id: "z2_puppet_house_door", x: 446, y: 1674, w: 34, h: 120, kind: "conditional_root_door", doorId: "root_door_puppet_house", label: "Cửa Rễ Nhà Rối" },
-  { id: "z2_puppet_house_s", x: 180, y: 1794, w: 220, h: 34, kind: "abandoned_house", label: "Tường Nhà Búp Bê (Nam)" },
+  { id: "z2_puppet_house_s", x: 180, y: 1794, w: 300, h: 34, kind: "abandoned_house", label: "Tường Nhà Búp Bê (Nam)" },
   { id: "z2_trunk_mid", x: 640, y: 1940, w: 110, h: 110, kind: "ancient_trunk", label: "Cổ Thụ Giữa Làng" },
 
   // Zone 4: Nghĩa Địa Rễ Cây
@@ -817,6 +820,17 @@ export const GRUDGE_FOREST_INTERACTABLES: GrudgeForestInteractableDef[] = [
     heroIdRequired: null,
     title: { vi: "Tượng Đá Cổ Mê Cung (Nam)", en: "Ancient Maze Idol (South)" },
     shortPrompt: { vi: "Xoay tượng đá phủ rêu", en: "Rotate mossy stone idol" },
+  },
+  {
+    id: "maze_vault_weapon",
+    zoneId: "zone_5",
+    x: 4388,
+    y: 514,
+    radius: 74,
+    kind: "vault_weapon",
+    heroIdRequired: null,
+    title: { vi: "Bệ Vũ Khí Huyền Thoại Cổ Xưa", en: "Ancient Mythic Weapon Pedestal" },
+    shortPrompt: { vi: "Nhận Vũ Khí Huyền Thoại Ngẫu Nhiên", en: "Claim Random Mythic Weapon" },
   },
 
   // Zone 6
@@ -1409,6 +1423,7 @@ export function createInitialGrudgeForestRuntimeState(
     lastDiscoveryToast: null,
     lastDiscoveryTimer: 0,
     darknessPulseSec: 0,
+    mazeVaultWeaponClaimed: false,
   };
 }
 
@@ -1612,6 +1627,7 @@ export function findNearestGrudgeForestInteractable(
   for (const node of GRUDGE_FOREST_INTERACTABLES) {
     if (node.id === "ending_moving_root" && !rootVisible) continue;
     if (node.id === "forest_heart_boss_altar" && rootVisible) continue;
+    if (node.id === "maze_vault_weapon" && !norm.statuesAligned) continue;
     const d = Math.hypot(px - node.x, py - node.y);
     if (d <= node.radius + maxOffset && d < bestDist) {
       bestDist = d;
@@ -1923,6 +1939,7 @@ export function evaluateGrudgeForestInteraction({
   spawnForestBoss?: boolean;
   spawnRootTrapWarning?: boolean;
   darknessPulseSec?: number;
+  claimMazeVaultWeapon?: boolean;
 } {
   const isVi = lang !== "en";
   const next = normalizeGrudgeForestProgress(progress);
@@ -1940,6 +1957,7 @@ export function evaluateGrudgeForestInteraction({
   let spawnMimicAmbush = false;
   let spawnForestBoss = false;
   let spawnRootTrapWarning = false;
+  let claimMazeVaultWeapon = false;
   let darknessPulseSec = 0;
   let mirrorVisionTag: "map1" | "map2" | null = null;
   let showsFourMapMatrix = false;
@@ -2248,6 +2266,48 @@ export function evaluateGrudgeForestInteraction({
         },
       ];
     }
+  } else if (nodeId === "maze_vault_weapon") {
+    themeVariant = "four_maps";
+    const aligned = Boolean(next.statuesAligned);
+    const alreadyClaimed = Boolean(runtime?.mazeVaultWeaponClaimed);
+    if (!aligned) {
+      audioCue = "twig";
+      steps = [
+        {
+          speaker: isVi ? "Bệ Thờ Phong Ấn" : "Sealed Vault Pedestal",
+          speakerColor: "#94A3B8",
+          text: isVi
+            ? "Phong ấn 3 bức tượng đá quanh mê cung chưa khớp — cổ vật vẫn bị khóa chặt."
+            : "The three stone idols are not yet aligned — the ancient relic remains sealed.",
+        },
+      ];
+    } else if (!alreadyClaimed) {
+      claimMazeVaultWeapon = true;
+      audioCue = "secret";
+      isSecretDiscovery = true;
+      unlockedNow = true;
+      healPct = 0.2;
+      steps = [
+        {
+          speaker: isVi ? "Bệ Vũ Khí Cổ Xưa" : "Ancient Weapon Pedestal",
+          speakerColor: "#FACC15",
+          text: isVi
+            ? "Lớp rễ đá nứt toác, trao cho ngươi một món Vũ Khí Huyền Thoại ngủ quên trong Kho Cổ Mê Cung!"
+            : "The ancient roots part and bestow a Mythic Weapon dormant inside the Maze Vault!",
+        },
+      ];
+    } else {
+      audioCue = "chime";
+      steps = [
+        {
+          speaker: isVi ? "Bệ Đá Trống" : "Empty Stone Pedestal",
+          speakerColor: "#34D399",
+          text: isVi
+            ? "Ngươi đã thu nhận món Vũ Khí Huyền Thoại từ căn phòng bí mật này."
+            : "You have already claimed the Mythic Weapon from this secret vault.",
+        },
+      ];
+    }
   } else if (nodeId === "ee4_valley_calling_point" || nodeId === "ee4_valley_echo_shrine") {
     themeVariant = "valley";
     if (nodeId === "ee4_valley_echo_shrine") {
@@ -2458,6 +2518,7 @@ export function evaluateGrudgeForestInteraction({
     spawnForestBoss,
     spawnRootTrapWarning,
     darknessPulseSec,
+    claimMazeVaultWeapon,
     payload: {
       nodeId,
       zoneId: node.zoneId,
@@ -2678,8 +2739,8 @@ export function stepGrudgeForestHazards({
       } else {
         m.cooldown = 12;
         m.triggeredCount++;
-        result.playerDamage += 18;
-        result.applyPoison = { dps: 8, duration: 3.5 };
+        result.playerDamage += 48;
+        result.applyPoison = { dps: 22, duration: 3.5 };
         result.applySlow = { duration: 1.5, factor: 0.25 };
         result.mushroomLureSpawns.push(m);
         result.soundEvents.push("twig");
@@ -2707,7 +2768,7 @@ export function stepGrudgeForestHazards({
         result.soundEvents.push("root_erupt");
         if (playerAlive && !rt.didRoot && Math.hypot(playerX - rt.x, playerY - rt.y) <= rt.radius + playerRadius * 0.65) {
           rt.didRoot = true;
-          result.playerDamage += 24;
+          result.playerDamage += 66;
           result.applyRootSec = Math.max(result.applyRootSec || 0, 1.0);
         }
       }
@@ -2753,7 +2814,7 @@ export function stepGrudgeForestHazards({
           ft.timer = 14;
           if (playerAlive && !ft.didHit && isEntityOverlappingRect(playerX, playerY, playerRadius, ft, 16)) {
             ft.didHit = true;
-            result.playerDamage += 20;
+            result.playerDamage += 60;
             result.applySlow = { duration: 1.2, factor: 0.3 };
           }
           // Push overlapping entities safely out via caller's resolveEntityObstacles

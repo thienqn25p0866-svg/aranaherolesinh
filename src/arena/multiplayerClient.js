@@ -66,6 +66,7 @@ class MultiplayerClient {
     this.rttMs = 0;
     this.connectPromise = null;
     this.founderToken = "";
+    this.founderPin = "";
     this.founderUnlocked = false;
   }
 
@@ -80,14 +81,15 @@ class MultiplayerClient {
     };
   }
 
-  setFounderAuth(unlocked, token = "") {
+  setFounderAuth(unlocked, token = "", pin = "") {
     this.founderUnlocked = Boolean(unlocked);
     this.founderToken = unlocked && typeof token === "string" ? token : "";
+    this.founderPin = unlocked && typeof pin === "string" ? pin.replace(/\D/g, "").trim() : "";
     if (this.p2pHost) {
       this.p2pHost.setFounderUnlocked?.(this.founderUnlocked);
     }
     if (this.founderUnlocked && this.isConnected()) {
-      this.send({ type: "AUTH_FOUNDER", founderToken: this.founderToken });
+      this.send({ type: "AUTH_FOUNDER", founderToken: this.founderToken, pin: this.founderPin });
     }
   }
 
@@ -410,8 +412,8 @@ class MultiplayerClient {
           clearTimeout(timer);
           resolve();
         }
-        if (this.founderUnlocked && this.founderToken) {
-          this.send({ type: "AUTH_FOUNDER", founderToken: this.founderToken });
+        if (this.founderUnlocked && (this.founderToken || this.founderPin)) {
+          this.send({ type: "AUTH_FOUNDER", founderToken: this.founderToken, pin: this.founderPin });
         }
         this.startHeartbeat();
         this.emit({ type: "WS_OPEN", transport: "ws" });

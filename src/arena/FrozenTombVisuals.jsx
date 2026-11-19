@@ -204,14 +204,21 @@ export function FrozenTombStoryModal({ payload, lang = "vi", onClose }) {
       : "border-sky-500/60 from-[#0A172B] to-[#040812]";
 
   return (
-    <div className="modal-backdrop" style={{ zIndex: 10075 }}>
-      <div className={`modal-box max-w-[590px] bg-gradient-to-b ${borderTheme} border relative overflow-hidden`}>
-        <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3">
+    <div
+      className="fixed inset-x-0 bottom-2 sm:bottom-3.5 flex justify-center px-2.5 sm:px-4 pointer-events-none"
+      style={{ zIndex: 10075 }}
+    >
+      <div className={`pointer-events-auto w-full max-w-[430px] rounded-xl bg-gradient-to-b ${borderTheme} border p-2.5 sm:p-3 text-slate-100 shadow-[0_14px_40px_rgba(0,0,0,0.88)] backdrop-blur-md relative overflow-hidden`}>
+        <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-2">
           <div className="min-w-0">
-            <div className="text-[10px] font-mono-numbers font-bold uppercase tracking-wider text-sky-300 truncate">
-              {payload.code} · {payload.subtitle}
+            <div className="flex items-center gap-1.5 text-[9.5px] font-mono-numbers font-bold uppercase tracking-wider text-sky-300">
+              <span className="truncate">{payload.code} · {payload.subtitle}</span>
+              <span className="text-slate-600">·</span>
+              <span className="text-cyan-300 shrink-0">
+                🛡️ {lang === "en" ? "Invuln" : "Bất tử"}
+              </span>
             </div>
-            <h3 className="font-moba text-lg font-black text-white mt-0.5 truncate">{payload.title}</h3>
+            <h3 className="font-moba text-sm sm:text-base font-black text-white mt-0.5 truncate">{payload.title}</h3>
           </div>
           <button
             type="button"
@@ -219,21 +226,22 @@ export function FrozenTombStoryModal({ payload, lang = "vi", onClose }) {
               R.playModalClose();
               onClose?.();
             }}
-            className="btn-secondary px-2.5 py-1 text-sm shrink-0"
+            className="btn-secondary min-h-[28px] px-2 py-0.5 text-xs shrink-0"
+            aria-label={lang === "en" ? "Close" : "Đóng"}
           >
             ✕
           </button>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-2 space-y-2 max-h-[24vh] overflow-y-auto pr-0.5">
           {payload.showsMap2Symbol && (
-            <div className="rounded-xl bg-[#05030C] border border-purple-500/45 p-3 flex items-center gap-3">
-              <svg width="48" height="48" viewBox="0 0 64 64" className="shrink-0" aria-hidden="true">
+            <div className="rounded-lg bg-[#05030C] border border-purple-500/45 p-2 flex items-center gap-2.5">
+              <svg width="34" height="34" viewBox="0 0 64 64" className="shrink-0" aria-hidden="true">
                 <circle cx="32" cy="32" r="24" fill="#1E1B4B" stroke="#C084FC" strokeWidth="2.5" />
                 <polygon points="32,14 48,32 32,50 16,32" fill="none" stroke="#E879F9" strokeWidth="2" />
                 <circle cx="32" cy="32" r="6" fill="#05030C" stroke="#38BDF8" strokeWidth="2" />
               </svg>
-              <div className="text-xs text-purple-200 leading-relaxed">
+              <div className="text-[11px] text-purple-200 leading-snug">
                 {lang === "en"
                   ? "Symbol etched onto the fallen ice shard — identical to the Arcane Orb from Inferno of Ashes."
                   : "Ký hiệu khắc trên mảnh băng rơi xuống — giống hệt Quả Cầu Ma Thuật ở Hỏa Ngục Tàn Tro."}
@@ -241,77 +249,76 @@ export function FrozenTombStoryModal({ payload, lang = "vi", onClose }) {
             </div>
           )}
 
-          <div className="rounded-xl bg-slate-950/85 border border-slate-800/90 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs font-moba font-extrabold">
-              <span style={{ color: current.speakerColor || "#7DD3FC" }}>{current.speaker}</span>
-              <span className="font-mono-numbers text-[11px] text-slate-400">
+          <div className="rounded-lg bg-slate-950/85 border border-slate-800/90 px-2.5 py-2 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-moba font-extrabold">
+              <span className="truncate" style={{ color: current.speakerColor || "#7DD3FC" }}>{current.speaker}</span>
+              <span className="font-mono-numbers text-[10px] text-slate-400 shrink-0 tabular-nums">
                 {safeIdx + 1}/{steps.length}
               </span>
             </div>
-            <p className="text-sm text-slate-100 leading-relaxed font-medium">{current.text}</p>
+            <p className="text-xs text-slate-100 leading-relaxed font-medium">{current.text}</p>
             {current.subtext && (
-              <p className="text-xs text-slate-400 italic leading-relaxed border-t border-slate-800/70 pt-2">
+              <p className="text-[11px] text-slate-400 italic leading-snug border-t border-slate-800/70 pt-1.5">
                 {current.subtext}
               </p>
             )}
           </div>
 
           {showEndingDarkScreen && (
-            <div className="rounded-xl bg-[#020206] border border-purple-400/75 px-4 py-5 text-center shadow-inner">
-              <p className="font-moba text-base sm:text-lg font-black tracking-wider text-white">
+            <div className="rounded-lg bg-[#020206] border border-purple-400/75 px-3 py-2.5 text-center shadow-inner">
+              <p className="font-moba text-xs sm:text-sm font-black tracking-wider text-white">
                 {payload.endingBoldLine}
               </p>
             </div>
           )}
 
           {payload.rewardText && isLast && (
-            <div className="px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-400/50 text-xs font-bold text-emerald-200">
+            <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/50 text-[11px] font-bold text-emerald-200">
               {payload.rewardText}
             </div>
           )}
 
-          <div className="text-[11px] font-mono-numbers text-slate-400">{payload.clueSummary}</div>
+          {payload.clueSummary && (
+            <div className="text-[10.5px] font-mono-numbers text-slate-400">{payload.clueSummary}</div>
+          )}
+        </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1">
-            {safeIdx > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  R.playClick();
-                  setStepIdx((i) => Math.max(0, i - 1));
-                }}
-                className="btn-secondary px-4 py-2 text-xs whitespace-nowrap"
-              >
-                {lang === "en" ? "← Back" : "← Trước"}
-              </button>
-            ) : (
-              <span />
-            )}
+        <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            disabled={safeIdx === 0}
+            onClick={() => {
+              R.playClick();
+              setStepIdx((i) => Math.max(0, i - 1));
+            }}
+            className="btn-secondary min-h-[34px] px-3 py-1 text-[11px] whitespace-nowrap disabled:opacity-40"
+          >
+            {lang === "en" ? "← Back" : "← Trước"}
+          </button>
 
-            {!isLast ? (
-              <button
-                type="button"
-                onClick={() => {
-                  R.playClick();
-                  setStepIdx((i) => Math.min(steps.length - 1, i + 1));
-                }}
-                className="btn-primary px-5 py-2 text-xs font-black whitespace-nowrap"
-              >
-                {lang === "en" ? "Next →" : "Tiếp Theo →"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  R.playModalClose();
-                  onClose?.();
-                }}
-                className="btn-primary px-6 py-2 text-xs font-black whitespace-nowrap"
-              >
-                {lang === "en" ? "Continue" : "Tiếp Tục"}
-              </button>
-            )}
-          </div>
+          {!isLast ? (
+            <button
+              type="button"
+              onClick={() => {
+                R.playClick();
+                setStepIdx((i) => Math.min(steps.length - 1, i + 1));
+              }}
+              className="flex-1 btn-primary min-h-[34px] px-4 py-1 text-[11px] font-black whitespace-nowrap"
+            >
+              {lang === "en" ? "Next →" : "Tiếp Theo →"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                R.playModalClose();
+                onClose?.();
+              }}
+              className="flex-1 btn-primary min-h-[34px] px-4 py-1 text-[11px] font-black whitespace-nowrap"
+            >
+              {lang === "en" ? "Done Reading" : "Đóng & Chiến Tiếp"}
+            </button>
+          )}
         </div>
       </div>
     </div>
