@@ -6,7 +6,20 @@ import {
   HERO_ROLE_LABELS,
   filterHeroesByRole,
 } from "./combatLogic.ts";
-import { ARENA_MAP_LIST, isMapUnlocked } from "./bloodCitadelMap.ts";
+import { ARENA_MAP_LIST, getMapUnlockRequirement, isMapUnlocked } from "./bloodCitadelMap.ts";
+
+const HERO_MAP_SECRET_TAG = {
+  tin: { vi: "🏰 Cổ Thành", en: "🏰 Citadel", cls: "text-rose-200 border-rose-500/45 bg-rose-950/60" },
+  bao: { vi: "🏰 Cổ Thành", en: "🏰 Citadel", cls: "text-rose-200 border-rose-500/45 bg-rose-950/60" },
+  dung: { vi: "🔥 Hỏa Ngục", en: "🔥 Inferno", cls: "text-orange-200 border-orange-500/45 bg-orange-950/60" },
+  danh: { vi: "🔥 Hỏa Ngục", en: "🔥 Inferno", cls: "text-orange-200 border-orange-500/45 bg-orange-950/60" },
+  longhoi: { vi: "🔥 Hỏa Ngục", en: "🔥 Inferno", cls: "text-orange-200 border-orange-500/45 bg-orange-950/60" },
+  trung: { vi: "🔥 Hỏa Ngục", en: "🔥 Inferno", cls: "text-purple-200 border-purple-500/45 bg-purple-950/60" },
+  eohyen: { vi: "❄️ Băng Mộ", en: "❄️ Frozen Tomb", cls: "text-sky-200 border-sky-500/45 bg-sky-950/60" },
+  phong: { vi: "❄️ Băng Mộ", en: "❄️ Frozen Tomb", cls: "text-sky-200 border-sky-500/45 bg-sky-950/60" },
+  minh: { vi: "❄️ Băng Mộ", en: "❄️ Frozen Tomb", cls: "text-sky-200 border-sky-500/45 bg-sky-950/60" },
+  thanh: { vi: "❄️ Băng Mộ", en: "❄️ Frozen Tomb", cls: "text-emerald-200 border-emerald-500/45 bg-emerald-950/60" },
+};
 
 export function MultiplayerLobbyModal({
   lang = "vi",
@@ -559,9 +572,7 @@ export function MultiplayerLobbyModal({
                           }`}
                           title={
                             !unlocked
-                              ? isVi
-                                ? "Hoàn thành Màn 27 Cổ Điển hoặc mở khóa Thiên để chọn"
-                                : "Clear Classic Wave 27 or unlock Thiên"
+                              ? getMapUnlockRequirement(m.id, lang)
                               : m.name?.[lang]
                           }
                         >
@@ -581,6 +592,12 @@ export function MultiplayerLobbyModal({
                     <span className="text-slate-400">{isVi ? "Tổ đội:" : "Squad:"} </span>
                     <strong className="text-cyan-300">{members.length}/4</strong>
                   </div>
+                </div>
+
+                <div className="rounded-lg bg-[#081226]/90 border border-indigo-500/35 px-2.5 py-1.5 text-[11px] text-indigo-100/95 leading-snug">
+                  {isVi
+                    ? "🤝 Co-op Phối Hợp Liên Map: Mỗi người có thể chọn tướng thuộc tuyến bí mật khác nhau (vd: Bảo + Tín, Dũng + Danh + Long Hói, Éo Hyên + Phong + Minh + Thanh). Khi cả đội hoàn tất manh mối, MỤC CUỐI sẽ tự mở khóa cho CẢ ĐỘI & thành tích tướng lưu riêng trên từng tài khoản!"
+                    : "🤝 Cross-Map Co-op Synergy: Teammates can pick heroes from different map storylines (e.g., Bảo + Tín). Converging clues unlocks the final objective for ALL squad members & saves per-hero stats to every account!"}
                 </div>
               </div>
 
@@ -816,11 +833,16 @@ export function MultiplayerLobbyModal({
                                 {m.name}
                                 {isMe ? ` (${isVi ? "Bạn" : "You"})` : ""}
                               </div>
-                              <div className="text-[11px] text-slate-300 truncate mt-0.5">
-                                {heroObj?.name?.split("(")[0].trim()} ·{" "}
+                              <div className="text-[11px] text-slate-300 truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                <span>{heroObj?.name?.split("(")[0].trim()} ·{" "}</span>
                                 <span className="text-cyan-300">
                                   {heroObj?.role?.[lang] || heroObj?.role?.vi}
                                 </span>
+                                {HERO_MAP_SECRET_TAG[m.heroId] && (
+                                  <span className={`px-1.5 py-0.5 rounded border text-[9px] font-moba font-bold ${HERO_MAP_SECRET_TAG[m.heroId].cls}`}>
+                                    {HERO_MAP_SECRET_TAG[m.heroId][lang] || HERO_MAP_SECRET_TAG[m.heroId].vi}
+                                  </span>
+                                )}
                               </div>
                               <div className={`text-[11px] font-moba font-bold mt-0.5 ${statusColor}`}>
                                 #{slotIdx + 1} · {statusText}
@@ -920,8 +942,13 @@ export function MultiplayerLobbyModal({
                                 </span>
                               )}
                             </div>
-                            <div className="text-[10px] text-cyan-300 truncate">
-                              {hr.role?.[lang] || hr.role?.vi}
+                            <div className="text-[10px] text-cyan-300 truncate flex items-center gap-1">
+                              <span className="truncate">{hr.role?.[lang] || hr.role?.vi}</span>
+                              {HERO_MAP_SECRET_TAG[hr.id] && (
+                                <span className={`px-1 py-0 rounded border text-[8.5px] font-moba font-bold shrink-0 ${HERO_MAP_SECRET_TAG[hr.id].cls}`}>
+                                  {HERO_MAP_SECRET_TAG[hr.id][lang] || HERO_MAP_SECRET_TAG[hr.id].vi}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </button>

@@ -188,6 +188,9 @@ export interface ProgressSnapshot {
   heroStatsEntries?: string[];
   selectedMapId?: ArenaMapId;
   classicCleared?: boolean;
+  bloodCitadelCleared?: boolean;
+  infernoCleared?: boolean;
+  frozenTombCleared?: boolean;
   unlockedMaps?: ArenaMapId[];
   citadelSecrets?: CitadelSecretsProgress;
   infernoProgress?: InfernoProgressState;
@@ -619,11 +622,17 @@ export function mergeLocalAndCloudProgress(
   founderUnlocked: boolean
 ): ProgressSnapshot {
   const localClassicCleared = Boolean(local.classicCleared || (Number(local.highestWave) || 0) >= 27);
+  const localBloodCitadelCleared = Boolean(local.bloodCitadelCleared);
+  const localInfernoCleared = Boolean(local.infernoCleared);
+  const localFrozenTombCleared = Boolean(local.frozenTombCleared);
   if (!cloud) {
     const safeHero = local.selectedHeroId === "thien" && !founderUnlocked ? "eohyen" : local.selectedHeroId;
     const unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: local.highestWave,
       classicCleared: localClassicCleared,
+      bloodCitadelCleared: localBloodCitadelCleared,
+      infernoCleared: localInfernoCleared,
+      frozenTombCleared: localFrozenTombCleared,
       storedUnlocked: local.unlockedMaps,
       founderUnlocked,
     });
@@ -633,6 +642,9 @@ export function mergeLocalAndCloudProgress(
       selectedHeroId: safeHero || "eohyen",
       selectedMapId: isMapUnlocked(rawMap, unlockedMaps, founderUnlocked) ? rawMap : "classic",
       classicCleared: localClassicCleared,
+      bloodCitadelCleared: localBloodCitadelCleared,
+      infernoCleared: localInfernoCleared,
+      frozenTombCleared: localFrozenTombCleared,
       unlockedMaps,
       citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
       infernoProgress: normalizeInfernoProgress(local.infernoProgress),
@@ -657,9 +669,15 @@ export function mergeLocalAndCloudProgress(
 
   const unlockedTitles = computeUnlockedTitles(highestWave, founderUnlocked);
   const classicCleared = Boolean(localClassicCleared || cloud.classicCleared || highestWave >= 27);
+  const bloodCitadelCleared = Boolean(localBloodCitadelCleared || cloud.bloodCitadelCleared);
+  const infernoCleared = Boolean(localInfernoCleared || cloud.infernoCleared);
+  const frozenTombCleared = Boolean(localFrozenTombCleared || cloud.frozenTombCleared);
   const unlockedMaps = computeUnlockedMaps({
     highestWaveCleared: highestWave,
     classicCleared,
+    bloodCitadelCleared,
+    infernoCleared,
+    frozenTombCleared,
     storedUnlocked: [...(local.unlockedMaps || []), ...(cloud.unlockedMaps || [])],
     founderUnlocked,
   });
@@ -699,6 +717,9 @@ export function mergeLocalAndCloudProgress(
     heroStatsEntries: serializeHeroStatsEntries(mergedHeroStats),
     selectedMapId,
     classicCleared,
+    bloodCitadelCleared,
+    infernoCleared,
+    frozenTombCleared,
     unlockedMaps,
     citadelSecrets,
     infernoProgress: mergeInfernoProgress(local.infernoProgress, cloud.infernoProgress),
@@ -732,9 +753,15 @@ export function parseSavePackageJson(
       selectedHeroId = "eohyen";
     }
     const classicCleared = Boolean(p.classicCleared || highestWave >= 27);
+    const bloodCitadelCleared = Boolean(p.bloodCitadelCleared);
+    const infernoCleared = Boolean(p.infernoCleared);
+    const frozenTombCleared = Boolean(p.frozenTombCleared);
     const unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: highestWave,
       classicCleared,
+      bloodCitadelCleared,
+      infernoCleared,
+      frozenTombCleared,
       storedUnlocked: p.unlockedMaps,
       founderUnlocked,
     });
@@ -775,6 +802,9 @@ export function parseSavePackageJson(
       heroStatsEntries: serializeHeroStatsEntries(parsedHeroStats),
       selectedMapId,
       classicCleared,
+      bloodCitadelCleared,
+      infernoCleared,
+      frozenTombCleared,
       unlockedMaps,
       citadelSecrets,
       infernoProgress,

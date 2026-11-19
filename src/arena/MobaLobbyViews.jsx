@@ -10,7 +10,7 @@ import {
   filterHeroesByRole,
   getHeroRoleKey,
 } from "./combatLogic.ts";
-import { ARENA_MAP_LIST, isMapUnlocked } from "./bloodCitadelMap.ts";
+import { ARENA_MAP_LIST, getMapUnlockRequirement, isMapUnlocked } from "./bloodCitadelMap.ts";
 import { HERO_CHRONICLES } from "./darkFantasyLore.ts";
 import { detectStorageEnvironment } from "./deviceStorage.ts";
 import { CitadelBlueprintEmblem } from "./CitadelVisuals.jsx";
@@ -675,17 +675,13 @@ export function MobaLobbyMenu({
                 </button>
               </div>
               <span className="text-[10px] font-mono-numbers text-slate-400 whitespace-nowrap shrink-0">
-                {isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked)
-                  ? founderUnlocked
-                    ? isVi
-                      ? "Đổi tự do · Thiên"
-                      : "Free Switch · Founder"
-                    : isVi
-                      ? "✓ Mở đủ 4 Map"
-                      : "✓ All 4 Maps"
+                {founderUnlocked
+                  ? isVi
+                    ? "Đổi tự do · Thiên"
+                    : "Free Switch · Founder"
                   : isVi
-                    ? "Hỏa Ngục & Băng Mộ mở sẵn"
-                    : "Inferno & Frozen Ready"}
+                    ? `Đã mở ${unlockedMaps.length}/4 Map · Cổ Điển → Máu → Lửa → Băng`
+                    : `${unlockedMaps.length}/4 Maps · Classic → Blood → Fire → Ice`}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -704,6 +700,7 @@ export function MobaLobbyMenu({
                     onClick={() => {
                       if (!unlocked) {
                         R.playError();
+                        onSelectMap?.(m.id);
                         return;
                       }
                       R.playTabSwitch();
@@ -772,13 +769,9 @@ export function MobaLobbyMenu({
                         )}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5 leading-snug line-clamp-2">
-                        {unlocked
-                          ? mapSub
-                          : isVi
-                            ? "Phá đảo Màn 27 Cổ Điển hoặc mở khóa Thiên"
-                            : "Clear Classic Wave 27 or unlock Thiên"}
+                        {unlocked ? mapSub : getMapUnlockRequirement(m.id, lang)}
                       </div>
-                      {isInferno && (
+                      {isInferno && unlocked && (
                         <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-orange-500/20 text-[9.5px] font-mono-numbers tabular-nums">
                           <span className={infernoProgress?.dungClue ? "text-yellow-300 font-bold" : "text-slate-500"}>
                             Dũng {infernoProgress?.dungClue ? "✓" : "○"}
@@ -797,7 +790,7 @@ export function MobaLobbyMenu({
                           </span>
                         </div>
                       )}
-                      {isFrozen && (
+                      {isFrozen && unlocked && (
                         <div className="flex items-center gap-1.5 mt-1.5 pt-1 border-t border-sky-500/20 text-[9.5px] font-mono-numbers tabular-nums flex-wrap">
                           <span className={frozenTombProgress?.eohyenPaintingSeen ? "text-sky-300 font-bold" : "text-slate-500"}>
                             Éo {frozenTombProgress?.eohyenPaintingSeen ? "✓" : "○"}

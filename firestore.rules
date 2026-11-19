@@ -128,6 +128,10 @@ service cloud.firestore {
           'inventoryItemIds',
           'heroGearEntries',
           'heroStatsEntries',
+          'classicCleared',
+          'bloodCitadelCleared',
+          'infernoCleared',
+          'frozenTombCleared',
           'createdAt',
           'updatedAt'
         ]) &&
@@ -163,6 +167,10 @@ service cloud.firestore {
         isValidStringList(data.inventoryItemIds, 250) &&
         isValidStringList(data.heroGearEntries, 110) &&
         (!('heroStatsEntries' in data) || isValidStringList(data.heroStatsEntries, 40)) &&
+        (!('classicCleared' in data) || data.classicCleared is bool) &&
+        (!('bloodCitadelCleared' in data) || data.bloodCitadelCleared is bool) &&
+        (!('infernoCleared' in data) || data.infernoCleared is bool) &&
+        (!('frozenTombCleared' in data) || data.frozenTombCleared is bool) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -371,6 +379,10 @@ service cloud.firestore {
           'inventoryItemIds',
           'heroGearEntries',
           'heroStatsEntries',
+          'classicCleared',
+          'bloodCitadelCleared',
+          'infernoCleared',
+          'frozenTombCleared',
           'updatedAt'
         ]) &&
         incoming().uid == existing().uid &&

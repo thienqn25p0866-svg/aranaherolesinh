@@ -13,6 +13,7 @@ import {
 import { CitadelBlueprintEmblem, CitadelLoreCrest } from "./CitadelVisuals";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals";
 import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals";
+import { getMapUnlockRequirement } from "./bloodCitadelMap";
 
 const TAB_LABELS = {
   world: { vi: "Biên Niên Sử", en: "World Lore" },
@@ -31,6 +32,8 @@ export function ChroniclesModal({
   focusHeroId = null,
   founderUnlocked = false,
   citadelUnlocked = false,
+  infernoUnlocked = false,
+  frozenTombUnlocked = false,
   citadelSecrets = { tinClue: false, baoClue: false, combinedUnlocked: false, inspectedNodes: [] },
   infernoProgress = null,
   frozenTombProgress = null,
@@ -361,18 +364,28 @@ export function ChroniclesModal({
                 {onSelectInfernoMap && (
                   <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs text-slate-400">
-                      {isVi ? "Bản đồ mở sẵn cho mọi người chơi (2400×2100 · 8 Khu Vực)." : "Available immediately for all players (2400×2100 · 8 Zones)."}
+                      {infernoUnlocked
+                        ? founderUnlocked
+                          ? isVi
+                            ? "Đang bật quyền Nhà Sáng Lập: có thể chọn tự do (2400×2100 · 8 Khu Vực)."
+                            : "Founder access active: free map switching unlocked."
+                          : isVi
+                          ? "Đã mở khóa sau khi vượt Màn 27 Cổ Thành Huyết Táng (Map Máu)."
+                          : "Unlocked by clearing Bloodsoaked Citadel Wave 27."
+                        : `🔒 ${getMapUnlockRequirement("inferno_ash", isVi ? "vi" : "en")}`}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectInfernoMap();
-                        onClose?.();
-                      }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
-                    >
-                      {isVi ? "Chọn Map Hỏa Ngục Tàn Tro" : "Select Inferno of Ashes"}
-                    </button>
+                    {infernoUnlocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectInfernoMap();
+                          onClose?.();
+                        }}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
+                      >
+                        {isVi ? "Chọn Map Hỏa Ngục Tàn Tro" : "Select Inferno of Ashes"}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -449,18 +462,28 @@ export function ChroniclesModal({
                 {onSelectFrozenTombMap && (
                   <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs text-slate-400">
-                      {isVi ? "Bản đồ mở sẵn cho mọi người chơi (3400×2800 · 7 Khu Vực)." : "Available immediately for all players (3400×2800 · 7 Zones)."}
+                      {frozenTombUnlocked
+                        ? founderUnlocked
+                          ? isVi
+                            ? "Đang bật quyền Nhà Sáng Lập: có thể chọn tự do (3400×2800 · 7 Khu Vực)."
+                            : "Founder access active: free map switching unlocked."
+                          : isVi
+                          ? "Đã mở khóa sau khi vượt Màn 27 Hỏa Ngục Tàn Tro (Map Lửa)."
+                          : "Unlocked by clearing Inferno of Ashes Wave 27."
+                        : `🔒 ${getMapUnlockRequirement("frozen_tomb", isVi ? "vi" : "en")}`}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectFrozenTombMap();
-                        onClose?.();
-                      }}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-cyan-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
-                    >
-                      {isVi ? "Chọn Map Băng Mộ Vĩnh Cửu" : "Select Eternal Frozen Tomb"}
-                    </button>
+                    {frozenTombUnlocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectFrozenTombMap();
+                          onClose?.();
+                        }}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-cyan-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
+                      >
+                        {isVi ? "Chọn Map Băng Mộ Vĩnh Cửu" : "Select Eternal Frozen Tomb"}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

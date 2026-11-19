@@ -1359,6 +1359,9 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     player.maxHp = Math.max(1, Math.round(Number(s.maxHp) || player.maxHp));
     player.shield = Math.max(0, Math.round(Number(s.shield) || 0));
     player.level = Math.max(1, Math.round(Number(s.level) || player.level));
+    if (typeof s.totalDamage === "number" && Number.isFinite(s.totalDamage)) {
+      player.totalDamage = Math.max(player.totalDamage || 0, Math.round(s.totalDamage));
+    }
     player.alive = player.hp > 0 && s.alive !== false;
     player.moveSpeedFactor = Number(s.moveSpeedFactor) || 0;
     player.walkCyclePhase = Number(s.walkCyclePhase) || 0;
@@ -1393,6 +1396,7 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
           maxHp: player.maxHp,
           shield: player.shield,
           level: player.level,
+          totalDamage: player.totalDamage,
           moveSpeedFactor: player.moveSpeedFactor,
           walkCyclePhase: player.walkCyclePhase,
           attackAnimTimer: player.attackAnimTimer,
@@ -1417,6 +1421,24 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
       });
       checkAllPlayersDead(room);
     }
+    return;
+  }
+
+  if (msg.type === "MAP_PROGRESS_SYNC") {
+    broadcastRoom(
+      room,
+      {
+        type: "MAP_PROGRESS_SYNC",
+        fromPlayerId: playerId,
+        fromName: player.name,
+        fromHeroId: player.heroId,
+        mapId: msg.mapId,
+        citadelSecrets: msg.citadelSecrets || null,
+        infernoProgress: msg.infernoProgress || null,
+        frozenTombProgress: msg.frozenTombProgress || null,
+      },
+      playerId
+    );
     return;
   }
 

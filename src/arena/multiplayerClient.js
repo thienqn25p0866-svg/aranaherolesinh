@@ -26,6 +26,7 @@ const CRITICAL_HTTP_TYPES = new Set([
   "DAMAGE_ENEMY",
   "ALLY_SUPPORT",
   "REVIVE_PLAYER",
+  "MAP_PROGRESS_SYNC",
 ]);
 
 class MultiplayerClient {
@@ -1964,7 +1965,7 @@ class MultiplayerClient {
           type: "CREATE_ROOM",
           playerName,
           heroId,
-          mapId: mapId === "blood_citadel" || mapId === "inferno_ash" ? mapId : "classic",
+          mapId: mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" ? mapId : "classic",
           founderToken: this.founderToken || undefined,
         });
         return { mode: "server", room: this.room };
@@ -1979,7 +1980,7 @@ class MultiplayerClient {
   setMap(mapId) {
     this.send({
       type: "SET_MAP",
-      mapId: mapId === "blood_citadel" || mapId === "inferno_ash" ? mapId : "classic",
+      mapId: mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" ? mapId : "classic",
     });
   }
 

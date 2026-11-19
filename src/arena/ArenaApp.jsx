@@ -19,6 +19,8 @@ import {
   createDefaultCitadelSecrets,
   normalizeCitadelSecrets,
   computeUnlockedMaps,
+  getMapUnlockRequirement,
+  getNextCampaignMapId,
   isMapUnlocked,
   normalizeArenaMapId,
 } from "./bloodCitadelMap";
@@ -41,14 +43,18 @@ import {
   canClaimDailyCheckIn,
   computeUnlockedTitles,
   deserializeHeroGearEntries,
+  deserializeHeroStatsEntries,
   getTodayDateKey,
   loadLocalPlayerProfile,
+  mergeHeroStatsMaps,
   mergeLocalAndCloudProgress,
   normalizeDisplayName,
   parseSavePackageJson,
+  recordHeroMatchProgress,
   sanitizeGooglePhotoUrl,
   saveLocalPlayerProfile,
   serializeHeroGearEntries,
+  serializeHeroStatsEntries,
 } from "./playerAccount";
 import {
   DEVICE_SETTINGS_STORAGE_KEY,
@@ -1203,7 +1209,7 @@ function ny() {
     [deviceInfo, setDeviceInfo] = (0, ie.useState)(() => touchDeviceVisit()),
     [resumableRun, setResumableRun] = (0, ie.useState)(null),
     [selectedMapId, setSelectedMapId] = (0, ie.useState)("classic"),
-    [unlockedMaps, setUnlockedMaps] = (0, ie.useState)(["classic", "inferno_ash"]),
+    [unlockedMaps, setUnlockedMaps] = (0, ie.useState)(["classic"]),
     [citadelSecrets, setCitadelSecrets] = (0, ie.useState)(() => createDefaultCitadelSecrets()),
     [citadelLoreModal, setCitadelLoreModal] = (0, ie.useState)(null),
     [citadelMinimapOpen, setCitadelMinimapOpen] = (0, ie.useState)(true),
@@ -1231,6 +1237,7 @@ function ny() {
     googleUserRef = (0, ie.useRef)(null),
     playerProfileRef = (0, ie.useRef)(playerProfile),
     lastTrackedMatchKillsRef = (0, ie.useRef)(0),
+    lastRecordedEndKeyRef = (0, ie.useRef)(""),
     syncedBootUidRef = (0, ie.useRef)(null),
     cloudPullInFlightRef = (0, ie.useRef)(null),
     perfPrefsRef = (0, ie.useRef)({ qualityMode, fpsCapMode }),
@@ -1345,7 +1352,7 @@ function ny() {
     }, w.onStateChange = () => {
       m(w.gameState), v(w.playerCoins);
       setSelectedMapId(w.selectedMapId || "classic");
-      setUnlockedMaps([...(w.unlockedMaps || ["classic", "inferno_ash", "frozen_tomb"])]);
+      setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
       setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
       setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
       setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
@@ -1401,6 +1408,15 @@ function ny() {
       setFrozenTombStoryModal(storyPayload);
     };
     const recordCareerProgress = (waveReached, isMatchEnd, victory) => {
+      if (isMatchEnd) {
+        const endKey = w.multiplayer?.active
+          ? `mp:${w.multiplayer.roomId || ""}:${w.multiplayer.matchNonce || ""}:${Math.round(w.elapsedTime || 0)}:${Boolean(victory)}`
+          : `solo:${Math.round(w.elapsedTime || 0)}:${waveReached || w.wave}:${Boolean(victory)}`;
+        if (lastRecordedEndKeyRef.current === endKey) {
+          return;
+        }
+        lastRecordedEndKeyRef.current = endKey;
+      }
       const totalKilledNow = Number(w.totalKilled) || 0;
       if (totalKilledNow < lastTrackedMatchKillsRef.current) {
         lastTrackedMatchKillsRef.current = 0;
@@ -1411,11 +1427,29 @@ function ny() {
       const curProf = playerProfileRef.current || loadLocalPlayerProfile();
       const nextHighestWave = Math.max(curProf.highestWave || 0, w.highestWaveCleared || 0, waveReached || 0);
       w.highestWaveCleared = Math.max(w.highestWaveCleared || 0, nextHighestWave);
-      if (victory && (w.activeMapId || "classic") === "classic" && nextHighestWave >= CITADEL_UNLOCK_WAVE) {
-        w.classicCleared = true;
+      if (victory && waveReached >= CITADEL_UNLOCK_WAVE) {
+        const clearedMap = normalizeArenaMapId(w.activeMapId || "classic");
+        if (clearedMap === "classic") {
+          w.classicCleared = true;
+        } else if (clearedMap === "blood_citadel") {
+          w.classicCleared = true;
+          w.bloodCitadelCleared = true;
+        } else if (clearedMap === "inferno_ash") {
+          w.classicCleared = true;
+          w.bloodCitadelCleared = true;
+          w.infernoCleared = true;
+        } else if (clearedMap === "frozen_tomb") {
+          w.classicCleared = true;
+          w.bloodCitadelCleared = true;
+          w.infernoCleared = true;
+          w.frozenTombCleared = true;
+        }
       }
       w.unlockedMaps = computeUnlockedMaps({
         classicCleared: Boolean(w.classicCleared),
+        bloodCitadelCleared: Boolean(w.bloodCitadelCleared),
+        infernoCleared: Boolean(w.infernoCleared),
+        frozenTombCleared: Boolean(w.frozenTombCleared),
         highestWaveCleared: w.highestWaveCleared,
         storedUnlocked: w.unlockedMaps,
         founderUnlocked: founderUnlockedRef.current,
@@ -1425,6 +1459,16 @@ function ny() {
       setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
       setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
       setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
+      const activeHeroId = w.currentHero?.id || w.selectedHeroId || "eohyen";
+      const nextHeroStats = recordHeroMatchProgress(curProf.heroStats, {
+        heroId: activeHeroId,
+        waveReached: Math.max(Number(waveReached) || 0, Number(w.wave) || 1),
+        deltaKills,
+        totalDamage: Number(w.player?.totalDamage) || 0,
+        isMatchEnd: Boolean(isMatchEnd),
+        victory: Boolean(victory),
+        isCoop: Boolean(w.multiplayer?.active),
+      });
       const saved = saveLocalPlayerProfile(
         {
           ...curProf,
@@ -1433,6 +1477,7 @@ function ny() {
           matchesPlayed: (curProf.matchesPlayed || 0) + (isMatchEnd ? 1 : 0),
           victories: (curProf.victories || 0) + (isMatchEnd && victory ? 1 : 0),
           unlockedTitles: computeUnlockedTitles(nextHighestWave, founderUnlockedRef.current),
+          heroStats: nextHeroStats,
         },
         { founderUnlocked: founderUnlockedRef.current, minHighestWave: nextHighestWave }
       );
@@ -1455,6 +1500,16 @@ function ny() {
           victories: saved.victories,
           dailyCheckInDate: saved.dailyCheckInDate || "",
           unlockedTitles: saved.unlockedTitles || [],
+          heroStatsEntries: serializeHeroStatsEntries(saved.heroStats),
+          selectedMapId: w.selectedMapId || "classic",
+          classicCleared: Boolean(w.classicCleared),
+          bloodCitadelCleared: Boolean(w.bloodCitadelCleared),
+          infernoCleared: Boolean(w.infernoCleared),
+          frozenTombCleared: Boolean(w.frozenTombCleared),
+          unlockedMaps: [...w.unlockedMaps],
+          citadelSecrets: normalizeCitadelSecrets(w.citadelSecrets),
+          infernoProgress: normalizeInfernoProgress(w.infernoProgress),
+          frozenTombProgress: normalizeFrozenTombProgress(w.frozenTombProgress),
         };
         Promise.allSettled([
           savePrivatePlayerSave(signedUser.uid, snapshot, founderUnlockedRef.current),
@@ -1472,6 +1527,9 @@ function ny() {
       w.highestWaveCleared = playerProfileRef.current.highestWave;
       w.unlockedMaps = computeUnlockedMaps({
         classicCleared: Boolean(w.classicCleared),
+        bloodCitadelCleared: Boolean(w.bloodCitadelCleared),
+        infernoCleared: Boolean(w.infernoCleared),
+        frozenTombCleared: Boolean(w.frozenTombCleared),
         highestWaveCleared: w.highestWaveCleared,
         storedUnlocked: w.unlockedMaps,
         founderUnlocked: founderUnlockedRef.current,
@@ -1479,7 +1537,7 @@ function ny() {
       w.saveGame();
     }
     setSelectedMapId(w.selectedMapId || "classic");
-    setUnlockedMaps([...(w.unlockedMaps || ["classic", "inferno_ash", "frozen_tomb"])]);
+    setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
     setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
     setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
     setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
@@ -1534,7 +1592,7 @@ function ny() {
         if (recoveredRaw && w.applyHydratedSaveData?.(recoveredRaw)) {
           v(w.playerCoins);
           setSelectedMapId(w.selectedMapId || "classic");
-          setUnlockedMaps([...(w.unlockedMaps || ["classic", "inferno_ash", "frozen_tomb"])]);
+          setUnlockedMaps([...(w.unlockedMaps || ["classic"])]);
           setCitadelSecrets(normalizeCitadelSecrets(w.citadelSecrets));
           setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
           setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
@@ -1735,6 +1793,8 @@ function ny() {
         let chosen = (myMem && Mi.find((hr) => hr.id === myMem.heroId)) || selectedHeroRef.current || Mi[4];
         if (chosen?.isSecretFounder && !founderUnlockedRef.current) chosen = Mi[4];
         h(chosen);
+        lastTrackedMatchKillsRef.current = 0;
+        lastRecordedEndKeyRef.current = "";
         if (a.current) {
           a.current.startCoopMatch(chosen, msg.room, msg.spawns || {});
           a.current.multiplayer.matchNonce = msg.matchNonce || null;
@@ -2081,10 +2141,17 @@ function ny() {
       victories: Math.max(0, Math.floor(Number(prof.victories) || 0)),
       dailyCheckInDate: String(prof.dailyCheckInDate || ""),
       unlockedTitles: computeUnlockedTitles(highestWave, founderUnlockedRef.current),
+      heroStatsEntries: serializeHeroStatsEntries(prof.heroStats),
       selectedMapId: w?.selectedMapId || "classic",
       classicCleared: Boolean(w?.classicCleared),
+      bloodCitadelCleared: Boolean(w?.bloodCitadelCleared),
+      infernoCleared: Boolean(w?.infernoCleared),
+      frozenTombCleared: Boolean(w?.frozenTombCleared),
       unlockedMaps: computeUnlockedMaps({
         classicCleared: Boolean(w?.classicCleared),
+        bloodCitadelCleared: Boolean(w?.bloodCitadelCleared),
+        infernoCleared: Boolean(w?.infernoCleared),
+        frozenTombCleared: Boolean(w?.frozenTombCleared),
         highestWaveCleared: highestWave,
         storedUnlocked: w?.unlockedMaps,
         founderUnlocked: founderUnlockedRef.current,
@@ -2113,8 +2180,14 @@ function ny() {
     w.currentWaveNumber = Math.max(1, Math.min(27, Math.floor(Number(snapshot.currentWave) || 1)));
     w.highestWaveCleared = Math.max(w.highestWaveCleared || 0, Number(snapshot.highestWave) || 0);
     w.classicCleared = Boolean(w.classicCleared || snapshot.classicCleared);
+    w.bloodCitadelCleared = Boolean(w.bloodCitadelCleared || snapshot.bloodCitadelCleared);
+    w.infernoCleared = Boolean(w.infernoCleared || snapshot.infernoCleared);
+    w.frozenTombCleared = Boolean(w.frozenTombCleared || snapshot.frozenTombCleared);
     w.unlockedMaps = computeUnlockedMaps({
       classicCleared: w.classicCleared,
+      bloodCitadelCleared: w.bloodCitadelCleared,
+      infernoCleared: w.infernoCleared,
+      frozenTombCleared: w.frozenTombCleared,
       highestWaveCleared: w.highestWaveCleared,
       storedUnlocked: [...(w.unlockedMaps || []), ...(snapshot.unlockedMaps || [])],
       founderUnlocked: founderUnlockedRef.current,
@@ -2234,6 +2307,10 @@ function ny() {
           ? normalizeDisplayName(userObj.displayName, "Chiến Binh")
           : localProf.displayName;
 
+        const mergedHeroStats = mergeHeroStatsMaps(
+          localProf.heroStats,
+          deserializeHeroStatsEntries(merged.heroStatsEntries)
+        );
         const mergedProf = saveLocalPlayerProfile(
           {
             ...localProf,
@@ -2253,6 +2330,7 @@ function ny() {
             victories: merged.victories,
             dailyCheckInDate: merged.dailyCheckInDate,
             unlockedTitles: merged.unlockedTitles,
+            heroStats: mergedHeroStats,
             accountSource: "google",
             googlePhotoUrl: googlePhoto || localProf.googlePhotoUrl,
           },
@@ -2569,6 +2647,7 @@ function ny() {
         victories: mergedProgress.victories,
         dailyCheckInDate: mergedProgress.dailyCheckInDate,
         unlockedTitles: mergedProgress.unlockedTitles,
+        heroStats: mergeHeroStatsMaps(playerProfileRef.current?.heroStats, parsed.profile?.heroStats),
         accountSource: googleUserRef.current ? "google" : "local",
       },
       { founderUnlocked: founderUnlockedRef.current, minHighestWave: mergedProgress.highestWave }
@@ -2592,12 +2671,13 @@ function ny() {
   };
   let handleCreateRoom = () => {
     const safeHeroId = p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id;
+    const safeMapId = isMapUnlocked(selectedMapId, unlockedMaps, founderUnlockedRef.current) ? selectedMapId : "classic";
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
     setP2pAutoPaired(false);
     setMpBusy(true);
-    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", safeHeroId, selectedMapId).then((res) => {
+    mpClient.createRoom(mpName.trim() || "Chi\u1EBFn Binh 1", safeHeroId, safeMapId).then((res) => {
       setMpBusy(false);
       if (res?.mode === "p2p") {
         setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
@@ -2701,13 +2781,14 @@ function ny() {
     }
   }, handleStartP2PHost = async () => {
     const safeHeroId = p.isSecretFounder && !founderUnlockedRef.current ? Mi[4].id : p.id;
+    const safeMapId = isMapUnlocked(selectedMapId, unlockedMaps, founderUnlockedRef.current) ? selectedMapId : "classic";
     R.playClick();
     setMpError("");
     setP2pAnswerCode("");
     setP2pAutoPaired(false);
     setP2pBusy(true);
     try {
-      const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", safeHeroId, selectedMapId);
+      const res = await mpClient.startP2PHost(mpName.trim() || "Chiến Binh 1", safeHeroId, safeMapId);
       setP2pInviteCode(res.inviteCode || res.room?.roomId || "");
       setP2pManualOfferCode(res.manualOfferCode || "");
       setP2pHasServerSignal(Boolean(res.hasServerSignaling));
@@ -2840,6 +2921,7 @@ function ny() {
       return;
     }
     lastTrackedMatchKillsRef.current = 0;
+    lastRecordedEndKeyRef.current = "";
     R.playClick(), h(w), a.current && (a.current.startNewGame(w), m("PLAYING"), v(a.current.playerCoins), setResumableRun(a.current.getSavedRunSnapshot?.() || null));
     if (w?.isSecretFounder) logFounderAuditEvent("MATCH_STARTED", "solo").catch(() => {});
   }, handleResumeSavedRun = () => {
@@ -2852,6 +2934,7 @@ function ny() {
       return;
     }
     lastTrackedMatchKillsRef.current = snap.totalKilled || 0;
+    lastRecordedEndKeyRef.current = "";
     R.playHeroLockIn();
     R.playMatchStart();
     if (w.resumeSavedGame?.(snap)) {
@@ -3238,7 +3321,7 @@ function ny() {
     if (a.current?.setSelectedMap?.(nextMapId)) {
       setSelectedMapId(a.current.selectedMapId);
     } else {
-      G("Hãy phá đảo Màn 27 ở Đấu Trường Cổ Điển để mở khóa Cổ Thành Huyết Táng!");
+      G(getMapUnlockRequirement(nextMapId, c));
     }
   }, onOpenCoop: () => {
     setMpError("");
@@ -3312,7 +3395,7 @@ function ny() {
     handleLeaveRoom();
     m("MENU");
   }, children: "\u{1F6AA} R\u1EDDi Ph\xF2ng Co-op" })] }) : (0, u.jsxs)(u.Fragment, { children: [(0, u.jsx)("button", { className: "btn-secondary py-2.5 text-sm", onClick: () => {
-    a.current && a.current.startNewGame(p), m("PLAYING");
+    a.current && (lastTrackedMatchKillsRef.current = 0, lastRecordedEndKeyRef.current = "", a.current.startNewGame(p, a.current.selectedMapId, { resetCoins: true }), v(a.current.playerCoins)), m("PLAYING");
   }, children: ze.restart }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-sm text-slate-400", onClick: () => {
     a.current && (a.current.captureCurrentRunCheckpoint?.(), a.current.saveGame(), a.current.gameState = "MENU", setResumableRun(a.current.getSavedRunSnapshot?.() || null)), m("MENU");
   }, children: ze.mainMenu })] })] })] }) }), De && ce && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[480px] text-center", children: [(0, u.jsx)("div", { className: "text-amber-400 font-mono-numbers text-xs font-bold tracking-wider", children: c === "vi" ? "CHI\u1EBEN TH\u1EAENG \u0110\u1EE2T QU\xC1I" : "WAVE CLEARED" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white mt-1", children: c === "vi" ? `Ho\xE0n Th\xE0nh M\xE0n ${ce.wave}` : `Wave ${ce.wave} Complete` }), (0, u.jsxs)("div", { className: `speed-badge ${ce.speedClass} my-3 mx-auto`, children: [(0, u.jsx)("span", { children: "\u26A1" }), (0, u.jsx)("span", { children: ce.speedText })] }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3.5 text-left text-xs text-slate-300", children: [(0, u.jsxs)("div", { className: "flex justify-between py-1 border-b border-slate-800", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Th\u1EDDi gian:" }), (0, u.jsxs)("span", { className: "font-mono-numbers font-bold text-cyan-400", children: [ce.elapsedFormatted, " / ", ce.targetFormatted] })] }), (0, u.jsxs)("div", { className: "flex justify-between py-1 border-b border-slate-800", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Qu\xE1i ti\xEAu di\u1EC7t:" }), (0, u.jsx)("span", { className: "font-mono-numbers font-bold text-white", children: ce.kills })] }), (0, u.jsxs)("div", { className: "flex justify-between py-1", children: [(0, u.jsx)("span", { children: "Xu c\u01A1 b\u1EA3n:" }), (0, u.jsxs)("span", { className: "font-mono-numbers font-bold text-amber-300", children: ["+", ce.baseCoins, " Xu"] })] }), (0, u.jsxs)("div", { className: "flex justify-between py-1", children: [(0, u.jsx)("span", { children: "Th\u01B0\u1EDFng t\u1ED1c \u0111\u1ED9:" }), (0, u.jsxs)("span", { className: "font-mono-numbers font-bold text-cyan-300", children: ["+", ce.speedCoins, " Xu"] })] }), ce.bossCoins > 0 && (0, u.jsxs)("div", { className: "flex justify-between py-1 text-red-300 font-bold", children: [(0, u.jsx)("span", { children: "Th\u01B0\u1EDFng h\u1EA1 g\u1EE5c Boss:" }), (0, u.jsxs)("span", { className: "font-mono-numbers", children: ["+", ce.bossCoins, " Xu"] })] }), (0, u.jsxs)("div", { className: "mt-2 pt-2 border-t border-slate-800 flex justify-between items-baseline font-black", children: [(0, u.jsx)("span", { className: "text-white text-sm", children: "T\u1ED5ng Xu Nh\u1EADn \u0110\u01B0\u1EE3c:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-xl text-amber-400", children: ["+", ce.totalEarned, " \u{1FA99}"] })] })] }), a.current?.multiplayer?.active && mpRoom?.members && (0, u.jsxs)("div", { className: "mt-2.5 bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 text-left text-[11px]", children: [(0, u.jsx)("div", { className: "font-moba font-bold text-cyan-300 mb-1.5", children: "TR\u1EA0NG TH\xC1I \u0110\u1ED2NG \u0110\u1ED8I" }), (0, u.jsx)("div", { className: "grid grid-cols-2 gap-1.5", children: mpRoom.members.map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1 gap-1", children: [(0, u.jsx)("span", { className: "truncate text-slate-200 font-semibold", children: mem.name }), (0, u.jsx)("span", { className: `shrink-0 font-bold ${mem.isHost ? "text-amber-300" : mem.readyNextWave ? "text-emerald-400" : "text-slate-400"}`, children: mem.isHost ? "\u{1F451} Ch\u1EE7" : mem.readyNextWave ? "\u2713 S\u1EB5n" : "\u23F3 Ch\u1EDD" })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "mt-4 flex gap-2.5", children: [(0, u.jsx)("button", { className: "btn-secondary flex-1 py-2.5 text-xs border-amber-500/40 text-amber-200", onClick: () => {
@@ -3330,8 +3413,20 @@ function ny() {
   })() : (0, u.jsx)("button", { className: "btn-primary flex-1 py-2.5 text-xs font-bold", onClick: () => {
     nt(false);
     let w = a.current;
-    w && (w.waitingReward = false, w.waveCleared = false, w.wave >= 27 ? (w.gameState = "VICTORY", w.clearSavedRun?.(false), w.unlockCitadelIfEligible?.(), w.saveGame(), w.onGameOver?.(true), m("VICTORY")) : w.startWave(w.wave + 1));
-  }, children: ce.isFinalWave ? c === "vi" ? "Chinh Ph\u1EE5c!" : "Victory!" : c === "vi" ? "M\xE0n Ti\u1EBFp Theo \u2192" : "Next Wave \u2192" })] })] }) }), (l === "GAME_OVER" || l === "VICTORY") && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[460px] text-center", children: [(0, u.jsx)("div", { className: "w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center bg-amber-500/20 text-amber-400 text-3xl", children: l === "VICTORY" ? "\u{1F451}" : "\u{1F480}" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white", children: l === "VICTORY" ? ze.victory : ze.defeat }), (0, u.jsx)("p", { className: "text-xs text-slate-400 mt-1", children: l === "VICTORY" ? ze.victorySub : ze.defeatSub }), l === "VICTORY" && isMapUnlocked("blood_citadel", unlockedMaps) && (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-rose-950/75 border border-rose-400/60 text-rose-100 text-xs font-moba font-bold", children: c === "vi" ? "🏰 Bản đồ mới ĐÃ MỞ KHÓA: CỔ THÀNH HUYẾT TÁNG! Chọn trong Sảnh Chính." : "🏰 New Map UNLOCKED: BLOODSOAKED CITADEL! Select it in the Lobby." }), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 my-3 grid grid-cols-2 gap-2 text-left text-xs font-mono-numbers", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "M\xE0n ch\u01A1i:" }), (0, u.jsxs)("div", { className: "text-amber-400 font-bold text-sm", children: [a.current?.wave || 1, " / 27"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "Ti\xEAu di\u1EC7t:" }), (0, u.jsx)("div", { className: "text-white font-bold text-sm", children: a.current?.totalKilled || 0 })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "C\u1EA5p \u0111\u1ED9:" }), (0, u.jsx)("div", { className: "text-emerald-400 font-bold text-sm", children: ["Lv.", a.current?.player?.level || 1] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "T\u1ED5ng s\xE1t th\u01B0\u01A1ng:" }), (0, u.jsx)("div", { className: "text-rose-400 font-bold text-sm", children: (a.current?.player?.totalDamage || 0).toLocaleString() })] })] }), (a.current?.multiplayer?.active || mpMatchResult) && (mpMatchResult?.room?.members || mpRoom?.members) && (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 mb-3 text-left text-xs", children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-bold text-cyan-300 uppercase tracking-wider mb-1.5", children: "B\u1EA3ng S\xE1t Th\u01B0\u01A1ng \u0110\u1ED3ng \u0110\u1ED9i" }), (0, u.jsx)("div", { className: "space-y-1", children: (mpMatchResult?.room?.members || mpRoom?.members || []).map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between font-mono-numbers text-[11px]", children: [(0, u.jsxs)("span", { className: "text-slate-200 truncate", children: [mem.isHost ? "\u{1F451} " : "", mem.name] }), (0, u.jsx)("span", { className: "text-rose-400 font-bold", children: [(mem.totalDamage || 0).toLocaleString(), " DMG"] })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "flex flex-col gap-2", children: [a.current?.multiplayer?.active || mpMatchResult ? (0, u.jsxs)(u.Fragment, { children: [(mpMatchResult?.room?.hostId || mpRoom?.hostId) === mpClient.playerId && (0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
+    w && (w.waitingReward = false, w.waveCleared = false, w.wave >= 27 ? (w._matchEndedPendingReset = true, w.gameState = "VICTORY", w.clearSavedRun?.(false), w.unlockCitadelIfEligible?.(), w.saveGame(), w.onGameOver?.(true), m("VICTORY")) : w.startWave(w.wave + 1));
+  }, children: ce.isFinalWave ? c === "vi" ? "Chinh Ph\u1EE5c!" : "Victory!" : c === "vi" ? "M\xE0n Ti\u1EBFp Theo \u2192" : "Next Wave \u2192" })] })] }) }), (l === "GAME_OVER" || l === "VICTORY") && (0, u.jsx)("div", { className: "modal-backdrop", children: (0, u.jsxs)("div", { className: "modal-box max-w-[460px] text-center", children: [(0, u.jsx)("div", { className: "w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center bg-amber-500/20 text-amber-400 text-3xl", children: l === "VICTORY" ? "\u{1F451}" : "\u{1F480}" }), (0, u.jsx)("h3", { className: "font-moba text-2xl font-black text-white", children: l === "VICTORY" ? ze.victory : ze.defeat }), (0, u.jsx)("p", { className: "text-xs text-slate-400 mt-1", children: l === "VICTORY" ? ze.victorySub : ze.defeatSub }), (() => {
+    if (l !== "VICTORY") return null;
+    const nextMapId = getNextCampaignMapId(a.current?.activeMapId || "classic");
+    if (nextMapId && isMapUnlocked(nextMapId, unlockedMaps, founderUnlocked)) {
+      const nextMeta = ARENA_MAPS[nextMapId];
+      const nextName = (nextMeta?.name?.[c === "en" ? "en" : "vi"] || nextMapId).toUpperCase();
+      return (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-rose-950/75 border border-rose-400/60 text-rose-100 text-xs font-moba font-bold", children: c === "vi" ? `🗺️ Bản đồ tiếp theo ĐÃ MỞ KHÓA: ${nextName}! Chọn trong Sảnh Chính.` : `🗺️ Next Map UNLOCKED: ${nextName}! Select it in the Lobby.` });
+    }
+    if (!nextMapId) {
+      return (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-sky-950/75 border border-sky-400/60 text-sky-100 text-xs font-moba font-bold", children: c === "vi" ? "🏆 CHÚC MỪNG! Bạn đã chinh phục trọn vẹn cả 4 Bản Đồ Chiến Trường!" : "🏆 CONGRATULATIONS! You conquered all 4 Campaign Battlegrounds!" });
+    }
+    return null;
+  })(), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 my-3 grid grid-cols-2 gap-2 text-left text-xs font-mono-numbers", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "M\xE0n ch\u01A1i:" }), (0, u.jsxs)("div", { className: "text-amber-400 font-bold text-sm", children: [a.current?.wave || 1, " / 27"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "Ti\xEAu di\u1EC7t:" }), (0, u.jsx)("div", { className: "text-white font-bold text-sm", children: a.current?.totalKilled || 0 })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "C\u1EA5p \u0111\u1ED9:" }), (0, u.jsx)("div", { className: "text-emerald-400 font-bold text-sm", children: ["Lv.", a.current?.player?.level || 1] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "T\u1ED5ng s\xE1t th\u01B0\u01A1ng:" }), (0, u.jsx)("div", { className: "text-rose-400 font-bold text-sm", children: (a.current?.player?.totalDamage || 0).toLocaleString() })] })] }), (a.current?.multiplayer?.active || mpMatchResult) && (mpMatchResult?.room?.members || mpRoom?.members) && (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 mb-3 text-left text-xs", children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-bold text-cyan-300 uppercase tracking-wider mb-1.5", children: "B\u1EA3ng S\xE1t Th\u01B0\u01A1ng \u0110\u1ED3ng \u0110\u1ED9i" }), (0, u.jsx)("div", { className: "space-y-1", children: (mpMatchResult?.room?.members || mpRoom?.members || []).map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between font-mono-numbers text-[11px]", children: [(0, u.jsxs)("span", { className: "text-slate-200 truncate", children: [mem.isHost ? "\u{1F451} " : "", mem.name] }), (0, u.jsx)("span", { className: "text-rose-400 font-bold", children: [(mem.totalDamage || 0).toLocaleString(), " DMG"] })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "flex flex-col gap-2", children: [a.current?.multiplayer?.active || mpMatchResult ? (0, u.jsxs)(u.Fragment, { children: [(mpMatchResult?.room?.hostId || mpRoom?.hostId) === mpClient.playerId && (0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
     R.playClick();
     mpClient.restartMatch();
   }, children: "\u{1F501} Ch\u01A1i L\u1EA1i (C\xF9ng Ph\xF2ng)" }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs border-cyan-500/50 text-cyan-200", onClick: () => {
@@ -3344,7 +3439,7 @@ function ny() {
     handleLeaveRoom();
     m("MENU");
   }, children: "\u{1F3E0} R\u1EDDi Ph\xF2ng V\u1EC1 Menu" })] }) : (0, u.jsxs)(u.Fragment, { children: [(0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
-    a.current && a.current.startNewGame(p), m("PLAYING");
+    a.current && (lastTrackedMatchKillsRef.current = 0, lastRecordedEndKeyRef.current = "", a.current.startNewGame(p, a.current.selectedMapId, { resetCoins: true }), v(a.current.playerCoins)), m("PLAYING");
   }, children: ze.restart }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs", onClick: () => m("HERO_SELECT"), children: ze.changeHero }), (0, u.jsx)("button", { className: "btn-secondary py-2.5 text-xs text-slate-400", onClick: () => m("MENU"), children: ze.mainMenu })] })] })] })  }), P && (0, u.jsx)(Jf, { engine: a.current, coins: f, shopHeroId: ht, buildRevision: qe, founderUnlocked, onChangeHero: (w) => {
     if (w === "thien" && !founderUnlockedRef.current) {
       requireFounderUnlock(() => je("thien"));
@@ -3400,7 +3495,13 @@ function ny() {
     handleLeaveRoom();
   }, onRetryConnect: handleRetryMpConnect, envInfo, p2pInviteCode, p2pManualOfferCode, p2pHasServerSignal, p2pAnswerCode, p2pAutoPaired, p2pIncomingOffer, p2pIncomingAnswer, p2pBusy, customServerUrl, lanUrls, isFullscreen: fsActive, onToggleFullscreen: toggleFullscreen, onChangeCustomServerUrl: setCustomServerUrl, onApplyCustomServerUrl: handleApplyCustomServerUrl, onStartP2PHost: handleStartP2PHost, onCreateP2PInvite: handleCreateP2PInvite, onAcceptP2PAnswer: handleAcceptP2PAnswer, onChangeP2PIncomingOffer: setP2pIncomingOffer, onChangeP2PIncomingAnswer: setP2pIncomingAnswer, onJoinP2POffer: handleJoinP2POffer, onCopyText: handleCopyText, onClose: () => {
     setMpLobbyOpen(false);
-  }, unlockedMaps, onChangeRoomMap: (nextMapId) => mpClient.setMap(nextMapId) }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, deviceInfo, resumableRun, onGenerateTransferCode: handleGenerateTransferCode, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })], className: "flex items-center gap-3" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), citadelLoreModal && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10060 }, children: (0, u.jsxs)("div", { className: `modal-box max-w-[560px] relative overflow-hidden ${citadelLoreModal.themeVariant === "bao" ? "border-purple-400/75 bg-gradient-to-b from-[#170b24] to-[#080710]" : citadelLoreModal.themeVariant === "combined" ? "border-amber-400/80 bg-gradient-to-b from-[#1e101b] via-[#130a18] to-[#080910]" : "border-rose-500/75 bg-gradient-to-b from-[#190b18] to-[#080910]"}`, children: [(0, u.jsx)("div", { className: "h-0.5 w-full bg-gradient-to-r from-rose-500/85 via-amber-400/80 to-purple-500/85 mb-3 rounded-sm" }), (0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800/90 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3 min-w-0", children: [(0, u.jsx)(CitadelLoreCrest, { nodeId: citadelLoreModal.nodeId, resonated: citadelLoreModal.heroResonated, combined: citadelLoreModal.isCombinedEvent, className: "w-14 h-14" }), (0, u.jsxs)("div", { className: "min-w-0", children: [(0, u.jsxs)("div", { className: `text-[10px] font-moba font-extrabold uppercase tracking-wider truncate ${citadelLoreModal.themeVariant === "bao" ? "text-purple-300" : citadelLoreModal.themeVariant === "combined" ? "text-amber-300" : "text-rose-300"}`, children: [citadelLoreModal.archiveCode ? `${citadelLoreModal.archiveCode} · ` : "", citadelLoreModal.subtitle] }), (0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white mt-0.5 truncate", children: citadelLoreModal.title }), citadelLoreModal.specimenMeta && (0, u.jsx)("div", { className: "text-[10px] font-mono-numbers tabular-nums text-slate-400 mt-0.5 truncate", children: citadelLoreModal.specimenMeta })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm shrink-0", onClick: () => {
+  }, unlockedMaps, onChangeRoomMap: (nextMapId) => {
+    if (!isMapUnlocked(nextMapId, unlockedMaps, founderUnlockedRef.current)) {
+      G(getMapUnlockRequirement(nextMapId, c));
+      return;
+    }
+    mpClient.setMap(nextMapId);
+  } }), accountModalOpen && (0, u.jsx)(PlayerAccountModal, { lang: c, initialTab: accountModalTab, profile: playerProfile, heroes: Mi, coins: f, highestWave: Math.max(a.current?.highestWaveCleared || 0, playerProfile?.highestWave || 0), googleUser, founderUnlocked, syncBusy: accountSyncBusy, authError: accountAuthError, authDetails: accountAuthDetails, onClearAuthError: () => { setAccountAuthError(""); setAccountAuthDetails(null); }, onSaveProfile: handleSaveProfile, onSignInGoogle: handlePlayerGoogleSignIn, onSignOutGoogle: handlePlayerGoogleSignOut, onPushCloudSave: handlePushCloudSave, onPullCloudSave: handlePullCloudSave, onClaimDailyCheckIn: handleClaimDailyCheckIn, onExportSaveJson: handleExportSaveJson, onImportSaveJson: handleImportSaveJson, deviceInfo, resumableRun, onGenerateTransferCode: handleGenerateTransferCode, onOpenCoopWithFriend: handleOpenCoopWithFriend, onCopyText: handleCopyText, onShowToast: G, onClose: () => setAccountModalOpen(false) }), founderModalOpen && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10050 }, children: (0, u.jsxs)("div", { className: "modal-box max-w-[440px] border-amber-400/70 bg-gradient-to-b from-[#0b152b] to-[#050811]", children: [(0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800 pb-3", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)(Wt, { heroId: "thien", skillId: "c4", size: 48, roundedClass: "rounded-xl" }), (0, u.jsxs)("div", { children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-extrabold uppercase tracking-wider text-amber-300", children: "CHỈ DÀNH CHO NHÀ SÁNG LẬP" }), (0, u.jsx)("h3", { className: "font-title text-lg font-black text-white", children: "THIÊN – ĐẤNG SÁNG THẾ" })] })], className: "flex items-center gap-3" }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm", onClick: () => { R.playModalClose(); setFounderModalOpen(false); }, children: "✕" })] }), (0, u.jsxs)("div", { className: "mt-3.5 space-y-3 text-xs", children: [(0, u.jsx)("p", { className: "text-slate-300 leading-relaxed", children: "Tướng bí mật này được bảo vệ bởi máy chủ & Firebase. Nhập mật khẩu 8 số của Nhà Sáng Lập hoặc xác thực bằng tài khoản Google chính chủ." }), (0, u.jsxs)("form", { onSubmit: handleVerifyFounderPin, className: "space-y-2.5", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("label", { className: "block text-[11px] font-moba font-bold text-sky-200 mb-1", children: "Mật khẩu Nhà Sáng Lập (8 chữ số)" }), (0, u.jsx)("input", { type: "password", inputMode: "numeric", autoComplete: "off", maxLength: 8, value: founderPinInput, onChange: (e) => setFounderPinInput(e.target.value.replace(/\D/g, "").slice(0, 8)), placeholder: "••••••••", autoFocus: true, className: "w-full min-h-[46px] rounded-xl bg-[#040814] border border-amber-400/55 focus:border-amber-300 px-3 py-2 text-center font-mono-numbers text-lg font-black tracking-[0.35em] text-amber-100 outline-none" })] }), (0, u.jsx)("button", { type: "submit", disabled: founderAuthBusy || founderPinInput.length < 8, className: "w-full min-h-[44px] moba-bronze-btn rounded-xl font-moba text-xs sm:text-sm font-black tracking-wide disabled:opacity-55", children: founderAuthBusy ? "ĐANG XÁC THỰC MÁY CHỦ..." : "XÁC NHẬN MỞ KHÓA THIÊN" })] }), (0, u.jsxs)("div", { className: "relative flex items-center py-1", children: [(0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" }), (0, u.jsx)("span", { className: "px-2.5 text-[10px] uppercase tracking-wider text-slate-500 font-moba font-bold", children: "Hoặc qua Firebase" }), (0, u.jsx)("div", { className: "flex-1 border-t border-slate-800" })] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleVerifyFounderGoogle, className: "w-full min-h-[42px] rounded-xl bg-sky-950/60 hover:bg-sky-900/70 border border-sky-400/60 text-sky-100 font-moba text-xs font-extrabold flex items-center justify-center gap-2 disabled:opacity-55", children: ["🔐 Đăng nhập Google Nhà Sáng Lập"] }), founderAuthError && (0, u.jsx)(AuthErrorBanner, { lang: c, authError: founderAuthError, authDetails: founderAuthDetails, onClear: () => { setFounderAuthError(""); setFounderAuthDetails(null); }, onCopyText: handleCopyText, compact: true }), founderUnlocked && (0, u.jsxs)("div", { className: "pt-2 border-t border-slate-800 flex items-center justify-between gap-2", children: [(0, u.jsxs)("span", { className: "text-emerald-300 font-semibold", children: ["✓ Đã mở khóa (", founderAuthSource || "verified", ")"] }), (0, u.jsx)("button", { type: "button", disabled: founderAuthBusy, onClick: handleLogoutFounder, className: "btn-danger text-[11px] px-3 py-1.5", children: "Khóa Lại" })] })] })] }) }), citadelLoreModal && (0, u.jsx)("div", { className: "modal-backdrop", style: { zIndex: 10060 }, children: (0, u.jsxs)("div", { className: `modal-box max-w-[560px] relative overflow-hidden ${citadelLoreModal.themeVariant === "bao" ? "border-purple-400/75 bg-gradient-to-b from-[#170b24] to-[#080710]" : citadelLoreModal.themeVariant === "combined" ? "border-amber-400/80 bg-gradient-to-b from-[#1e101b] via-[#130a18] to-[#080910]" : "border-rose-500/75 bg-gradient-to-b from-[#190b18] to-[#080910]"}`, children: [(0, u.jsx)("div", { className: "h-0.5 w-full bg-gradient-to-r from-rose-500/85 via-amber-400/80 to-purple-500/85 mb-3 rounded-sm" }), (0, u.jsxs)("div", { className: "flex items-start justify-between gap-3 border-b border-slate-800/90 pb-3", children: [(0, u.jsxs)("div", { className: "flex items-center gap-3 min-w-0", children: [(0, u.jsx)(CitadelLoreCrest, { nodeId: citadelLoreModal.nodeId, resonated: citadelLoreModal.heroResonated, combined: citadelLoreModal.isCombinedEvent, className: "w-14 h-14" }), (0, u.jsxs)("div", { className: "min-w-0", children: [(0, u.jsxs)("div", { className: `text-[10px] font-moba font-extrabold uppercase tracking-wider truncate ${citadelLoreModal.themeVariant === "bao" ? "text-purple-300" : citadelLoreModal.themeVariant === "combined" ? "text-amber-300" : "text-rose-300"}`, children: [citadelLoreModal.archiveCode ? `${citadelLoreModal.archiveCode} · ` : "", citadelLoreModal.subtitle] }), (0, u.jsx)("h3", { className: "font-moba text-lg font-black text-white mt-0.5 truncate", children: citadelLoreModal.title }), citadelLoreModal.specimenMeta && (0, u.jsx)("div", { className: "text-[10px] font-mono-numbers tabular-nums text-slate-400 mt-0.5 truncate", children: citadelLoreModal.specimenMeta })] })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary px-2.5 py-1 text-sm shrink-0", onClick: () => {
     R.playModalClose();
     setCitadelLoreModal(null);
     if (citadelLorePausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
@@ -3426,7 +3527,7 @@ function ny() {
       frozenTombStoryPausedRef.current = false;
       a.current.gameState = "PLAYING";
     }
-  } }), frozenTombJournalOpen && (0, u.jsx)(FrozenTombJournalModal, { open: frozenTombJournalOpen, progress: frozenTombProgress, infernoProgress, lang: c, onClose: () => setFrozenTombJournalOpen(false) }), chroniclesOpen && (0, u.jsx)(ChroniclesModal, { open: chroniclesOpen, lang: c, heroes: Mi, initialTab: chroniclesTab, focusHeroId: chroniclesFocusHeroId, founderUnlocked, citadelUnlocked: isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked), citadelSecrets, infernoProgress, frozenTombProgress, onSelectHero: (heroIdArg) => {
+  } }), frozenTombJournalOpen && (0, u.jsx)(FrozenTombJournalModal, { open: frozenTombJournalOpen, progress: frozenTombProgress, infernoProgress, lang: c, onClose: () => setFrozenTombJournalOpen(false) }), chroniclesOpen && (0, u.jsx)(ChroniclesModal, { open: chroniclesOpen, lang: c, heroes: Mi, initialTab: chroniclesTab, focusHeroId: chroniclesFocusHeroId, founderUnlocked, citadelUnlocked: isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked), infernoUnlocked: isMapUnlocked("inferno_ash", unlockedMaps, founderUnlocked), frozenTombUnlocked: isMapUnlocked("frozen_tomb", unlockedMaps, founderUnlocked), citadelSecrets, infernoProgress, frozenTombProgress, onSelectHero: (heroIdArg) => {
     const found = Mi.find((hr) => hr.id === heroIdArg);
     if (!found) return;
     if (found.isSecretFounder && !founderUnlockedRef.current) return;
@@ -3440,16 +3541,22 @@ function ny() {
     if (a.current?.setSelectedMap?.("inferno_ash")) {
       setSelectedMapId("inferno_ash");
       G(c === "vi" ? "Đã chọn map: Hỏa Ngục Tàn Tro!" : "Selected map: Inferno of Ashes!");
+    } else {
+      G(getMapUnlockRequirement("inferno_ash", c));
     }
   }, onSelectFrozenTombMap: () => {
     if (a.current?.setSelectedMap?.("frozen_tomb")) {
       setSelectedMapId("frozen_tomb");
       G(c === "vi" ? "Đã chọn map: Băng Mộ Vĩnh Cửu!" : "Selected map: Eternal Frozen Tomb!");
+    } else {
+      G(getMapUnlockRequirement("frozen_tomb", c));
     }
   }, onSelectCitadelMap: () => {
     if (a.current?.setSelectedMap?.("blood_citadel")) {
       setSelectedMapId("blood_citadel");
       G(c === "vi" ? "Đã chọn map: Cổ Thành Huyết Táng!" : "Selected map: Bloodsoaked Ancient Citadel!");
+    } else {
+      G(getMapUnlockRequirement("blood_citadel", c));
     }
   }, onClose: () => setChroniclesOpen(false) }), mt && (0, u.jsx)("div", { className: "toast-message show", children: mt })] });
 }

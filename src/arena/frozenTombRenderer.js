@@ -479,36 +479,135 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
     ctx.fillRect(2350, 1250, 1050, 1550);
   }
 
-  // Staggered snow flagstone masonry grid & subtle snowdrifts inside visible viewport
+  // Ambient Glacial District Halos (only when glows enabled)
+  if (!mono && allowGlows) {
+    const halos = [
+      { x: 480, y: 2400, r: 340, c0: "rgba(56, 189, 248, 0.16)", c1: "rgba(8, 22, 46, 0)" },
+      { x: 640, y: 1440, r: 360, c0: "rgba(103, 232, 249, 0.14)", c1: "rgba(8, 22, 46, 0)" },
+      { x: 1800, y: 1350, r: 460, c0: "rgba(99, 102, 241, 0.18)", c1: "rgba(8, 22, 46, 0)" },
+      { x: 1900, y: 340, r: 380, c0: "rgba(129, 140, 248, 0.18)", c1: "rgba(8, 22, 46, 0)" },
+      { x: 2950, y: 380, r: 280, c0: "rgba(168, 85, 247, 0.2)", c1: "rgba(8, 22, 46, 0)" },
+      { x: 1750, y: 2320, r: 440, c0: "rgba(147, 51, 234, 0.22)", c1: "rgba(6, 4, 14, 0)" },
+    ];
+    for (const h of halos) {
+      if (!isCircleInViewBounds(h.x, h.y, h.r, viewBounds)) continue;
+      const g = ctx.createRadialGradient(h.x, h.y, 18, h.x, h.y, h.r);
+      g.addColorStop(0, h.c0);
+      g.addColorStop(1, h.c1);
+      ctx.fillStyle = g;
+      ctx.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
+    }
+  }
+
+  // Staggered Running-Bond Glacial Ashlar Stone Flagstones with District Tinting (view-culled)
   if (vb) {
-    const startX = Math.max(0, Math.floor(vb.minX / 140) * 140);
-    const endX = Math.min(FROZEN_TOMB_WIDTH, Math.ceil(vb.maxX / 140) * 140);
-    const startY = Math.max(0, Math.floor(vb.minY / 140) * 140);
-    const endY = Math.min(FROZEN_TOMB_HEIGHT, Math.ceil(vb.maxY / 140) * 140);
+    const tileW = 110;
+    const tileH = 68;
+    const rowStart = Math.max(0, Math.floor(vb.minY / tileH));
+    const rowEnd = Math.min(Math.ceil(FROZEN_TOMB_HEIGHT / tileH) - 1, Math.ceil(vb.maxY / tileH));
 
-    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.09)" : "rgba(125, 211, 252, 0.075)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let gx = startX; gx <= endX; gx += 140) {
-      ctx.moveTo(gx, startY);
-      ctx.lineTo(gx, endY);
-    }
-    for (let gy = startY; gy <= endY; gy += 140) {
-      ctx.moveTo(startX, gy);
-      ctx.lineTo(endX, gy);
-    }
-    ctx.stroke();
+    for (let row = rowStart; row <= rowEnd; row++) {
+      const y = row * tileH;
+      const offset = row % 2 === 1 ? tileW * 0.5 : 0;
+      const colStart = Math.max(-1, Math.floor((vb.minX - offset) / tileW));
+      const colEnd = Math.min(
+        Math.ceil(FROZEN_TOMB_WIDTH / tileW),
+        Math.ceil((vb.maxX - offset) / tileW)
+      );
 
-    if (perf.effectiveTier !== "saver") {
-      for (let gx = startX; gx < endX; gx += 140) {
-        for (let gy = startY; gy < endY; gy += 140) {
-          const hv = hashCell(gx / 140, gy / 140);
-          if (hv > 0.68) {
-            ctx.fillStyle = mono ? "rgba(226,232,240,0.08)" : "rgba(186, 230, 253, 0.085)";
-            ctx.beginPath();
-            ctx.ellipse(gx + 70, gy + 70, 38 * hv, 16 * hv, hv * 2, 0, Math.PI * 2);
-            ctx.fill();
+      for (let col = colStart; col <= colEnd; col++) {
+        const x = col * tileW + offset;
+        if (x + tileW <= 0 || x >= FROZEN_TOMB_WIDTH) continue;
+        const drawX = Math.max(18, x);
+        const drawW = Math.min(FROZEN_TOMB_WIDTH - 18, x + tileW) - drawX;
+        const drawY = Math.max(18, y);
+        const drawH = Math.min(FROZEN_TOMB_HEIGHT - 18, y + tileH) - drawY;
+        if (drawW <= 4 || drawH <= 4) continue;
+
+        const hv = hashCell(col, row);
+        const midX = drawX + drawW * 0.5;
+        const midY = drawY + drawH * 0.5;
+
+        if (mono) {
+          const shade = 25 + Math.floor(hv * 11);
+          ctx.fillStyle = `rgb(${shade}, ${shade + 7}, ${shade + 18})`;
+        } else {
+          const inOldTown = midX <= 1250 && midY >= 960 && midY <= 1850;
+          const inCathedral = midX >= 1340 && midX <= 2280 && midY >= 960 && midY <= 1800;
+          const inPalace = midY <= 850 && midX >= 1360;
+          const inGraveyard = midY <= 920 && midX < 1360;
+          const inAbyss = midY >= 1750 && midX >= 1150;
+
+          let r = 10 + hv * 10;
+          let g = 21 + hv * 13;
+          let b = 40 + hv * 16;
+
+          if (inOldTown) {
+            r += 4;
+            g += 6;
+            b += 10;
+          } else if (inCathedral || inPalace) {
+            r += 5;
+            g -= 2;
+            b += 14;
+          } else if (inGraveyard) {
+            r += 6;
+            g += 4;
+            b += 6;
+          } else if (inAbyss) {
+            r += 7;
+            g -= 8;
+            b += 4;
           }
+          ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+        }
+        ctx.fillRect(drawX + 1.5, drawY + 1.5, drawW - 3, drawH - 3);
+
+        // Crisp top-left frost bevel highlight
+        ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.12)" : "rgba(224, 242, 254, 0.06)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(drawX + 2, drawY + drawH - 3);
+        ctx.lineTo(drawX + 2, drawY + 2);
+        ctx.lineTo(drawX + drawW - 3, drawY + 2);
+        ctx.stroke();
+
+        // Occasional Nordic diamond inlay on courtyard stones
+        if (hv > 0.43 && hv < 0.49 && drawW >= 62 && drawH >= 46) {
+          ctx.strokeStyle = mono ? "rgba(203, 213, 225, 0.14)" : "rgba(125, 211, 252, 0.12)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(midX, drawY + 13);
+          ctx.lineTo(midX + 13, midY);
+          ctx.lineTo(midX, drawY + drawH - 13);
+          ctx.lineTo(midX - 13, midY);
+          ctx.closePath();
+          ctx.stroke();
+        }
+
+        // Hairline glacial cracks & frost rime veins
+        if (hv > 0.78 && drawW > 42 && drawH > 32) {
+          ctx.strokeStyle = mono
+            ? "rgba(226, 232, 240, 0.18)"
+            : hv > 0.91
+              ? "rgba(125, 211, 252, 0.24)"
+              : "rgba(3, 10, 22, 0.55)";
+          ctx.lineWidth = 1.15;
+          ctx.beginPath();
+          const fx = drawX + drawW * (0.24 + ((hv * 5) % 0.36));
+          const fy = drawY + drawH * 0.26;
+          ctx.moveTo(fx, fy);
+          ctx.lineTo(fx + 16, fy + 10);
+          ctx.lineTo(fx + 10, fy + 24);
+          ctx.stroke();
+        }
+
+        // Soft snowdrift pockets (skipped on saver tier)
+        if (perf.effectiveTier !== "saver" && hv > 0.86) {
+          ctx.fillStyle = mono ? "rgba(226,232,240,0.08)" : "rgba(186, 230, 253, 0.085)";
+          ctx.beginPath();
+          ctx.ellipse(midX, midY, 26 * hv, 11 * hv, hv * 2.1, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     }
@@ -540,7 +639,7 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
   }
   ctx.restore();
 
-  // Royal Cobblestone Roads + Curb Stones connecting Gate -> Old Town -> Cathedral -> Palace -> Graveyard
+  // Royal Glacial Processional Causeways + Frosted Runner Inlays + Nordic Medallions
   const roads = [
     { x: 410, y: 1740, w: 140, h: 920 },
     { x: 480, y: 1380, w: 940, h: 120 },
@@ -549,43 +648,157 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
   ];
   for (const rd of roads) {
     if (!isRectVisible(rd, vb, 60)) continue;
-    ctx.fillStyle = mono ? "rgba(51, 65, 85, 0.42)" : "rgba(23, 46, 77, 0.48)";
+    const isHorizontal = rd.w > rd.h;
+    ctx.save();
+    ctx.fillStyle = mono ? "rgba(51, 65, 85, 0.5)" : "rgba(18, 38, 68, 0.62)";
     ctx.fillRect(rd.x, rd.y, rd.w, rd.h);
-    // Cobblestone tile lines
-    ctx.strokeStyle = "rgba(186, 230, 253, 0.14)";
-    ctx.lineWidth = 1;
+
+    // Frosted silver-indigo ceremonial runner carpet down center
+    ctx.fillStyle = mono ? "rgba(203, 213, 225, 0.1)" : "rgba(56, 189, 248, 0.14)";
+    if (isHorizontal) {
+      ctx.fillRect(rd.x, rd.y + 20, rd.w, rd.h - 40);
+    } else {
+      ctx.fillRect(rd.x + 22, rd.y, rd.w - 44, rd.h);
+    }
+
+    // Double inner trim lines
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.25)" : "rgba(186, 230, 253, 0.3)";
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    if (rd.w > rd.h) {
-      for (let cx = rd.x + 36; cx < rd.x + rd.w; cx += 36) {
-        ctx.moveTo(cx, rd.y + 4);
-        ctx.lineTo(cx, rd.y + rd.h - 4);
+    if (isHorizontal) {
+      ctx.moveTo(rd.x, rd.y + 14);
+      ctx.lineTo(rd.x + rd.w, rd.y + 14);
+      ctx.moveTo(rd.x, rd.y + rd.h - 14);
+      ctx.lineTo(rd.x + rd.w, rd.y + rd.h - 14);
+    } else {
+      ctx.moveTo(rd.x + 15, rd.y);
+      ctx.lineTo(rd.x + 15, rd.y + rd.h);
+      ctx.moveTo(rd.x + rd.w - 15, rd.y);
+      ctx.lineTo(rd.x + rd.w - 15, rd.y + rd.h);
+    }
+    ctx.stroke();
+
+    // Cross-flagstone paver seams every 55px + Nordic star medallions every 165px
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.16)" : "rgba(125, 211, 252, 0.16)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (isHorizontal) {
+      for (let cx = rd.x + 55; cx < rd.x + rd.w; cx += 55) {
+        ctx.moveTo(cx, rd.y + 3);
+        ctx.lineTo(cx, rd.y + rd.h - 3);
       }
     } else {
-      for (let cy = rd.y + 36; cy < rd.y + rd.h; cy += 36) {
-        ctx.moveTo(rd.x + 4, cy);
-        ctx.lineTo(rd.x + rd.w - 4, cy);
+      for (let cy = rd.y + 55; cy < rd.y + rd.h; cy += 55) {
+        ctx.moveTo(rd.x + 3, cy);
+        ctx.lineTo(rd.x + rd.w - 3, cy);
       }
     }
     ctx.stroke();
-    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.3)" : "rgba(186, 230, 253, 0.28)";
+
+    // Etched Nordic diamond medallions along causeway center
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.26)" : "rgba(125, 211, 252, 0.32)";
+    ctx.fillStyle = mono ? "rgba(226, 232, 240, 0.24)" : "rgba(165, 180, 252, 0.35)";
+    ctx.lineWidth = 1.3;
+    if (isHorizontal) {
+      const midY = rd.y + rd.h * 0.5;
+      for (let mx = rd.x + 85; mx < rd.x + rd.w - 60; mx += 165) {
+        if (vb && (mx < vb.minX - 40 || mx > vb.maxX + 40)) continue;
+        ctx.beginPath();
+        ctx.moveTo(mx, midY - 14);
+        ctx.lineTo(mx + 15, midY);
+        ctx.lineTo(mx, midY + 14);
+        ctx.lineTo(mx - 15, midY);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mx, midY, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      const midX = rd.x + rd.w * 0.5;
+      for (let my = rd.y + 85; my < rd.y + rd.h - 60; my += 165) {
+        if (vb && (my < vb.minY - 40 || my > vb.maxY + 40)) continue;
+        if (Math.abs(my - 1350) < 120) continue; // skip Cathedral Rose Crossing
+        ctx.beginPath();
+        ctx.moveTo(midX, my - 15);
+        ctx.lineTo(midX + 15, my);
+        ctx.lineTo(midX, my + 15);
+        ctx.lineTo(midX - 15, my);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(midX, my, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.32)" : "rgba(186, 230, 253, 0.34)";
     ctx.lineWidth = 2.2;
     ctx.strokeRect(rd.x, rd.y, rd.w, rd.h);
+    ctx.restore();
   }
 
-  // Old Town Plaza Square Fountain Ruin at intersection (640, 1440)
-  if (isCircleInViewBounds(640, 1440, 140, viewBounds)) {
+  // Ambient Frosted Eternal Lanterns Flanking Causeways & Thresholds
+  const corridorLanterns = [
+    { x: 390, y: 1800, color: "cyan" },
+    { x: 570, y: 1800, color: "cyan" },
+    { x: 1690, y: 1740, color: "cyan" },
+    { x: 1910, y: 1740, color: "cyan" },
+    { x: 1690, y: 760, color: "violet" },
+    { x: 1910, y: 760, color: "violet" },
+    { x: 1590, y: 2000, color: "violet" },
+    { x: 1910, y: 2000, color: "violet" },
+  ];
+  for (const ln of corridorLanterns) {
+    if (isCircleInViewBounds(ln.x, ln.y, 48, viewBounds)) {
+      drawFrozenLantern(ctx, ln.x, ln.y, ln.color, t, allowGlows, mono);
+    }
+  }
+
+  // Old Town Plaza Square Stepped Octagonal Clockwork Fountain Ruin at (640, 1440)
+  if (isCircleInViewBounds(640, 1440, 160, viewBounds)) {
     ctx.save();
     ctx.translate(640, 1440);
-    ctx.strokeStyle = mono ? "#CBD5E1" : "rgba(125, 211, 252, 0.35)";
+    // Outer stepped octagonal granite basin
+    ctx.fillStyle = mono ? "rgba(30, 41, 59, 0.72)" : "rgba(15, 31, 56, 0.78)";
+    ctx.strokeStyle = mono ? "#CBD5E1" : "rgba(125, 211, 252, 0.55)";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      const rx = Math.cos(a) * 94;
+      const ry = Math.sin(a) * 94;
+      if (k === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner frozen water basin sheen
+    ctx.fillStyle = mono ? "rgba(71, 85, 105, 0.45)" : "rgba(14, 116, 144, 0.34)";
+    ctx.beginPath();
+    ctx.arc(0, 0, 72, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = mono ? "#E2E8F0" : "#7DD3FC";
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
+    // Submerged frozen brass clockwork gear ring (12 radial teeth)
+    ctx.strokeStyle = mono ? "rgba(203, 213, 225, 0.45)" : "rgba(217, 119, 6, 0.42)";
     ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(0, 0, 88, 0, Math.PI * 2);
+    ctx.arc(0, 0, 46, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([8, 6]);
-    ctx.beginPath();
-    ctx.arc(0, 0, 58, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    for (let g = 0; g < 12; g++) {
+      const ga = (Math.PI * 2 * g) / 12 + 0.12;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(ga) * 38, Math.sin(ga) * 38);
+      ctx.lineTo(Math.cos(ga) * 53, Math.sin(ga) * 53);
+      ctx.stroke();
+    }
+    // Ice crystal spire in fountain centerpiece
+    drawIceCrystalCluster(ctx, 0, 4, 1.05, 0, "#0284C7", "#E0F2FE", mono);
     ctx.restore();
   }
 
@@ -770,16 +983,62 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
     ctx.restore();
   }
 
-  // ZONE 5: PALACE ROYAL FLOOR CARPET & FROZEN HALL ACCENTS
+  // ZONE 5: PALACE ROYAL FLOOR CARPET, FROST-CROWN HERALDIC CREST & FROZEN HALL ACCENTS
   if (isRectVisible({ x: 1480, y: 190, w: 920, h: 530 }, vb, 60)) {
     ctx.save();
-    ctx.fillStyle = mono ? "rgba(100,116,139,0.28)" : "rgba(30, 58, 138, 0.42)";
+    ctx.fillStyle = mono ? "rgba(100,116,139,0.28)" : "rgba(30, 58, 138, 0.44)";
     ctx.fillRect(1840, 195, 120, 520);
     ctx.strokeStyle = mono ? "#CBD5E1" : "#A5B4FC";
     ctx.lineWidth = 2;
     ctx.strokeRect(1840, 195, 120, 520);
+    ctx.strokeStyle = mono ? "#94A3B8" : "rgba(186, 230, 253, 0.38)";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(1848, 203, 104, 504);
+
+    // Grand Royal Frost-Crown Heraldic Crest at (1900, 340)
+    if (isCircleInViewBounds(1900, 340, 130, viewBounds)) {
+      ctx.save();
+      ctx.translate(1900, 340);
+      ctx.fillStyle = mono ? "rgba(30, 41, 59, 0.72)" : "rgba(15, 23, 66, 0.78)";
+      ctx.beginPath();
+      ctx.arc(0, 0, 78, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = mono ? "#E2E8F0" : "#A5B4FC";
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.strokeStyle = mono ? "#94A3B8" : "#38BDF8";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 54, 0, Math.PI * 2);
+      ctx.stroke();
+      // 8 radiating heraldic silver frost rays
+      for (let r = 0; r < 8; r++) {
+        const ra = (Math.PI * 2 * r) / 8;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ra) * 18, Math.sin(ra) * 18);
+        ctx.lineTo(Math.cos(ra) * 74, Math.sin(ra) * 74);
+        ctx.stroke();
+      }
+      // Inner royal diamond crest
+      ctx.fillStyle = mono ? "rgba(203, 213, 225, 0.32)" : "rgba(129, 140, 248, 0.34)";
+      ctx.beginPath();
+      ctx.moveTo(0, -24);
+      ctx.lineTo(24, 0);
+      ctx.lineTo(0, 24);
+      ctx.lineTo(-24, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      // 4 corner crystal pillars framing royal dais
+      drawIceCrystalCluster(ctx, 1824, 265, 0.78, -0.2, "#3730A3", "#E0F2FE", mono);
+      drawIceCrystalCluster(ctx, 1976, 265, 0.78, 0.2, "#3730A3", "#E0F2FE", mono);
+      drawIceCrystalCluster(ctx, 1824, 415, 0.78, -0.2, "#3730A3", "#E0F2FE", mono);
+      drawIceCrystalCluster(ctx, 1976, 415, 0.78, 0.2, "#3730A3", "#E0F2FE", mono);
+    }
+
     // Frosted magic seal circle around EE4 Thanh Ritual Corner (2140, 590)
-    ctx.strokeStyle = "rgba(52, 211, 153, 0.34)";
+    ctx.strokeStyle = "rgba(52, 211, 153, 0.38)";
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.arc(2140, 590, 48, 0, Math.PI * 2);
@@ -824,8 +1083,30 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
     drawFrozenLantern(ctx, 590, 2262, "cyan", t, allowGlows, mono);
   }
 
-  // ZONE 4: GRAVEYARD GLOWING CRACKED GRAVES, UPRIGHT CORPSES & VANISHING FOOTPRINTS
+  // ZONE 4: GRAVEYARD GLOWING CRACKED GRAVES, WROUGHT-IRON FENCES, UPRIGHT CORPSES & FOOTPRINTS
   if (isRectVisible({ x: 100, y: 80, w: 1120, h: 780 }, vb, 80)) {
+    // Decorative wrought-iron cemetery border rails + stone corner posts
+    ctx.save();
+    ctx.strokeStyle = mono ? "#94A3B8" : "rgba(147, 197, 253, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(180, 748);
+    ctx.lineTo(1060, 748);
+    ctx.lineTo(1060, 195);
+    ctx.stroke();
+    ctx.fillStyle = mono ? "#475569" : "#1E293B";
+    ctx.strokeStyle = mono ? "#CBD5E1" : "#7DD3FC";
+    ctx.lineWidth = 1.4;
+    for (let fx = 180; fx <= 1060; fx += 110) {
+      ctx.fillRect(fx - 5, 743, 10, 10);
+      ctx.strokeRect(fx - 5, 743, 10, 10);
+    }
+    for (let fy = 200; fy <= 740; fy += 108) {
+      ctx.fillRect(1055, fy - 5, 10, 10);
+      ctx.strokeRect(1055, fy - 5, 10, 10);
+    }
+    ctx.restore();
+
     const crackedGraves = [
       { x: 350, y: 310 },
       { x: 560, y: 295 },
@@ -835,6 +1116,15 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
     ];
     for (const gr of crackedGraves) {
       const pulse = 0.34 + 0.24 * Math.sin(t * 2.5 + gr.x);
+      if (!mono && allowGlows) {
+        const mg = ctx.createRadialGradient(gr.x, gr.y, 4, gr.x, gr.y, 52);
+        mg.addColorStop(0, `rgba(103, 232, 249, ${0.14 + pulse * 0.1})`);
+        mg.addColorStop(1, "rgba(8, 22, 46, 0)");
+        ctx.fillStyle = mg;
+        ctx.beginPath();
+        ctx.arc(gr.x, gr.y, 52, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.fillStyle = "#030712";
       ctx.strokeStyle = `rgba(56, 189, 248, ${0.5 + pulse})`;
       ctx.lineWidth = 2;
@@ -866,33 +1156,110 @@ export function renderFrozenTombFloor(ctx, engine, t, viewBounds) {
     }
   }
 
-  // ZONE 7: FINAL SEALING CHAMBER RITUAL FLOOR & 4 RUNE PILLARS RESONANCE
-  if (isCircleInViewBounds(1750, 2320, 480, viewBounds)) {
+  // ZONE 7: GRAND STEPPED OCTAGONAL SEALING CHAMBER DAIS & 4 RUNE PILLARS RESONANCE
+  if (isCircleInViewBounds(1750, 2320, 520, viewBounds)) {
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
     ctx.save();
-    ctx.fillStyle = mono ? "rgba(15,23,42,0.45)" : "rgba(17, 7, 36, 0.55)";
+    ctx.translate(1750, 2320);
+
+    // Outer stepped octagonal abyssal-ice dais (r=335 & r=312)
+    ctx.fillStyle = mono ? "rgba(15,23,42,0.52)" : "rgba(13, 6, 28, 0.68)";
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.45)" : `rgba(168, 85, 247, ${0.42 + pulse * 0.25})`;
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
-    ctx.arc(1750, 2320, 305, 0, Math.PI * 2);
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      const rx = Math.cos(a) * 335;
+      const ry = Math.sin(a) * 335;
+      if (k === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.4)" : `rgba(168, 85, 247, ${0.34 + pulse * 0.28})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(1750, 2320, 290, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.26)" : "rgba(56, 189, 248, 0.4)";
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.3)" : "rgba(56, 189, 248, 0.45)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(1750, 2320, 195, 0, Math.PI * 2);
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      const rx = Math.cos(a) * 312;
+      const ry = Math.sin(a) * 312;
+      if (k === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
     ctx.stroke();
 
-    for (const rp of FROZEN_TOMB_RUNE_PILLARS) {
-      ctx.strokeStyle = `rgba(192, 132, 252, ${0.26 + pulse * 0.22})`;
+    // 24 perimeter rune notch ticks around r=298
+    ctx.strokeStyle = mono ? "rgba(226,232,240,0.4)" : `rgba(192, 132, 252, ${0.45 + pulse * 0.3})`;
+    ctx.lineWidth = 1.6;
+    for (let n = 0; n < 24; n++) {
+      const na = (Math.PI * 2 * n) / 24;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(na) * 288, Math.sin(na) * 288);
+      ctx.lineTo(Math.cos(na) * 304, Math.sin(na) * 304);
+      ctx.stroke();
+    }
+
+    // Counter-rotating astral & glacial dashed rune circles
+    ctx.save();
+    ctx.rotate(t * 0.14);
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.34)" : `rgba(192, 132, 252, ${0.4 + pulse * 0.25})`;
+    ctx.lineWidth = 2.4;
+    ctx.setLineDash([16, 10]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 265, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.rotate(-t * 0.22);
+    ctx.strokeStyle = mono ? "rgba(226, 232, 240, 0.28)" : "rgba(56, 189, 248, 0.45)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 12]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 195, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.setLineDash([]);
+
+    // 8 vertex crystal pylons around the octagonal dais
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      drawIceCrystalCluster(
+        ctx,
+        Math.cos(a) * 326,
+        Math.sin(a) * 326,
+        0.72,
+        a + Math.PI * 0.5,
+        k % 2 === 0 ? "#581C87" : "#0369A1",
+        k % 2 === 0 ? "#F5D0FE" : "#E0F2FE",
+        mono
+      );
+    }
+    ctx.restore();
+
+    // Flowing sealing energy motes moving from the 4 Rune Pillars toward the central coffin
+    ctx.save();
+    for (let idx = 0; idx < FROZEN_TOMB_RUNE_PILLARS.length; idx++) {
+      const rp = FROZEN_TOMB_RUNE_PILLARS[idx];
+      ctx.strokeStyle = `rgba(192, 132, 252, ${0.26 + pulse * 0.24})`;
       ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.moveTo(rp.x, rp.y);
       ctx.lineTo(1750, 2320);
       ctx.stroke();
+
+      for (let m = 0; m < 2; m++) {
+        const mf = (t * 0.45 + idx * 0.23 + m * 0.5) % 1;
+        const mx = rp.x + (1750 - rp.x) * mf;
+        const my = rp.y + (2320 - rp.y) * mf;
+        ctx.fillStyle = m === 0 ? "#E879F9" : "#7DD3FC";
+        ctx.beginPath();
+        ctx.arc(mx, my, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -1845,7 +2212,9 @@ export function renderFrozenTombAtmosphere(ctx, engine, t, viewW, viewH) {
   const runtime = engine.frozenTombRuntime;
   if (!runtime) return;
 
-  const perf = engine.getPerformanceProfile?.() || { tier: "high" };
+  const perf = engine.getPerformanceProfile?.() || { tier: "high", enableRadialGlows: true };
+  const allowGlows = perf.enableRadialGlows !== false;
+  const mono = Boolean(engine.player?.tin_monochrome_realm_timer > 0);
   const snowCount = perf.tier === "low" ? 28 : perf.tier === "medium" ? 48 : 76;
   const bliz = runtime.blizzardIntensity || 0.12;
   const count = Math.round(snowCount * (0.65 + bliz * 0.8));
@@ -1862,6 +2231,39 @@ export function renderFrozenTombAtmosphere(ctx, engine, t, viewW, viewH) {
     ctx.moveTo(sx, sy);
     ctx.lineTo(sx - len, sy + len * 0.34);
     ctx.stroke();
+  }
+
+  // Drifting crystalline hexagonal frost motes (medium & high tiers)
+  if (!mono && perf.tier !== "low") {
+    const flakeCount = perf.tier === "medium" ? 12 : 22;
+    for (let f = 0; f < flakeCount; f++) {
+      const fx = ((f * 271.3 - t * (32 + (f % 3) * 14) + Math.sin(t * 0.7 + f) * 28) % (viewW + 80) + (viewW + 80)) % (viewW + 80) - 40;
+      const fy = ((f * 137.9 + t * (22 + (f % 4) * 9)) % (viewH + 60)) - 30;
+      const r = 2.2 + (f % 3) * 0.9;
+      ctx.globalAlpha = 0.24 + 0.16 * Math.sin(t * 2.4 + f);
+      ctx.fillStyle = f % 4 === 0 ? "#C4B5FD" : "#BAE6FD";
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const a = (Math.PI * 2 * k) / 6 + t * 0.5;
+        const px = fx + Math.cos(a) * r;
+        const py = fy + Math.sin(a) * r;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Subtle upper glacial aurora rim tint (edge-only, preserves gameplay legibility)
+  if (!mono && allowGlows) {
+    const aurora = ctx.createLinearGradient(0, 0, viewW * 0.5, viewH * 0.35);
+    aurora.addColorStop(0, "rgba(56, 189, 248, 0.08)");
+    aurora.addColorStop(0.55, "rgba(129, 140, 248, 0.04)");
+    aurora.addColorStop(1, "rgba(8, 22, 46, 0)");
+    ctx.fillStyle = aurora;
+    ctx.fillRect(0, 0, viewW, viewH * 0.38);
   }
 
   const inDanger = (engine.player?.y || 0) > 1750 && (engine.player?.x || 0) > 1150;

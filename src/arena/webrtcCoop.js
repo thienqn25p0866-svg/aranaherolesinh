@@ -1310,6 +1310,9 @@ export class P2PRoomHost {
       player.maxHp = Math.max(1, Math.round(Number(s.maxHp) || player.maxHp));
       player.shield = Math.max(0, Math.round(Number(s.shield) || 0));
       player.level = Math.max(1, Math.round(Number(s.level) || player.level));
+      if (typeof s.totalDamage === "number" && Number.isFinite(s.totalDamage)) {
+        player.totalDamage = Math.max(player.totalDamage || 0, Math.round(s.totalDamage));
+      }
       player.alive = player.hp > 0 && s.alive !== false;
       player.moveSpeedFactor = Number(s.moveSpeedFactor) || 0;
       player.walkCyclePhase = Number(s.walkCyclePhase) || 0;
@@ -1343,6 +1346,7 @@ export class P2PRoomHost {
             maxHp: player.maxHp,
             shield: player.shield,
             level: player.level,
+            totalDamage: player.totalDamage,
             moveSpeedFactor: player.moveSpeedFactor,
             walkCyclePhase: player.walkCyclePhase,
             attackAnimTimer: player.attackAnimTimer,
@@ -1367,6 +1371,23 @@ export class P2PRoomHost {
         });
         this.checkAllPlayersDead();
       }
+      return;
+    }
+
+    if (msg.type === "MAP_PROGRESS_SYNC") {
+      this.broadcastRoom(
+        {
+          type: "MAP_PROGRESS_SYNC",
+          fromPlayerId: playerId,
+          fromName: player.name,
+          fromHeroId: player.heroId,
+          mapId: msg.mapId,
+          citadelSecrets: msg.citadelSecrets || null,
+          infernoProgress: msg.infernoProgress || null,
+          frozenTombProgress: msg.frozenTombProgress || null,
+        },
+        playerId
+      );
       return;
     }
 

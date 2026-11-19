@@ -150,6 +150,10 @@
           "maxItems": 40,
           "items": { "type": "string" }
         },
+        "classicCleared": { "type": "boolean" },
+        "bloodCitadelCleared": { "type": "boolean" },
+        "infernoCleared": { "type": "boolean" },
+        "frozenTombCleared": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

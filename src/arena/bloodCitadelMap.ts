@@ -145,6 +145,21 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
     unlockWaveRequired: 0,
     unlockFromMap: null,
   },
+  blood_citadel: {
+    id: "blood_citadel",
+    width: BLOOD_CITADEL_SIZE,
+    height: BLOOD_CITADEL_SIZE,
+    name: {
+      vi: "Cổ Thành Huyết Táng",
+      en: "Bloodsoaked Ancient Citadel",
+    },
+    subtitle: {
+      vi: "1600×1600 · Map Máu · Thành cổ đổ nát, hầm bí mật, tháp canh & bẫy máu",
+      en: "1600×1600 · Blood Map · Ruined citadel, secret vault, watchtowers & blood traps",
+    },
+    unlockWaveRequired: CITADEL_UNLOCK_WAVE,
+    unlockFromMap: "classic",
+  },
   inferno_ash: {
     id: "inferno_ash",
     width: INFERNO_ASH_WIDTH,
@@ -154,11 +169,11 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
       en: "Inferno of Ashes",
     },
     subtitle: {
-      vi: "2400×2100 · Thành phố tro tàn 8 khu vực, mật thất 4 ghế & bí mật thảm họa",
-      en: "2400×2100 · 8-zone ruined city, Four Chairs Sanctum & catastrophe secrets",
+      vi: "2400×2100 · Map Lửa · Thành phố tro tàn 8 khu vực, mật thất 4 ghế & bí mật thảm họa",
+      en: "2400×2100 · Fire Map · 8-zone ruined city, Four Chairs Sanctum & catastrophe secrets",
     },
-    unlockWaveRequired: 0,
-    unlockFromMap: null,
+    unlockWaveRequired: CITADEL_UNLOCK_WAVE,
+    unlockFromMap: "blood_citadel",
   },
   frozen_tomb: {
     id: "frozen_tomb",
@@ -169,30 +184,20 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
       en: "Eternal Frozen Tomb",
     },
     subtitle: {
-      vi: "3400×2800 · Vương quốc băng cổ 7 khu vực, bão tuyết, 5 bí mật & điện phong ấn",
-      en: "3400×2800 · 7-zone frozen kingdom, blizzards, 5 secrets & final seal chamber",
-    },
-    unlockWaveRequired: 0,
-    unlockFromMap: null,
-  },
-  blood_citadel: {
-    id: "blood_citadel",
-    width: BLOOD_CITADEL_SIZE,
-    height: BLOOD_CITADEL_SIZE,
-    name: {
-      vi: "Cổ Thành Huyết Táng",
-      en: "Bloodsoaked Ancient Citadel",
-    },
-    subtitle: {
-      vi: "1600×1600 · Thành cổ đổ nát, hầm bí mật, tháp canh & bẫy máu",
-      en: "1600×1600 · Ruined citadel, secret vault, watchtowers & blood traps",
+      vi: "3400×2800 · Map Băng · Vương quốc băng cổ 7 khu vực, bão tuyết, 5 bí mật & điện phong ấn",
+      en: "3400×2800 · Ice Map · 7-zone frozen kingdom, blizzards, 5 secrets & final seal chamber",
     },
     unlockWaveRequired: CITADEL_UNLOCK_WAVE,
-    unlockFromMap: "classic",
+    unlockFromMap: "inferno_ash",
   },
 };
 
-export const ARENA_MAP_LIST: ArenaMapMetadata[] = Object.values(ARENA_MAPS);
+export const ARENA_MAP_LIST: ArenaMapMetadata[] = [
+  ARENA_MAPS.classic,
+  ARENA_MAPS.blood_citadel,
+  ARENA_MAPS.inferno_ash,
+  ARENA_MAPS.frozen_tomb,
+];
 
 export const BLOOD_CITADEL_SPAWN = { x: 800, y: 840 };
 
@@ -448,24 +453,37 @@ export function normalizeArenaMapId(raw: unknown): ArenaMapId {
 export function computeUnlockedMaps({
   highestWaveCleared = 0,
   classicCleared = false,
+  bloodCitadelCleared = false,
+  infernoCleared = false,
+  frozenTombCleared = false,
   storedUnlocked = [],
   founderUnlocked = false,
 }: {
   highestWaveCleared?: number;
   classicCleared?: boolean;
+  bloodCitadelCleared?: boolean;
+  infernoCleared?: boolean;
+  frozenTombCleared?: boolean;
   storedUnlocked?: unknown;
   founderUnlocked?: boolean;
 }): ArenaMapId[] {
-  const set = new Set<ArenaMapId>(["classic", "inferno_ash", "frozen_tomb"]);
-  if (Array.isArray(storedUnlocked)) {
-    for (const m of storedUnlocked) {
-      if (m === "blood_citadel") set.add("blood_citadel");
-      if (m === "inferno_ash") set.add("inferno_ash");
-      if (m === "frozen_tomb") set.add("frozen_tomb");
-    }
-  }
-  if (classicCleared || highestWaveCleared >= CITADEL_UNLOCK_WAVE || founderUnlocked) {
+  void frozenTombCleared;
+  const hasClassicClear =
+    Boolean(classicCleared) ||
+    highestWaveCleared >= CITADEL_UNLOCK_WAVE ||
+    (Array.isArray(storedUnlocked) && storedUnlocked.includes("blood_citadel"));
+  const hasBloodClear = Boolean(bloodCitadelCleared);
+  const hasInfernoClear = Boolean(infernoCleared);
+
+  const set = new Set<ArenaMapId>(["classic"]);
+  if (hasClassicClear || founderUnlocked) {
     set.add("blood_citadel");
+  }
+  if ((hasClassicClear && hasBloodClear) || founderUnlocked) {
+    set.add("inferno_ash");
+  }
+  if ((hasClassicClear && hasBloodClear && hasInfernoClear) || founderUnlocked) {
+    set.add("frozen_tomb");
   }
   return Array.from(set);
 }
@@ -475,9 +493,39 @@ export function isMapUnlocked(
   unlockedMaps: ArenaMapId[],
   founderUnlocked = false
 ): boolean {
-  if (mapId === "classic" || mapId === "inferno_ash" || mapId === "frozen_tomb") return true;
-  if (founderUnlocked && mapId === "blood_citadel") return true;
+  if (mapId === "classic") return true;
+  if (founderUnlocked) return true;
   return Array.isArray(unlockedMaps) && unlockedMaps.includes(mapId);
+}
+
+export function getNextCampaignMapId(mapId: ArenaMapId | string): ArenaMapId | null {
+  if (mapId === "classic") return "blood_citadel";
+  if (mapId === "blood_citadel") return "inferno_ash";
+  if (mapId === "inferno_ash") return "frozen_tomb";
+  return null;
+}
+
+export function getMapUnlockRequirement(
+  mapId: ArenaMapId | string,
+  lang: "vi" | "en" = "vi"
+): string {
+  const isVi = lang !== "en";
+  if (mapId === "blood_citadel") {
+    return isVi
+      ? "Hoàn thành 27 màn Đấu Trường Cổ Điển (hoặc mở khóa Thiên)"
+      : "Complete all 27 waves in Classic Arena (or unlock Thiên)";
+  }
+  if (mapId === "inferno_ash") {
+    return isVi
+      ? "Hoàn thành 27 màn Cổ Thành Huyết Táng / Map Máu (hoặc mở khóa Thiên)"
+      : "Complete all 27 waves in Bloodsoaked Citadel (or unlock Thiên)";
+  }
+  if (mapId === "frozen_tomb") {
+    return isVi
+      ? "Hoàn thành 27 màn Hỏa Ngục Tàn Tro / Map Lửa (hoặc mở khóa Thiên)"
+      : "Complete all 27 waves in Inferno of Ashes (or unlock Thiên)";
+  }
+  return "";
 }
 
 export function createInitialCitadelRuntimeState(mapId: ArenaMapId): CitadelRuntimeState {

@@ -1283,6 +1283,10 @@ export async function fetchPrivatePlayerSave(
       inventoryItemIds: Array.isArray(d.inventoryItemIds) ? d.inventoryItemIds : [],
       heroGearEntries: Array.isArray(d.heroGearEntries) ? d.heroGearEntries : [],
       heroStatsEntries: Array.isArray(d.heroStatsEntries) ? d.heroStatsEntries : [],
+      classicCleared: Boolean(d.classicCleared),
+      bloodCitadelCleared: Boolean(d.bloodCitadelCleared),
+      infernoCleared: Boolean(d.infernoCleared),
+      frozenTombCleared: Boolean(d.frozenTombCleared),
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -1322,6 +1326,10 @@ export async function savePrivatePlayerSave(
     heroStatsEntries: (progress.heroStatsEntries || [])
       .filter((x): x is string => typeof x === "string" && x.length > 0)
       .slice(0, 40),
+    classicCleared: Boolean(progress.classicCleared),
+    bloodCitadelCleared: Boolean(progress.bloodCitadelCleared),
+    infernoCleared: Boolean(progress.infernoCleared),
+    frozenTombCleared: Boolean(progress.frozenTombCleared),
   };
 
   const bridged = getActiveBridgedToken();

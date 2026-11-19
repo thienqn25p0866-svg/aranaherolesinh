@@ -11,7 +11,7 @@ import { mpClient } from "./multiplayerClient";
 import { readDeviceKey, writeDeviceKey, recordDeviceSave, normalizeSavedRun } from "./deviceStorage";
 export class GameEngine {
   constructor(s) {
-    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.unlockedMaps = ["classic", "inferno_ash", "frozen_tomb"], this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
+    this.selectedHeroId = "eohyen", this.currentLang = "vi", this.gameState = "MENU", this._matchEndedPendingReset = false, this.founderUnlocked = Boolean(mpClient?.isFounderUnlocked?.()), this.selectedMapId = "classic", this.activeMapId = "classic", this.classicCleared = false, this.bloodCitadelCleared = false, this.infernoCleared = false, this.frozenTombCleared = false, this.unlockedMaps = computeUnlockedMaps({ founderUnlocked: this.founderUnlocked }), this.citadelSecrets = createDefaultCitadelSecrets(), this.citadelRuntime = createInitialCitadelRuntimeState("classic"), this.infernoProgress = createDefaultInfernoProgress(), this.infernoRuntime = createInitialInfernoRuntimeState("classic", this.infernoProgress), this.frozenTombProgress = createDefaultFrozenTombProgress(), this.frozenTombRuntime = null, this.mapWidth = Se, this.mapHeight = Ce, this.onCitadelLore = null, this.onInfernoStory = null, this.onFrozenTombStory = null, this.onSaveUpdated = null, this.savedRun = null, this.saveRevision = 0, this.playerCoins = 100, this.currentWaveNumber = 1, this.highestWaveCleared = 0, this.heroGear = um(), this.inventory = [], this.nextUid = 1, this.comboManager = new Pf(), this.moveInput = { x: 0, y: 0 }, this.tapDestination = null, this.tapRipple = null, this.aimState = { active: false, skillIdx: null, aimType: null, angle: 0, targetX: 0, targetY: 0, cancelled: false, range: 0, radius: 0, width: 0, hasTargetInRange: false }, this.wave = 1, this.waveTotal = 10, this.waveSpawned = 0, this.waveKilled = 0, this.waveKilledThisWave = 0, this.waveBossKilledThisWave = false, this.waveElapsedTime = 0, this.waveRewardClaimed = false, this.totalKilled = 0, this.spawnTimer = 0, this.elapsedTime = 0, this.nextEntityId = 1, this.camera = { x: this.mapWidth / 2, y: this.mapHeight / 2 }, this.shakeTimer = 0, this.shakeMagnitude = 0, this.screenFlashWhite = 0, this.waveCleared = false, this.waitingReward = false, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.gameSettings = { soundEnabled: true, volume: 0.45, screenShake: true, showDamageNumbers: true, particles: true, layoutMode: "auto", portraitFov: "balanced", qualityMode: "auto", fpsCapMode: "auto" }, this._hardwareProfile = detectDeviceHardwareTier(), this._adaptiveQualityStep = 0, this._adaptiveCooldownSec = 0, this._frameTimeEmaMs = 12, this._perfProfile = null, this._lastPerfRefresh = 0, this.currentDpr = 1, this.multiplayer = { active: false, isHost: false, roomId: null, playerCount: 1, powerMultiplier: 1, localDowned: false, remotePlayers: /* @__PURE__ */ new Map(), playerSyncTimer: 0, worldSyncTimer: 0, vfxSyncTimer: 0, worldSyncSeq: 0, knownEnemyMetaIds: /* @__PURE__ */ new Set(), vfxQueue: [], burnSyncMap: /* @__PURE__ */ new Map(), burnSyncTimer: 0, seenBossHazardIds: /* @__PURE__ */ new Set(), pendingSyncMessages: [], reviveTargetId: null, reviveProgress: 0, reviveSendCooldown: 0, _lastRemoteDrawTime: 0 }, this.viewW = window.innerWidth, this.viewH = window.innerHeight, this.animFrameId = null, this.lastTime = performance.now(), this.loop = (a) => {
       let hidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
       let profile = this.getPerformanceProfile(false, hidden);
       let rawMs = a - this.lastTime;
@@ -204,9 +204,15 @@ export class GameEngine {
       this.nextUid = Math.max(this.nextUid, a.nextUid);
     }
     this.classicCleared = Boolean(this.classicCleared && overwriteHigherOnly) || Boolean(a.classicCleared) || this.highestWaveCleared >= CITADEL_UNLOCK_WAVE;
+    this.bloodCitadelCleared = Boolean(this.bloodCitadelCleared && overwriteHigherOnly) || Boolean(a.bloodCitadelCleared);
+    this.infernoCleared = Boolean(this.infernoCleared && overwriteHigherOnly) || Boolean(a.infernoCleared);
+    this.frozenTombCleared = Boolean(this.frozenTombCleared && overwriteHigherOnly) || Boolean(a.frozenTombCleared);
     this.unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: this.highestWaveCleared,
       classicCleared: this.classicCleared,
+      bloodCitadelCleared: this.bloodCitadelCleared,
+      infernoCleared: this.infernoCleared,
+      frozenTombCleared: this.frozenTombCleared,
       storedUnlocked: overwriteHigherOnly ? [...(this.unlockedMaps || []), ...(Array.isArray(a.unlockedMaps) ? a.unlockedMaps : [])] : a.unlockedMaps,
       founderUnlocked: this.founderUnlocked,
     });
@@ -294,21 +300,31 @@ export class GameEngine {
     this.currentWaveNumber = targetWave;
     return checkpoint;
   }
+  syncUnlockedMaps() {
+    let persistedMaps = computeUnlockedMaps({
+      highestWaveCleared: this.highestWaveCleared,
+      classicCleared: this.classicCleared,
+      bloodCitadelCleared: this.bloodCitadelCleared,
+      infernoCleared: this.infernoCleared,
+      frozenTombCleared: this.frozenTombCleared,
+    });
+    this.unlockedMaps = computeUnlockedMaps({
+      highestWaveCleared: this.highestWaveCleared,
+      classicCleared: this.classicCleared,
+      bloodCitadelCleared: this.bloodCitadelCleared,
+      infernoCleared: this.infernoCleared,
+      frozenTombCleared: this.frozenTombCleared,
+      storedUnlocked: persistedMaps,
+      founderUnlocked: this.founderUnlocked,
+    });
+    if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps, this.founderUnlocked)) {
+      this.selectedMapId = "classic";
+    }
+    return persistedMaps;
+  }
   saveGame() {
     try {
-      let persistedMaps = computeUnlockedMaps({
-        highestWaveCleared: this.highestWaveCleared,
-        classicCleared: this.classicCleared,
-      });
-      this.unlockedMaps = computeUnlockedMaps({
-        highestWaveCleared: this.highestWaveCleared,
-        classicCleared: this.classicCleared,
-        storedUnlocked: persistedMaps,
-        founderUnlocked: this.founderUnlocked,
-      });
-      if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps, this.founderUnlocked)) {
-        this.selectedMapId = "classic";
-      }
+      let persistedMaps = this.syncUnlockedMaps();
       this.saveRevision = Math.max(0, Math.floor(Number(this.saveRevision) || 0)) + 1;
       let devRec = recordDeviceSave(this.saveRevision);
       this.saveRevision = devRec.saveRevision;
@@ -325,6 +341,9 @@ export class GameEngine {
         nextUid: this.nextUid,
         selectedMapId: this.selectedMapId,
         classicCleared: this.classicCleared,
+        bloodCitadelCleared: this.bloodCitadelCleared,
+        infernoCleared: this.infernoCleared,
+        frozenTombCleared: this.frozenTombCleared,
         unlockedMaps: persistedMaps,
         citadelSecrets: this.citadelSecrets,
         infernoProgress: this.infernoProgress,
@@ -339,26 +358,16 @@ export class GameEngine {
   }
   setFounderUnlocked(unlocked) {
     this.founderUnlocked = Boolean(unlocked);
-    let persistedMaps = computeUnlockedMaps({
-      highestWaveCleared: this.highestWaveCleared,
-      classicCleared: this.classicCleared,
-    });
-    this.unlockedMaps = computeUnlockedMaps({
-      highestWaveCleared: this.highestWaveCleared,
-      classicCleared: this.classicCleared,
-      storedUnlocked: persistedMaps,
-      founderUnlocked: this.founderUnlocked,
-    });
-    if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps, this.founderUnlocked)) {
-      this.selectedMapId = "classic";
-    }
+    this.syncUnlockedMaps();
     this.saveGame();
     this.onStateChange && this.onStateChange();
   }
   setSelectedMap(mapId) {
     let next = normalizeArenaMapId(mapId);
     if (!isMapUnlocked(next, this.unlockedMaps, this.founderUnlocked)) {
-      this.selectedMapId = "classic";
+      if (!isMapUnlocked(this.selectedMapId, this.unlockedMaps, this.founderUnlocked)) {
+        this.selectedMapId = "classic";
+      }
       return false;
     }
     this.selectedMapId = next;
@@ -434,6 +443,16 @@ export class GameEngine {
     if (this.activeMapId !== "frozen_tomb" || !this.player) return null;
     return findNearestFrozenTombInteractable(this.player.x, this.player.y, this.frozenTombProgress, this.frozenTombRuntime);
   }
+  broadcastMapProgressSync() {
+    if (!this.multiplayer?.active || !mpClient?.isConnected?.()) return;
+    mpClient.send({
+      type: "MAP_PROGRESS_SYNC",
+      mapId: this.activeMapId,
+      citadelSecrets: normalizeCitadelSecrets(this.citadelSecrets),
+      infernoProgress: normalizeInfernoProgress(this.infernoProgress),
+      frozenTombProgress: normalizeFrozenTombProgress(this.frozenTombProgress),
+    });
+  }
   interactNearestMapNode() {
     if (this.activeMapId === "inferno_ash") return this.interactNearestInfernoNode();
     if (this.activeMapId === "frozen_tomb") return this.interactNearestFrozenTombNode();
@@ -485,6 +504,7 @@ export class GameEngine {
     else if (res.payload.audioCue === "whisper") R.playGhostWhisper?.();
     else R.playModalOpen?.();
     this.saveGame();
+    this.broadcastMapProgressSync();
     this.addFloatingText(this.player.x, this.player.y - 36, res.payload.title, res.payload.themeVariant === "linked" || res.payload.themeVariant === "ending" ? "#C084FC" : "#7DD3FC", 15);
     this.onStateChange && this.onStateChange();
     this.onFrozenTombStory && this.onFrozenTombStory(res.payload);
@@ -507,6 +527,7 @@ export class GameEngine {
       this.frozenTombRuntime.lastDiscoveryToast = this.currentLang === "en" ? "Ice Barrier Shattered!" : "Đã phá vỡ bức tường băng bí mật!";
       this.frozenTombRuntime.lastDiscoveryTimer = 4.0;
       this.saveGame();
+      this.broadcastMapProgressSync();
       this.onStateChange && this.onStateChange();
     }
     return res.destroyedWalls.length;
@@ -523,6 +544,7 @@ export class GameEngine {
         this.addFloatingText(wx, wy - 28, "❄️ HÀN KHÍ PHÁ BĂNG!", "#38BDF8", 15);
       }
       this.saveGame();
+      this.broadcastMapProgressSync();
     }
     if (react.stabilizedCracks > 0 || react.calmedPhantoms > 0) {
       this.addFloatingText(x, y - 34, this.currentLang === "en" ? "❄️ Frost Stabilizes the Ice!" : "❄️ Hàn Khí Éo Hyên Ổn Định Mặt Băng!", "#7DD3FC", 14);
@@ -566,6 +588,7 @@ export class GameEngine {
       else if (res.payload.audioCue === "secret") R.playInfernoSecretDiscovery?.();
       else R.playModalOpen?.();
       this.saveGame();
+      this.broadcastMapProgressSync();
       this.addFloatingText(node.x, node.y - 36, res.payload.title, res.payload.isTrungReveal ? "#C084FC" : res.payload.isSecretDiscovery ? "#FACC15" : "#FDBA74", 15);
       this.onStateChange && this.onStateChange();
       this.onInfernoStory && this.onInfernoStory(res.payload);
@@ -586,6 +609,7 @@ export class GameEngine {
           this.infernoRuntime.lastDiscoveryTimer = 4.2;
         }
         this.saveGame();
+        this.broadcastMapProgressSync();
         this.addFloatingText(gx, gy - 26, gateRes.message, "#FDE047", 15);
         this.onStateChange && this.onStateChange();
       } else {
@@ -616,6 +640,7 @@ export class GameEngine {
         this.infernoRuntime.lastDiscoveryTimer = 4.0;
       }
       this.saveGame();
+      this.broadcastMapProgressSync();
       this.onStateChange && this.onStateChange();
     }
     return res.destroyedWalls.length;
@@ -626,6 +651,7 @@ export class GameEngine {
     let node = this.getNearbyCitadelInteractable();
     if (!node) return null;
     let lang = this.currentLang === "en" ? "en" : "vi";
+    let wasCombined = Boolean(this.citadelSecrets?.combinedUnlocked);
     let res = evaluateCitadelInteraction({
       nodeId: node.id,
       heroId: this.currentHero?.id || this.selectedHeroId,
@@ -635,6 +661,24 @@ export class GameEngine {
     this.citadelSecrets = res.nextSecrets;
     if (res.coinBonus > 0) {
       this.playerCoins += res.coinBonus;
+    }
+    // In Co-op, if both Tin and Bảo clues have now converged across teammates, auto-unlock the Final Vault immediately!
+    let autoUnlockedByCoop = false;
+    if (
+      this.multiplayer?.active &&
+      this.citadelSecrets.tinClue &&
+      this.citadelSecrets.baoClue &&
+      !this.citadelSecrets.combinedUnlocked
+    ) {
+      autoUnlockedByCoop = true;
+      this.citadelSecrets = normalizeCitadelSecrets({
+        ...this.citadelSecrets,
+        combinedUnlocked: true,
+        inspectedNodes: [...(this.citadelSecrets.inspectedNodes || []), "shared_altar"],
+      });
+      if (!wasCombined) {
+        this.playerCoins += 350;
+      }
     }
     if (res.buffKind === "tin_resonance") {
       this.grantTinResonance && this.grantTinResonance(2, true);
@@ -694,7 +738,13 @@ export class GameEngine {
     } else {
       R.playModalOpen();
     }
+    if (autoUnlockedByCoop) {
+      R.playCosmic?.();
+      this.slashes.push({ x: 800, y: 355, angle: 0, radius: 165, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.55, kind: "shockwave" });
+      this.onToast && this.onToast(lang === "en" ? "🤝 Bảo & Tin converged! Final Vault UNLOCKED for BOTH players!" : "🤝 Bảo & Tin hội tụ! Hầm Bí Mật Cổ Thành ĐÃ MỞ KHÓA cho cả 2 người!");
+    }
     this.saveGame();
+    this.broadcastMapProgressSync();
     if (this.citadelRuntime) {
       this.citadelRuntime.activeStoryEvent = res.payload;
     }
@@ -704,21 +754,50 @@ export class GameEngine {
     return res.payload;
   }
   unlockCitadelIfEligible() {
-    if (this.activeMapId !== "classic" || this.wave < CITADEL_UNLOCK_WAVE) return false;
-    let wasClassicCleared = Boolean(this.classicCleared);
-    this.classicCleared = true;
+    if (this.wave < CITADEL_UNLOCK_WAVE) return false;
+    let curMap = normalizeArenaMapId(this.activeMapId || "classic");
+    let newlyUnlocked = false;
+    let unlockedLabelVi = "";
+    let unlockedLabelEn = "";
     this.highestWaveCleared = Math.max(this.highestWaveCleared || 0, CITADEL_UNLOCK_WAVE);
-    this.unlockedMaps = computeUnlockedMaps({
-      highestWaveCleared: this.highestWaveCleared,
-      classicCleared: true,
-      storedUnlocked: this.unlockedMaps,
-      founderUnlocked: this.founderUnlocked,
-    });
+
+    if (curMap === "classic") {
+      if (!this.classicCleared) {
+        newlyUnlocked = true;
+        unlockedLabelVi = "CỔ THÀNH HUYẾT TÁNG (Map Máu)";
+        unlockedLabelEn = "Bloodsoaked Ancient Citadel";
+      }
+      this.classicCleared = true;
+    } else if (curMap === "blood_citadel") {
+      this.classicCleared = true;
+      if (!this.bloodCitadelCleared) {
+        newlyUnlocked = true;
+        unlockedLabelVi = "HỎA NGỤC TÀN TRO (Map Lửa)";
+        unlockedLabelEn = "Inferno of Ashes";
+      }
+      this.bloodCitadelCleared = true;
+    } else if (curMap === "inferno_ash") {
+      this.classicCleared = true;
+      this.bloodCitadelCleared = true;
+      if (!this.infernoCleared) {
+        newlyUnlocked = true;
+        unlockedLabelVi = "BĂNG MỘ VĨNH CỬU (Map Băng)";
+        unlockedLabelEn = "Eternal Frozen Tomb";
+      }
+      this.infernoCleared = true;
+    } else if (curMap === "frozen_tomb") {
+      this.classicCleared = true;
+      this.bloodCitadelCleared = true;
+      this.infernoCleared = true;
+      this.frozenTombCleared = true;
+    }
+
+    this.syncUnlockedMaps();
     this.saveGame();
-    if (!wasClassicCleared) {
+    if (newlyUnlocked) {
       let msg = this.currentLang === "en"
-        ? "Unlocked new map: Bloodsoaked Ancient Citadel!"
-        : "Đã mở khóa bản đồ mới: CỔ THÀNH HUYẾT TÁNG!";
+        ? `Unlocked new map: ${unlockedLabelEn}!`
+        : `Đã mở khóa bản đồ mới: ${unlockedLabelVi}!`;
       this.onToast && this.onToast(msg);
       this.onStateChange && this.onStateChange();
       return true;
@@ -2050,6 +2129,7 @@ export class GameEngine {
         this.onStateChange && this.onStateChange();
       } else {
         R.playDefeat();
+        this._matchEndedPendingReset = true;
         this.gameState = "GAME_OVER", this.clearSavedRun(false), this.saveGame(), R.setMusicMode("off"), this.onGameOver && this.onGameOver(false), this.onStateChange && this.onStateChange();
       }
     }
@@ -2082,6 +2162,7 @@ export class GameEngine {
         this.onFrozenTombStory && this.onFrozenTombStory(endPayload);
       }
       this.saveGame();
+      this.broadcastMapProgressSync();
       this.onStateChange && this.onStateChange();
     }
     if (isLocalKill) {
@@ -5025,6 +5106,7 @@ export class GameEngine {
 
     this.applyMapLayout(roomData?.mapId || this.selectedMapId, !roomData?.mapId);
     this.playerCoins = 100;
+    this._matchEndedPendingReset = false;
     this.inventory = [];
     this.heroGear = um();
     this.duccong_pads = [null, null, null];
@@ -5154,6 +5236,7 @@ export class GameEngine {
       this.handleMultiplayerMessage(m);
     }
     this.sendPlayerSync(true);
+    this.broadcastMapProgressSync();
     this.onStateChange && this.onStateChange();
   }
   stopCoopMode() {
@@ -5262,7 +5345,10 @@ export class GameEngine {
       this.playerCoins = 100;
       this.inventory = [];
       this.heroGear = um();
+    } else if ((options && options.resetCoins === true) || this._matchEndedPendingReset === true) {
+      this.playerCoins = 100;
     }
+    this._matchEndedPendingReset = false;
     this.duccong_pads = [null, null, null];
     this.savedRun = null;
     this.initPlayer(), this.comboManager.fullReset(), this.totalKilled = 0, this.elapsedTime = 0, this.enemies = [], this.projectiles = [], this.zones = [], this.icePillars = [], this.groundCracks = [], this.scorchMarks = [], this.frostTracks = [], this.spatialTears = [], this.frostBarrages = [], this.lavaPools = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [], this.afterimages = [], this.lightnings = [], this.slashes = [], this.impactBursts = [], this.particles = [], this.floatingTexts = [], this.xpOrbs = [], this.deadCorpses = [], this.bloodParticles = [], this.redCrystals = [], this.flameParticles = [], this.smokePuffs = [], this.rocketProjectiles = [], this.giantMeteors = [], this.galaxyVortices = [], this.cataclysmicExplosions = [], this.tinCrystals = [], this.shadowClones = [], this.dragonWaves = [], this.skyDragons = [], this.luanPortals = [], this.luanRifts = [], this.luanBeams = [], this.taiduTurrets = [], this.taiduCarpetStrikes = [], this.nguyenSanctuaryFields = [], this.nguyenSanctuaryWaves = [], this.duyDecoys = [], this.duyHealOrbs = [], this.duyC2Queues = [], this.duyC3Barrages = [], this.phongIllusions = [], this.phongSkillQueue = [], this.dangFlurryQueue = [], this.thienSwords = [], this.thienTimeZones = [], this.thienPortals = [], this.thienSunJudgements = [], this.thanhEchoQueue = [], this.thanhGuardSnakes = [], this.thanhDevourSerpents = [], this.nhiToxicMists = [], this.cerberusUltWaves = [], this.minhSanctuaries = [], this.minhPrisons = [], this.ducanhMeteorLeaps = [], this.lastWaveClearTime = 0, this.waveCleared = false, this.waitingReward = false, this.camera = { x: this.player.x, y: this.player.y }, this.startWave(1), this.gameState = "PLAYING", this.captureCurrentRunCheckpoint(1), this.saveGame(), this.syncMusicState(), this.onStateChange && this.onStateChange();
@@ -5271,6 +5357,7 @@ export class GameEngine {
     let run = normalizeSavedRun(customRun || this.savedRun, MAX_WAVES);
     if (!run) return false;
     this.stopCoopMode();
+    this._matchEndedPendingReset = false;
     let heroObj = Mi.find((m) => m.id === run.heroId) || this.currentHero || Mi[4];
     if (heroObj?.isSecretFounder && !this.founderUnlocked) {
       heroObj = Mi[4];
@@ -5898,6 +5985,7 @@ export class GameEngine {
       this.playerCoins += p;
       if (this.wave > this.highestWaveCleared) this.highestWaveCleared = this.wave;
       if (this.wave >= MAX_WAVES) {
+        this._matchEndedPendingReset = true;
         this.clearSavedRun(false);
         this.unlockCitadelIfEligible();
         this.saveGame();
@@ -8932,6 +9020,8 @@ export class GameEngine {
         maxHp: Math.round(this.player.maxHp),
         shield: Math.round(this.player.shield || 0),
         level: this.player.level,
+        totalDamage: Math.round(this.player.totalDamage || 0),
+        kills: Math.round(this.totalKilled || 0),
         alive: !this.multiplayer.localDowned && this.player.hp > 0,
         moveSpeedFactor: Math.round((this.player.moveSpeedFactor || 0) * 100) / 100,
         walkCyclePhase: Math.round((this.player.walkCyclePhase || 0) * 100) / 100,
@@ -9053,6 +9143,13 @@ export class GameEngine {
   handleMultiplayerMessage(msg) {
     if (!msg || !msg.type) return;
     if (msg.type === "MATCH_OVER" && this.multiplayer.active) {
+      if (typeof msg.wave === "number" && msg.wave > (this.wave || 1)) {
+        this.wave = msg.wave;
+      }
+      if (msg.victory && (this.wave >= MAX_WAVES || (typeof msg.wave === "number" && msg.wave >= MAX_WAVES))) {
+        this.unlockCitadelIfEligible();
+      }
+      this._matchEndedPendingReset = true;
       msg.victory ? R.playVictory() : R.playDefeat();
       this.gameState = msg.victory ? "VICTORY" : "GAME_OVER", R.setMusicMode("off");
       this.onGameOver && this.onGameOver(Boolean(msg.victory), msg);
@@ -9060,7 +9157,7 @@ export class GameEngine {
       return;
     }
     if (!this.multiplayer.active) {
-      if (mpClient.room && ["WAVE_META_SYNC", "ENEMIES_SPAWNED", "WORLD_SYNC", "ENEMY_HIT", "PLAYER_STATE", "REMOTE_VFX", "PLAYER_DOWNED", "PLAYER_REVIVED", "ALLY_SUPPORT"].includes(msg.type)) {
+      if (mpClient.room && ["WAVE_META_SYNC", "ENEMIES_SPAWNED", "WORLD_SYNC", "ENEMY_HIT", "PLAYER_STATE", "REMOTE_VFX", "PLAYER_DOWNED", "PLAYER_REVIVED", "ALLY_SUPPORT", "MAP_PROGRESS_SYNC"].includes(msg.type)) {
         this.multiplayer.pendingSyncMessages.length < 120 && this.multiplayer.pendingSyncMessages.push(msg);
       }
       return;
@@ -9304,6 +9401,137 @@ export class GameEngine {
       if (typeof msg.wave == "number" && (msg.wave > this.wave || (msg.wave === 1 && this.wave <= 1 && this.waveSpawned === 0 && this.enemies.length === 0))) {
         this.enemies = [], this.bossWarnings = [], this.bossBeams = [], this.bossShockRings = [];
         this.startWave(msg.wave);
+        this.onStateChange && this.onStateChange();
+      }
+    } else if (msg.type === "MAP_PROGRESS_SYNC") {
+      const lang = this.currentLang === "en" ? "en" : "vi";
+      const fromLabel = msg.fromName || (lang === "en" ? "Teammate" : "Đồng đội");
+      let changed = false;
+
+      if (msg.citadelSecrets) {
+        const prev = normalizeCitadelSecrets(this.citadelSecrets);
+        let merged = normalizeCitadelSecrets({
+          tinClue: prev.tinClue || Boolean(msg.citadelSecrets.tinClue),
+          baoClue: prev.baoClue || Boolean(msg.citadelSecrets.baoClue),
+          combinedUnlocked: prev.combinedUnlocked || Boolean(msg.citadelSecrets.combinedUnlocked),
+          inspectedNodes: [...(prev.inspectedNodes || []), ...(msg.citadelSecrets.inspectedNodes || [])],
+        });
+        let autoUnlockedNow = false;
+        if (merged.tinClue && merged.baoClue && !merged.combinedUnlocked) {
+          autoUnlockedNow = true;
+          merged = normalizeCitadelSecrets({
+            ...merged,
+            combinedUnlocked: true,
+            inspectedNodes: [...(merged.inspectedNodes || []), "shared_altar"],
+          });
+        }
+        if (
+          merged.tinClue !== prev.tinClue ||
+          merged.baoClue !== prev.baoClue ||
+          merged.combinedUnlocked !== prev.combinedUnlocked ||
+          merged.inspectedNodes.length !== prev.inspectedNodes.length
+        ) {
+          changed = true;
+          this.citadelSecrets = merged;
+          if (!prev.tinClue && merged.tinClue) {
+            this.onToast && this.onToast(lang === "en" ? `💎 ${fromLabel} uncovered Tin's Citadel Clue!` : `💎 ${fromLabel} đã mở khóa Manh Mối Tin tại Cổ Thành!`);
+          }
+          if (!prev.baoClue && merged.baoClue) {
+            this.onToast && this.onToast(lang === "en" ? `🪞 ${fromLabel} uncovered Bảo's Citadel Clue!` : `🪞 ${fromLabel} đã mở khóa Manh Mối Bảo tại Cổ Thành!`);
+          }
+          if (!prev.combinedUnlocked && merged.combinedUnlocked) {
+            this.playerCoins += 350;
+            R.playCosmic?.();
+            this.slashes.push({ x: 800, y: 355, angle: 0, radius: 165, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.55, kind: "shockwave" });
+            this.onToast && this.onToast(lang === "en" ? "🤝 Both hero missions complete! Final Vault UNLOCKED for the entire squad!" : "🤝 Bảo & Tin đã hội tụ! Hầm Bí Mật Cổ Thành ĐÃ MỞ KHÓA cho cả đội!");
+            if (autoUnlockedNow) {
+              this.broadcastMapProgressSync();
+            }
+          }
+        }
+      }
+
+      if (msg.infernoProgress) {
+        const prevInf = normalizeInfernoProgress(this.infernoProgress);
+        const mergedInf = mergeInfernoProgress(prevInf, msg.infernoProgress);
+        if (
+          mergedInf.dungClue !== prevInf.dungClue ||
+          mergedInf.danhClue !== prevInf.danhClue ||
+          mergedInf.longhoiClue !== prevInf.longhoiClue ||
+          mergedInf.fourChairsUnlocked !== prevInf.fourChairsUnlocked ||
+          mergedInf.trungTriggered !== prevInf.trungTriggered ||
+          mergedInf.openedDoors.length !== prevInf.openedDoors.length ||
+          mergedInf.destroyedWalls.length !== prevInf.destroyedWalls.length ||
+          mergedInf.collectedDocs.length !== prevInf.collectedDocs.length ||
+          mergedInf.keysFound.length !== prevInf.keysFound.length
+        ) {
+          changed = true;
+          this.infernoProgress = mergedInf;
+          if (this.infernoRuntime?.destructibles && mergedInf.destroyedWalls.length > 0) {
+            for (const dw of this.infernoRuntime.destructibles) {
+              if (mergedInf.destroyedWalls.includes(dw.id)) {
+                dw.destroyed = true;
+                dw.hp = 0;
+              }
+            }
+          }
+          if (mergedInf.trungTriggered && this.infernoRuntime) {
+            this.infernoRuntime.orbReflectedTrung = true;
+            this.infernoRuntime.chairShadowVanished = true;
+          }
+          if (!prevInf.fourChairsUnlocked && mergedInf.fourChairsUnlocked) {
+            R.playInfernoDoorUnlock?.();
+            this.onToast && this.onToast(lang === "en" ? "🔥 Squad converged clues! Chamber of Four Chairs UNLOCKED!" : "🔥 Cả đội đã hội tụ manh mối! Căn Phòng Bốn Chiếc Ghế ĐÃ MỞ KHÓA!");
+          } else if (!prevInf.trungTriggered && mergedInf.trungTriggered) {
+            R.playInfernoTrungLaugh?.();
+            this.onToast && this.onToast(lang === "en" ? `🕯️ ${fromLabel} triggered the Final Truth of Inferno!` : `🕯️ ${fromLabel} đã kích hoạt Sự Thật Cuối Cùng Hỏa Ngục!`);
+          }
+        }
+      }
+
+      if (msg.frozenTombProgress) {
+        const prevFt = normalizeFrozenTombProgress(this.frozenTombProgress);
+        const mergedFt = mergeFrozenTombProgress(prevFt, msg.frozenTombProgress);
+        if (
+          mergedFt.eohyenPaintingSeen !== prevFt.eohyenPaintingSeen ||
+          mergedFt.phongStatueSeen !== prevFt.phongStatueSeen ||
+          mergedFt.phongMirrorSeen !== prevFt.phongMirrorSeen ||
+          mergedFt.minhDossierSeen !== prevFt.minhDossierSeen ||
+          mergedFt.thanhTruthSeen !== prevFt.thanhTruthSeen ||
+          mergedFt.linkedDeviceTriggered !== prevFt.linkedDeviceTriggered ||
+          mergedFt.bossDefeatedEmptyVoid !== prevFt.bossDefeatedEmptyVoid ||
+          mergedFt.endingShardSeen !== prevFt.endingShardSeen ||
+          mergedFt.destroyedWalls.length !== prevFt.destroyedWalls.length ||
+          mergedFt.collectedDocs.length !== prevFt.collectedDocs.length
+        ) {
+          changed = true;
+          this.frozenTombProgress = mergedFt;
+          if (this.frozenTombRuntime?.destructibles && mergedFt.destroyedWalls.length > 0) {
+            for (const dw of this.frozenTombRuntime.destructibles) {
+              if (mergedFt.destroyedWalls.includes(dw.id)) {
+                dw.destroyed = true;
+                dw.hp = 0;
+              }
+            }
+          }
+          if ((mergedFt.bossDefeatedEmptyVoid || mergedFt.endingShardSeen) && this.frozenTombRuntime) {
+            this.frozenTombRuntime.bossDefeatedThisRun = true;
+            this.frozenTombRuntime.endingShardSpawned = true;
+          }
+          const prevAll4 = prevFt.eohyenPaintingSeen && prevFt.phongStatueSeen && prevFt.phongMirrorSeen && prevFt.minhDossierSeen && prevFt.thanhTruthSeen;
+          const nowAll4 = mergedFt.eohyenPaintingSeen && mergedFt.phongStatueSeen && mergedFt.phongMirrorSeen && mergedFt.minhDossierSeen && mergedFt.thanhTruthSeen;
+          if (!prevAll4 && nowAll4) {
+            R.playFrozenBell?.();
+            this.onToast && this.onToast(lang === "en" ? "❄️ Squad completed all 4 Frozen Tomb hero clues! Final Seal unlocked!" : "❄️ Cả đội đã gom đủ 4 Ký Ức Tướng Băng Mộ! Mục cuối đã mở!");
+          } else if (!prevFt.endingShardSeen && mergedFt.endingShardSeen) {
+            R.playGhostWhisper?.();
+            this.onToast && this.onToast(lang === "en" ? "❄️ Frozen Tomb Finale unlocked for the entire squad!" : "❄️ Mảnh Băng Kết Cục Băng Mộ đã mở khóa cho cả đội!");
+          }
+        }
+      }
+
+      if (changed) {
+        this.saveGame();
         this.onStateChange && this.onStateChange();
       }
     }

@@ -224,6 +224,8 @@ import {
   CITADEL_UNLOCK_WAVE,
   computeUnlockedMaps,
   isMapUnlocked,
+  getNextCampaignMapId,
+  getMapUnlockRequirement,
   createDefaultCitadelSecrets,
   createInitialCitadelRuntimeState,
   getActiveCitadelObstacles,
@@ -4300,26 +4302,42 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   assert.equal(ARENA_MAPS.blood_citadel.height, BLOOD_CITADEL_SIZE);
   assert.equal(ARENA_MAP_LIST.length, 4);
 
-  // Locked before clearing Wave 27 without Founder access (Classic, Inferno Ash & Frozen Tomb are unlocked by default)
-  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
-  assert.deepEqual(lockedMaps, ['classic', 'inferno_ash', 'frozen_tomb']);
+  // Strict sequential progression without Founder access: Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb
+  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: ['inferno_ash', 'frozen_tomb'], founderUnlocked: false });
+  assert.deepEqual(lockedMaps, ['classic']);
   assert.equal(isMapUnlocked('classic', lockedMaps, false), true);
-  assert.equal(isMapUnlocked('inferno_ash', lockedMaps, false), true);
-  assert.equal(isMapUnlocked('frozen_tomb', lockedMaps, false), true);
   assert.equal(isMapUnlocked('blood_citadel', lockedMaps, false), false);
+  assert.equal(isMapUnlocked('inferno_ash', lockedMaps, false), false);
+  assert.equal(isMapUnlocked('frozen_tomb', lockedMaps, false), false);
 
-  // Unlocks upon clearing Wave 27 on Classic
+  // Clearing Classic Wave 27 unlocks only Blood Citadel (Fire & Ice remain locked)
   const wave27Unlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
-  assert.equal(wave27Unlocked.includes('blood_citadel'), true);
+  assert.deepEqual(wave27Unlocked, ['classic', 'blood_citadel']);
   assert.equal(isMapUnlocked('blood_citadel', wave27Unlocked, false), true);
+  assert.equal(isMapUnlocked('inferno_ash', wave27Unlocked, false), false);
 
   const classicFlagUnlocked = computeUnlockedMaps({ highestWaveCleared: 5, classicCleared: true, storedUnlocked: [], founderUnlocked: false });
-  assert.equal(isMapUnlocked('blood_citadel', classicFlagUnlocked, false), true);
+  assert.deepEqual(classicFlagUnlocked, ['classic', 'blood_citadel']);
 
-  // Founder unlock allows free switching to Cổ Thành Huyết Táng even before Wave 27
+  // Clearing Blood Citadel unlocks Inferno Ash; clearing Inferno Ash unlocks Frozen Tomb
+  const infernoUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, founderUnlocked: false });
+  assert.deepEqual(infernoUnlocked, ['classic', 'blood_citadel', 'inferno_ash']);
+  assert.equal(isMapUnlocked('inferno_ash', infernoUnlocked, false), true);
+  assert.equal(isMapUnlocked('frozen_tomb', infernoUnlocked, false), false);
+
+  const allSequentialUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, founderUnlocked: false });
+  assert.deepEqual(allSequentialUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
+
+  // Cannot skip directly from Inferno clear without Blood Citadel clear
+  const cannotSkipBlood = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: false, infernoCleared: true, founderUnlocked: false });
+  assert.deepEqual(cannotSkipBlood, ['classic', 'blood_citadel']);
+
+  // Founder unlock allows free switching to all maps even before Wave 27
   const founderMaps = computeUnlockedMaps({ highestWaveCleared: 0, classicCleared: false, storedUnlocked: [], founderUnlocked: true });
-  assert.equal(founderMaps.includes('blood_citadel'), true);
+  assert.deepEqual(founderMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
   assert.equal(isMapUnlocked('blood_citadel', ['classic'], true), true);
+  assert.equal(isMapUnlocked('inferno_ash', ['classic'], true), true);
+  assert.equal(isMapUnlocked('frozen_tomb', ['classic'], true), true);
 
   // Verify spawn & all interactables sit cleanly outside obstacles in 1600x1600 arena
   const runtime = createInitialCitadelRuntimeState('blood_citadel');
@@ -5062,12 +5080,22 @@ test('Map 2 character Easter eggs (Dũng, Danh, Long Hói, Four Chairs & Trung) 
   );
   assert.equal(mergedAccount.infernoProgress?.fourChairsUnlocked, true);
 
-  const parsedSave = parseSavePackageJson(JSON.stringify({
+  const blockedSave = parseSavePackageJson(JSON.stringify({
     progress: { coins: 900, highestWave: 8, selectedMapId: 'inferno_ash', infernoProgress: progress },
+  }), false);
+  assert.equal(blockedSave.ok, true);
+  if (blockedSave.ok) {
+    assert.equal(blockedSave.progress.selectedMapId, 'classic');
+  }
+
+  const parsedSave = parseSavePackageJson(JSON.stringify({
+    progress: { coins: 900, highestWave: 27, classicCleared: true, bloodCitadelCleared: true, selectedMapId: 'inferno_ash', infernoProgress: progress },
   }), false);
   assert.equal(parsedSave.ok, true);
   if (parsedSave.ok) {
     assert.equal(parsedSave.progress.selectedMapId, 'inferno_ash');
+    assert.equal(parsedSave.progress.classicCleared, true);
+    assert.equal(parsedSave.progress.bloodCitadelCleared, true);
     assert.equal(parsedSave.progress.infernoProgress?.trungTriggered, true);
   }
 });
@@ -5233,6 +5261,12 @@ test('GameEngine runs Map 2 (Hỏa Ngục Tàn Tro) end-to-end with zero shadowB
     const storyEvents: any[] = [];
     const engine: any = new GameEngine(canvasStub);
     engine.onInfernoStory = (payload: any) => storyEvents.push(payload);
+
+    assert.equal(engine.setSelectedMap('inferno_ash'), false);
+    assert.equal(engine.selectedMapId, 'classic');
+    engine.classicCleared = true;
+    engine.bloodCitadelCleared = true;
+    engine.syncUnlockedMaps();
 
     assert.equal(engine.setSelectedMap('inferno_ash'), true);
     assert.equal(engine.selectedMapId, 'inferno_ash');
@@ -5914,6 +5948,526 @@ test('GameEngine runs Map 3 (frozen_tomb) boss wave 27, ending sequence, ice phy
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('GameEngine resets playerCoins to 100 on replay after defeat, Wave 27 victory, or explicit resetCoins', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    const hero = Mi.find((h: any) => h.id === 'eohyen') || Mi[0];
+
+    // Fresh engine preserves lobby balance on first startNewGame
+    engine.playerCoins = 2400;
+    engine.startNewGame(hero, 'classic');
+    assert.equal(engine.playerCoins, 2400);
+
+    // Explicit { resetCoins: true } resets to 100 xu
+    engine.playerCoins = 4250;
+    engine.startNewGame(hero, 'classic', { resetCoins: true });
+    assert.equal(engine.playerCoins, 100);
+
+    // Defeat sets _matchEndedPendingReset -> next startNewGame resets to 100 xu
+    engine.playerCoins = 1850;
+    engine._matchEndedPendingReset = true;
+    engine.startNewGame(hero, 'classic');
+    assert.equal(engine.playerCoins, 100);
+    assert.equal(engine._matchEndedPendingReset, false);
+
+    // Wave 27 Solo Victory marks _matchEndedPendingReset -> next startNewGame resets to 100 xu
+    engine.wave = 27;
+    engine.playerCoins = 9999;
+    engine.handleWaveCompleted();
+    assert.equal(engine._matchEndedPendingReset, true);
+    engine.startNewGame(hero, 'classic');
+    assert.equal(engine.playerCoins, 100);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Co-op MAP_PROGRESS_SYNC merges cross-hero map secrets and auto-unlocks final vault/sanctum objectives for all players', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  const toasts: string[] = [];
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
+    engine.onToast = (msg: string) => toasts.push(msg);
+
+    // 1. Blood Citadel: Tin + Bao converge across teammates -> auto-unlock combinedUnlocked + 350 coins
+    const tinHero = Mi.find((h: any) => h.id === 'tin') || Mi[0];
+    engine.startNewGame(tinHero, 'blood_citadel');
+    engine.multiplayer.active = true;
+    engine.playerCoins = 500;
+    engine.citadelSecrets = {
+      tinClue: true,
+      baoClue: false,
+      combinedUnlocked: false,
+      inspectedNodes: ['tin_lab'],
+    };
+    engine.handleMultiplayerMessage({
+      type: 'MAP_PROGRESS_SYNC',
+      fromName: 'Đồng Đội Bảo',
+      citadelSecrets: {
+        tinClue: false,
+        baoClue: true,
+        combinedUnlocked: false,
+        inspectedNodes: ['bao_mirror'],
+      },
+    });
+    assert.equal(engine.citadelSecrets.tinClue, true);
+    assert.equal(engine.citadelSecrets.baoClue, true);
+    assert.equal(engine.citadelSecrets.combinedUnlocked, true);
+    assert.equal(engine.playerCoins, 850);
+    assert.ok(toasts.some((m) => m.includes('Hầm Bí Mật Cổ Thành')));
+
+    // 2. Inferno Ash: cross-hero Dung + Danh + Long Hoi + destructible walls sync cleanly
+    engine.applyMapLayout('inferno_ash', true);
+    const firstWall = engine.infernoRuntime.destructibles[0];
+    engine.handleMultiplayerMessage({
+      type: 'MAP_PROGRESS_SYNC',
+      fromName: 'Đồng Đội Danh',
+      infernoProgress: {
+        dungClue: true,
+        danhClue: true,
+        longhoiClue: true,
+        fourChairsUnlocked: true,
+        trungTriggered: true,
+        destroyedWalls: [firstWall.id],
+        keysFound: ['bunker_key'],
+        openedDoors: ['gate_bunker'],
+        collectedDocs: [],
+      },
+    });
+    assert.equal(engine.infernoProgress.fourChairsUnlocked, true);
+    assert.equal(engine.infernoProgress.trungTriggered, true);
+    assert.equal(firstWall.destroyed, true);
+
+    // 3. Frozen Tomb: cross-hero boss kill + ending shard sync
+    engine.applyMapLayout('frozen_tomb', true);
+    engine.handleMultiplayerMessage({
+      type: 'MAP_PROGRESS_SYNC',
+      fromName: 'Đồng Đội Éo Hyên',
+      frozenTombProgress: {
+        eohyenPaintingSeen: true,
+        phongMirrorsSeen: true,
+        minhDossierSeen: true,
+        thanhVialSeen: true,
+        bossDefeatedEmptyVoid: true,
+        endingShardSeen: true,
+      },
+    });
+    assert.equal(engine.frozenTombProgress.bossDefeatedEmptyVoid, true);
+    assert.equal(engine.frozenTombProgress.endingShardSeen, true);
+    assert.equal(engine.frozenTombRuntime.endingShardSpawned, true);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Dual-account Co-op/P2P heroStats record achievements for both Host and Guest accounts with round-trip persistence', async () => {
+  const {
+    recordHeroMatchProgress,
+    serializeHeroStatsEntries,
+    deserializeHeroStatsEntries,
+    mergeHeroStatsMaps,
+    computeHeroAchievementBadges,
+  } = await import('./playerAccount.ts');
+
+  // Host plays Éo Hyên in Co-op Victory (Wave 27)
+  const hostStats = recordHeroMatchProgress({}, {
+    heroId: 'eohyen',
+    waveReached: 27,
+    deltaKills: 240,
+    totalDamage: 185000,
+    isMatchEnd: true,
+    victory: true,
+    isCoop: true,
+  });
+
+  // Guest plays Tín in P2P Co-op Victory (Wave 27)
+  const guestStats = recordHeroMatchProgress({}, {
+    heroId: 'tin',
+    waveReached: 27,
+    deltaKills: 210,
+    totalDamage: 142000,
+    isMatchEnd: true,
+    victory: true,
+    isCoop: true,
+  });
+
+  assert.equal(hostStats.eohyen.coopMatches, 1);
+  assert.equal(hostStats.eohyen.coopVictories, 1);
+  assert.equal(hostStats.eohyen.victories, 1);
+  assert.equal(guestStats.tin.coopMatches, 1);
+  assert.equal(guestStats.tin.coopVictories, 1);
+  assert.equal(guestStats.tin.highestWave, 27);
+
+  // Round-trip via Firestore-safe heroStatsEntries string array
+  const encodedHost = serializeHeroStatsEntries(hostStats);
+  const decodedHost = deserializeHeroStatsEntries(encodedHost);
+  assert.equal(decodedHost.eohyen.kills, 240);
+  assert.equal(decodedHost.eohyen.bestDamage, 185000);
+
+  const merged = mergeHeroStatsMaps(decodedHost, guestStats);
+  assert.ok(merged.eohyen && merged.tin);
+
+  const hostBadges = computeHeroAchievementBadges(merged.eohyen).map((b: any) => b.id);
+  const guestBadges = computeHeroAchievementBadges(merged.tin).map((b: any) => b.id);
+  for (const reqBadge of ['clear_27', 'victor', 'coop_victor', 'slayer', 'high_dmg']) {
+    assert.ok(hostBadges.includes(reqBadge), `Expected host badge ${reqBadge}`);
+    assert.ok(guestBadges.includes(reqBadge), `Expected guest badge ${reqBadge}`);
+  }
+});
+
+test('Map 2 (inferno_ash) 8-zone upgraded render and Map 3 (frozen_tomb) upgraded floor render run with zero shadowBlur', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  let shadowBlurWrites = 0;
+  let maxFullWhiteFillAlpha = 0;
+  let structureFillRects = 0;
+  let structureStrokeRects = 0;
+
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {},
+    fillRect(x: number, y: number, w: number, h: number) {
+      if (
+        w >= 1200 &&
+        h >= 700 &&
+        typeof rawCtx.fillStyle === 'string' &&
+        (rawCtx.fillStyle.includes('255, 255, 255') || rawCtx.fillStyle.toLowerCase() === '#ffffff')
+      ) {
+        maxFullWhiteFillAlpha = Math.max(maxFullWhiteFillAlpha, Number(rawCtx.globalAlpha || 1));
+      }
+      if (w > 2 && w < 1100 && h > 2 && h < 1100) {
+        structureFillRects++;
+      }
+    },
+    strokeRect(x: number, y: number, w: number, h: number) {
+      if (w > 2 && w < 1100 && h > 2 && h < 1100) {
+        structureStrokeRects++;
+      }
+    },
+    clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+  const ctxStub: any = new Proxy(rawCtx, {
+    set(target, prop, value) {
+      if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+      target[prop] = value;
+      return true;
+    },
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
+
+    const dungHero = Mi.find((h: any) => h.id === 'dung') || Mi[0];
+    engine.startNewGame(dungHero, 'inferno_ash');
+
+    const infernoSweep = [
+      { name: 'Zone 1 Spawn Gate', x: 280, y: 1860 },
+      { name: 'Zone 2 Red Ash Plaza', x: 980, y: 1350 },
+      { name: 'Zone 3 Hầm Hiến Tế', x: 280, y: 775 },
+      { name: 'Zone 4 Wyrmfire Temple', x: 2022, y: 1265 },
+      { name: 'Zone 5 Bastion', x: 1980, y: 480 },
+      { name: 'Zone 7 Four Chairs', x: 1140, y: 225 },
+      { name: 'Zone 8 Crater', x: 1090, y: 775 },
+    ];
+    for (const pos of infernoSweep) {
+      engine.player.x = pos.x;
+      engine.player.y = pos.y;
+      engine.camera.x = pos.x;
+      engine.camera.y = pos.y;
+      structureFillRects = 0;
+      structureStrokeRects = 0;
+      assert.doesNotThrow(() => engine.render());
+      assert.ok(structureFillRects >= 25, `Expected dense floor/structure fills in ${pos.name}, got ${structureFillRects}`);
+      assert.ok(structureStrokeRects >= 4, `Expected structure strokes in ${pos.name}, got ${structureStrokeRects}`);
+    }
+
+    assert.equal(shadowBlurWrites, 0);
+    assert.equal(maxFullWhiteFillAlpha, 0);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb) across legacy saves, solo Wave 27, Co-op MATCH_OVER, and cloud merge', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+
+  assert.equal(getNextCampaignMapId('classic'), 'blood_citadel');
+  assert.equal(getNextCampaignMapId('blood_citadel'), 'inferno_ash');
+  assert.equal(getNextCampaignMapId('inferno_ash'), 'frozen_tomb');
+  assert.equal(getNextCampaignMapId('frozen_tomb'), null);
+  assert.match(getMapUnlockRequirement('blood_citadel', 'vi'), /Đấu Trường Cổ Điển/);
+  assert.match(getMapUnlockRequirement('inferno_ash', 'vi'), /Cổ Thành Huyết Táng/);
+  assert.match(getMapUnlockRequirement('frozen_tomb', 'vi'), /Hỏa Ngục Tàn Tro/);
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+
+  const storageMap = new Map<string, string>();
+  // Simulate legacy localStorage save that had fire & ice unlocked by default at wave 3
+  storageMap.set('arena_hero_save_v1', JSON.stringify({
+    coins: 500,
+    highestWaveCleared: 3,
+    selectedMapId: 'inferno_ash',
+    unlockedMaps: ['classic', 'inferno_ash', 'frozen_tomb'],
+  }));
+
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => rawCtx,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    const toasts: string[] = [];
+    engine.onToast = (msg: string) => toasts.push(msg);
+
+    // Legacy save with inferno_ash selected is sanitized back to classic until earned
+    assert.deepEqual(engine.unlockedMaps, ['classic']);
+    assert.equal(engine.selectedMapId, 'classic');
+    assert.equal(engine.setSelectedMap('blood_citadel'), false);
+    assert.equal(engine.setSelectedMap('inferno_ash'), false);
+    assert.equal(engine.setSelectedMap('frozen_tomb'), false);
+
+    // 1. Clear Classic Wave 27 -> unlocks Blood Citadel only
+    engine.activeMapId = 'classic';
+    engine.wave = 27;
+    engine.unlockCitadelIfEligible();
+    assert.equal(engine.classicCleared, true);
+    assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel']);
+    assert.equal(engine.setSelectedMap('blood_citadel'), true);
+    assert.equal(engine.setSelectedMap('inferno_ash'), false);
+    // Keep Blood Citadel selected if player clicks locked Inferno Ash
+    assert.equal(engine.selectedMapId, 'blood_citadel');
+
+    // 2. Clear Blood Citadel Wave 27 -> unlocks Inferno Ash only
+    engine.activeMapId = 'blood_citadel';
+    engine.wave = 27;
+    engine.unlockCitadelIfEligible();
+    assert.equal(engine.bloodCitadelCleared, true);
+    assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash']);
+    assert.equal(engine.setSelectedMap('inferno_ash'), true);
+    assert.equal(engine.setSelectedMap('frozen_tomb'), false);
+
+    // 3. Clear Inferno Ash Wave 27 -> unlocks Frozen Tomb
+    engine.activeMapId = 'inferno_ash';
+    engine.wave = 27;
+    engine.unlockCitadelIfEligible();
+    assert.equal(engine.infernoCleared, true);
+    assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
+    assert.equal(engine.setSelectedMap('frozen_tomb'), true);
+
+    // 4. Clear Frozen Tomb Wave 27 -> sets frozenTombCleared
+    engine.activeMapId = 'frozen_tomb';
+    engine.wave = 27;
+    engine.unlockCitadelIfEligible();
+    assert.equal(engine.frozenTombCleared, true);
+
+    // 5. Verify Co-op MATCH_OVER on Host or Guest triggers sequential unlock on active map
+    storageMap.clear();
+    removeDeviceKey('arena_hero_save_v1');
+    (globalThis as any).window.name = '';
+    const guestEngine: any = new GameEngine(canvasStub);
+    const baoHero = Mi.find((h: any) => h.id === 'bao') || Mi[0];
+    guestEngine.startNewGame(baoHero, 'classic');
+    guestEngine.multiplayer.active = true;
+    guestEngine.multiplayer.isHost = false;
+    guestEngine.wave = 27;
+    guestEngine.handleMultiplayerMessage({ type: 'MATCH_OVER', victory: true, wave: 27 });
+    assert.equal(guestEngine.classicCleared, true);
+    assert.deepEqual(guestEngine.unlockedMaps, ['classic', 'blood_citadel']);
+
+    // And clearing blood_citadel via Co-op unlocks inferno_ash
+    guestEngine.activeMapId = 'blood_citadel';
+    guestEngine.wave = 27;
+    guestEngine.handleMultiplayerMessage({ type: 'MATCH_OVER', victory: true, wave: 27 });
+    assert.equal(guestEngine.bloodCitadelCleared, true);
+    assert.deepEqual(guestEngine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash']);
+
+    // 6. Verify mergeLocalAndCloudProgress preserves clear flags & computes strict unlockedMaps
+    const merged = mergeLocalAndCloudProgress(
+      { coins: 100, highestWave: 27, classicCleared: true, bloodCitadelCleared: false } as any,
+      { coins: 200, highestWave: 27, bloodCitadelCleared: true, infernoCleared: false } as any,
+      false
+    );
+    assert.equal(merged.classicCleared, true);
+    assert.equal(merged.bloodCitadelCleared, true);
+    assert.equal(merged.infernoCleared, false);
+    assert.deepEqual(merged.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash']);
+    assert.ok(toasts.length >= 3);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
 
 
 

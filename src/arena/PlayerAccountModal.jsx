@@ -9,6 +9,7 @@ import {
   DAILY_CHECKIN_REWARD,
   PLAYER_TITLES,
   canClaimDailyCheckIn,
+  computeHeroAchievementBadges,
   getTodayDateKey,
   isFrameUnlocked,
 } from "./playerAccount.ts";
@@ -472,6 +473,99 @@ export default function PlayerAccountModal({
                   >
                     {canCheckIn ? `+${DAILY_CHECKIN_REWARD} Xu` : isVi ? "Đã Nhận" : "Claimed"}
                   </button>
+                </div>
+
+                {/* Per-Hero Achievements (Solo · Co-op · P2P) */}
+                <div className="rounded-2xl border border-indigo-500/35 bg-[#0A1224] p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-moba text-xs sm:text-sm font-extrabold text-indigo-200">
+                      {isVi ? "🏅 Thành Tích Nhân Vật (Solo · Co-op · P2P)" : "🏅 Hero Achievements (Solo · Co-op · P2P)"}
+                    </div>
+                    <span className="text-[10px] font-mono-numbers text-slate-400">
+                      {Object.keys(profile?.heroStats || {}).length} {isVi ? "tướng" : "heroes"}
+                    </span>
+                  </div>
+                  {(() => {
+                    const statsList = Object.values(profile?.heroStats || {}).sort(
+                      (a, b) =>
+                        (b.victories || 0) - (a.victories || 0) ||
+                        (b.highestWave || 0) - (a.highestWave || 0) ||
+                        (b.matchesPlayed || 0) - (a.matchesPlayed || 0) ||
+                        (b.kills || 0) - (a.kills || 0)
+                    );
+                    if (statsList.length === 0) {
+                      return (
+                        <div className="text-xs text-slate-400 py-2">
+                          {isVi
+                            ? "Chưa có dữ liệu tướng. Hãy chiến đấu Solo hoặc Co-op / P2P để ghi nhận thành tích cho từng tài khoản!"
+                            : "No hero stats yet. Play Solo or Co-op / P2P to record achievements per account!"}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                        {statsList.map((st) => {
+                          const hObj = heroes.find((h) => h.id === st.heroId);
+                          const hName = hObj ? hObj.name.split("(")[0].trim() : st.heroId;
+                          const badges = computeHeroAchievementBadges(st);
+                          return (
+                            <div
+                              key={st.heroId}
+                              className="rounded-xl bg-slate-950/80 border border-slate-800/90 p-2.5 space-y-1.5"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {hObj && (
+                                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-900 border border-slate-700 shrink-0">
+                                      <HeroPreviewCanvas hero={hObj} compact interactive={false} />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="font-moba text-xs font-extrabold text-white truncate">
+                                      {hName}
+                                    </div>
+                                    <div className="text-[10px] font-mono-numbers text-slate-400">
+                                      {isVi ? "Màn cao nhất:" : "Best:"}{" "}
+                                      <span className="text-amber-300 font-bold">{st.highestWave || 0}/27</span> ·{" "}
+                                      {isVi ? "Thắng:" : "Win:"}{" "}
+                                      <span className="text-emerald-300 font-bold">
+                                        {st.victories || 0}/{st.matchesPlayed || 0}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right font-mono-numbers text-[10px] shrink-0">
+                                  <div className="text-cyan-300 font-bold">
+                                    Co-op: {st.coopVictories || 0}/{st.coopMatches || 0}
+                                  </div>
+                                  <div className="text-slate-400">
+                                    {(st.kills || 0).toLocaleString()} K ·{" "}
+                                    {st.bestDamage >= 1000
+                                      ? `${Math.round(st.bestDamage / 1000)}K`
+                                      : st.bestDamage || 0}{" "}
+                                    DMG
+                                  </div>
+                                </div>
+                              </div>
+                              {badges.length > 0 && (
+                                <div className="flex flex-wrap gap-1 pt-0.5">
+                                  {badges.map((bd) => (
+                                    <span
+                                      key={bd.id}
+                                      className="px-1.5 py-0.5 rounded border text-[9px] font-moba font-bold bg-slate-900/90"
+                                      style={{ color: bd.color, borderColor: `${bd.color}55` }}
+                                    >
+                                      {isVi ? bd.labelVi : bd.labelEn}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

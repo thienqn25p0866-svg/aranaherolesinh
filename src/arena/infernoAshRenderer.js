@@ -436,42 +436,230 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
     ctx.restore();
   }
 
-  // Staggered flagstone masonry ground grid inside visible bounds
-  const gs = 120;
-  const gxStart = Math.max(0, Math.floor(viewBounds.minX / gs) * gs);
-  const gxEnd = Math.min(INFERNO_MAP_WIDTH, Math.ceil(viewBounds.maxX / gs) * gs);
-  const gyStart = Math.max(0, Math.floor(viewBounds.minY / gs) * gs);
-  const gyEnd = Math.min(INFERNO_MAP_HEIGHT, Math.ceil(viewBounds.maxY / gs) * gs);
-  ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.14)" : "rgba(120, 53, 15, 0.16)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let gx = gxStart; gx <= gxEnd; gx += gs) {
-    ctx.moveTo(gx, gyStart);
-    ctx.lineTo(gx, gyEnd);
+  // Ambient Volcanic District Halos (only when glows enabled)
+  if (!isMono && allowGlows) {
+    const halos = [
+      { x: 280, y: 1860, r: 280, c0: "rgba(234, 88, 12, 0.18)", c1: "rgba(18, 11, 10, 0)" },
+      { x: 280, y: 775, r: 260, c0: "rgba(220, 38, 38, 0.2)", c1: "rgba(18, 11, 10, 0)" },
+      { x: 2022, y: 1265, r: 340, c0: "rgba(249, 115, 22, 0.2)", c1: "rgba(18, 11, 10, 0)" },
+      { x: 1980, y: 480, r: 320, c0: "rgba(245, 158, 11, 0.16)", c1: "rgba(18, 11, 10, 0)" },
+    ];
+    for (const h of halos) {
+      if (!isCircleInViewBounds(h.x, h.y, h.r, viewBounds)) continue;
+      const g = ctx.createRadialGradient(h.x, h.y, 18, h.x, h.y, h.r);
+      g.addColorStop(0, h.c0);
+      g.addColorStop(1, h.c1);
+      ctx.fillStyle = g;
+      ctx.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
+    }
   }
-  for (let gy = gyStart; gy <= gyEnd; gy += gs) {
-    ctx.moveTo(gxStart, gy);
-    ctx.lineTo(gxEnd, gy);
-  }
-  ctx.stroke();
 
-  // Scattered subtle ground fracture seams & scorched rubble flecks inside view
-  if (prof?.effectiveTier !== "saver") {
-    ctx.save();
-    for (let gx = gxStart; gx < gxEnd; gx += gs) {
-      for (let gy = gyStart; gy < gyEnd; gy += gs) {
-        const hv = hashVal(gx / gs, gy / gs);
-        if (hv > 0.66) {
-          ctx.strokeStyle = isMono ? "rgba(148,163,184,0.16)" : "rgba(154, 52, 18, 0.18)";
-          ctx.lineWidth = 1.1;
+  // Staggered Running-Bond Charred Basalt Flagstones with District Character (culled to viewBounds)
+  const tileW = 104;
+  const tileH = 62;
+  const rowStart = Math.max(0, Math.floor(viewBounds.minY / tileH));
+  const rowEnd = Math.min(Math.ceil(INFERNO_MAP_HEIGHT / tileH) - 1, Math.ceil(viewBounds.maxY / tileH));
+
+  for (let row = rowStart; row <= rowEnd; row++) {
+    const y = row * tileH;
+    const offset = row % 2 === 1 ? tileW * 0.5 : 0;
+    const colStart = Math.max(-1, Math.floor((viewBounds.minX - offset) / tileW));
+    const colEnd = Math.min(
+      Math.ceil(INFERNO_MAP_WIDTH / tileW),
+      Math.ceil((viewBounds.maxX - offset) / tileW)
+    );
+
+    for (let col = colStart; col <= colEnd; col++) {
+      const x = col * tileW + offset;
+      if (x + tileW <= 0 || x >= INFERNO_MAP_WIDTH) continue;
+      const drawX = Math.max(16, x);
+      const drawW = Math.min(INFERNO_MAP_WIDTH - 16, x + tileW) - drawX;
+      const drawY = Math.max(16, y);
+      const drawH = Math.min(INFERNO_MAP_HEIGHT - 16, y + tileH) - drawY;
+      if (drawW <= 4 || drawH <= 4) continue;
+
+      const hv = hashVal(col, row);
+      const midX = drawX + drawW * 0.5;
+      const midY = drawY + drawH * 0.5;
+
+      if (isMono) {
+        const shade = 28 + Math.floor(hv * 11);
+        ctx.fillStyle = `rgb(${shade}, ${shade + 5}, ${shade + 12})`;
+      } else {
+        const inCrypt = midX <= 620 && midY >= 460 && midY <= 1120;
+        const inTemple = midX >= 1650 && midY >= 960 && midY <= 1650;
+        const inBastion = midX >= 1600 && midY <= 720;
+        const inSanctum = midX >= 840 && midX <= 1460 && midY <= 980;
+
+        let r = 22 + hv * 13;
+        let g = 13 + hv * 8;
+        let b = 12 + hv * 7;
+
+        if (inCrypt) {
+          r += 4;
+          b += 8;
+        } else if (inTemple) {
+          r += 11;
+          g += 3;
+        } else if (inBastion) {
+          r += 2;
+          g += 8;
+          b += 10;
+        } else if (inSanctum) {
+          r += 4;
+          g -= 3;
+          b += 13;
+        }
+        ctx.fillStyle = `rgb(${Math.floor(r)},${Math.floor(g)},${Math.floor(b)})`;
+      }
+      ctx.fillRect(drawX + 1.5, drawY + 1.5, drawW - 3, drawH - 3);
+
+      // Subtle basalt top-left rim bevel
+      ctx.strokeStyle = isMono ? "rgba(226, 232, 240, 0.1)" : "rgba(254, 215, 170, 0.045)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(drawX + 2, drawY + drawH - 3);
+      ctx.lineTo(drawX + 2, drawY + 2);
+      ctx.lineTo(drawX + drawW - 3, drawY + 2);
+      ctx.stroke();
+
+      // Occasional imperial diamond floor inlay
+      if (hv > 0.43 && hv < 0.48 && drawW >= 60 && drawH >= 42) {
+        ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.12)" : "rgba(217, 119, 6, 0.14)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(midX, drawY + 11);
+        ctx.lineTo(midX + 12, midY);
+        ctx.lineTo(midX, drawY + drawH - 11);
+        ctx.lineTo(midX - 12, midY);
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // Hairline glowing magma fissures (~12% of flagstones) & dark soot craters
+      if (prof?.effectiveTier !== "saver") {
+        if (hv > 0.88 && drawW > 42 && drawH > 30) {
+          ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.2)" : "rgba(249, 115, 22, 0.24)";
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.moveTo(gx + 18, gy + 26 + hv * 22);
-          ctx.lineTo(gx + 48, gy + 44);
-          ctx.lineTo(gx + 76, gy + 36 + hv * 18);
+          const fx = drawX + drawW * (0.24 + ((hv * 5) % 0.34));
+          const fy = drawY + drawH * 0.28;
+          ctx.moveTo(fx, fy);
+          ctx.lineTo(fx + 16, fy + 10);
+          ctx.lineTo(fx + 9, fy + 22);
           ctx.stroke();
+        } else if (hv > 0.72 && hv <= 0.79 && drawW > 50) {
+          ctx.fillStyle = isMono ? "rgba(15, 23, 42, 0.22)" : "rgba(8, 3, 2, 0.34)";
+          ctx.beginPath();
+          ctx.ellipse(midX, midY, 16 * hv, 9 * hv, hv * 2, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     }
+  }
+
+  // Scorched Imperial War Causeways connecting Districts
+  const warRoads = [
+    { x: 240, y: 1340, w: 120, h: 580 }, // Spawn -> West Avenue
+    { x: 300, y: 1310, w: 1620, h: 100 }, // West-East Imperial Highway (Old Town -> Plaza -> Temple)
+    { x: 1075, y: 360, w: 130, h: 950 }, // Plaza -> Zone 7 Four Chairs Gate
+    { x: 1840, y: 560, w: 120, h: 750 }, // Wyrmfire Temple -> Bastion Approach
+  ];
+  for (const rd of warRoads) {
+    if (
+      rd.x + rd.w < viewBounds.minX - 40 ||
+      rd.x > viewBounds.maxX + 40 ||
+      rd.y + rd.h < viewBounds.minY - 40 ||
+      rd.y > viewBounds.maxY + 40
+    ) {
+      continue;
+    }
+    const isHorizontal = rd.w > rd.h;
+    ctx.save();
+    ctx.fillStyle = isMono ? "rgba(41, 50, 66, 0.52)" : "rgba(28, 16, 14, 0.65)";
+    ctx.fillRect(rd.x, rd.y, rd.w, rd.h);
+
+    // Scorched crimson-bronze runner carpet inlay
+    ctx.fillStyle = isMono ? "rgba(203, 213, 225, 0.08)" : "rgba(153, 27, 27, 0.22)";
+    if (isHorizontal) {
+      ctx.fillRect(rd.x, rd.y + 18, rd.w, rd.h - 36);
+    } else {
+      ctx.fillRect(rd.x + 20, rd.y, rd.w - 40, rd.h);
+    }
+
+    // Double bronze inner trim lines
+    ctx.strokeStyle = isMono ? "rgba(226, 232, 240, 0.24)" : "rgba(217, 119, 6, 0.3)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    if (isHorizontal) {
+      ctx.moveTo(rd.x, rd.y + 12);
+      ctx.lineTo(rd.x + rd.w, rd.y + 12);
+      ctx.moveTo(rd.x, rd.y + rd.h - 12);
+      ctx.lineTo(rd.x + rd.w, rd.y + rd.h - 12);
+    } else {
+      ctx.moveTo(rd.x + 13, rd.y);
+      ctx.lineTo(rd.x + 13, rd.y + rd.h);
+      ctx.moveTo(rd.x + rd.w - 13, rd.y);
+      ctx.lineTo(rd.x + rd.w - 13, rd.y + rd.h);
+    }
+    ctx.stroke();
+
+    // Basalt mortar cross seams every 56px
+    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.14)" : "rgba(0, 0, 0, 0.45)";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    if (isHorizontal) {
+      for (let cx = rd.x + 56; cx < rd.x + rd.w; cx += 56) {
+        ctx.moveTo(cx, rd.y + 2);
+        ctx.lineTo(cx, rd.y + rd.h - 2);
+      }
+    } else {
+      for (let cy = rd.y + 56; cy < rd.y + rd.h; cy += 56) {
+        ctx.moveTo(rd.x + 2, cy);
+        ctx.lineTo(rd.x + rd.w - 2, cy);
+      }
+    }
+    ctx.stroke();
+
+    // Embossed bronze-ember diamond medallions every 168px
+    ctx.strokeStyle = isMono ? "rgba(226, 232, 240, 0.25)" : "rgba(249, 115, 22, 0.34)";
+    ctx.fillStyle = isMono ? "rgba(226, 232, 240, 0.22)" : "rgba(250, 204, 21, 0.32)";
+    ctx.lineWidth = 1.3;
+    if (isHorizontal) {
+      const midY = rd.y + rd.h * 0.5;
+      for (let mx = rd.x + 84; mx < rd.x + rd.w - 60; mx += 168) {
+        if (Math.abs(mx - 980) < 200) continue; // skip Red Ash Plaza
+        ctx.beginPath();
+        ctx.moveTo(mx, midY - 13);
+        ctx.lineTo(mx + 14, midY);
+        ctx.lineTo(mx, midY + 13);
+        ctx.lineTo(mx - 14, midY);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mx, midY, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      const midX = rd.x + rd.w * 0.5;
+      for (let my = rd.y + 84; my < rd.y + rd.h - 60; my += 168) {
+        if (Math.abs(my - 775) < 250 && Math.abs(midX - 1090) < 260) continue; // skip Crater
+        ctx.beginPath();
+        ctx.moveTo(midX, my - 13);
+        ctx.lineTo(midX + 14, my);
+        ctx.lineTo(midX, my + 13);
+        ctx.lineTo(midX - 14, my);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(midX, my, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.strokeStyle = isMono ? "#94A3B8" : "rgba(180, 83, 9, 0.45)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rd.x, rd.y, rd.w, rd.h);
     ctx.restore();
   }
 
@@ -501,29 +689,108 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
   }
   ctx.restore();
 
-  // Zone 2: Red Ash Plaza grand circle & haunting footprints toward Crypt (K3) and Temple (K4)
+  // Zone 2: Red Ash Plaza Stepped Octagonal War Plaza + Dragon-Spike Pylons + Phoenix Crest
   if (isCircleInViewBounds(980, 1350, 420, viewBounds)) {
     ctx.save();
     ctx.translate(980, 1350);
     if (!isMono && allowGlows) {
       const g = ctx.createRadialGradient(0, 0, 20, 0, 0, 240);
-      g.addColorStop(0, "rgba(239, 68, 68, 0.16)");
+      g.addColorStop(0, "rgba(239, 68, 68, 0.18)");
       g.addColorStop(1, "rgba(24, 12, 10, 0)");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(0, 0, 240, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.35)" : "rgba(248, 113, 113, 0.24)";
+
+    // Stepped octagonal basalt War Plaza (r=208 & r=192)
+    ctx.fillStyle = isMono ? "rgba(30, 41, 59, 0.56)" : "rgba(28, 12, 11, 0.65)";
+    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.42)" : "rgba(234, 88, 12, 0.48)";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(0, 0, 185, 0, Math.PI * 2);
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      const rx = Math.cos(a) * 208;
+      const ry = Math.sin(a) * 208;
+      if (k === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
-    ctx.setLineDash([12, 10]);
+
+    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.28)" : "rgba(251, 146, 60, 0.36)";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      const rx = Math.cos(a) * 192;
+      const ry = Math.sin(a) * 192;
+      if (k === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    // 24 perimeter rune notches & 8 bronze dragon-spike corner pylons
+    ctx.strokeStyle = isMono ? "rgba(203,213,225,0.35)" : "rgba(248, 113, 113, 0.38)";
+    ctx.lineWidth = 1.5;
+    for (let n = 0; n < 24; n++) {
+      const na = (Math.PI * 2 * n) / 24;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(na) * 176, Math.sin(na) * 176);
+      ctx.lineTo(Math.cos(na) * 188, Math.sin(na) * 188);
+      ctx.stroke();
+    }
+    for (let k = 0; k < 8; k++) {
+      const a = (Math.PI * 2 * k) / 8 + Math.PI / 8;
+      const px = Math.cos(a) * 202;
+      const py = Math.sin(a) * 202;
+      ctx.fillStyle = isMono ? "#475569" : "#451A03";
+      ctx.strokeStyle = isMono ? "#E2E8F0" : "#F59E0B";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Counter-rotating scorched ember compass rings
+    ctx.save();
+    ctx.rotate(t * 0.12);
+    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.34)" : "rgba(248, 113, 113, 0.32)";
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([14, 10]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 158, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.rotate(-t * 0.2);
+    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.26)" : "rgba(250, 204, 21, 0.3)";
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([10, 8]);
     ctx.beginPath();
     ctx.arc(0, 0, 125, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
     ctx.setLineDash([]);
+
+    // Engraved phoenix crest lines inside r=125
+    ctx.strokeStyle = isMono ? "rgba(203, 213, 225, 0.24)" : "rgba(251, 146, 60, 0.28)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, -82);
+    ctx.lineTo(18, -18);
+    ctx.lineTo(82, 0);
+    ctx.lineTo(18, 18);
+    ctx.lineTo(0, 82);
+    ctx.lineTo(-18, 18);
+    ctx.lineTo(-82, 0);
+    ctx.lineTo(-18, -18);
+    ctx.closePath();
+    ctx.stroke();
     ctx.restore();
 
     drawAshFootprintsTrail(ctx, 880, 1320, 520, 1080, 10, "#FACC15", t, isMono);
@@ -553,11 +820,21 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
     ctx.restore();
   }
 
-  // Zone 4: Wyrmfire Temple scorched ritual mosaic
-  if (isCircleInViewBounds(2020, 1270, 300, viewBounds)) {
+  // Zone 4: Wyrmfire Temple Crimson-Gold Sanctuary Runner & Scorched Ritual Mosaic
+  if (isCircleInViewBounds(2020, 1270, 320, viewBounds)) {
     ctx.save();
+    // Crimson-gold temple carpet runner (1860..2180, 1220..1310)
+    ctx.fillStyle = isMono ? "rgba(71, 85, 105, 0.28)" : "rgba(127, 29, 29, 0.45)";
+    ctx.fillRect(1860, 1220, 320, 90);
+    ctx.strokeStyle = isMono ? "#CBD5E1" : "#F59E0B";
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(1860, 1220, 320, 90);
+    ctx.strokeStyle = isMono ? "#94A3B8" : "rgba(251, 146, 60, 0.55)";
+    ctx.lineWidth = 1.1;
+    ctx.strokeRect(1866, 1226, 308, 78);
+
     ctx.translate(2022, 1265);
-    ctx.strokeStyle = isMono ? "#94A3B8" : "rgba(251, 146, 60, 0.34)";
+    ctx.strokeStyle = isMono ? "#94A3B8" : "rgba(251, 146, 60, 0.38)";
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.arc(0, 0, 150, 0, Math.PI * 2);
@@ -566,12 +843,33 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
     ctx.strokeRect(-95, -95, 190, 190);
     ctx.rotate(Math.PI / 4);
     ctx.strokeRect(-95, -95, 190, 190);
+    // 4 glowing ember corner glyphs
+    ctx.fillStyle = isMono ? "#E2E8F0" : "#FB923C";
+    for (const [gx, gy] of [[-110, -110], [110, -110], [-110, 110], [110, 110]]) {
+      ctx.beginPath();
+      ctx.arc(gx, gy, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
-  // Zone 5: Pháo Đài Thiên Hỏa Steel Rail Tracks & Launch Pad Markings
+  // Zone 5: Pháo Đài Thiên Hỏa Steel Deck Plating, Hazard Stripes & Rail Launch Pad
   if (isCircleInViewBounds(1980, 480, 480, viewBounds)) {
     ctx.save();
+    // Riveted steel deck apron framing missile launch bay
+    ctx.fillStyle = isMono ? "rgba(51, 65, 85, 0.35)" : "rgba(24, 28, 34, 0.55)";
+    ctx.fillRect(1660, 355, 660, 180);
+    ctx.strokeStyle = isMono ? "#94A3B8" : "#475569";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1660, 355, 660, 180);
+
+    // Amber-black industrial diagonal hazard bands along top/bottom bay rims
+    ctx.fillStyle = isMono ? "rgba(203, 213, 225, 0.22)" : "rgba(245, 158, 11, 0.28)";
+    for (let hx = 1668; hx < 2305; hx += 28) {
+      ctx.fillRect(hx, 357, 14, 7);
+      ctx.fillRect(hx, 526, 14, 7);
+    }
+
     ctx.strokeStyle = isMono ? "#64748B" : "#292524";
     ctx.lineWidth = 4;
     for (let rx = 1655; rx <= 2315; rx += 22) {
@@ -591,7 +889,7 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
     ctx.restore();
   }
 
-  // Zone 7: Chamber of Four Chairs subterranean obsidian ring
+  // Zone 7: Chamber of Four Chairs Obsidian-Royal Velvet Carpet & Subterranean Ring
   if (isCircleInViewBounds(1140, 220, 360, viewBounds)) {
     ctx.save();
     ctx.translate(1140, 225);
@@ -604,7 +902,22 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
       ctx.arc(0, 0, 175, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.strokeStyle = isMono ? "#CBD5E1" : "rgba(192, 132, 252, 0.36)";
+    // Obsidian-royal velvet carpet runner
+    ctx.fillStyle = isMono ? "rgba(51, 65, 85, 0.35)" : "rgba(46, 16, 101, 0.42)";
+    ctx.fillRect(-130, -110, 260, 210);
+    ctx.strokeStyle = isMono ? "#94A3B8" : "rgba(168, 85, 247, 0.45)";
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(-130, -110, 260, 210);
+
+    // 4 faint violet ritual rune sockets at carpet corners
+    ctx.strokeStyle = isMono ? "#CBD5E1" : "rgba(216, 180, 254, 0.48)";
+    for (const [sx, sy] of [[-112, -92], [112, -92], [-112, 82], [112, 82]]) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = isMono ? "#CBD5E1" : "rgba(192, 132, 252, 0.42)";
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.arc(0, 0, 118, 0, Math.PI * 2);
@@ -612,37 +925,77 @@ export function renderInfernoAshFloor(ctx, state, isMono, viewBounds, prof) {
     ctx.restore();
   }
 
-  // Zone 8: Miệng Vực Tận Hỏa giant meteor crater abyss + magma seams + levitating stone rings
+  // Zone 8: Miệng Vực Tận Hỏa Giant Meteor Crater + Orbiting Obsidian Shards + Molten Core & Magma Motes
   if (isCircleInViewBounds(1090, 775, 420, viewBounds)) {
+    const corePulse = 0.72 + 0.28 * Math.sin(t * 3.4);
     ctx.save();
     ctx.translate(1090, 775);
     if (!isMono && allowGlows) {
       const cg = ctx.createRadialGradient(0, 0, 40, 0, 0, 290);
-      cg.addColorStop(0, "rgba(168, 85, 247, 0.22)");
-      cg.addColorStop(0.5, "rgba(220, 38, 38, 0.22)");
+      cg.addColorStop(0, "rgba(168, 85, 247, 0.26)");
+      cg.addColorStop(0.5, "rgba(220, 38, 38, 0.24)");
       cg.addColorStop(1, "rgba(15, 7, 10, 0)");
       ctx.fillStyle = cg;
       ctx.beginPath();
       ctx.arc(0, 0, 290, 0, Math.PI * 2);
       ctx.fill();
     }
+    // Glowing undulating inner molten/void core (r=42)
+    ctx.fillStyle = isMono ? "rgba(71, 85, 105, 0.65)" : `rgba(192, 38, 211, ${0.28 * corePulse})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 42 + Math.sin(t * 2.8) * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isMono ? "rgba(148, 163, 184, 0.5)" : `rgba(249, 115, 22, ${0.42 * corePulse})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.fill();
+
     for (let ring = 0; ring < 3; ring++) {
-      ctx.strokeStyle = isMono ? "#94A3B8" : ring === 0 ? "rgba(244, 63, 94, 0.45)" : ring === 1 ? "rgba(249, 115, 22, 0.3)" : "rgba(192, 132, 252, 0.28)";
+      ctx.strokeStyle = isMono ? "#94A3B8" : ring === 0 ? "rgba(244, 63, 94, 0.45)" : ring === 1 ? "rgba(249, 115, 22, 0.34)" : "rgba(192, 132, 252, 0.3)";
       ctx.lineWidth = 2.4;
       ctx.beginPath();
       ctx.arc(0, 0, 115 + ring * 68, 0, Math.PI * 2);
       ctx.stroke();
     }
-    // Jagged magma fracture lines radiating from crater core
+
+    // Jagged dark obsidian caldera rim shards orbiting slowly
+    for (let sh = 0; sh < 8; sh++) {
+      const ang = (Math.PI * 2 * sh) / 8 + t * 0.12;
+      const rad = sh % 2 === 0 ? 152 : 215;
+      ctx.save();
+      ctx.rotate(ang);
+      ctx.translate(rad, 0);
+      ctx.fillStyle = isMono ? "#334155" : "#1F122B";
+      ctx.strokeStyle = isMono ? "#CBD5E1" : sh % 2 === 0 ? "#F97316" : "#C084FC";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, -9);
+      ctx.lineTo(12, 0);
+      ctx.lineTo(0, 9);
+      ctx.lineTo(-8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Jagged magma fracture lines radiating from crater core + animated lava energy motes
     for (let k = 0; k < 8; k++) {
       const ang = (Math.PI * 2 * k) / 8 + 0.2;
-      ctx.strokeStyle = isMono ? "#64748B" : k % 2 === 0 ? "rgba(249, 115, 22, 0.48)" : "rgba(192, 132, 252, 0.42)";
+      ctx.strokeStyle = isMono ? "#64748B" : k % 2 === 0 ? "rgba(249, 115, 22, 0.52)" : "rgba(192, 132, 252, 0.46)";
       ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.moveTo(Math.cos(ang) * 45, Math.sin(ang) * 45);
       ctx.lineTo(Math.cos(ang + 0.08) * 145, Math.sin(ang + 0.08) * 145);
       ctx.lineTo(Math.cos(ang - 0.04) * 245, Math.sin(ang - 0.04) * 245);
       ctx.stroke();
+
+      const mf = (t * 0.5 + k * 0.17) % 1;
+      const mr = 48 + mf * 195;
+      ctx.fillStyle = isMono ? "#E2E8F0" : k % 2 === 0 ? "#FDBA74" : "#E879F9";
+      ctx.beginPath();
+      ctx.arc(Math.cos(ang) * mr, Math.sin(ang) * mr, 2.8, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -1833,6 +2186,10 @@ export function renderInfernoAshStructuresAndProps(ctx, state, isMono, viewBound
     { x: 2185, y: 1255 },
     { x: 1850, y: 740 },
     { x: 1525, y: 1850 },
+    { x: 1045, y: 385 },
+    { x: 1235, y: 385 },
+    { x: 1740, y: 675 },
+    { x: 1920, y: 675 },
   ];
   for (const bz of braziers) {
     if (!isCircleInViewBounds(bz.x, bz.y, 70, viewBounds)) continue;
@@ -2044,25 +2401,41 @@ export function renderInfernoAshAtmosphere(ctx, state, isMono, prof) {
   const h = state.viewH || 720;
 
   if (!isMono) {
-    // Drifting ash flakes & glowing ember sparks across multiple wind vectors
-    const particleCount = tier === "saver" ? 6 : tier === "balanced" ? 16 : 28;
+    // Drifting ash flakes & glowing diamond ember sparks across multiple wind vectors
+    const particleCount = tier === "saver" ? 8 : tier === "balanced" ? 18 : 32;
     ctx.save();
     for (let i = 0; i < particleCount; i++) {
       const seed = i * 17.93;
       const windX = i % 3 === 0 ? 18 : -14;
       const px = (((seed * 61.3 + t * windX + Math.sin(t * 0.8 + seed) * 26) % (w + 60)) + (w + 60)) % (w + 60) - 30;
       const py = h - (((seed * 37.1 + t * (16 + (i % 4) * 5)) % (h + 40)) - 20);
-      const isEmber = i % 4 === 0;
-      ctx.globalAlpha = isEmber ? 0.38 + 0.25 * Math.sin(t * 4 + seed) : 0.22;
-      ctx.fillStyle = isEmber ? "#FB923C" : "#A8A29E";
+      const isEmber = i % 3 === 0;
+      ctx.globalAlpha = isEmber ? 0.42 + 0.28 * Math.sin(t * 4.5 + seed) : 0.24;
+      ctx.fillStyle = isEmber ? (i % 6 === 0 ? "#FDE047" : "#FB923C") : "#A8A29E";
       ctx.beginPath();
-      ctx.arc(px, py, isEmber ? 2.1 : 1.5, 0, Math.PI * 2);
+      if (isEmber) {
+        const er = 2.4;
+        ctx.moveTo(px, py - er * 1.3);
+        ctx.lineTo(px + er, py);
+        ctx.lineTo(px, py + er * 1.3);
+        ctx.lineTo(px - er, py);
+        ctx.closePath();
+      } else {
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+      }
       ctx.fill();
     }
     ctx.restore();
 
     if (allowGlows) {
+      // Warm subtle volcanic heat-haze edge rim at lower viewport edge
       ctx.save();
+      const heat = ctx.createLinearGradient(0, h * 0.72, 0, h);
+      heat.addColorStop(0, "rgba(234, 88, 12, 0)");
+      heat.addColorStop(1, "rgba(180, 45, 12, 0.09)");
+      ctx.fillStyle = heat;
+      ctx.fillRect(0, h * 0.72, w, h * 0.28);
+
       const rad = Math.max(w, h) * 0.72;
       const vg = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.45, w * 0.5, h * 0.5, rad);
       vg.addColorStop(0, "rgba(0,0,0,0)");
