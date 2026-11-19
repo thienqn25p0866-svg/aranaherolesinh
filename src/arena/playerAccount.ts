@@ -26,6 +26,12 @@ import {
   normalizeGrudgeForestProgress,
 } from "./grudgeForestMap";
 import {
+  type VoidCityProgressState,
+  createDefaultVoidCityProgress,
+  mergeVoidCityProgress,
+  normalizeVoidCityProgress,
+} from "./voidCityMap";
+import {
   type DeviceSettings,
   type SavedRunCheckpoint,
   normalizeDeviceSettings,
@@ -135,6 +141,7 @@ export const PLAYER_TITLES = [
   { id: "Kẻ Diệt Trùm", en: "Boss Slayer", minWave: 15, founderOnly: false, color: "#C084FC" },
   { id: "Bá Chủ Vực Thẳm", en: "Abyss Overlord", minWave: 21, founderOnly: false, color: "#FB923C" },
   { id: "Huyền Thoại 27 Màn", en: "27-Wave Legend", minWave: 27, founderOnly: false, color: "#FACC15" },
+  { id: "Kẻ Mang Ấn Vô Danh", en: "Bearer of the Nameless Seal", minWave: 0, founderOnly: false, secretRelicOnly: true, color: "#FDE68A" },
   { id: "Đấng Sáng Thế", en: "Genesis Creator", minWave: 0, founderOnly: true, color: "#FDE047" },
 ] as const;
 
@@ -198,11 +205,13 @@ export interface ProgressSnapshot {
   infernoCleared?: boolean;
   frozenTombCleared?: boolean;
   grudgeForestCleared?: boolean;
+  voidCityCleared?: boolean;
   unlockedMaps?: ArenaMapId[];
   citadelSecrets?: CitadelSecretsProgress;
   infernoProgress?: InfernoProgressState;
   frozenTombProgress?: FrozenTombProgressState;
   grudgeForestProgress?: GrudgeForestProgressState;
+  voidCityProgress?: VoidCityProgressState;
 }
 
 export function getTodayDateKey(now: Date = new Date()): string {
@@ -257,9 +266,19 @@ export function sanitizeGooglePhotoUrl(url: string | null | undefined): string {
   return val;
 }
 
-export function computeUnlockedTitles(highestWave: number, founderUnlocked: boolean): string[] {
+export function computeUnlockedTitles(
+  highestWave: number,
+  founderUnlocked: boolean,
+  extra?: { namelessSealUnlocked?: boolean }
+): string[] {
   const w = Math.max(0, Math.min(27, Math.floor(Number(highestWave) || 0)));
-  return PLAYER_TITLES.filter((t) => (t.founderOnly ? founderUnlocked : w >= t.minWave)).map((t) => t.id);
+  return PLAYER_TITLES.filter((t) => {
+    if (t.founderOnly) return founderUnlocked;
+    if ("secretRelicOnly" in t && t.secretRelicOnly) {
+      return Boolean(extra?.namelessSealUnlocked || founderUnlocked);
+    }
+    return w >= t.minWave;
+  }).map((t) => t.id);
 }
 
 export function isFrameUnlocked(frameId: string, highestWave: number, founderUnlocked: boolean): boolean {
@@ -480,7 +499,10 @@ export function sanitizePlayerProfile(
     0,
     Math.min(27, Math.floor(Math.max(Number(raw?.highestWave) || 0, Number(options.minHighestWave) || 0)))
   );
-  const unlockedTitles = computeUnlockedTitles(highestWave, founderUnlocked);
+  const baseUnlocked = computeUnlockedTitles(highestWave, founderUnlocked, {
+    namelessSealUnlocked: Array.isArray(raw?.unlockedTitles) && raw.unlockedTitles.includes("Kẻ Mang Ấn Vô Danh"),
+  });
+  const unlockedTitles = baseUnlocked;
 
   let favoriteHeroId = String(raw?.favoriteHeroId || base.favoriteHeroId).trim().slice(0, 24) || "eohyen";
   if (favoriteHeroId === "thien" && !founderUnlocked) {
@@ -679,12 +701,16 @@ export function mergeLocalAndCloudProgress(
       ? String(cloud.dailyCheckInDate || "")
       : String(local.dailyCheckInDate || "");
 
-  const unlockedTitles = computeUnlockedTitles(highestWave, founderUnlocked);
+  const mergedVoidCity = mergeVoidCityProgress(local.voidCityProgress, cloud.voidCityProgress);
+  const unlockedTitles = computeUnlockedTitles(highestWave, founderUnlocked, {
+    namelessSealUnlocked: Boolean(mergedVoidCity.namelessSealUnlocked),
+  });
   const classicCleared = Boolean(localClassicCleared || cloud.classicCleared || highestWave >= 27);
   const bloodCitadelCleared = Boolean(localBloodCitadelCleared || cloud.bloodCitadelCleared);
   const infernoCleared = Boolean(localInfernoCleared || cloud.infernoCleared);
   const frozenTombCleared = Boolean(localFrozenTombCleared || cloud.frozenTombCleared);
   const grudgeForestCleared = Boolean(localGrudgeForestCleared || cloud.grudgeForestCleared);
+  const voidCityCleared = Boolean(local.voidCityCleared || cloud.voidCityCleared || mergedVoidCity.bossClearedVoidCity);
   const unlockedMaps = computeUnlockedMaps({
     highestWaveCleared: highestWave,
     classicCleared,
@@ -735,11 +761,13 @@ export function mergeLocalAndCloudProgress(
     infernoCleared,
     frozenTombCleared,
     grudgeForestCleared,
+    voidCityCleared,
     unlockedMaps,
     citadelSecrets,
     infernoProgress: mergeInfernoProgress(local.infernoProgress, cloud.infernoProgress),
     frozenTombProgress: mergeFrozenTombProgress(local.frozenTombProgress, cloud.frozenTombProgress),
     grudgeForestProgress: mergeGrudgeForestProgress(local.grudgeForestProgress, cloud.grudgeForestProgress),
+    voidCityProgress: mergedVoidCity,
   };
 }
 
@@ -773,6 +801,8 @@ export function parseSavePackageJson(
     const infernoCleared = Boolean(p.infernoCleared);
     const frozenTombCleared = Boolean(p.frozenTombCleared);
     const grudgeForestCleared = Boolean(p.grudgeForestCleared);
+    const voidCityProgress = p.voidCityProgress ? normalizeVoidCityProgress(p.voidCityProgress) : createDefaultVoidCityProgress();
+    const voidCityCleared = Boolean(p.voidCityCleared || voidCityProgress.bossClearedVoidCity);
     const unlockedMaps = computeUnlockedMaps({
       highestWaveCleared: highestWave,
       classicCleared,
@@ -817,7 +847,9 @@ export function parseSavePackageJson(
       matchesPlayed: Math.max(0, Math.min(1000000, Math.floor(Number(p.matchesPlayed) || 0))),
       victories: Math.max(0, Math.min(1000000, Math.floor(Number(p.victories) || 0))),
       dailyCheckInDate: typeof p.dailyCheckInDate === "string" ? p.dailyCheckInDate.slice(0, 16) : "",
-      unlockedTitles: computeUnlockedTitles(highestWave, founderUnlocked),
+      unlockedTitles: computeUnlockedTitles(highestWave, founderUnlocked, {
+        namelessSealUnlocked: voidCityProgress.namelessSealUnlocked,
+      }),
       heroStatsEntries: serializeHeroStatsEntries(parsedHeroStats),
       selectedMapId,
       classicCleared,
@@ -825,11 +857,13 @@ export function parseSavePackageJson(
       infernoCleared,
       frozenTombCleared,
       grudgeForestCleared,
+      voidCityCleared,
       unlockedMaps,
       citadelSecrets,
       infernoProgress,
       frozenTombProgress,
       grudgeForestProgress,
+      voidCityProgress,
     };
     return {
       ok: true,

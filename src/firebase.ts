@@ -1288,6 +1288,7 @@ export async function fetchPrivatePlayerSave(
       infernoCleared: Boolean(d.infernoCleared),
       frozenTombCleared: Boolean(d.frozenTombCleared),
       grudgeForestCleared: Boolean(d.grudgeForestCleared),
+      voidCityCleared: Boolean(d.voidCityCleared),
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -1317,7 +1318,9 @@ export async function savePrivatePlayerSave(
     matchesPlayed: Math.max(0, Math.min(1000000, Math.floor(Number(progress.matchesPlayed) || 0))),
     victories: Math.max(0, Math.min(1000000, Math.floor(Number(progress.victories) || 0))),
     dailyCheckInDate: String(progress.dailyCheckInDate || "").slice(0, 16),
-    unlockedTitles: computeUnlockedTitles(highestWave, canUseThien).slice(0, 32),
+    unlockedTitles: computeUnlockedTitles(highestWave, canUseThien, {
+      namelessSealUnlocked: Boolean(progress.voidCityProgress?.namelessSealUnlocked),
+    }).slice(0, 32),
     inventoryItemIds: (progress.inventoryItemIds || [])
       .filter((x): x is string => typeof x === "string" && x.length > 0)
       .slice(0, 250),
@@ -1332,6 +1335,7 @@ export async function savePrivatePlayerSave(
     infernoCleared: Boolean(progress.infernoCleared),
     frozenTombCleared: Boolean(progress.frozenTombCleared),
     grudgeForestCleared: Boolean(progress.grudgeForestCleared),
+    voidCityCleared: Boolean(progress.voidCityCleared),
   };
 
   const bridged = getActiveBridgedToken();

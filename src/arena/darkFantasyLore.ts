@@ -1038,4 +1038,145 @@ export function buildGrudgeForestChronicleOverview(
   };
 }
 
+import {
+  type VoidCityProgressState,
+  VOID_CITY_DOCS,
+  countVoidCityRelics,
+  normalizeVoidCityProgress,
+} from "./voidCityMap";
+
+export interface VoidCityChronicleBlock {
+  title: string;
+  badge: string;
+  summary: string;
+  docsProgress: string;
+  relics: Array<{ id: string; tag: string; locked: boolean; text: string }>;
+  trungDossier: { locked: boolean; text: string };
+  endingDossier: { locked: boolean; text: string };
+}
+
+export function buildVoidCityChronicleOverview(
+  progressRaw: VoidCityProgressState | null | undefined,
+  lang: LoreLang = "vi"
+): VoidCityChronicleBlock {
+  const isVi = lang !== "en";
+  const progress = normalizeVoidCityProgress(progressRaw);
+  const relicCount = countVoidCityRelics(progress);
+  const docsTotal = Object.keys(VOID_CITY_DOCS).length;
+
+  return {
+    title: isVi
+      ? "Thành Phố Vạn Không · Đô Thị Bị Xóa Khỏi Lịch Sử"
+      : "City of Endless Void · The Erased Metropolis",
+    badge: progress.pheDoRevealed
+      ? isVi
+        ? "★ ĐÃ HÉ LỘ: PHẾ ĐÔ THIÊN CƠ"
+        : "★ REVEALED: PHE DO THIEN CO"
+      : isVi
+      ? `DI TÍCH ĐÃ GIẢI MÃ (${relicCount}/6)`
+      : `RELICS SOLVED (${relicCount}/6)`,
+    summary: isVi
+      ? "Thành phố Gothic cổ đại rộng 4800×4000 gồm 8 khu vực bị xóa khỏi lịch sử: Tháp Đồng Hồ chạy ngược làm biến đổi lối đi, Phố Người Vắng vọng bước chân vô hình, Thư Viện tự mở trang và 6 Di Tích Bí Mật dẫn tới Kẻ Giữ Hồ Sơ."
+      : "A 4800×4000 erased Gothic city of 8 zones featuring a backward Clock Tower that reshapes passages, invisible footsteps across Empty Street, mutating Archive books, and 6 Secret Relics leading to The Record Keeper.",
+    docsProgress: isVi
+      ? `Hồ sơ & mảnh ký ức thu thập: ${progress.collectedDocIds.length}/${docsTotal}`
+      : `Collected Dossiers & Fragments: ${progress.collectedDocIds.length}/${docsTotal}`,
+    relics: [
+      {
+        id: "relic_1",
+        tag: isVi ? "✦ DI TÍCH 1 · ĐÀI THIÊN VĂN MẤT SAO" : "✦ RELIC 1 · LOST STAR ASTROLABE",
+        locked: !progress.relic1Solved,
+        text: progress.relic1Solved
+          ? isVi
+            ? "ĐÃ GIẢI · Xoay đúng 4 vòng thiên văn theo ký hiệu chòm sao từ mái Phố Người Vắng & Thư Viện. Thu Mảnh Thiên Thạch (Nâng cấp Rèn Sao / Đổi Vàng). Manh mối: “Bầu trời này từng thuộc về một thế giới khác.”"
+            : "SOLVED · Aligned the 4 celestial rings from rooftop & library star clues. Rewarded Star Shard. Clue: “This sky once belonged to another world.”"
+          : isVi
+          ? "CHƯA GIẢI · Thu thập ký hiệu chòm sao tại Khu 3 & Khu 4 rồi xoay 4 vòng thiên văn dưới tầng hầm Tháp Đồng Hồ (Khu 5)."
+          : "LOCKED · Gather star glyphs in Zones 3–4, then align the astrolabe beneath Zone 5 Clock Tower.",
+      },
+      {
+        id: "relic_2",
+        tag: isVi ? "✦ DI TÍCH 2 · LĂNG MỘ NHỮNG KẺ VÔ DANH" : "✦ RELIC 2 · TOMB OF THE NAMELESS",
+        locked: !progress.relic2Solved,
+        text: progress.relic2Solved
+          ? isVi
+            ? "ĐÃ GIẢI · Định vị đúng 3 bức tượng mất tên dựa trên bia mộ cổ tại Quảng Trường Vô Danh. Mở khóa Ấn Vô Danh (Vầng sáng vàng nhạt & Danh hiệu “Kẻ Mang Ấn Vô Danh”)."
+            : "SOLVED · Identified the 3 true nameless statues from tomb inscriptions. Unlocked Nameless Seal halo & Title."
+          : isVi
+          ? "CHƯA GIẢI · Đọc bia mộ cổ gần Quảng Trường Vô Danh (Khu 2) để chọn đúng 3 bức tượng không tên."
+          : "LOCKED · Read the ancient tomb inscriptions in Zone 2 and choose the 3 true nameless statues.",
+      },
+      {
+        id: "relic_3",
+        tag: isVi ? "✦ DI TÍCH 3 · KHO LƯU TRỮ BỊ NIÊM PHONG" : "✦ RELIC 3 · SEALED ARCHIVE VAULT",
+        locked: !progress.relic3Solved,
+        text: progress.relic3Solved
+          ? isVi
+            ? "ĐÃ GIẢI · Sắp xếp đúng thứ tự thời gian 3 trang hồ sơ bị xé nát. Nhận Chìa Khóa Ký Ức mở Rương Cổ Đại trong thành phố."
+            : "SOLVED · Ordered the 3 torn archive pages chronologically. Earned Memory Keys for Ancient Chests."
+          : isVi
+          ? "CHƯA GIẢI · Gom 3 trang hồ sơ bị xé quanh Thư Viện Ký Ức & Cung Điện Hồ Sơ rồi ghép đúng niên đại."
+          : "LOCKED · Collect the 3 torn pages across Zones 4 & 7 and arrange them in chronological order.",
+      },
+      {
+        id: "relic_4",
+        tag: isVi ? "✦ DI TÍCH 4 · NHÀ HÁT BỐN BÓNG NGƯỜI" : "✦ RELIC 4 · THEATER OF FOUR SHADOWS",
+        locked: !progress.relic4Solved,
+        text: progress.relic4Solved
+          ? isVi
+            ? "ĐÃ GIẢI · Đeo đúng 4 mặt nạ (Kẻ Quan Sát, Kẻ Đóng Giả, Kẻ Bị Xóa, Kẻ Ghi Chép) cho 4 bức tượng hậu trường. Nhận Mặt Nạ Ký Ức (+Tốc chạy & Giảm sát thương)."
+            : "SOLVED · Matched the 4 masks to the backstage statues. Unlocked Memory Mask (+Move Speed & Damage Reduction)."
+          : isVi
+          ? "CHƯA GIẢI · Xem kịch bản rách ở Khu 6 và lắp đúng 4 mặt nạ cho 4 bức tượng phía sau sân khấu (sai sẽ kích hoạt phục kích)."
+          : "LOCKED · Inspect Zone 6 script notes and match the 4 masks backstage (mistakes trigger an ambush).",
+      },
+      {
+        id: "relic_5",
+        tag: isVi ? "✦ DI TÍCH 5 · HẦM GƯƠNG ĐẢO NGƯỢC" : "✦ RELIC 5 · INVERTED MIRROR VAULT",
+        locked: !progress.relic5Solved,
+        text: progress.relic5Solved
+          ? isVi
+            ? "ĐÃ GIẢI · Vô hiệu hóa chiếc gương không đổ bóng thật và chỉnh đúng góc 3 gương còn lại. Thu Lõi Phản Chiếu cường hóa chỉ số phụ vĩnh viễn."
+            : "SOLVED · Disabled the shadowless illusion mirror and aligned the 3 true mirrors. Rewarded Reflection Cores."
+          : isVi
+          ? "CHƯA GIẢI · Đọc ghi chú phản xạ ở Hồ Gương Khu 3 và xử lý 4 tấm gương trong Hầm Gương Đảo Ngược."
+          : "LOCKED · Check Zone 3 Mirror Pool clue, disable the fake shadowless mirror, and align the other 3.",
+      },
+      {
+        id: "relic_6",
+        tag: isVi ? "✦ DI TÍCH 6 · ĐIỆN THỜ KHỞI NGUYÊN" : "✦ RELIC 6 · ORIGIN SANCTUM",
+        locked: !progress.relic6Solved,
+        text: progress.relic6Solved
+          ? isVi
+            ? "ĐÃ GIẢI · Hội tụ 4 chân lý nhân quả của Thành Phố Vạn Không. Nhận Mảnh Khởi Nguyên (Buff sức mạnh vĩnh viễn + Sát thương Boss)."
+            : "SOLVED · Synthesized the 4 causal truths of Void City. Unlocked Origin Fragment permanent combat blessing."
+          : isVi
+          ? "BỊ KHÓA · Giải ít nhất 3/5 Di Tích đầu tiên rồi bước vào Điện Thờ Khởi Nguyên ở Trung Tâm Hư Không (Khu 8)."
+          : "LOCKED · Solve at least 3 of the first 5 relics to unlock Origin Sanctum in Zone 8.",
+      },
+    ],
+    trungDossier: {
+      locked: !progress.trungDossierSeen,
+      text: progress.trungDossierSeen
+        ? isVi
+          ? "ĐÃ MỞ · [Khu 7 · Cung Điện Hồ Sơ] “Nếu có ai đọc được dòng này, thành phố này đã không còn tồn tại.”"
+          : "UNLOCKED · [Zone 7 · Palace of Records] “If anyone is reading this line, this city no longer exists.”"
+        : isVi
+        ? "CHƯA MỞ · Đọc tập hồ sơ tuyệt mật mang chữ ký Trung tại Cung Điện Hồ Sơ (Khu 7)."
+        : "LOCKED · Inspect Trung's sealed dossier inside Zone 7 Palace of Records.",
+    },
+    endingDossier: {
+      locked: !progress.pheDoRevealed,
+      text: progress.pheDoRevealed
+        ? isVi
+          ? "ĐÃ HẠ BOSS KẺ GIỮ HỒ SƠ · Trang giấy cuối rơi xuống hé lộ bản ghi bị xóa khỏi lịch sử: “PHẾ ĐÔ THIÊN CƠ — Chương VI đang chờ người mở cánh cổng tiếp theo.”"
+          : "RECORD KEEPER DEFEATED · The final falling page reveals an erased record: “PHẾ ĐÔ THIÊN CƠ — Chapter VI awaits beyond the next gate.”"
+        : isVi
+        ? "CHƯA MỞ · Đánh bại Boss KẺ GIỮ HỒ SƠ tại Trung Tâm Hư Không (Khu 8)."
+        : "LOCKED · Defeat The Record Keeper at Zone 8 Void Core.",
+    },
+  };
+}
+
+
 

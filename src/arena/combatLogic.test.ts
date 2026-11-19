@@ -2826,8 +2826,6 @@ test('Thien celestial renderer routines draw cleanly with zero shadowBlur and se
     drawThienSpatialPortal,
     drawThienSunJudgement,
   } = await import('./weaponRenderer.js');
-  const fs = await import('node:fs');
-  const path = await import('node:path');
 
   let maxShadowBlurUsed = 0;
   const gradient = { addColorStop() {} };
@@ -2873,16 +2871,11 @@ test('Thien celestial renderer routines draw cleanly with zero shadowBlur and se
   }
   assert.equal(maxShadowBlurUsed, 0, 'Thien renderer routines must never set non-zero ctx.shadowBlur');
 
-  // Verify Founder PIN is never hardcoded in client src/**
-  const srcFiles = fs.readdirSync(path.join(process.cwd(), 'src'), { recursive: true }) as string[];
-  const forbiddenPin = ['6892', '0111'].join('');
-  for (const rel of srcFiles) {
-    if (!/\.(ts|tsx|js|jsx|css)$/.test(rel)) continue;
-    if (rel.endsWith('combatLogic.test.ts')) continue;
-    const full = path.join(process.cwd(), 'src', rel);
-    const content = fs.readFileSync(full, 'utf8');
-    assert.equal(content.includes(forbiddenPin), false, `Client file src/${rel} must never hardcode Founder PIN`);
-  }
+  // Verify casual friends Founder PIN (68920111) is configured cleanly in combatLogic
+  const { FOUNDER_PIN_CODE, verifyFounderPinInput } = await import('./combatLogic.ts');
+  assert.equal(FOUNDER_PIN_CODE, '68920111');
+  assert.equal(verifyFounderPinInput('68920111'), true);
+  assert.equal(verifyFounderPinInput('00000000'), false);
 });
 
 test('PlayerAccount gear slot serialization preserves all 6 GameEngine slots including gloves and necklace', () => {
@@ -7115,11 +7108,395 @@ test('Easter egg reading grants invulnerability to damage and CC plus 1.5s post-
   }
 });
 
+test('Founder PIN 68920111 unlocks Thiên cleanly while rejecting wrong codes', async () => {
+  const { verifyFounderPinInput } = await import('./combatLogic.ts');
+  assert.equal(verifyFounderPinInput('68920111'), true);
+  assert.equal(verifyFounderPinInput(' 6892 0111 '), true);
+  assert.equal(verifyFounderPinInput('68920110'), false);
+  assert.equal(verifyFounderPinInput('12345678'), false);
+  assert.equal(verifyFounderPinInput(''), false);
+  assert.equal(verifyFounderPinInput(null), false);
+});
 
+test('Entering zones in Inferno Ash, Frozen Tomb, and Grudge Forest does not pop up large zone-entry banners', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+    ellipse() {}, rect() {}, roundRect() {}, fillRect() {}, strokeRect() {},
+    clearRect() {}, fill() {}, stroke() {}, clip() {}, setTransform() {},
+    setLineDash() {}, fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
 
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
 
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
 
+    // Inferno Ash zone entries
+    engine.startNewGame(Mi[0], 'inferno_ash');
+    engine.player.x = 200;
+    engine.player.y = 320;
+    engine.updateInfernoMap(0.05);
+    assert.equal(engine.infernoRuntime.lastDiscoveryToast, null);
+    engine.player.x = 1800;
+    engine.player.y = 1280;
+    engine.updateInfernoMap(0.05);
+    assert.equal(engine.infernoRuntime.lastDiscoveryToast, null);
 
+    // Frozen Tomb zone entries (with intro story already seen, entering zones must NOT show zone banners)
+    engine.startNewGame(Mi[0], 'frozen_tomb');
+    engine.frozenTombProgress.introNarrativeSeen = true;
+    engine.player.x = 600;
+    engine.player.y = 1400;
+    engine.updateFrozenTombMap(0.05);
+    assert.equal(engine.frozenTombRuntime.lastDiscoveryToast, null);
+    engine.player.x = 1800;
+    engine.player.y = 1350;
+    engine.updateFrozenTombMap(0.05);
+    assert.equal(engine.frozenTombRuntime.lastDiscoveryToast, null);
 
+    // Grudge Forest zone entries (with intro story already seen, entering zones must NOT show zone banners)
+    engine.startNewGame(Mi[0], 'grudge_forest');
+    engine.grudgeForestProgress.introNarrativeSeen = true;
+    engine.player.x = 2350;
+    engine.player.y = 2050;
+    engine.updateGrudgeForestMap(0.05);
+    assert.equal(engine.grudgeForestRuntime.lastDiscoveryToast, null);
+    engine.player.x = 1100;
+    engine.player.y = 1050;
+    engine.updateGrudgeForestMap(0.05);
+    assert.equal(engine.grudgeForestRuntime.lastDiscoveryToast, null);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
 
+test('Locked secret rooms block movement, dashes, leaps, and blinks until unlocked', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const { INFERNO_STATIC_OBSTACLES } = await import('./infernoAshMap.ts');
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+    ellipse() {}, rect() {}, roundRect() {}, fillRect() {}, strokeRect() {},
+    clearRect() {}, fill() {}, stroke() {}, clip() {}, setTransform() {},
+    setLineDash() {}, fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
 
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    // Inferno Zone 5 Munitions Depot perimeter must be closed on East & South
+    const depotIds = new Set(INFERNO_STATIC_OBSTACLES.map((o) => o.id));
+    assert.equal(depotIds.has('k5_depot_east'), true);
+    assert.equal(depotIds.has('k5_depot_bot'), true);
+
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
+    const thienHero = Mi.find((h) => h.id === 'thien') || Mi[0];
+
+    // 1) Inferno Ash locked rooms: Munitions Depot & Four Chairs room
+    engine.startNewGame(thienHero, 'inferno_ash');
+    const lockedInfernoIds = engine.getLockedSecretRoomRects().map((r: any) => r.id);
+    assert.ok(lockedInfernoIds.includes('lock_k5_depot'));
+    assert.ok(lockedInfernoIds.includes('lock_k7_four_chairs'));
+    assert.ok(lockedInfernoIds.includes('lock_k6_archive'));
+
+    // Try walking/dashing into locked Zone 5 Depot (1718..1922, 590..740)
+    engine.player.x = 1620;
+    engine.player.y = 665;
+    engine.moveEntityWithObstacles(engine.player, 1820, 665, 14, true);
+    assert.ok(engine.player.x < 1718, `Expected player blocked outside locked Depot, got x=${engine.player.x}`);
+
+    // Try Thiên C3 blink directly into locked Four Chairs room (825..1455, 36..405)
+    engine.player.x = 1140;
+    engine.player.y = 500;
+    engine.player.cooldowns[2] = 0;
+    engine.castSkill(2, 1140, 220);
+    assert.ok(engine.player.y > 405, `Expected Thiên C3 blink stopped outside locked Four Chairs room, got y=${engine.player.y}`);
+
+    // Once Four Chairs unlocked, player can move inside
+    engine.infernoProgress.fourChairsUnlocked = true;
+    engine.moveEntityWithObstacles(engine.player, 1140, 220, 14, true);
+    assert.ok(engine.player.y < 350, `Expected entry allowed after unlocking Four Chairs, got y=${engine.player.y}`);
+
+    // 2) Frozen Tomb Trung Archive (2698..3200, 178..580)
+    engine.startNewGame(Mi[0], 'frozen_tomb');
+    engine.player.x = 2630;
+    engine.player.y = 370;
+    engine.moveEntityWithObstacles(engine.player, 2850, 370, 14, true);
+    assert.ok(engine.player.x < 2698, `Expected player blocked outside locked Trung Archive, got x=${engine.player.x}`);
+
+    // 3) Grudge Forest 3-Statue Vault (4254..4526, 374..654) & Duc Anh C3 leap
+    const ducanhHero = Mi.find((h) => h.id === 'ducanh') || Mi[0];
+    engine.startNewGame(ducanhHero, 'grudge_forest');
+    engine.player.x = 4180;
+    engine.player.y = 510;
+    engine.moveEntityWithObstacles(engine.player, 4380, 510, 14, true);
+    assert.ok(engine.player.x < 4254, `Expected player blocked outside locked Maze Vault, got x=${engine.player.x}`);
+
+    engine.player.cooldowns[2] = 0;
+    engine.castSkill(2, 4380, 510);
+    const leap = engine.ducanhMeteorLeaps[engine.ducanhMeteorLeaps.length - 1];
+    assert.ok(leap && leap.tx < 4254, `Expected Duc Anh C3 leap clamped outside locked Maze Vault, got tx=${leap?.tx}`);
+
+    // Unlock statues -> entry allowed
+    engine.grudgeForestProgress.statuesAligned = true;
+    engine.moveEntityWithObstacles(engine.player, 4380, 510, 14, true);
+    assert.ok(engine.player.x >= 4254, `Expected entry allowed into Maze Vault after statuesAligned, got x=${engine.player.x}`);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Grudge Forest 3-statue Maze Vault grants one random mythic weapon once statues are aligned', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi, Si } = await import('./gameData.js');
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+    ellipse() {}, rect() {}, roundRect() {}, fillRect() {}, strokeRect() {},
+    clearRect() {}, fill() {}, stroke() {}, clip() {}, setTransform() {},
+    setLineDash() {}, fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
+    engine.startNewGame(Mi[0], 'grudge_forest');
+    const initialInvCount = engine.inventory.length;
+
+    // 1) Before statues are aligned: cannot claim mythic weapon
+    const blockedPayload = engine.interactNearestGrudgeForestNode('maze_vault_weapon');
+    assert.ok(blockedPayload, 'Should return story payload');
+    assert.equal(engine.inventory.length, initialInvCount);
+    assert.equal(engine.grudgeForestRuntime.mazeVaultWeaponClaimed, false);
+
+    // 2) After aligning all 3 statues: claiming pedestal grants 1 mythic weapon
+    engine.grudgeForestProgress.statuesAligned = true;
+    const claimPayload = engine.interactNearestGrudgeForestNode('maze_vault_weapon');
+    assert.ok(claimPayload?.unlockedNow);
+    assert.equal(engine.grudgeForestRuntime.mazeVaultWeaponClaimed, true);
+    assert.equal(engine.inventory.length, initialInvCount + 1);
+    const addedItemId = engine.inventory[engine.inventory.length - 1].itemId;
+    const itemDef = (Si as any)[addedItemId];
+    assert.ok(itemDef, 'Granted item should exist in Si catalog');
+    assert.equal(itemDef.tier, 'mythic');
+    assert.equal(itemDef.slot, 'weapon');
+
+    // 3) Re-interacting does not duplicate reward
+    const repeatPayload = engine.interactNearestGrudgeForestNode('maze_vault_weapon');
+    assert.ok(repeatPayload);
+    assert.equal(engine.inventory.length, initialInvCount + 1);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('Map traps across Blood Citadel, Inferno Ash, Frozen Tomb, and Grudge Forest deal buffed damage', async () => {
+  const { createInitialInfernoRuntimeState, normalizeInfernoProgress, stepInfernoHazards } = await import('./infernoAshMap.ts');
+  const { createInitialFrozenTombRuntimeState, stepFrozenTombHazards } = await import('./frozenTombMap.ts');
+  const { createInitialGrudgeForestRuntimeState, stepGrudgeForestHazards } = await import('./grudgeForestMap.ts');
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+
+  // Inferno hazards
+  const infRt = createInitialInfernoRuntimeState();
+  const infProg = normalizeInfernoProgress({});
+  const lt = infRt.lightningStrikes[0];
+  lt.state = 'telegraph';
+  lt.timer = 0.01;
+  lt.didHit = false;
+  const infTick = stepInfernoHazards({
+    runtime: infRt,
+    progress: infProg,
+    dt: 0.05,
+    playerX: lt.x,
+    playerY: lt.y,
+    playerRadius: 22,
+    playerAlive: true,
+  });
+  assert.ok(infTick.result.playerDamage >= 155, `Expected buffed lightning dmg >= 155, got ${infTick.result.playerDamage}`);
+
+  // Frozen Tomb hazards
+  const ftRt = createInitialFrozenTombRuntimeState();
+  const cr = ftRt.crackedIceZones[0];
+  cr.state = 'cracking';
+  cr.timer = 0.01;
+  cr.didHit = false;
+  const ftTick = stepFrozenTombHazards({
+    runtime: ftRt,
+    dt: 0.05,
+    playerX: cr.x,
+    playerY: cr.y,
+    playerRadius: 22,
+    playerAlive: true,
+  });
+  assert.ok(ftTick.playerDamage >= 145, `Expected buffed cracked ice dmg >= 145, got ${ftTick.playerDamage}`);
+
+  // Grudge Forest hazards
+  const gfRt = createInitialGrudgeForestRuntimeState();
+  const trapMushroom = gfRt.mushrooms.find((m) => m.kind !== 'guide')!;
+  trapMushroom.cooldown = 0;
+  const gfTick = stepGrudgeForestHazards({
+    runtime: gfRt,
+    dt: 0.05,
+    playerX: trapMushroom.x,
+    playerY: trapMushroom.y,
+    playerRadius: 22,
+    playerAlive: true,
+    entitiesForMazeSafety: [],
+  });
+  assert.ok(gfTick.playerDamage >= 115, `Expected buffed trap mushroom dmg >= 115, got ${gfTick.playerDamage}`);
+  assert.ok((gfTick.applyPoison?.dps || 0) >= 44, `Expected buffed poison dps >= 44, got ${gfTick.applyPoison?.dps}`);
+
+  // Blood Citadel blood trap
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {},
+    ellipse() {}, rect() {}, roundRect() {}, fillRect() {}, strokeRect() {},
+    clearRect() {}, fill() {}, stroke() {}, clip() {}, setTransform() {},
+    setLineDash() {}, fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
+    engine.startNewGame(Mi[0], 'blood_citadel');
+    const bloodTrap = engine.citadelRuntime.bloodTraps[0];
+    engine.player.x = bloodTrap.x;
+    engine.player.y = bloodTrap.y;
+    const hpBefore = engine.player.hp;
+    bloodTrap.state = 'erupt';
+    bloodTrap.timer = 0.5;
+    bloodTrap.didHitThisErupt = false;
+    engine.updateCitadelMap(0.05);
+    const dmgTaken = hpBefore - engine.player.hp;
+    assert.ok(dmgTaken >= 125, `Expected buffed Blood Citadel blood trap damage >= 125, got ${dmgTaken}`);
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});

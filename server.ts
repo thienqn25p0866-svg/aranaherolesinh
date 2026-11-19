@@ -118,7 +118,7 @@ interface ServerEnemy {
 interface Room {
   id: string;
   status: "LOBBY" | "PLAYING";
-  mapId: "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest";
+  mapId: "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest" | "void_city";
   hostId: string;
   players: Map<string, RoomPlayerState>;
   matchPlayerCount: number;
@@ -522,7 +522,7 @@ function getNextFreeSlot(room: Room): number {
 
 function getSpawnPosition(
   slot: number,
-  mapId: "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest" = "classic"
+  mapId: "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest" | "void_city" = "classic"
 ): { x: number; y: number } {
   const offsets = [
     { dx: -75, dy: -45 },
@@ -531,6 +531,9 @@ function getSpawnPosition(
     { dx: 75, dy: 55 },
   ];
   const off = offsets[slot % offsets.length];
+  if (mapId === "void_city") {
+    return { x: 460 + off.dx, y: 3420 + off.dy };
+  }
   if (mapId === "grudge_forest") {
     return { x: 460 + off.dx, y: 3560 + off.dy };
   }
@@ -850,11 +853,12 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     }
     removePlayerFromCurrentRoom(playerId);
     const roomId = generateRoomId();
-    const mapId: "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest" =
+    const mapId: "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest" | "void_city" =
       msg.mapId === "blood_citadel" ||
       msg.mapId === "inferno_ash" ||
       msg.mapId === "frozen_tomb" ||
-      msg.mapId === "grudge_forest"
+      msg.mapId === "grudge_forest" ||
+      msg.mapId === "void_city"
         ? msg.mapId
         : "classic";
     const name = sanitizeName(msg.playerName, 1);
@@ -1029,7 +1033,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
       msg.mapId === "blood_citadel" ||
       msg.mapId === "inferno_ash" ||
       msg.mapId === "frozen_tomb" ||
-      msg.mapId === "grudge_forest"
+      msg.mapId === "grudge_forest" ||
+      msg.mapId === "void_city"
         ? msg.mapId
         : "classic";
     broadcastRoomUpdate(room);
@@ -1172,8 +1177,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const knockY = Number(msg.knockY) || 0;
     if (knockX !== 0 || knockY !== 0) {
       const factor = enemy.kind === "boss" ? 0.25 : 1;
-      const mapW = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2400 : room.mapId === "frozen_tomb" ? 3400 : room.mapId === "grudge_forest" ? 4800 : 2000;
-      const mapH = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2100 : room.mapId === "frozen_tomb" ? 2800 : room.mapId === "grudge_forest" ? 4000 : 1400;
+      const mapW = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2400 : room.mapId === "frozen_tomb" ? 3400 : room.mapId === "grudge_forest" || room.mapId === "void_city" ? 4800 : 2000;
+      const mapH = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2100 : room.mapId === "frozen_tomb" ? 2800 : room.mapId === "grudge_forest" || room.mapId === "void_city" ? 4000 : 1400;
       enemy.x = Math.max(enemy.radius, Math.min(mapW - enemy.radius, enemy.x + knockX * factor));
       enemy.y = Math.max(enemy.radius, Math.min(mapH - enemy.radius, enemy.y + knockY * factor));
     }
@@ -1346,8 +1351,8 @@ function handleClientMessage(playerId: string, msg: Record<string, any>) {
     const s = msg.state;
     if (!s || typeof s !== "object") return;
     const wasAlive = player.alive;
-    const mapW = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2400 : room.mapId === "frozen_tomb" ? 3400 : room.mapId === "grudge_forest" ? 4800 : 2000;
-    const mapH = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2100 : room.mapId === "frozen_tomb" ? 2800 : room.mapId === "grudge_forest" ? 4000 : 1400;
+    const mapW = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2400 : room.mapId === "frozen_tomb" ? 3400 : room.mapId === "grudge_forest" || room.mapId === "void_city" ? 4800 : 2000;
+    const mapH = room.mapId === "blood_citadel" ? 1600 : room.mapId === "inferno_ash" ? 2100 : room.mapId === "frozen_tomb" ? 2800 : room.mapId === "grudge_forest" || room.mapId === "void_city" ? 4000 : 1400;
     player.x = Math.max(20, Math.min(mapW - 20, Number(s.x) || player.x));
     player.y = Math.max(20, Math.min(mapH - 20, Number(s.y) || player.y));
     player.vx = Number(s.vx) || 0;

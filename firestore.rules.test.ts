@@ -29,9 +29,11 @@ test("Firestore rules include all required Eight Pillars protections", () => {
   assert.match(rulesSrc, /'infernoCleared'/);
   assert.match(rulesSrc, /'frozenTombCleared'/);
   assert.match(rulesSrc, /'grudgeForestCleared'/);
+  assert.match(rulesSrc, /'voidCityCleared'/);
   assert.match(rulesSrc, /data\.bloodCitadelCleared is bool/);
   assert.match(rulesSrc, /data\.infernoCleared is bool/);
   assert.match(rulesSrc, /data\.grudgeForestCleared is bool/);
+  assert.match(rulesSrc, /data\.voidCityCleared is bool/);
 });
 
 test("Dirty Dozen + social adversarial payloads violate documented invariants", () => {

@@ -2273,6 +2273,72 @@ class SoundEngine {
       if (Math.random() < 0.28) this.playGrudgeChime();
     }
   }
+
+  // =========================================================
+  // MAP 5: THÀNH PHỐ VẠN KHÔNG (VOID CITY) AUDIO CUES & AMBIENCE
+  // =========================================================
+
+  playVoidClockChime() {
+    if (this.canThrottle("vcClock", 420)) return;
+    this.playMetallicClang(440, 0.22, 0.16);
+    this.playMetallicClang(220, 0.34, 0.12, 0.18);
+    this.playLayerTone({ startFreq: 110, endFreq: 82.41, duration: 0.72, type: "triangle", vol: 0.09, delay: 0.08, sendAmbiance: true });
+  }
+
+  playVoidPageRustle() {
+    if (this.canThrottle("vcPage", 220)) return;
+    this.playFilteredNoise({ duration: 0.26, filterType: "bandpass", freqStart: 2800, freqEnd: 1100, q: 2.6, gainPeak: 0.085, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.18, filterType: "highpass", freqStart: 1900, freqEnd: 3200, q: 1.8, gainPeak: 0.055, delay: 0.09, sendAmbiance: true });
+  }
+
+  playVoidFootstep() {
+    if (this.canThrottle("vcStep", 380)) return;
+    this.playSubPunch(118, 46, 0.09, 0.09);
+    this.playFilteredNoise({ duration: 0.1, filterType: "bandpass", freqStart: 1200, freqEnd: 420, q: 2.4, gainPeak: 0.06, delay: 0.16, sendAmbiance: true });
+  }
+
+  playVoidTheaterChord() {
+    if (this.canThrottle("vcTheater", 550)) return;
+    this.playChord([196.0, 233.08, 293.66, 369.99], 0.85, { type: "sine", vol: 0.072, stagger: 0.07, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 98.0, endFreq: 92.5, duration: 0.9, type: "triangle", vol: 0.065, sendAmbiance: true });
+  }
+
+  playVoidSecretChime() {
+    if (this.canThrottle("vcSecret", 320)) return;
+    this.playSubPunch(112, 46, 0.35, 0.22);
+    this.playChord([293.66, 440.0, 587.33, 880.0], 0.68, { type: "sine", vol: 0.095, stagger: 0.055, sendAmbiance: true });
+    this.playChord([1046.5, 1318.5], 0.48, { type: "triangle", vol: 0.065, delay: 0.2, stagger: 0.05, sendAmbiance: true });
+  }
+
+  playVoidPageStorm() {
+    if (this.canThrottle("vcStorm", 280)) return;
+    this.playSubPunch(86, 30, 0.38, 0.28);
+    this.playFilteredNoise({ duration: 0.48, filterType: "bandpass", freqStart: 2200, freqEnd: 480, q: 1.9, gainPeak: 0.22, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 311.13, endFreq: 155.56, duration: 0.44, type: "sawtooth", vol: 0.07, filterFreq: 920, sendAmbiance: true });
+  }
+
+  updateVoidCityAmbience(zoneId, clockReversed, hasDanger, dt) {
+    if (!this.enabled || this._pageHidden) return;
+    this._voidAmbTimer = (this._voidAmbTimer ?? 2.4) - Math.max(0, Number(dt) || 0);
+    if (this._voidAmbTimer > 0) return;
+    this._voidAmbTimer = hasDanger ? 6.0 : 4.4;
+    if (!this._canSpawnVoice(false)) return;
+
+    if (zoneId === "zone_5") {
+      this.playVoidClockChime();
+    } else if (zoneId === "zone_4" || zoneId === "zone_7") {
+      this.playVoidPageRustle();
+      this.playLayerTone({ startFreq: this.jitter(146.83, 0.04), endFreq: 130.81, duration: 0.72, type: "sine", vol: 0.042, sendAmbiance: true });
+    } else if (zoneId === "zone_3") {
+      this.playVoidFootstep();
+    } else if (zoneId === "zone_6") {
+      if (Math.random() < 0.45) this.playVoidTheaterChord();
+    } else if (zoneId === "zone_8") {
+      this.playLayerTone({ startFreq: clockReversed ? 110 : 73.42, endFreq: 58.27, duration: 1.05, type: "sine", vol: 0.055, sendAmbiance: true });
+    } else {
+      this.playFilteredNoise({ duration: 0.8, filterType: "bandpass", freqStart: 560, freqEnd: 260, q: 1.8, gainPeak: 0.042, sendAmbiance: true });
+    }
+  }
 }
 
 export const R = new SoundEngine();

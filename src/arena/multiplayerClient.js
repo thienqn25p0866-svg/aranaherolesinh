@@ -1967,7 +1967,7 @@ class MultiplayerClient {
           type: "CREATE_ROOM",
           playerName,
           heroId,
-          mapId: mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" || mapId === "grudge_forest" ? mapId : "classic",
+          mapId: mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" || mapId === "grudge_forest" || mapId === "void_city" ? mapId : "classic",
           founderToken: this.founderToken || undefined,
         });
         return { mode: "server", room: this.room };
@@ -1982,7 +1982,7 @@ class MultiplayerClient {
   setMap(mapId) {
     this.send({
       type: "SET_MAP",
-      mapId: mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" || mapId === "grudge_forest" ? mapId : "classic",
+      mapId: mapId === "blood_citadel" || mapId === "inferno_ash" || mapId === "frozen_tomb" || mapId === "grudge_forest" || mapId === "void_city" ? mapId : "classic",
     });
   }
 

@@ -1,5 +1,5 @@
 import { Se, Ce, cm, Cf, _f, Mi, zr, Si, Ff, hm, R, Pf, xa, um } from "./gameData";
-import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction, getCitadelSecretCompassTarget } from "./bloodCitadelMap";
+import { BLOOD_CITADEL_SIZE, BLOOD_CITADEL_SPAWN, BLOOD_CITADEL_SECRET_VAULT_RECT, BLOOD_CITADEL_GATE_ARCH, BLOOD_CITADEL_INTERACTABLES, CITADEL_UNLOCK_WAVE, ARENA_MAPS, createDefaultCitadelSecrets, normalizeCitadelSecrets, normalizeArenaMapId, computeUnlockedMaps, isMapUnlocked, createInitialCitadelRuntimeState, getActiveCitadelObstacles, resolveCircleObstacles, stepCircleMoveWithObstacles, doesPointOverlapAnyObstacle, findClearPointNear, findNearestCitadelInteractable, evaluateCitadelInteraction, getCitadelSecretCompassTarget } from "./bloodCitadelMap";
 import { INFERNO_MAP_WIDTH, INFERNO_MAP_HEIGHT, INFERNO_SPAWN, INFERNO_ZONES, INFERNO_INTERACTABLES, INFERNO_DOCS, createDefaultInfernoProgress, normalizeInfernoProgress, mergeInfernoProgress, createInitialInfernoRuntimeState, getInfernoZoneAt, getActiveInfernoObstacles, findNearestInfernoInteractable, findNearbyLockedGate, tryOpenInfernoGate, damageInfernoDestructibleWalls, evaluateInfernoInteraction, getInfernoCompassTarget, stepInfernoHazards } from "./infernoAshMap";
 import { FROZEN_TOMB_WIDTH, FROZEN_TOMB_HEIGHT, FROZEN_TOMB_SPAWN, FROZEN_TOMB_ZONES, FROZEN_TOMB_DOCS, createDefaultFrozenTombProgress, normalizeFrozenTombProgress, mergeFrozenTombProgress, createInitialFrozenTombRuntimeState, getFrozenTombZoneAt, getActiveFrozenTombObstacles, damageFrozenTombDestructibleWalls, triggerEohyenFrozenTombReaction, findNearestFrozenTombInteractable, evaluateFrozenTombProximityEvents, buildEndingSequencePayload, evaluateFrozenTombInteraction, getFrozenTombCompassTarget, stepFrozenTombHazards, isPointOnFrozenIcePatch } from "./frozenTombMap";
 import { GRUDGE_FOREST_WIDTH, GRUDGE_FOREST_HEIGHT, GRUDGE_FOREST_SPAWN, GRUDGE_FOREST_DOCS, createDefaultGrudgeForestProgress, normalizeGrudgeForestProgress, mergeGrudgeForestProgress, countGrudgeForestSecrets, createInitialGrudgeForestRuntimeState, getGrudgeForestZoneAt, getActiveGrudgeForestObstacles, damageGrudgeForestVinesAt, findNearestGrudgeForestInteractable, evaluateGrudgeForestProximityEvents, buildGrudgeForestEndingPayload, evaluateGrudgeForestInteraction, getGrudgeForestCompassTarget, stepGrudgeForestHazards } from "./grudgeForestMap";
@@ -461,12 +461,76 @@ export class GameEngine {
     }
     return [];
   }
+  getLockedSecretRoomRects() {
+    let locked = [];
+    if (this.activeMapId === "inferno_ash") {
+      let prog = normalizeInfernoProgress(this.infernoProgress);
+      let openedDoors = Array.isArray(prog.openedDoors) ? prog.openedDoors : [];
+      let destroyedWalls = Array.isArray(prog.destroyedWalls) ? prog.destroyedWalls : [];
+      let rtWalls = this.infernoRuntime?.destructibles || [];
+      let isWallBroken = (id) => destroyedWalls.includes(id) || rtWalls.some((w) => w.id === id && w.destroyed);
+      let fourChairsOpen = Boolean(prog.fourChairsUnlocked || openedDoors.includes("gate_four_chairs") || (prog.dungClue && prog.danhClue && prog.longhoiClue));
+      if (!fourChairsOpen) {
+        locked.push({ id: "lock_k7_four_chairs", x: 825, y: 36, w: 630, h: 369 });
+      }
+      let archiveOpen = Boolean(openedDoors.includes("gate_archive") || isWallBroken("cw_archive_back"));
+      if (!archiveOpen) {
+        locked.push({ id: "lock_k6_archive", x: 1418, y: 1635, w: 982, h: 465 });
+      }
+      let depotOpen = Boolean(openedDoors.includes("gate_fortress_depot"));
+      if (!depotOpen) {
+        locked.push({ id: "lock_k5_depot", x: 1718, y: 590, w: 204, h: 150 });
+      }
+    } else if (this.activeMapId === "frozen_tomb") {
+      let prog = normalizeFrozenTombProgress(this.frozenTombProgress);
+      let destroyedWalls = Array.isArray(prog.destroyedWalls) ? prog.destroyedWalls : [];
+      let rtWalls = this.frozenTombRuntime?.destructibles || [];
+      let secretOpen = Boolean(destroyedWalls.includes("ice_wall_palace_secret") || rtWalls.some((w) => w.id === "ice_wall_palace_secret" && w.destroyed));
+      if (!secretOpen) {
+        locked.push({ id: "lock_ft_trung_archive", x: 2698, y: 178, w: 502, h: 402 });
+      }
+    } else if (this.activeMapId === "grudge_forest") {
+      let prog = normalizeGrudgeForestProgress(this.grudgeForestProgress);
+      let puppetOpen = Boolean(prog.ee1RoguePuppetSeen || prog.ee1SecretHouseSeen || this.grudgeForestRuntime?.roguePuppet?.arrived);
+      if (!puppetOpen) {
+        locked.push({ id: "lock_gf_puppet_house", x: 214, y: 1554, w: 232, h: 240 });
+      }
+      if (!prog.ee5TrungRoomUnlocked) {
+        locked.push({ id: "lock_gf_trung_room", x: 2874, y: 984, w: 212, h: 270 });
+      }
+      if (!prog.statuesAligned) {
+        locked.push({ id: "lock_gf_maze_vault", x: 4254, y: 374, w: 272, h: 280 });
+      }
+    }
+    return locked;
+  }
+  getEntityCollisionObstacles() {
+    let obstacles = this.getActiveObstacles();
+    let lockedRooms = this.getLockedSecretRoomRects();
+    return lockedRooms.length > 0 ? obstacles.concat(lockedRooms) : obstacles;
+  }
   resolveEntityObstacles(entity, margin = 14) {
     if (!entity || (this.activeMapId !== "blood_citadel" && this.activeMapId !== "inferno_ash" && this.activeMapId !== "frozen_tomb" && this.activeMapId !== "grudge_forest")) return;
-    let obstacles = this.getActiveObstacles();
+    let obstacles = this.getEntityCollisionObstacles();
     let res = resolveCircleObstacles(entity.x, entity.y, entity.radius || 20, obstacles, this.mapWidth, this.mapHeight, margin);
     entity.x = res.x;
     entity.y = res.y;
+  }
+  moveEntityWithObstacles(entity, targetX, targetY, margin = 14, stopOnBlocked = false) {
+    if (!entity) return { x: targetX, y: targetY, collided: false, blocked: false };
+    let r = entity.radius || 20;
+    if (this.activeMapId !== "blood_citadel" && this.activeMapId !== "inferno_ash" && this.activeMapId !== "frozen_tomb" && this.activeMapId !== "grudge_forest") {
+      let cx = Math.max(r + margin, Math.min(this.mapWidth - r - margin, targetX));
+      let cy = Math.max(r + margin, Math.min(this.mapHeight - r - margin, targetY));
+      entity.x = cx;
+      entity.y = cy;
+      return { x: cx, y: cy, collided: false, blocked: false };
+    }
+    let obstacles = this.getEntityCollisionObstacles();
+    let res = stepCircleMoveWithObstacles(entity.x, entity.y, targetX, targetY, r, obstacles, this.mapWidth, this.mapHeight, margin, stopOnBlocked);
+    entity.x = res.x;
+    entity.y = res.y;
+    return res;
   }
   getNearbyCitadelInteractable() {
     if (this.activeMapId !== "blood_citadel" || !this.player) return null;
@@ -525,6 +589,24 @@ export class GameEngine {
     if (res.healPct > 0 && this.player.hp > 0) {
       let healAmt = Math.max(40, Math.round(this.player.maxHp * res.healPct));
       this.healPlayer(healAmt, "HEAL", `+${healAmt} HP`);
+    }
+    if (res.claimMazeVaultWeapon && this.grudgeForestRuntime && !this.grudgeForestRuntime.mazeVaultWeaponClaimed) {
+      this.grudgeForestRuntime.mazeVaultWeaponClaimed = true;
+      let mythicWeapons = Object.values(Si).filter((it) => it && it.tier === "mythic" && it.slot === "weapon");
+      let ownedIds = new Set((this.inventory || []).map((inv) => inv?.itemId).filter(Boolean));
+      let unownedWeapons = mythicWeapons.filter((it) => !ownedIds.has(it.id));
+      let pool = unownedWeapons.length > 0 ? unownedWeapons : mythicWeapons;
+      if (pool.length > 0) {
+        let chosen = pool[Math.floor(Math.random() * pool.length)];
+        this.inventory.push({ uid: this.nextUid++, itemId: chosen.id });
+        let chosenName = lang === "en" && chosen.enName ? chosen.enName : chosen.name;
+        res.payload.rewardText = res.payload.rewardText
+          ? `${res.payload.rewardText} · ⚔️ ${chosenName}`
+          : (lang === "en" ? `Mythic Weapon: ${chosenName}` : `Vũ Khí Huyền Thoại: ${chosenName}`);
+        R.playLevelUp?.();
+        this.onToast && this.onToast(lang === "en" ? `⚔️ Found Mythic Weapon: ${chosenName}!` : `⚔️ Nhận Vũ Khí Huyền Thoại: ${chosenName}!`);
+        this.addFloatingText(this.player.x, this.player.y - 62, `⚔️ ${chosenName}!`, "#FACC15", 17);
+      }
     }
     if (this.grudgeForestRuntime) {
       if (res.darknessPulseSec) {
@@ -1044,7 +1126,7 @@ export class GameEngine {
           let spd = 470;
           let sx = tw.x + Math.cos(tw.angle) * (tw.radius + 14);
           let sy = tw.y + Math.sin(tw.angle) * (tw.radius + 14);
-          let towerDmg = Math.round(38 + this.wave * 3.8);
+          let towerDmg = Math.round(68 + this.wave * 6.5);
           this.projectiles.push({
             id: this.nextEntityId++,
             fromPlayer: false,
@@ -1093,7 +1175,7 @@ export class GameEngine {
       } else if (tr.state === "erupt") {
         if (!tr.didHitThisErupt && playerAlive && dist <= tr.radius + pr * 0.55) {
           tr.didHitThisErupt = true;
-          let trapDmg = Math.round(Math.max(48, this.player.maxHp * 0.085));
+          let trapDmg = Math.round(Math.max(125, this.player.maxHp * 0.16));
           this.damagePlayer(trapDmg);
           this.applyPlayerCC("slow", 1.2, 0.35, tr.x, tr.y);
           this.addFloatingText(tr.x, tr.y - 24, `🩸 BẪY MÁU -${trapDmg}`, "#FB7185", 15);
@@ -1132,7 +1214,7 @@ export class GameEngine {
           let pad = 26;
           if (!cw.didDamageThisCollapse && playerAlive && px + pr >= cw.x - pad && px - pr <= cw.x + cw.w + pad && py + pr >= cw.y - pad && py - pr <= cw.y + cw.h + pad) {
             cw.didDamageThisCollapse = true;
-            let wallDmg = Math.round(Math.max(44, this.player.maxHp * 0.075));
+            let wallDmg = Math.round(Math.max(115, this.player.maxHp * 0.14));
             this.damagePlayer(wallDmg);
             this.applyPlayerCC("slow", 1.1, 0.3, cx, cy);
           }
@@ -1314,9 +1396,6 @@ export class GameEngine {
     rt.currentZoneId = zone.id;
     if (rt._seenZoneEntries && !rt._seenZoneEntries.has(zone.id)) {
       rt._seenZoneEntries.add(zone.id);
-      let zLabel = this.currentLang === "en" ? zone.name.en : zone.name.vi;
-      rt.lastDiscoveryToast = zLabel;
-      rt.lastDiscoveryTimer = 3.5;
       if (zone.id === "zone_2") R.playInfernoWhisper?.();
       else if (zone.id === "zone_7") R.playInfernoSecretDiscovery?.();
     }
@@ -1522,8 +1601,6 @@ export class GameEngine {
       rt.currentZoneId = zone.id;
       if (!rt._seenZoneEntries.has(zone.id)) {
         rt._seenZoneEntries.add(zone.id);
-        rt.lastDiscoveryToast = lang === "en" ? zone.name.en : zone.name.vi;
-        rt.lastDiscoveryTimer = 3.5;
       }
     }
     R.updateFrozenTombAmbience?.(zone.id, rt.blizzardIntensity || 0.12, dt, (rt.trungAudioSilenceSec || 0) > 0);
@@ -1748,8 +1825,6 @@ export class GameEngine {
       rt.currentZoneId = zone.id;
       if (!rt._seenZoneEntries.has(zone.id)) {
         rt._seenZoneEntries.add(zone.id);
-        rt.lastDiscoveryToast = lang === "en" ? zone.name.en : zone.name.vi;
-        rt.lastDiscoveryTimer = 3.6;
       }
     }
     R.updateGrudgeForestAmbience?.(zone.id, Boolean(rt.inSilenceZone), this.enemies.length > 0, dt);
@@ -2689,13 +2764,12 @@ export class GameEngine {
     let l = this.findNearestEnemy(280), m = this.getEffectiveDamage(), c = 0, g = 0;
     if (l) {
       let p = Math.atan2(l.y - this.player.y, l.x - this.player.x);
-      this.afterimages.push({ x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, life: 0, maxLife: 0.38, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, maxLife: 0.38 }), this.player.x = Math.max(40, Math.min(this.mapWidth - 40, l.x + Math.cos(p) * (l.radius + 22))), this.player.y = Math.max(40, Math.min(this.mapHeight - 40, l.y + Math.sin(p) * (l.radius + 22))), this.player.facing = p + Math.PI, this.spawnSpatialTear(this.player.x - 24, this.player.y - 24, l.x, l.y, "#E879F9", 10), this.queueVfx("tear", { x1: this.player.x - 24, y1: this.player.y - 24, x2: l.x, y2: l.y, color: "#E879F9", width: 10 }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", life: 0, maxLife: 0.22, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", maxLife: 0.22, kind: "bao_slash" });
+      this.afterimages.push({ x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, life: 0, maxLife: 0.38, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, maxLife: 0.38 }), this.moveEntityWithObstacles(this.player, l.x + Math.cos(p) * (l.radius + 22), l.y + Math.sin(p) * (l.radius + 22), 14, true), this.player.facing = p + Math.PI, this.spawnSpatialTear(this.player.x - 24, this.player.y - 24, l.x, l.y, "#E879F9", 10), this.queueVfx("tear", { x1: this.player.x - 24, y1: this.player.y - 24, x2: l.x, y2: l.y, color: "#E879F9", width: 10 }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", life: 0, maxLife: 0.22, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", maxLife: 0.22, kind: "bao_slash" });
       let h = (l.bao_marks || 0) >= 2 ? 45 : 0, f = Math.round(65 + 1.15 * m + h);
       g += f, c = 1, this.damageEnemy(l, f, 0, 0, true), l.hp > 0 && this.applyBaoMark(l, 1), h > 0 && this.addFloatingText(l.x, l.y - 24, `🗡️ ÁM SÁT +${h}!`, "#E879F9", 15);
       let bHeal = Math.round(this.player.maxHp * (h > 0 ? 0.08 : 0.05));
       this.healPlayer(bHeal, "HEAL", `+${bHeal} HP (ÁM SÁT)`);
-    } else this.player.x = Math.max(40, Math.min(this.mapWidth - 40, this.player.x + Math.cos(s) * 165)), this.player.y = Math.max(40, Math.min(this.mapHeight - 40, this.player.y + Math.sin(s) * 165));
-    this.resolveEntityObstacles(this.player, 14);
+    } else this.moveEntityWithObstacles(this.player, this.player.x + Math.cos(s) * 165, this.player.y + Math.sin(s) * 165, 14, true);
     for (let k = 0; k < 7; k++) this.spawnSmokePuff(this.player.x + (Math.random() - 0.5) * 26, this.player.y + (Math.random() - 0.5) * 26, 13, "rgba(232, 121, 249, 0.52)");
     this.queueVfx("particles", { x: this.player.x, y: this.player.y, smoke: true, color: "rgba(232, 121, 249, 0.52)", count: 7, size: 13 });
     return this.player.attackTimer = 0, R.playAmbushSlash(), this.comboManager.record({ heroId: "bao", action: "c2_ambush", hitCount: c, inTimingWindow: true, empowered: c > 0, damageDealt: g }), true;
@@ -2918,6 +2992,10 @@ export class GameEngine {
   }
   spawnPhongIllusion(tx, ty) {
     let x = Math.max(36, Math.min(this.mapWidth - 36, tx)), y = Math.max(36, Math.min(this.mapHeight - 36, ty));
+    if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
+      let pt = findClearPointNear(x, y, 22, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 16);
+      x = pt.x; y = pt.y;
+    }
     if (this.phongIllusions.length >= PHONG_MAX_ILLUSIONS) this.phongIllusions.shift();
     let ill = { id: this.nextEntityId++, x, y, facing: this.player.facing || 0, radius: 22, life: 0, maxLife: PHONG_ILLUSION_DURATION, fireTimer: 0.22, attackAnim: 0, visualOnly: false };
     this.phongIllusions.push(ill);
@@ -2929,9 +3007,12 @@ export class GameEngine {
   executePhongC1DashStep(step, angle, baseSlashDmg) {
     let sx = this.player.x, sy = this.player.y;
     let dashLen = 92;
-    let nx = Math.max(36, Math.min(this.mapWidth - 36, sx + Math.cos(angle) * dashLen));
-    let ny = Math.max(36, Math.min(this.mapHeight - 36, sy + Math.sin(angle) * dashLen));
+    let rawNx = Math.max(36, Math.min(this.mapWidth - 36, sx + Math.cos(angle) * dashLen));
+    let rawNy = Math.max(36, Math.min(this.mapHeight - 36, sy + Math.sin(angle) * dashLen));
     this.player.phong_dashProtectTimer = Math.max(this.player.phong_dashProtectTimer || 0, 0.38);
+    let moved = this.moveEntityWithObstacles(this.player, rawNx, rawNy, 14, false);
+    let nx = moved.x, ny = moved.y;
+    this.player.facing = angle;
     for (let k = 0; k < 3; k++) {
       let f = k / 3;
       let ax = sx + (nx - sx) * f, ay = sy + (ny - sy) * f;
@@ -2941,7 +3022,6 @@ export class GameEngine {
     }
     this.spawnSpatialTear(sx, sy, nx, ny, "#0EA5E9", 7);
     this.queueVfx("tear", { x1: sx, y1: sy, x2: nx, y2: ny, color: "#0EA5E9", width: 7 });
-    this.player.x = nx, this.player.y = ny, this.player.facing = angle;
     let isCritStep = step === 2;
     R.playPhongDash(step);
     let midX = (sx + nx) / 2, midY = (sy + ny) / 2;
@@ -2972,8 +3052,7 @@ export class GameEngine {
       this.afterimages.push({ x: this.player.x, y: this.player.y, facing: this.player.facing, color: "#0EA5E9", alpha: 0.85, life: 0, maxLife: 0.34, radius: this.player.radius });
       this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: this.player.facing, color: "#0EA5E9", alpha: 0.85, maxLife: 0.34 });
       let stepAngle = atkAng + (step % 2 === 0 ? 0.5 : -0.5);
-      this.player.x = Math.max(36, Math.min(this.mapWidth - 36, cx - Math.cos(stepAngle) * 34));
-      this.player.y = Math.max(36, Math.min(this.mapHeight - 36, cy - Math.sin(stepAngle) * 34));
+      this.moveEntityWithObstacles(this.player, cx - Math.cos(stepAngle) * 34, cy - Math.sin(stepAngle) * 34, 14, true);
     }
     this.player.facing = atkAng;
     let rad = 145, isFinisher = step === 3;
@@ -3065,9 +3144,7 @@ export class GameEngine {
     let punchDir = step % 2 === 0 ? 1 : -1;
     if (step < 4) {
       R.playDangTigerPunch(step % 3);
-      let nx = Math.max(36, Math.min(this.mapWidth - 36, this.player.x + Math.cos(angle) * 14));
-      let ny = Math.max(36, Math.min(this.mapHeight - 36, this.player.y + Math.sin(angle) * 14));
-      this.player.x = nx, this.player.y = ny;
+      this.moveEntityWithObstacles(this.player, this.player.x + Math.cos(angle) * 14, this.player.y + Math.sin(angle) * 14, 14, false);
       this.slashes.push({ x: this.player.x, y: this.player.y, angle, radius: 120, spread: 1.25, dir: punchDir, color: "#F8FAFC", life: 0, maxLife: 0.2, kind: "dang_punch" });
       this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle, radius: 120, spread: 1.25, dir: punchDir, color: "#F8FAFC", maxLife: 0.2, kind: "dang_punch" });
       let punchDmg = Math.round(50 + 0.65 * atk + 0.4 * ap);
@@ -3257,8 +3334,11 @@ export class GameEngine {
     let p = this.getHeroGearStats("thien");
     this.player.cooldowns[2] = (this.currentHero.skills[2]?.cooldown || 8) * (1 - p.cdr);
     this.afterimages.push({ x: oldX, y: oldY, facing: this.player.facing, color: "#38BDF8", alpha: 0.85, life: 0, maxLife: 0.36, radius: this.player.radius });
-    this.player.x = Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, dest.x));
-    this.player.y = Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, dest.y));
+    let destPt = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest")
+      ? findClearPointNear(dest.x, dest.y, this.player.radius || 22, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 14)
+      : { x: Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, dest.x)), y: Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, dest.y)) };
+    this.player.x = destPt.x;
+    this.player.y = destPt.y;
     this.resolveEntityObstacles(this.player, 14);
     this.tapDestination = null;
     R.playThienPortal();
@@ -3888,8 +3968,7 @@ export class GameEngine {
       lp.y = lp.sy + (lp.ty - lp.sy) * prog;
       Math.random() < 0.5 && this.spawnParticles(lp.x, lp.y, "#FB923C", 1, 25, 90, 2.8, 0.22);
       if (!lp.visualOnly && this.currentHero.id === "ducanh") {
-        this.player.x = Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, lp.x));
-        this.player.y = Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, lp.y));
+        this.moveEntityWithObstacles(this.player, lp.x, lp.y, 14, false);
       }
       if (lp.timer >= (lp.duration || 0.45)) {
         this.ducanhMeteorLeaps.splice(i, 1);
@@ -4346,8 +4425,11 @@ export class GameEngine {
       }
       this.afterimages.push({ x: this.player.x, y: this.player.y, facing: this.player.facing, color: "#A855F7", alpha: 0.9, life: 0, maxLife: 0.38, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: this.player.facing, color: "#A855F7", alpha: 0.9, maxLife: 0.38 });
       this.spawnParticles(this.player.x, this.player.y, "#C084FC", 10, 40, 140, 3, 0.35);
-      this.player.x = Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, pad.x));
-      this.player.y = Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, pad.y));
+      let padPt = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest")
+        ? findClearPointNear(pad.x, pad.y, this.player.radius || 22, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 14)
+        : { x: Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, pad.x)), y: Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, pad.y)) };
+      this.player.x = padPt.x;
+      this.player.y = padPt.y;
       this.resolveEntityObstacles(this.player, 14);
       this.tapDestination = null;
       pad.teleportCd = 1.5;
@@ -4456,13 +4538,14 @@ export class GameEngine {
           this.afterimages.push({ x: x + (b.x - x) * N, y: C + (b.y - C) * N, facing: a, color: "#000000", alpha: 0.95, life: 0, maxLife: 0.65, radius: this.player.radius }), P % 2 === 0 && this.queueVfx("afterimage", { x: x + (b.x - x) * N, y: C + (b.y - C) * N, facing: a, color: "#000000", alpha: 0.95, maxLife: 0.65 });
         }
         let H = Math.atan2(b.y - C, b.x - x);
-        this.player.x = Math.max(40, Math.min(this.mapWidth - 40, b.x - Math.cos(H) * (b.radius + 20))), this.player.y = Math.max(40, Math.min(this.mapHeight - 40, b.y - Math.sin(H) * (b.radius + 20))), this.player.facing = H;
+        let tinBlink = this.moveEntityWithObstacles(this.player, b.x - Math.cos(H) * (b.radius + 20), b.y - Math.sin(H) * (b.radius + 20), 14, true);
+        this.player.facing = H;
         this.createBranchingLightning(x, C, b.x, b.y, "#F43F5E", 4.5), this.queueVfx("lightning", { x1: x, y1: C, x2: b.x, y2: b.y, color: "#F43F5E", width: 4.5 });
         this.spawnRedCrystals(b.x, b.y, 20, 95, 270), this.spawnSpatialTear(b.x - 125, b.y - 125, b.x + 125, b.y + 125, "#F43F5E", 16), this.spawnSpatialTear(b.x + 125, b.y - 125, b.x - 125, b.y + 125, "#F43F5E", 16);
         this.queueVfx("tear", { x1: b.x - 125, y1: b.y - 125, x2: b.x + 125, y2: b.y + 125, color: "#F43F5E", width: 16 }), this.queueVfx("tear", { x1: b.x + 125, y1: b.y - 125, x2: b.x - 125, y2: b.y + 125, color: "#F43F5E", width: 16 });
         this.slashes.push({ x: b.x, y: b.y, angle: 0, radius: 145, spread: Math.PI * 2, color: "#F43F5E", life: 0, maxLife: 0.36, kind: "shockwave" }), this.queueVfx("slash", { x: b.x, y: b.y, angle: 0, radius: 145, spread: Math.PI * 2, color: "#F43F5E", maxLife: 0.36, kind: "shockwave" });
         this.spawnGroundCrack(b.x, b.y, H, 100, "#BE123C", "#FDA4AF"), this.queueVfx("crack", { x: b.x, y: b.y, angle: H, len: 100, color: "#BE123C", glowColor: "#FDA4AF" });
-        let cx = Math.max(40, Math.min(this.mapWidth - 40, b.x + Math.cos(H) * 52)), cy = Math.max(40, Math.min(this.mapHeight - 40, b.y + Math.sin(H) * 52));
+        let cx = tinBlink.blocked ? this.player.x : Math.max(40, Math.min(this.mapWidth - 40, b.x + Math.cos(H) * 52)), cy = tinBlink.blocked ? this.player.y : Math.max(40, Math.min(this.mapHeight - 40, b.y + Math.sin(H) * 52));
         this.tinCrystals.push({ id: this.nextEntityId++, x: cx, y: cy, radius: 44, life: 0, maxLife: 4.5, pulse: 0 }), this.queueVfx("tin_crystal_vis", { x: cx, y: cy, radius: 44, maxLife: 4.5 });
         this.player.tin_afterSlashes = this.player.tin_afterSlashes || [];
         let slashDmg = Math.round(45 * v);
@@ -4586,11 +4669,19 @@ export class GameEngine {
       else if (s === 1) {
         R.playBlackHole();
         let x = Math.max(40, Math.min(this.mapWidth - 40, l)), C = Math.max(40, Math.min(this.mapHeight - 40, m));
+        if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
+          let clr = findClearPointNear(x, C, 24, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 16);
+          x = clr.x; C = clr.y;
+        }
         this.summonGalaxyVortex(x, C, g.radius || 145, 3, 24 * v, (65 + b) * v, false, true, 1), this.queueVfx("vortex_vis", { x, y: C, radius: g.radius || 145, duration: 3, isGalaxy: false });
       } else if (s === 2) {
         let x = Math.round(this.player.maxHp * 0.2);
         this.healPlayer(x, "HEAL", `+${x} HP (THI\xCAN H\xC0 S\u1EE4P \u0110\u1ED4)`), R.playBlackHole();
         let C = Math.max(40, Math.min(this.mapWidth - 40, l)), H = Math.max(40, Math.min(this.mapHeight - 40, m));
+        if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
+          let clr = findClearPointNear(C, H, 24, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 16);
+          C = clr.x; H = clr.y;
+        }
         this.summonGalaxyVortex(C, H, g.radius || 175, 2, 32 * v, (260 + b) * v, true, true, 2), this.queueVfx("vortex_vis", { x: C, y: H, radius: g.radius || 175, duration: 2, isGalaxy: true }), this.addShake(15, 0.45);
       }
     } else if (this.currentHero.id === "gau") {
@@ -4659,7 +4750,11 @@ export class GameEngine {
       } else if (s === 1) this.player.gau_c2_guardTimer = 2, this.player.gau_c2_stacks = 0, this.player.gau_c2_recastLock = 0.15, this.player.cooldowns[1] = 0.15, R.playShieldBlock(), this.addFloatingText(this.player.x, this.player.y - 26, "\u{1F6E1}\uFE0F THI\u1EBET B\xCDCH (2,0s)!", "#FBBF24", 15), this.comboManager.record({ heroId: "gau", action: "c2_guard", hitCount: 1, empowered: x });
       else if (s === 2) {
         this.player.cooldowns[2] = f;
-        let C = Math.max(60, Math.min(this.mapWidth - 60, l)), H = Math.max(60, Math.min(this.mapHeight - 60, m)), D = Math.hypot(C - this.player.x, H - this.player.y), P = 0.28, N = 170 * (x ? 1.25 : 1), W = Math.round((220 + 2.1 * b) * (x ? 1.3 : 1));
+        let rawC = Math.max(60, Math.min(this.mapWidth - 60, l)), rawH = Math.max(60, Math.min(this.mapHeight - 60, m));
+        let clampedLeap = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest")
+          ? stepCircleMoveWithObstacles(this.player.x, this.player.y, rawC, rawH, this.player.radius || 22, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 14, true)
+          : { x: rawC, y: rawH };
+        let C = clampedLeap.x, H = clampedLeap.y, D = Math.hypot(C - this.player.x, H - this.player.y), P = 0.28, N = 170 * (x ? 1.25 : 1), W = Math.round((220 + 2.1 * b) * (x ? 1.3 : 1));
         R.playDash(), this.player.dashActive = true, this.player.dashKind = "gau_c3_leap", this.player.dashTimer = P, this.player.gau_leapElapsed = 0, this.player.gau_leapDur = P, this.player.dashVx = D > 5 ? (C - this.player.x) / D * (D / P) : 0, this.player.dashVy = D > 5 ? (H - this.player.y) / D * (D / P) : 0, this.player.dashDamage = 0, this.player.dashHitIds.clear(), this.player.gau_c3_pendingImpact = { targetX: C, targetY: H, radius: N, dmg: W }, this.spawnParticles(this.player.x, this.player.y, "#FBBF24", 10, 40, 130, 3, 0.28), this.queueVfx("particles", { x: this.player.x, y: this.player.y, color: "#FBBF24", count: 10, minSpd: 40, maxSpd: 130, size: 3, life: 0.28 });
       }
     } else if (this.currentHero.id === "bao") {
@@ -4965,9 +5060,16 @@ export class GameEngine {
         }
         this.afterimages.push({ x: oldPx, y: oldPy, facing: this.player.facing, color: "#0EA5E9", alpha: 0.9, life: 0, maxLife: 0.36, radius: this.player.radius });
         this.queueVfx("afterimage", { x: oldPx, y: oldPy, facing: this.player.facing, color: "#0EA5E9", alpha: 0.9, maxLife: 0.36 });
-        this.player.x = Math.max(36, Math.min(this.mapWidth - 36, destX));
-        this.player.y = Math.max(36, Math.min(this.mapHeight - 36, destY));
-        this.resolveEntityObstacles(this.player, 14);
+        if (nearest) {
+          let illPt = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest")
+            ? findClearPointNear(destX, destY, this.player.radius || 22, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 14)
+            : { x: Math.max(36, Math.min(this.mapWidth - 36, destX)), y: Math.max(36, Math.min(this.mapHeight - 36, destY)) };
+          this.player.x = illPt.x;
+          this.player.y = illPt.y;
+          this.resolveEntityObstacles(this.player, 14);
+        } else {
+          this.moveEntityWithObstacles(this.player, destX, destY, 14, true);
+        }
         this.tapDestination = null;
         this.spawnSpatialTear(oldPx, oldPy, this.player.x, this.player.y, "#22D3EE", 8);
         this.createBranchingLightning(oldPx, oldPy, this.player.x, this.player.y, "#67E8F9", 2.4);
@@ -5104,14 +5206,13 @@ export class GameEngine {
         let rawDist = Math.hypot(rawDx, rawDy);
         let stepDist = rawDist > 10 ? Math.min(maxR, rawDist) : maxR * 0.85;
         let ang = rawDist > 10 ? Math.atan2(rawDy, rawDx) : a;
-        let tx = Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, oldX + Math.cos(ang) * stepDist));
-        let ty = Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, oldY + Math.sin(ang) * stepDist));
+        let rawTx = Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, oldX + Math.cos(ang) * stepDist));
+        let rawTy = Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, oldY + Math.sin(ang) * stepDist));
+        this.afterimages.push({ x: oldX, y: oldY, facing: a, color: "#38BDF8", alpha: 0.85, life: 0, maxLife: 0.36, radius: this.player.radius });
+        let blinkRes = this.moveEntityWithObstacles(this.player, rawTx, rawTy, 14, true);
+        let tx = blinkRes.x, ty = blinkRes.y;
         this.thienPortals.push({ id: this.nextEntityId++, x: oldX, y: oldY, radius: 46, life: 0, maxLife: 4.0, isOrigin: true, visualOnly: false });
         this.thienPortals.push({ id: this.nextEntityId++, x: tx, y: ty, radius: 46, life: 0, maxLife: 4.0, isOrigin: false, visualOnly: false });
-        this.afterimages.push({ x: oldX, y: oldY, facing: a, color: "#38BDF8", alpha: 0.85, life: 0, maxLife: 0.36, radius: this.player.radius });
-        this.player.x = tx;
-        this.player.y = ty;
-        this.resolveEntityObstacles(this.player, 14);
         this.tapDestination = null;
         this.player.thien_c3PortalTimer = 4.0;
         this.player.thien_c3RecastLock = 0.25;
@@ -5308,6 +5409,11 @@ export class GameEngine {
         let tx = dist > maxR ? this.player.x + dx / dist * maxR : l, ty = dist > maxR ? this.player.y + dy / dist * maxR : m;
         tx = Math.max(50, Math.min(this.mapWidth - 50, tx));
         ty = Math.max(50, Math.min(this.mapHeight - 50, ty));
+        if (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest") {
+          let leapRes = stepCircleMoveWithObstacles(this.player.x, this.player.y, tx, ty, this.player.radius || 22, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 14, true);
+          tx = leapRes.x;
+          ty = leapRes.y;
+        }
         let rad = g.radius || 185;
         this.player.ducanh_leapActive = true;
         this.tapDestination = null;
@@ -5456,7 +5562,7 @@ export class GameEngine {
     this.player.bao_c1_recastTimer = 0, this.player.bao_c1_awaitingSecond = false, this.player.bao_emergeTimer = 0.2, this.player.weaponSkillTimer = 0.45, this.player.weaponSkillDur = 0.45;
     let l = this.getEffectiveDamage(), m = this.findNearestEnemy(260), c = m ? Math.atan2(m.y - this.player.y, m.x - this.player.x) : s, g = this.player.x, p = this.player.y;
     for (let k = 0; k < 6; k++) this.spawnSmokePuff(g + (Math.random() - 0.5) * 24, p + (Math.random() - 0.5) * 24, 11, "rgba(147, 51, 234, 0.5)");
-    this.afterimages.push({ x: g, y: p, facing: c, color: "#E879F9", alpha: 0.9, life: 0, maxLife: 0.35, radius: this.player.radius }), this.queueVfx("afterimage", { x: g, y: p, facing: c, color: "#E879F9", alpha: 0.9, maxLife: 0.35 }), m ? (this.player.x = Math.max(40, Math.min(this.mapWidth - 40, m.x + Math.cos(c) * (m.radius + 18))), this.player.y = Math.max(40, Math.min(this.mapHeight - 40, m.y + Math.sin(c) * (m.radius + 18))), this.player.facing = c + Math.PI) : (this.player.x = Math.max(40, Math.min(this.mapWidth - 40, this.player.x + Math.cos(c) * 140)), this.player.y = Math.max(40, Math.min(this.mapHeight - 40, this.player.y + Math.sin(c) * 140)), this.player.facing = c), this.spawnSpatialTear(g, p, this.player.x, this.player.y, "#E879F9", 10), this.queueVfx("tear", { x1: g, y1: p, x2: this.player.x, y2: this.player.y, color: "#E879F9", width: 10 }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 108, spread: 1.7, dir: -1, crossed: true, color: "#E879F9", life: 0, maxLife: 0.22, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 108, spread: 1.7, dir: -1, crossed: true, color: "#E879F9", maxLife: 0.22, kind: "bao_slash" });
+    this.afterimages.push({ x: g, y: p, facing: c, color: "#E879F9", alpha: 0.9, life: 0, maxLife: 0.35, radius: this.player.radius }), this.queueVfx("afterimage", { x: g, y: p, facing: c, color: "#E879F9", alpha: 0.9, maxLife: 0.35 }), m ? (this.moveEntityWithObstacles(this.player, m.x + Math.cos(c) * (m.radius + 18), m.y + Math.sin(c) * (m.radius + 18), 14, true), this.player.facing = c + Math.PI) : (this.moveEntityWithObstacles(this.player, this.player.x + Math.cos(c) * 140, this.player.y + Math.sin(c) * 140, 14, true), this.player.facing = c), this.spawnSpatialTear(g, p, this.player.x, this.player.y, "#E879F9", 10), this.queueVfx("tear", { x1: g, y1: p, x2: this.player.x, y2: this.player.y, color: "#E879F9", width: 10 }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 108, spread: 1.7, dir: -1, crossed: true, color: "#E879F9", life: 0, maxLife: 0.22, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 108, spread: 1.7, dir: -1, crossed: true, color: "#E879F9", maxLife: 0.22, kind: "bao_slash" });
     let h = Math.round(135 + 1.7 * l), f = 0;
     for (let v of [...this.enemies]) Math.hypot(v.x - this.player.x, v.y - this.player.y) <= 112 + v.radius && (f++, this.damageEnemy(v, h, 0, 0, true), v.hp > 0 && this.applyBaoMark(v, 1));
     this.player.attackTimer = 0, this.player.cooldowns[0] = (this.currentHero.skills[0]?.cooldown || 5) * (1 - a.cdr), R.playDaggerSlash(2), R.playDash(), this.addFloatingText(this.player.x, this.player.y - 26, "\u26A1 SONG TR\u1EA2M 2/2!", "#E879F9", 14), this.comboManager.record({ heroId: "bao", action: "c1_recast", hitCount: f, inTimingWindow: true, damageDealt: h * Math.max(1, f) });
@@ -5998,7 +6104,7 @@ export class GameEngine {
         if (m.timer -= a, m.timer <= 0) {
           this.player.bao_queuedC3Finisher = null, this.player.bao_emergeTimer = 0.24;
           let c = (m.targetId ? this.enemies.find((T) => T.id === m.targetId && T.hp > 0) : null) || this.findNearestEnemy(320), g = c ? c.x : m.targetX, p = c ? c.y : m.targetY, h = Math.atan2(p - this.player.y, g - this.player.x);
-          this.afterimages.push({ x: this.player.x, y: this.player.y, facing: h, color: "#9333EA", alpha: 0.9, life: 0, maxLife: 0.4, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: h, color: "#9333EA", alpha: 0.9, maxLife: 0.4 }), c && (this.player.x = Math.max(40, Math.min(this.mapWidth - 40, c.x - Math.cos(h) * (c.radius + 18))), this.player.y = Math.max(40, Math.min(this.mapHeight - 40, c.y - Math.sin(h) * (c.radius + 18))), this.resolveEntityObstacles(this.player, 14)), this.player.facing = h, this.slashes.push({ x: g, y: p, angle: h, radius: 105, spread: 2.1, dir: 1, crossed: true, color: "#E879F9", life: 0, maxLife: 0.26, kind: "bao_slash" }), this.queueVfx("slash", { x: g, y: p, angle: h, radius: 105, spread: 2.1, dir: 1, crossed: true, color: "#E879F9", maxLife: 0.26, kind: "bao_slash" }), this.spawnSpatialTear(g - 70, p - 70, g + 70, p + 70, "#E879F9", 13), this.spawnSpatialTear(g + 70, p - 70, g - 70, p + 70, "#9333EA", 13), this.queueVfx("tear", { x1: g - 70, y1: p - 70, x2: g + 70, y2: p + 70, color: "#E879F9", width: 13 }), this.queueVfx("tear", { x1: g + 70, y1: p - 70, x2: g - 70, y2: p + 70, color: "#9333EA", width: 13 }), this.spawnRedCrystals(g, p, 14, 70, 210), R.playDeathSeal(), this.addShake(14, 0.35);
+          this.afterimages.push({ x: this.player.x, y: this.player.y, facing: h, color: "#9333EA", alpha: 0.9, life: 0, maxLife: 0.4, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: h, color: "#9333EA", alpha: 0.9, maxLife: 0.4 }), c && this.moveEntityWithObstacles(this.player, c.x - Math.cos(h) * (c.radius + 18), c.y - Math.sin(h) * (c.radius + 18), 14, true), this.player.facing = h, this.slashes.push({ x: g, y: p, angle: h, radius: 105, spread: 2.1, dir: 1, crossed: true, color: "#E879F9", life: 0, maxLife: 0.26, kind: "bao_slash" }), this.queueVfx("slash", { x: g, y: p, angle: h, radius: 105, spread: 2.1, dir: 1, crossed: true, color: "#E879F9", maxLife: 0.26, kind: "bao_slash" }), this.spawnSpatialTear(g - 70, p - 70, g + 70, p + 70, "#E879F9", 13), this.spawnSpatialTear(g + 70, p - 70, g - 70, p + 70, "#9333EA", 13), this.queueVfx("tear", { x1: g - 70, y1: p - 70, x2: g + 70, y2: p + 70, color: "#E879F9", width: 13 }), this.queueVfx("tear", { x1: g + 70, y1: p - 70, x2: g - 70, y2: p + 70, color: "#9333EA", width: 13 }), this.spawnRedCrystals(g, p, 14, 70, 210), R.playDeathSeal(), this.addShake(14, 0.35);
           let f = m.dmg, v = false;
           if (c && c.hp > 0) {
             (c.bao_marks || 0) >= 3 && (f += 95, v = true, this.addFloatingText(c.x, c.y - 38, "\u{1F480} V\u1EA0N \u1EA2NH T\u1EEC \u1EA4N +95!", "#E879F9", 17));
@@ -6301,7 +6407,8 @@ export class GameEngine {
     if (this.player.dashActive) {
       this.player.dashTimer -= a, this.player.dashKind === "gau_c3_leap" && (this.player.gau_leapElapsed = (this.player.gau_leapElapsed || 0) + a);
       let m = this.player.dashVx * a, c = this.player.dashVy * a;
-      if (this.player.x += m, this.player.y += c, (this.player.dashKind === "bao_c1" || Math.random() < 0.75) && (this.afterimages.push({ x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.currentHero.color, alpha: this.player.dashKind === "bao_c1" ? 0.55 : 0.65, life: 0, maxLife: 0.34, radius: this.player.radius }), this.multiplayer.active && Math.random() < 0.5 && this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.player.dashKind === "fox_dash" ? "#F97316" : this.currentHero.color, alpha: 0.6, maxLife: 0.32 })), this.player.dashKind === "fox_dash" ? this.spawnFlameParticles(this.player.x, this.player.y, "red", 3, 20, 60) : this.player.dashKind === "dung_c1" ? this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 2, 20, 80, 2, 0.2) : this.player.dashKind === "duy_c2" ? this.spawnParticles(this.player.x, this.player.y, "#14B8A6", 3, 20, 90, 2.4, 0.22) : this.player.dashKind === "bao_c1" && Math.random() < 0.55 && this.spawnSmokePuff(this.player.x, this.player.y, 9, "rgba(192, 132, 252, 0.38)"), this.player.dashKind === "dung_c1" || this.player.dashKind === "tin_c1" || this.player.dashKind === "duy_c2") {
+      this.moveEntityWithObstacles(this.player, this.player.x + m, this.player.y + c, 14, false);
+      if ((this.player.dashKind === "bao_c1" || Math.random() < 0.75) && (this.afterimages.push({ x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.currentHero.color, alpha: this.player.dashKind === "bao_c1" ? 0.55 : 0.65, life: 0, maxLife: 0.34, radius: this.player.radius }), this.multiplayer.active && Math.random() < 0.5 && this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: this.player.facing, color: this.player.dashKind === "bao_c1" ? "#A855F7" : this.player.dashKind === "fox_dash" ? "#F97316" : this.currentHero.color, alpha: 0.6, maxLife: 0.32 })), this.player.dashKind === "fox_dash" ? this.spawnFlameParticles(this.player.x, this.player.y, "red", 3, 20, 60) : this.player.dashKind === "dung_c1" ? this.spawnParticles(this.player.x, this.player.y, "#38BDF8", 2, 20, 80, 2, 0.2) : this.player.dashKind === "duy_c2" ? this.spawnParticles(this.player.x, this.player.y, "#14B8A6", 3, 20, 90, 2.4, 0.22) : this.player.dashKind === "bao_c1" && Math.random() < 0.55 && this.spawnSmokePuff(this.player.x, this.player.y, 9, "rgba(192, 132, 252, 0.38)"), this.player.dashKind === "dung_c1" || this.player.dashKind === "tin_c1" || this.player.dashKind === "duy_c2") {
         for (let g of [...this.enemies]) if (!this.player.dashHitIds.has(g.id) && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= this.player.radius + g.radius + 20) {
           this.player.dashHitIds.add(g.id);
           let p = Math.atan2(this.player.dashVy, this.player.dashVx), h = this.player.dashDamage, hadMark = !!g.tin_hasMark;
@@ -6312,7 +6419,7 @@ export class GameEngine {
         let g = this.player.dashKind;
         if (this.player.dashActive = false, this.player.dashKind = "none", g === "gau_c3_leap" && this.player.gau_c3_pendingImpact) {
           let p = this.player.gau_c3_pendingImpact;
-          this.player.gau_c3_pendingImpact = null, this.player.gau_landBounceTimer = 0.28, this.player.x = Math.max(this.player.radius + 14, Math.min(this.mapWidth - this.player.radius - 14, p.targetX)), this.player.y = Math.max(this.player.radius + 14, Math.min(this.mapHeight - this.player.radius - 14, p.targetY)), R.playEarthSlam(), this.addShake(16, 0.4), this.createCataclysmicExplosion(this.player.x, this.player.y, p.radius, "#F59E0B"), this.queueVfx("explosion", { x: this.player.x, y: this.player.y, radius: p.radius, color: "#F59E0B" }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 1.12, spread: Math.PI * 2, color: "#FBBF24", life: 0, maxLife: 0.4, kind: "gau_shockring", heavy: true }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 1.12, spread: Math.PI * 2, color: "#FBBF24", maxLife: 0.4, kind: "gau_shockring", heavy: true }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 0.72, spread: Math.PI * 2, color: "#FEF08A", life: 0, maxLife: 0.28, kind: "shockwave" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 0.72, spread: Math.PI * 2, color: "#FEF08A", maxLife: 0.28, kind: "shockwave" });
+          this.player.gau_c3_pendingImpact = null, this.player.gau_landBounceTimer = 0.28, this.moveEntityWithObstacles(this.player, p.targetX, p.targetY, 14, false), R.playEarthSlam(), this.addShake(16, 0.4), this.createCataclysmicExplosion(this.player.x, this.player.y, p.radius, "#F59E0B"), this.queueVfx("explosion", { x: this.player.x, y: this.player.y, radius: p.radius, color: "#F59E0B" }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 1.12, spread: Math.PI * 2, color: "#FBBF24", life: 0, maxLife: 0.4, kind: "gau_shockring", heavy: true }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 1.12, spread: Math.PI * 2, color: "#FBBF24", maxLife: 0.4, kind: "gau_shockring", heavy: true }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 0.72, spread: Math.PI * 2, color: "#FEF08A", life: 0, maxLife: 0.28, kind: "shockwave" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: p.radius * 0.72, spread: Math.PI * 2, color: "#FEF08A", maxLife: 0.28, kind: "shockwave" });
           for (let v = 0; v < 4; v++) this.spawnGroundCrack(this.player.x, this.player.y, Math.PI / 2 * v + 0.3, p.radius * 0.78, "#D97706", "#FEF08A"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: Math.PI / 2 * v + 0.3, len: p.radius * 0.78, color: "#D97706", glowColor: "#FEF08A" });
           let h = 0;
           for (let v of [...this.enemies]) Math.hypot(v.x - this.player.x, v.y - this.player.y) <= p.radius + v.radius && (h++, this.isBossImmune(v) || (v.stunTimer = Math.max(v.stunTimer, 0.55), v.gau_quakeTimer = 6), this.damageEnemy(v, p.dmg, 0, 0, true));
@@ -6342,7 +6449,8 @@ export class GameEngine {
       this.player.frozenTombOnIce = onIce;
       if (g > 0.05) {
         let p = m / Math.max(1, g), h = c / Math.max(1, g), f = this.getEffectiveMoveSpeed() * Math.min(1, g), v = p * f * a, T = h * f * a;
-        this.player.x += v, this.player.y += T, this.player.facing = Math.atan2(h, p);
+        this.moveEntityWithObstacles(this.player, this.player.x + v, this.player.y + T, 14, false);
+        this.player.facing = Math.atan2(h, p);
         this.player.moveSpeedFactor = Math.min(1, g), this.player.walkCyclePhase = (this.player.walkCyclePhase || 0) + a * 13 * this.player.moveSpeedFactor;
         if (onIce) {
           this.player.frozenTombSlipVx = (this.player.frozenTombSlipVx || 0) * 0.65 + (v / Math.max(0.001, a)) * 0.35;
@@ -6355,8 +6463,7 @@ export class GameEngine {
       } else {
         this.player.moveSpeedFactor = Math.max(0, (this.player.moveSpeedFactor || 0) - a * 8);
         if (onIce && (Math.abs(this.player.frozenTombSlipVx || 0) > 4 || Math.abs(this.player.frozenTombSlipVy || 0) > 4)) {
-          this.player.x += (this.player.frozenTombSlipVx || 0) * a * 0.72;
-          this.player.y += (this.player.frozenTombSlipVy || 0) * a * 0.72;
+          this.moveEntityWithObstacles(this.player, this.player.x + (this.player.frozenTombSlipVx || 0) * a * 0.72, this.player.y + (this.player.frozenTombSlipVy || 0) * a * 0.72, 14, false);
           let decay = Math.exp(-3.4 * a);
           this.player.frozenTombSlipVx *= decay;
           this.player.frozenTombSlipVy *= decay;
@@ -7950,8 +8057,11 @@ export class GameEngine {
             }
           }
           if (this.currentHero.id === "duccong" && (l.skillIdx === 1 || l.skillIdx === 2) && this.player.cooldowns[l.skillIdx] > 0.15 && this.duccong_pads) {
-            this.duccong_pads[l.skillIdx] = { x: l.x, y: l.y, radius: 36, skillIdx: l.skillIdx, teleportCd: 0 };
-            this.addFloatingText(l.x, l.y - 26, `\u{1F300} \xD4 D\u1ECACH CHUY\u1EC2N C${l.skillIdx + 1}`, "#C084FC", 14);
+            let padPos = (this.activeMapId === "blood_citadel" || this.activeMapId === "inferno_ash" || this.activeMapId === "frozen_tomb" || this.activeMapId === "grudge_forest")
+              ? findClearPointNear(l.x, l.y, 24, this.getEntityCollisionObstacles(), this.mapWidth, this.mapHeight, 16)
+              : { x: l.x, y: l.y };
+            this.duccong_pads[l.skillIdx] = { x: padPos.x, y: padPos.y, radius: 36, skillIdx: l.skillIdx, teleportCd: 0 };
+            this.addFloatingText(padPos.x, padPos.y - 26, `\u{1F300} \xD4 D\u1ECACH CHUY\u1EC2N C${l.skillIdx + 1}`, "#C084FC", 14);
           }
           this.galaxyVortices.splice(a, 1);
         }
@@ -7959,7 +8069,7 @@ export class GameEngine {
         let m = l.x - this.player.x, c = l.y - this.player.y, g = Math.hypot(m, c);
         if (g > 10 && g <= l.radius + 95 && !this.player.dashActive && !(this.currentHero.id === "dung" && this.player.dung_c3_buff_timer > 0)) {
           let p = (l.isGalaxy ? 135 : 105) * (1 - g / (l.radius + 115));
-          this.player.x += m / g * p * s, this.player.y += c / g * p * s;
+          this.moveEntityWithObstacles(this.player, this.player.x + m / g * p * s, this.player.y + c / g * p * s, 14, false);
         }
         if (l.tickTimer >= l.tickInterval) {
           l.tickTimer -= l.tickInterval;

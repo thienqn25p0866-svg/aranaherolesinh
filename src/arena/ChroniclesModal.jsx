@@ -10,20 +10,23 @@ import {
   buildInfernoChronicleOverview,
   buildFrozenTombChronicleOverview,
   buildGrudgeForestChronicleOverview,
+  buildVoidCityChronicleOverview,
 } from "./darkFantasyLore";
 import { CitadelBlueprintEmblem, CitadelLoreCrest } from "./CitadelVisuals";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals";
 import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals";
 import { GrudgeForestBlueprintEmblem } from "./GrudgeForestVisuals";
+import { VoidCityBlueprintEmblem } from "./VoidCityVisuals";
 import { getMapUnlockRequirement } from "./bloodCitadelMap";
 
 const TAB_LABELS = {
   world: { vi: "Biên Niên Sử", en: "World Lore" },
   heroes: { vi: "21 Anh Hùng", en: "21 Heroes" },
   bosses: { vi: "9 Đại Trùm", en: "9 Bosses" },
-  inferno: { vi: "Hỏa Ngục Tàn Tro", en: "Inferno of Ashes" },
-  frozenTomb: { vi: "Băng Mộ Vĩnh Cửu", en: "Frozen Tomb" },
+  voidCity: { vi: "Thành Phố Vạn Không", en: "Void City" },
   grudgeForest: { vi: "Rừng Oán Niệm", en: "Grudge Forest" },
+  frozenTomb: { vi: "Băng Mộ Vĩnh Cửu", en: "Frozen Tomb" },
+  inferno: { vi: "Hỏa Ngục Tàn Tro", en: "Inferno of Ashes" },
   citadel: { vi: "Cổ Thành Huyết Táng", en: "Blood Citadel" },
 };
 
@@ -38,14 +41,17 @@ export function ChroniclesModal({
   infernoUnlocked = false,
   frozenTombUnlocked = false,
   grudgeForestUnlocked = false,
+  voidCityUnlocked = false,
   citadelSecrets = { tinClue: false, baoClue: false, combinedUnlocked: false, inspectedNodes: [] },
   infernoProgress = null,
   frozenTombProgress = null,
   grudgeForestProgress = null,
+  voidCityProgress = null,
   onSelectHero,
   onSelectInfernoMap,
   onSelectFrozenTombMap,
   onSelectGrudgeForestMap,
+  onSelectVoidCityMap,
   onSelectCitadelMap,
   onClose,
 }) {
@@ -81,6 +87,7 @@ export function ChroniclesModal({
   const infernoOverview = buildInfernoChronicleOverview(infernoProgress, safeLang);
   const frozenTombOverview = buildFrozenTombChronicleOverview(frozenTombProgress, safeLang);
   const grudgeForestOverview = buildGrudgeForestChronicleOverview(grudgeForestProgress, safeLang);
+  const voidCityOverview = buildVoidCityChronicleOverview(voidCityProgress, safeLang);
   const canPickHero = activeHero && (!activeHero.isSecretFounder || founderUnlocked);
 
   return (
@@ -494,6 +501,108 @@ export function ChroniclesModal({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {tab === "voidCity" && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-sky-500/40 bg-gradient-to-br from-indigo-950/45 via-slate-950 to-slate-950 p-4 sm:p-5 flex items-start gap-4">
+                <VoidCityBlueprintEmblem className="w-16 h-16 sm:w-[72px] sm:h-[72px] hidden sm:block shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-lg font-extrabold text-sky-100">
+                      {voidCityOverview.title}
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-amber-300">
+                      {voidCityOverview.badge}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    {voidCityOverview.summary}
+                  </p>
+                  <div className="mt-2 text-xs font-mono text-sky-300">
+                    {voidCityOverview.docsProgress}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {voidCityOverview.relics.map((rel) => (
+                  <div
+                    key={rel.id}
+                    className={`rounded-xl border p-4 ${
+                      rel.locked
+                        ? "border-slate-800 bg-slate-950/60"
+                        : "border-sky-400/55 bg-indigo-950/25"
+                    }`}
+                  >
+                    <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-sky-300">
+                      {rel.tag}
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-200">{rel.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div
+                  className={`rounded-xl border p-4 ${
+                    voidCityOverview.trungDossier.locked
+                      ? "border-slate-800 bg-slate-950/60"
+                      : "border-purple-400/55 bg-purple-950/25"
+                  }`}
+                >
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                    📜 {isVi ? "HỒ SƠ TRUNG · CUNG ĐIỆN HỒ SƠ" : "TRUNG'S SEALED DOSSIER"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    {voidCityOverview.trungDossier.text}
+                  </p>
+                </div>
+
+                <div
+                  className={`rounded-xl border p-4 ${
+                    voidCityOverview.endingDossier.locked
+                      ? "border-slate-800 bg-slate-950/60"
+                      : "border-amber-400/75 bg-amber-950/25"
+                  }`}
+                >
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-300">
+                    ✦ {isVi ? "KẾT THÚC CHƯƠNG V · PHẾ ĐÔ THIÊN CƠ" : "CHAPTER V FINALE · PHE DO THIEN CO"}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-100">
+                    {voidCityOverview.endingDossier.text}
+                  </p>
+                </div>
+              </div>
+
+              {onSelectVoidCityMap && (
+                <div className="rounded-xl border border-slate-800 bg-slate-950/75 p-4 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-slate-400">
+                    {voidCityUnlocked
+                      ? founderUnlocked
+                        ? isVi
+                          ? "Đang bật quyền Nhà Sáng Lập: có thể chọn tự do (4800×4000 · 8 Khu Vực · 6 Di Tích)."
+                          : "Founder access active: free map switching unlocked."
+                        : isVi
+                        ? "Đã mở khóa sau khi vượt Màn 27 Rừng Oán Niệm."
+                        : "Unlocked by clearing Forest of Grudges Wave 27."
+                      : `🔒 ${getMapUnlockRequirement("void_city", isVi ? "vi" : "en")}`}
+                  </span>
+                  {voidCityUnlocked && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectVoidCityMap();
+                        onClose?.();
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 text-xs font-extrabold text-white hover:brightness-110 transition cursor-pointer"
+                    >
+                      {isVi ? "Chọn Map Thành Phố Vạn Không" : "Select City of Endless Void"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

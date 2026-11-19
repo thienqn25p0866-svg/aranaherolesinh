@@ -2739,8 +2739,8 @@ export function stepGrudgeForestHazards({
       } else {
         m.cooldown = 12;
         m.triggeredCount++;
-        result.playerDamage += 48;
-        result.applyPoison = { dps: 22, duration: 3.5 };
+        result.playerDamage += 115;
+        result.applyPoison = { dps: 44, duration: 3.5 };
         result.applySlow = { duration: 1.5, factor: 0.25 };
         result.mushroomLureSpawns.push(m);
         result.soundEvents.push("twig");
@@ -2768,7 +2768,7 @@ export function stepGrudgeForestHazards({
         result.soundEvents.push("root_erupt");
         if (playerAlive && !rt.didRoot && Math.hypot(playerX - rt.x, playerY - rt.y) <= rt.radius + playerRadius * 0.65) {
           rt.didRoot = true;
-          result.playerDamage += 66;
+          result.playerDamage += 155;
           result.applyRootSec = Math.max(result.applyRootSec || 0, 1.0);
         }
       }
@@ -2814,7 +2814,7 @@ export function stepGrudgeForestHazards({
           ft.timer = 14;
           if (playerAlive && !ft.didHit && isEntityOverlappingRect(playerX, playerY, playerRadius, ft, 16)) {
             ft.didHit = true;
-            result.playerDamage += 60;
+            result.playerDamage += 145;
             result.applySlow = { duration: 1.2, factor: 0.3 };
           }
           // Push overlapping entities safely out via caller's resolveEntityObstacles

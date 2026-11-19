@@ -455,6 +455,8 @@ export const INFERNO_STATIC_OBSTACLES: InfernoRectObstacle[] = [
   { id: "k5_bunker_w1", x: 1550, y: 620, w: 44, h: 320, kind: "bunker_wall", label: "Tường Pháo Đài Tây" },
   { id: "k5_bunker_w2", x: 1550, y: 120, w: 44, h: 350, kind: "bunker_wall", label: "Tường Pháo Đài Tây Bắc" },
   { id: "k5_depot_top", x: 1680, y: 548, w: 280, h: 42, kind: "bunker_wall", label: "Tường Kho Đạn" },
+  { id: "k5_depot_east", x: 1922, y: 590, w: 38, h: 150, kind: "bunker_wall", label: "Tường Kho Đạn Đông" },
+  { id: "k5_depot_bot", x: 1680, y: 740, w: 280, h: 40, kind: "bunker_wall", label: "Tường Kho Đạn Nam" },
   { id: "k5_pad_1", x: 1885, y: 265, w: 68, h: 68, kind: "bunker_wall", label: "Bệ Phóng Tên Lửa Alpha" },
   { id: "k5_pad_2", x: 2150, y: 265, w: 68, h: 68, kind: "bunker_wall", label: "Bệ Phóng Tên Lửa Beta" },
   { id: "k5_console_box", x: 2092, y: 618, w: 62, h: 44, kind: "bunker_wall", label: "Trạm Máy Tính Thiên Hỏa" },
@@ -1735,7 +1737,7 @@ export function stepInfernoHazards({
         result.soundEvents.push("lightning");
         if (playerAlive && !lt.didHit && Math.hypot(playerX - lt.x, playerY - lt.y) <= lt.radius + playerRadius * 0.7) {
           lt.didHit = true;
-          result.playerDamage += 78;
+          result.playerDamage += 155;
           result.applyStunSec = Math.max(result.applyStunSec || 0, 0.35);
         }
       }
@@ -1774,8 +1776,8 @@ export function stepInfernoHazards({
         const hitY = Math.abs(playerY - cy) <= ff.h * 0.5 + playerRadius * 0.65;
         if (hitX && hitY) {
           ff.tickCd = 0.45;
-          result.playerDamage += 38;
-          result.applyBurn = { duration: 2.0, dps: 24 };
+          result.playerDamage += 78;
+          result.applyBurn = { duration: 2.0, dps: 44 };
         }
       }
       if (ff.timer <= 0) {
@@ -1824,10 +1826,10 @@ export function stepInfernoHazards({
       const dist = Math.hypot(dx, dy);
       const stepDist = 560 * dt;
       if (dist <= stepDist || ms.timer <= 0) {
-        result.missileImpacts.push({ x: ms.targetX, y: ms.targetY, radius: ms.blastRadius, damage: 92 });
+        result.missileImpacts.push({ x: ms.targetX, y: ms.targetY, radius: ms.blastRadius, damage: 190 });
         result.soundEvents.push("missile_boom");
         if (playerAlive && Math.hypot(playerX - ms.targetX, playerY - ms.targetY) <= ms.blastRadius + playerRadius * 0.65) {
-          result.playerDamage += 92;
+          result.playerDamage += 190;
         }
         const smash = damageInfernoDestructibleWalls(runtime, nextProg, ms.targetX, ms.targetY, ms.blastRadius + 16, 220);
         nextProg = smash.nextProgress;
@@ -1867,7 +1869,7 @@ export function stepInfernoHazards({
         br.timer = 5.5;
         result.soundEvents.push("bridge_crack");
         if (onBridge) {
-          result.playerDamage += 64;
+          result.playerDamage += 140;
           result.applySlow = { duration: 1.0, factor: 0.35 };
         }
       }
@@ -1910,7 +1912,7 @@ export function stepInfernoHazards({
       result.applySlow = { duration: 0.45, factor: 0.28 };
       if (arc.exposureSec >= 0.75 && arc.tickCd <= 0) {
         arc.tickCd = 0.55;
-        result.playerDamage += Math.round(32 + Math.min(44, arc.exposureSec * 10));
+        result.playerDamage += Math.round(64 + Math.min(76, arc.exposureSec * 18));
       }
     } else {
       arc.exposureSec = Math.max(0, arc.exposureSec - dt * 1.5);

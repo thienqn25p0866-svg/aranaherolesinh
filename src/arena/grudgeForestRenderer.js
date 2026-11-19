@@ -1949,8 +1949,8 @@ export function renderGrudgeForestFloor(ctx, engine, t, viewBounds) {
       // Ancient Mythic Weapon Pedestal at (4388, 514)
       const px = 4388;
       const py = 514;
-      const claimed = Boolean(rt.mazeVaultWeaponClaimed);
-      const pulse = 0.55 + Math.sin(time * 3.2) * 0.45;
+      const claimed = Boolean(runtime?.mazeVaultWeaponClaimed);
+      const pulse = 0.55 + Math.sin(t * 3.2) * 0.45;
       ctx.fillStyle = mono ? "#334155" : "#1E293B";
       ctx.strokeStyle = mono ? "#E2E8F0" : claimed ? "#34D399" : "#FACC15";
       ctx.lineWidth = 2.4;
@@ -1965,7 +1965,7 @@ export function renderGrudgeForestFloor(ctx, engine, t, viewBounds) {
         ctx.arc(px, py, 34, 0, Math.PI * 2);
         ctx.fill();
 
-        const bobY = Math.sin(time * 3.6) * 4;
+        const bobY = Math.sin(t * 3.6) * 4;
         ctx.save();
         ctx.translate(px, py - 4 + bobY);
         ctx.rotate(-Math.PI * 0.25);

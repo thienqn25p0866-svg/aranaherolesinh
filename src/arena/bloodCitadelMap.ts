@@ -1,4 +1,4 @@
-export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest";
+export type ArenaMapId = "classic" | "inferno_ash" | "blood_citadel" | "frozen_tomb" | "grudge_forest" | "void_city";
 
 export interface ArenaMapMetadata {
   id: ArenaMapId;
@@ -130,6 +130,8 @@ export const FROZEN_TOMB_WIDTH = 3400;
 export const FROZEN_TOMB_HEIGHT = 2800;
 export const GRUDGE_FOREST_MAP_WIDTH = 4800;
 export const GRUDGE_FOREST_MAP_HEIGHT = 4000;
+export const VOID_CITY_MAP_WIDTH = 4800;
+export const VOID_CITY_MAP_HEIGHT = 4000;
 
 export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
   classic: {
@@ -207,6 +209,21 @@ export const ARENA_MAPS: Record<ArenaMapId, ArenaMapMetadata> = {
     unlockWaveRequired: CITADEL_UNLOCK_WAVE,
     unlockFromMap: "frozen_tomb",
   },
+  void_city: {
+    id: "void_city",
+    width: VOID_CITY_MAP_WIDTH,
+    height: VOID_CITY_MAP_HEIGHT,
+    name: {
+      vi: "Thành Phố Vạn Không",
+      en: "City of Endless Void",
+    },
+    subtitle: {
+      vi: "4800×4000 · Map Hư Không · Đô thị Gothic 8 khu vực, Tháp Đồng Hồ đảo ngược & 6 Di Tích giải mã",
+      en: "4800×4000 · Void Map · 8-zone Gothic erased city, Inverted Clock Tower & 6 secret Relic puzzles",
+    },
+    unlockWaveRequired: CITADEL_UNLOCK_WAVE,
+    unlockFromMap: "grudge_forest",
+  },
 };
 
 export const ARENA_MAP_LIST: ArenaMapMetadata[] = [
@@ -215,6 +232,7 @@ export const ARENA_MAP_LIST: ArenaMapMetadata[] = [
   ARENA_MAPS.inferno_ash,
   ARENA_MAPS.frozen_tomb,
   ARENA_MAPS.grudge_forest,
+  ARENA_MAPS.void_city,
 ];
 
 export const BLOOD_CITADEL_SPAWN = { x: 800, y: 840 };
@@ -466,6 +484,7 @@ export function normalizeArenaMapId(raw: unknown): ArenaMapId {
   if (raw === "inferno_ash") return "inferno_ash";
   if (raw === "frozen_tomb") return "frozen_tomb";
   if (raw === "grudge_forest") return "grudge_forest";
+  if (raw === "void_city") return "void_city";
   return "classic";
 }
 
@@ -488,7 +507,6 @@ export function computeUnlockedMaps({
   storedUnlocked?: unknown;
   founderUnlocked?: boolean;
 }): ArenaMapId[] {
-  void grudgeForestCleared;
   const hasClassicClear =
     Boolean(classicCleared) ||
     highestWaveCleared >= CITADEL_UNLOCK_WAVE ||
@@ -496,6 +514,7 @@ export function computeUnlockedMaps({
   const hasBloodClear = Boolean(bloodCitadelCleared);
   const hasInfernoClear = Boolean(infernoCleared);
   const hasFrozenTombClear = Boolean(frozenTombCleared);
+  const hasGrudgeForestClear = Boolean(grudgeForestCleared);
 
   const set = new Set<ArenaMapId>(["classic"]);
   if (hasClassicClear || founderUnlocked) {
@@ -509,6 +528,9 @@ export function computeUnlockedMaps({
   }
   if ((hasClassicClear && hasBloodClear && hasInfernoClear && hasFrozenTombClear) || founderUnlocked) {
     set.add("grudge_forest");
+  }
+  if ((hasClassicClear && hasBloodClear && hasInfernoClear && hasFrozenTombClear && hasGrudgeForestClear) || founderUnlocked) {
+    set.add("void_city");
   }
   return Array.from(set);
 }
@@ -528,6 +550,7 @@ export function getNextCampaignMapId(mapId: ArenaMapId | string): ArenaMapId | n
   if (mapId === "blood_citadel") return "inferno_ash";
   if (mapId === "inferno_ash") return "frozen_tomb";
   if (mapId === "frozen_tomb") return "grudge_forest";
+  if (mapId === "grudge_forest") return "void_city";
   return null;
 }
 
@@ -555,6 +578,11 @@ export function getMapUnlockRequirement(
     return isVi
       ? "Hoàn thành 27 màn Băng Mộ Vĩnh Cửu / Map Băng (hoặc mở khóa Thiên)"
       : "Complete all 27 waves in Eternal Frozen Tomb (or unlock Thiên)";
+  }
+  if (mapId === "void_city") {
+    return isVi
+      ? "Hoàn thành 27 màn Rừng Oán Niệm / Map Rừng (hoặc mở khóa Thiên)"
+      : "Complete all 27 waves in Forest of Grudges (or unlock Thiên)";
   }
   return "";
 }
@@ -688,6 +716,62 @@ export function resolveCircleObstacles(
   }
 
   return { x, y, collided: anyCollision };
+}
+
+export function stepCircleMoveWithObstacles(
+  startX: number,
+  startY: number,
+  targetX: number,
+  targetY: number,
+  radius: number,
+  obstacles: ReadonlyArray<{ x: number; y: number; w: number; h: number }>,
+  mapWidth: number,
+  mapHeight: number,
+  margin = 16,
+  stopOnBlocked = false
+): { x: number; y: number; collided: boolean; blocked: boolean } {
+  const clampedTargetX = Math.max(radius + margin, Math.min(mapWidth - radius - margin, targetX));
+  const clampedTargetY = Math.max(radius + margin, Math.min(mapHeight - radius - margin, targetY));
+  if (!obstacles || obstacles.length === 0) {
+    return { x: clampedTargetX, y: clampedTargetY, collided: false, blocked: false };
+  }
+  const dx = clampedTargetX - startX;
+  const dy = clampedTargetY - startY;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= 0.001) {
+    const res = resolveCircleObstacles(clampedTargetX, clampedTargetY, radius, obstacles, mapWidth, mapHeight, margin);
+    return { x: res.x, y: res.y, collided: res.collided, blocked: res.collided };
+  }
+  const maxStep = 8;
+  const steps = Math.max(1, Math.ceil(dist / maxStep));
+  let curX = startX;
+  let curY = startY;
+  let anyCollision = false;
+  let blocked = false;
+  const dirX = dx / dist;
+  const dirY = dy / dist;
+
+  for (let i = 1; i <= steps; i++) {
+    const nextTargetX = i === steps ? clampedTargetX : startX + (dx * i) / steps;
+    const nextTargetY = i === steps ? clampedTargetY : startY + (dy * i) / steps;
+    const stepLen = Math.hypot(nextTargetX - curX, nextTargetY - curY);
+    const res = resolveCircleObstacles(nextTargetX, nextTargetY, radius, obstacles, mapWidth, mapHeight, margin);
+    if (res.collided) {
+      anyCollision = true;
+      const forwardProgress = (res.x - curX) * dirX + (res.y - curY) * dirY;
+      if (stopOnBlocked && stepLen > 0.01 && forwardProgress <= stepLen * 0.08) {
+        const resStay = resolveCircleObstacles(curX, curY, radius, obstacles, mapWidth, mapHeight, margin);
+        curX = resStay.x;
+        curY = resStay.y;
+        blocked = true;
+        break;
+      }
+    }
+    curX = res.x;
+    curY = res.y;
+  }
+
+  return { x: curX, y: curY, collided: anyCollision, blocked };
 }
 
 export function doesPointOverlapAnyObstacle(
