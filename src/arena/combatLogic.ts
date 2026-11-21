@@ -497,6 +497,7 @@ export function detectClientEnvironment(params: {
   userAgent: string;
   protocol: string;
   hasNativeFullscreen: boolean;
+  fullscreenEnabled?: boolean;
   isStandalone?: boolean;
   maxTouchPoints?: number;
 }): ClientEnvironmentInfo {
@@ -510,7 +511,8 @@ export function detectClientEnvironment(params: {
   const isInAppBrowser = isZalo || isMessenger || isLineOrInstagram;
   const isFileProtocol = isLocalFileProtocol(params.protocol);
   const isStandalonePwa = Boolean(params.isStandalone);
-  const supportsNativeFullscreen = Boolean(params.hasNativeFullscreen) && !isIOS;
+  const fsAllowed = params.fullscreenEnabled !== false;
+  const supportsNativeFullscreen = Boolean(params.hasNativeFullscreen) && fsAllowed && !isIOS;
 
   return {
     isIOS,
@@ -961,6 +963,9 @@ export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
   nguyen: 'tank',
   ducanh: 'tank',
   minh: 'mage',
+  bach: 'assassin',
+  thai: 'fighter',
+  khair: 'marksman',
 };
 
 export const HERO_ROLE_ORDER: HeroRoleFilter[] = [
@@ -2012,6 +2017,98 @@ export function computeAdaptiveSyncIntervals({
   return { playerInterval, worldInterval, vfxInterval };
 }
 
+export function shouldSkipFrameForTargetFps({
+  rawMs,
+  targetFps,
+  hidden = false,
+}: {
+  rawMs: number;
+  targetFps: number;
+  hidden?: boolean;
+}): boolean {
+  if (!Number.isFinite(rawMs) || rawMs <= 0) return false;
+  if (hidden) {
+    const hiddenFps = Math.min(10, Math.max(1, Number(targetFps) || 10));
+    const hiddenMinMs = 1000 / hiddenFps - 2;
+    return rawMs < hiddenMinMs;
+  }
+  const fps = Math.max(10, Number(targetFps) || 60);
+  // At 60Hz target, never skip normal vsync ticks (which jitter 14.8ms–18.5ms);
+  // only skip alternate ticks on >90Hz/120Hz/144Hz ProMotion panels (<11.2ms) to lock smooth 60fps.
+  if (fps >= 60) {
+    return rawMs < 11.2;
+  }
+  const minFrameMs = 1000 / fps - 2.4;
+  return rawMs < minFrameMs;
+}
+
+export function stepDeadReckoningEntity({
+  x,
+  y,
+  targetX,
+  targetY,
+  vx = 0,
+  vy = 0,
+  syncAge = 0,
+  dt = 0.016,
+  minX = 36,
+  maxX = 2000,
+  minY = 36,
+  maxY = 1400,
+  maxSpeed = 880,
+  maxLeadSec = 0.068,
+  convergeRate = 18,
+  snapDist = 280,
+}: {
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  vx?: number;
+  vy?: number;
+  syncAge?: number;
+  dt: number;
+  minX?: number;
+  maxX?: number;
+  minY?: number;
+  maxY?: number;
+  maxSpeed?: number;
+  maxLeadSec?: number;
+  convergeRate?: number;
+  snapDist?: number;
+}): { x: number; y: number; snapped: boolean } {
+  const safeVx = Number.isFinite(vx) ? vx : 0;
+  const safeVy = Number.isFinite(vy) ? vy : 0;
+  const speed = Math.hypot(safeVx, safeVy);
+  let clampedVx = safeVx;
+  let clampedVy = safeVy;
+  if (speed > maxSpeed && speed > 0) {
+    const scale = maxSpeed / speed;
+    clampedVx *= scale;
+    clampedVy *= scale;
+  }
+  const age = Math.max(0, Number.isFinite(syncAge) ? syncAge : 0);
+  // Extrapolate smoothly up to maxLeadSec, then gently decay momentum if a packet is delayed
+  const lead = Math.min(maxLeadSec, age);
+  const decay = age > 0.09 ? Math.exp(-9 * (age - 0.09)) : 1;
+  const tx = Math.max(minX, Math.min(maxX, targetX + clampedVx * lead * decay));
+  const ty = Math.max(minY, Math.min(maxY, targetY + clampedVy * lead * decay));
+  const dx = tx - x;
+  const dy = ty - y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > snapDist || dist < 0.05) {
+    return { x: tx, y: ty, snapped: dist > snapDist };
+  }
+  const safeDt = Math.max(0, Math.min(0.05, Number.isFinite(dt) ? dt : 0.016));
+  const lerp = 1 - Math.exp(-convergeRate * safeDt);
+  return {
+    x: x + dx * lerp,
+    y: y + dy * lerp,
+    snapped: false,
+  };
+}
+
+
 // =====================================================================
 // DŨNG YÊU SANY (CHIẾN THẦN SẤM SÉT) BUFF CONSTANTS & HELPERS
 // =====================================================================
@@ -2296,3 +2393,195 @@ export function verifyFounderPinInput(rawPin: unknown): boolean {
   if (typeof rawPin !== "string") return false;
   return rawPin.replace(/\D/g, "").trim() === FOUNDER_PIN_CODE;
 }
+
+// === BÁCH (Sát Thủ Cơ Động - Miễn Khống & Giảm Sát Thương Khi Lướt) ===
+export const BACH_DASH_DR = 0.50;
+export const BACH_ULT_DR = 0.65;
+export const BACH_DASH_GRACE_SEC = 1.2;
+export const BACH_PASSIVE_MAX_STACKS = 3;
+
+export function computeBachDashDefense({
+  isDashing = false,
+  dashProtectTimer = 0,
+  ultFlurryTimer = 0,
+}: {
+  isDashing?: boolean;
+  dashProtectTimer?: number;
+  ultFlurryTimer?: number;
+}): { ccImmune: boolean; drBonus: number } {
+  const activeUlt = (ultFlurryTimer || 0) > 0;
+  const activeDashOrGrace = Boolean(isDashing) || (dashProtectTimer || 0) > 0 || activeUlt;
+  if (!activeDashOrGrace) {
+    return { ccImmune: false, drBonus: 0 };
+  }
+  return {
+    ccImmune: true,
+    drBonus: activeUlt ? BACH_ULT_DR : BACH_DASH_DR,
+  };
+}
+
+export function computeBachHealOnHit({
+  maxHp,
+  atk,
+  isPassiveProc = false,
+  hitCount = 1,
+}: {
+  maxHp: number;
+  atk: number;
+  isPassiveProc?: boolean;
+  hitCount?: number;
+}): number {
+  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 980);
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 54);
+  const safeHits = Math.max(1, Math.min(4, Math.floor(hitCount || 1)));
+  if (isPassiveProc) {
+    return Math.max(1, Math.round(safeMaxHp * 0.055 + safeAtk * 0.42));
+  }
+  return Math.max(1, Math.round(safeMaxHp * (0.03 + safeHits * 0.018) + safeAtk * 0.18));
+}
+
+// === THÁI (Đấu Sĩ Đấu Trường - Tăng Mạnh Chỉ Số & Nâng Cấp Chiêu Trong Đấu Trường) ===
+export const THAI_ARENA_RADIUS = 410;
+export const THAI_ARENA_DURATION = 10.0;
+export const THAI_ARENA_ATK_MULT = 1.40;
+export const THAI_ARENA_AS_BONUS = 0.45;
+export const THAI_ARENA_MS_BONUS = 0.28;
+export const THAI_ARENA_DR = 0.28;
+export const THAI_ARENA_REGEN_PCT = 0.035;
+export const THAI_ARENA_CDR_SCALE = 0.70;
+
+export function isPointInThaiArena(
+  px: number,
+  py: number,
+  arena: { x: number; y: number; radius?: number; timer?: number; life?: number; maxLife?: number; visualOnly?: boolean } | null | undefined
+): boolean {
+  if (!arena || arena.visualOnly) return false;
+  if (typeof arena.life === 'number' && arena.life <= 0) return false;
+  if (typeof arena.timer === 'number' && typeof arena.maxLife === 'number' && arena.timer >= arena.maxLife) return false;
+  const rad = Math.max(40, arena.radius || THAI_ARENA_RADIUS);
+  return Math.hypot((px || 0) - (arena.x || 0), (py || 0) - (arena.y || 0)) <= rad;
+}
+
+export function computeThaiArenaModifiers(insideArena: boolean): {
+  insideArena: boolean;
+  atkMult: number;
+  asBonus: number;
+  msBonus: number;
+  drBonus: number;
+  regenRatioPerSec: number;
+  skillsUpgraded: boolean;
+  cdScale: number;
+} {
+  if (!insideArena) {
+    return {
+      insideArena: false,
+      atkMult: 1,
+      asBonus: 0,
+      msBonus: 0,
+      drBonus: 0,
+      regenRatioPerSec: 0,
+      skillsUpgraded: false,
+      cdScale: 1,
+    };
+  }
+  return {
+    insideArena: true,
+    atkMult: THAI_ARENA_ATK_MULT,
+    asBonus: THAI_ARENA_AS_BONUS,
+    msBonus: THAI_ARENA_MS_BONUS,
+    drBonus: THAI_ARENA_DR,
+    regenRatioPerSec: THAI_ARENA_REGEN_PCT,
+    skillsUpgraded: true,
+    cdScale: THAI_ARENA_CDR_SCALE,
+  };
+}
+
+export function computeThaiSkillDamage({
+  skillKey,
+  atk,
+  ap,
+  insideArena = false,
+  targetCurrentHp = 1000,
+  isBoss = false,
+}: {
+  skillKey: 'c1' | 'c2' | 'c3';
+  atk: number;
+  ap: number;
+  insideArena?: boolean;
+  targetCurrentHp?: number;
+  isBoss?: boolean;
+}): number {
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 52);
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 30);
+  const safeHp = Math.max(0, Number.isFinite(targetCurrentHp) ? targetCurrentHp : 0);
+  if (skillKey === 'c1') {
+    const base = Math.round(105 + safeAtk * 1.35 + safeAp * 0.55);
+    if (!insideArena) return base;
+    const hpPctBonus = Math.min(isBoss ? 220 : 180, Math.round(safeHp * 0.08));
+    return Math.round(base * 1.55) + hpPctBonus;
+  }
+  if (skillKey === 'c2') {
+    const base = Math.round(92 + safeAtk * 1.15 + safeAp * 0.65);
+    return insideArena ? Math.round(base * 1.65) : base;
+  }
+  return Math.round(240 + safeAtk * 2.15 + safeAp * 1.25);
+}
+
+// === KHAIR (Xạ Thủ Bắn Tỉa - Tốc Bắn Chậm, C2 Mở Rộng Tầm Nhìn & Viễn Kích Xuyên Thấu) ===
+export const KHAIR_BASE_ATTACK_INTERVAL = 1.18;
+export const KHAIR_C2_MAX_CHARGES = 2;
+export const KHAIR_C2_FULL_CHARGE_SEC = 0.85;
+export const KHAIR_C2_MIN_ZOOM_MULT = 0.56;
+export const KHAIR_C2_MAX_RANGE = 1480;
+
+export function computeKhairSniperZoom({
+  aimBlend = 0,
+}: {
+  aimBlend?: number;
+}): { zoomMult: number; fovExpansionFactor: number; lookAheadPx: number } {
+  const blend = Math.max(0, Math.min(1, Number.isFinite(aimBlend) ? aimBlend : 0));
+  const zoomMult = Number((1 - (1 - KHAIR_C2_MIN_ZOOM_MULT) * blend).toFixed(4));
+  const fovExpansionFactor = Number((1 / Math.max(0.25, zoomMult)).toFixed(4));
+  const lookAheadPx = Math.round(170 * blend);
+  return { zoomMult, fovExpansionFactor, lookAheadPx };
+}
+
+export function computeKhairC2Damage({
+  atk,
+  ap,
+  chargeRatio = 1,
+  distanceTraveled = 600,
+}: {
+  atk: number;
+  ap: number;
+  chargeRatio?: number;
+  distanceTraveled?: number;
+}): number {
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 78);
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 25);
+  const chg = Math.max(0, Math.min(1, Number.isFinite(chargeRatio) ? chargeRatio : 0));
+  const dist = Math.max(0, Math.min(KHAIR_C2_MAX_RANGE, Number.isFinite(distanceTraveled) ? distanceTraveled : 0));
+  const base = 185 + safeAtk * 2.75 + safeAp * 0.85;
+  const chargeScale = 0.65 + 1.55 * chg; // 0.65x quick tap -> 2.20x full sniper charge!
+  const rangeBonus = 1 + Math.min(0.28, (dist / 1000) * 0.25);
+  return Math.max(1, Math.round(base * chargeScale * rangeBonus));
+}
+
+export function computeKhairSniperHeal({
+  maxHp,
+  atk,
+  piercedCount = 1,
+  isCrit = false,
+}: {
+  maxHp: number;
+  atk: number;
+  piercedCount?: number;
+  isCrit?: boolean;
+}): number {
+  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 940);
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 78);
+  const extra = Math.max(0, Math.floor(piercedCount || 1) - 1);
+  const ratio = Math.min(0.26, 0.10 + extra * 0.04 + (isCrit ? 0.03 : 0));
+  return Math.max(1, Math.round(safeMaxHp * ratio + safeAtk * 0.35));
+}
+

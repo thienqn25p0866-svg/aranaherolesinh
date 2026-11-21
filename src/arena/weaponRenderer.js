@@ -2,6 +2,7 @@
 // Zero ctx.shadowBlur usage for 60fps mobile Canvas 2D performance.
 
 import { DUY_DECOY_REFLECT_RATIO } from "./combatLogic";
+import { drawVoidCityEnemySprite } from "./voidCityRenderer";
 
 function clamp(v, min, max) {
   return v < min ? min : v > max ? max : v;
@@ -2521,7 +2522,10 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
     thanh: 1.28,
     nhi: 1.26,
     minh: 1.26,
-    ducanh: 1.28
+    ducanh: 1.28,
+    bach: 1.22,
+    thai: 1.32,
+    khair: 1.26
   };
   let sc = scaleMap[heroId] || 1.26;
   ctx.save();
@@ -2592,6 +2596,15 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       if (!p.ducanhRolling && !p.ducanhFortress) {
         drawDucAnhSiegeGauntlets(ctx, p, elapsedTime, state, isMono);
       }
+      break;
+    case "bach":
+      drawBachPhantomBlades(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "thai":
+      drawThaiColosseumHalberd(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "khair":
+      drawKhairRailSniper(ctx, p, elapsedTime, state, isMono);
       break;
     default:
       break;
@@ -4165,6 +4178,198 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     return;
   }
 
+  if (h.kind === "bach_gale_blade") {
+    let spin = elapsedTime * 22;
+    let r = h.radius || 16;
+    ctx.save();
+    ctx.rotate(spin);
+    // Outer wind halo
+    let g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.4);
+    g.addColorStop(0, "rgba(103, 232, 249, 0.55)");
+    g.addColorStop(0.65, "rgba(232, 121, 249, 0.25)");
+    g.addColorStop(1, "rgba(34, 211, 238, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let i = 0; i < 3; i++) {
+      ctx.rotate((Math.PI * 2) / 3);
+      ctx.fillStyle = isMono ? "#FFFFFF" : i === 0 ? "#67E8F9" : "#22D3EE";
+      ctx.strokeStyle = isMono ? "#000000" : "#E879F9";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(2, -3);
+      ctx.quadraticCurveTo(r * 1.15, -8, r * 1.35, 0);
+      ctx.quadraticCurveTo(r * 0.72, 4, 2, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    drawFourPointStar(ctx, 0, 0, 6.4, 2.2, "#FFFFFF", "#22D3EE");
+    ctx.restore();
+    return;
+  }
+
+  if (h.kind === "bach_dagger") {
+    let tg = ctx.createLinearGradient(-44, 0, 14, 0);
+    tg.addColorStop(0, "rgba(34, 211, 238, 0)");
+    tg.addColorStop(1, isMono ? "rgba(255,255,255,0.65)" : "rgba(232, 121, 249, 0.7)");
+    ctx.strokeStyle = tg;
+    ctx.lineWidth = 5.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-44, 0);
+    ctx.lineTo(6, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#A5F3FC";
+    ctx.strokeStyle = isMono ? "#000000" : "#0891B2";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(-4, -5.8);
+    ctx.lineTo(1, 0);
+    ctx.lineTo(-4, 5.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "thai_arena_wave") {
+    let tg = ctx.createLinearGradient(-50, 0, 18, 0);
+    tg.addColorStop(0, "rgba(239, 68, 68, 0)");
+    tg.addColorStop(1, "rgba(250, 204, 21, 0.6)");
+    ctx.strokeStyle = tg;
+    ctx.lineWidth = 12;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-48, 0);
+    ctx.lineTo(10, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#EF4444";
+    ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(22, 0);
+    ctx.quadraticCurveTo(6, -24, -14, -22);
+    ctx.quadraticCurveTo(2, 0, -14, 22);
+    ctx.quadraticCurveTo(6, 24, 22, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "khair_bullet") {
+    let tg = ctx.createLinearGradient(-56, 0, 14, 0);
+    tg.addColorStop(0, "rgba(56, 189, 248, 0)");
+    tg.addColorStop(0.6, "rgba(56, 189, 248, 0.55)");
+    tg.addColorStop(1, "#FDE047");
+    ctx.strokeStyle = tg;
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-56, 0);
+    ctx.lineTo(10, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+    ctx.strokeStyle = isMono ? "#000000" : "#0284C7";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(-2, -4.5);
+    ctx.lineTo(-6, 0);
+    ctx.lineTo(-2, 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "khair_c2_sniper") {
+    // Colossal Elsu-style Viễn Kích Xuyên Thấu Rail-Cannon Plasma Spear
+    let wake = ctx.createLinearGradient(-135, 0, 32, 0);
+    wake.addColorStop(0, "rgba(56, 189, 248, 0)");
+    wake.addColorStop(0.45, isMono ? "rgba(255,255,255,0.4)" : "rgba(56, 189, 248, 0.65)");
+    wake.addColorStop(0.82, isMono ? "rgba(255,255,255,0.8)" : "rgba(250, 204, 21, 0.92)");
+    wake.addColorStop(1, "#FFFFFF");
+    ctx.strokeStyle = wake;
+    ctx.lineWidth = 14;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-135, 0);
+    ctx.lineTo(24, 0);
+    ctx.stroke();
+
+    // Inner blinding hot core beam
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 5.4;
+    ctx.beginPath();
+    ctx.moveTo(-98, 0);
+    ctx.lineTo(30, 0);
+    ctx.stroke();
+
+    // Dual supersonic Mach shock cones around the round
+    for (let k of [-1, 1]) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : k === -1 ? "rgba(253, 224, 71, 0.85)" : "rgba(103, 232, 249, 0.8)";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(26, 0);
+      ctx.lineTo(-24, k * 19);
+      ctx.moveTo(6, 0);
+      ctx.lineTo(-42, k * 25);
+      ctx.stroke();
+    }
+
+    // Massive golden armored rail-spearhead
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.strokeStyle = isMono ? "#000000" : "#0369A1";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(36, 0);
+    ctx.lineTo(2, -10.5);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(2, 10.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    drawFourPointStar(ctx, 18, 0, 12, 3.8, "#FFFFFF", "#FACC15");
+    return;
+  }
+
+  if (h.kind === "khair_c3_shell") {
+    let tg = ctx.createLinearGradient(-68, 0, 16, 0);
+    tg.addColorStop(0, "rgba(249, 115, 22, 0)");
+    tg.addColorStop(0.55, "rgba(250, 204, 21, 0.7)");
+    tg.addColorStop(1, "#FFFFFF");
+    ctx.strokeStyle = tg;
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-68, 0);
+    ctx.lineTo(14, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#F59E0B";
+    ctx.strokeStyle = isMono ? "#000000" : "#EF4444";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(22, 0);
+    ctx.lineTo(-4, -8.5);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(-4, 8.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    drawFourPointStar(ctx, 8, 0, 8, 2.8, "#FFFFFF", "#F97316");
+    return;
+  }
+
   ctx.beginPath();
   ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#000000" : h.color;
@@ -5248,6 +5453,104 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     return;
   }
 
+  if (h.kind === "bach_cross_slash") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    drawTaperedArc(ctx, 0, 0, h.radius, -h.spread * 0.55, h.spread * 0.55, 11 * alpha + 1.8, h.color || "#22D3EE", "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, h.radius * 0.85, h.spread * 0.52, -h.spread * 0.52, 8.5 * alpha + 1.5, "#E879F9", "#A5F3FC", isMono);
+    drawFourPointStar(ctx, Math.cos(0) * h.radius * 0.65, 0, (1 - f) * 11 + 3, 2.5, "#FFFFFF", "#22D3EE");
+    return;
+  }
+
+  if (h.kind === "thai_arena_cleave") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle);
+    let r = h.radius * (0.76 + 0.24 * f);
+    drawTaperedArc(ctx, 0, 0, r, -h.spread * 0.52, h.spread * 0.52, 16 * alpha + 2.5, "#EF4444", "#FDE047", isMono);
+    drawTaperedArc(ctx, 0, 0, r * 0.78, -h.spread * 0.42, h.spread * 0.42, 8 * alpha + 1.5, "#FACC15", "#FFFFFF", isMono);
+    if (h.empowered) {
+      for (let i = -2; i <= 2; i++) {
+        let a = i * 0.22;
+        ctx.strokeStyle = `rgba(253, 224, 71, ${alpha * 0.9})`;
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
+        ctx.lineTo(Math.cos(a) * r * 1.08, Math.sin(a) * r * 1.08);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  if (h.kind === "thai_cyclone_ring") {
+    ctx.translate(h.x, h.y);
+    let r = (h.radius || 170) * (0.45 + 0.55 * f);
+    let g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+    g.addColorStop(0, "rgba(254, 240, 138, 0)");
+    g.addColorStop(0.65, `rgba(239, 68, 68, ${alpha * 0.38})`);
+    g.addColorStop(1, "rgba(239, 68, 68, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.rotate(f * 6.5);
+    drawTaperedArc(ctx, 0, 0, r * 0.92, 0, Math.PI * 1.35, 13 * alpha + 2, "#F59E0B", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, r * 0.86, Math.PI, Math.PI * 2.35, 10 * alpha + 1.5, "#EF4444", "#FFFFFF", isMono);
+    return;
+  }
+
+  if (h.kind === "khair_sniper_muzzle") {
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    let r = (h.radius || 75) * (0.4 + 0.6 * f);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(250, 204, 21, ${alpha})`;
+    ctx.lineWidth = 4.2 * alpha + 1.2;
+    ctx.beginPath();
+    ctx.ellipse(10, 0, r * 0.24, r * 0.58, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = `rgba(56, 189, 248, ${alpha * 0.72})`;
+    ctx.beginPath();
+    ctx.moveTo(4, -6);
+    ctx.lineTo(r * 1.25, 0);
+    ctx.lineTo(4, 6);
+    ctx.closePath();
+    ctx.fill();
+    drawFourPointStar(ctx, 12, 0, r * 0.42, 3, "#FFFFFF", "#FACC15");
+    return;
+  }
+
+  if (h.kind === "khair_recoil_blast") {
+    ctx.translate(h.x, h.y);
+    let r = (h.radius || 140) * (0.3 + 0.7 * f);
+    let g = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+    g.addColorStop(0, `rgba(254, 240, 138, ${alpha * 0.78})`);
+    g.addColorStop(0.55, `rgba(249, 115, 22, ${alpha * 0.52})`);
+    g.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(250, 204, 21, ${alpha})`;
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (let i = 0; i < 8; i++) {
+      let a = (Math.PI / 4) * i + f * 0.5;
+      ctx.strokeStyle = `rgba(103, 232, 249, ${alpha * 0.9})`;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.35, Math.sin(a) * r * 0.35);
+      ctx.lineTo(Math.cos(a) * r * 0.98, Math.sin(a) * r * 0.98);
+      ctx.stroke();
+    }
+    return;
+  }
+
   // Generic slash / crossed slash (e.g. Tin, Eohyen, Kin C2)
   ctx.translate(h.x, h.y);
   ctx.rotate(h.angle);
@@ -5532,6 +5835,9 @@ export function drawHeroBody(ctx, opts) {
     nhiAmmoType = "purple",
     ducanhRolling = false,
     ducanhFortress = false,
+    bachDashing = false,
+    thaiInArena = false,
+    khairAiming = false,
     attackAnimTimer = 0,
     weaponAttackDuration = 0.22,
     weaponSkillTimer = 0,
@@ -6456,6 +6762,142 @@ export function drawHeroBody(ctx, opts) {
       ctx.arc(-4, s * radius * 0.96, 2.3, 0, Math.PI * 2);
       ctx.fill();
     }
+  } else if (heroId === "bach") {
+    // Bach — Flowing Twin Cyan-Orchid Wind Scarves + Razor Agile Pauldrons + CC-Immune Dash Halo
+    if (bachDashing || isUlt) {
+      let dashAura = ctx.createRadialGradient(0, 0, radius * 0.35, 0, 0, radius * 1.65);
+      dashAura.addColorStop(0, "rgba(103, 232, 249, 0)");
+      dashAura.addColorStop(0.65, isMono ? "rgba(255,255,255,0.28)" : "rgba(34, 211, 238, 0.34)");
+      dashAura.addColorStop(1, "rgba(232, 121, 249, 0)");
+      ctx.fillStyle = dashAura;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.65, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.32, -1.25, 1.25);
+      ctx.stroke();
+    }
+
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#1F2937" : s === -1 ? "#0891B2" : "#701A75";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.32, s * radius * 0.38);
+      ctx.quadraticCurveTo(-radius * 1.28, s * (radius * 0.72 + sway * 4.5), -radius * 1.72, s * (radius * 0.32 - sway * 3));
+      ctx.quadraticCurveTo(-radius * 1.02, s * radius * 0.22, -radius * 0.38, s * radius * 0.14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Sleek wind-wing shoulder blade
+      ctx.fillStyle = isMono ? "#262626" : "#0F172A";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(6, s * radius * 0.64);
+      ctx.lineTo(-4, s * radius * 1.18);
+      ctx.lineTo(-14, s * radius * 0.94);
+      ctx.lineTo(-6, s * radius * 0.66);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else if (heroId === "thai") {
+    // Thai — Imperial Crimson-Gold Gladiator Mantle + Colosseum Spiked Pauldrons
+    if (thaiInArena || isUlt) {
+      let warAura = ctx.createRadialGradient(0, 0, radius * 0.4, 0, 0, radius * 1.7);
+      warAura.addColorStop(0, "rgba(250, 204, 21, 0)");
+      warAura.addColorStop(0.62, isMono ? "rgba(255,255,255,0.28)" : "rgba(239, 68, 68, 0.36)");
+      warAura.addColorStop(1, "rgba(245, 158, 11, 0)");
+      ctx.fillStyle = warAura;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+      ctx.lineWidth = 2.1;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.38, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Crimson imperial arena cape
+    ctx.fillStyle = isMono ? "#111111" : "#7F1D1D";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.34, -radius * 0.74);
+    ctx.quadraticCurveTo(-radius * 1.38, -radius * 0.88 + sway * 3.5, -radius * 1.66, sway * 3);
+    ctx.quadraticCurveTo(-radius * 1.38, radius * 0.88 + sway * 3.5, -radius * 0.34, radius * 0.74);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Heavy spiked Colosseum pauldrons
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#262626" : "#450A0A";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FBBF24";
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(9, s * radius * 0.62);
+      ctx.lineTo(3, s * radius * 1.28);
+      ctx.lineTo(-13, s * radius * 1.12);
+      ctx.lineTo(-8, s * radius * 0.66);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FDE047";
+      ctx.beginPath();
+      ctx.moveTo(2, s * radius * 1.22);
+      ctx.lineTo(0, s * radius * 1.52);
+      ctx.lineTo(-6, s * radius * 1.16);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (heroId === "khair") {
+    // Khair — Navy-Gold Ballistic Sniper Mantle, Ammo Quiver & Focusing Lens Halo
+    if (khairAiming || isUlt) {
+      ctx.save();
+      ctx.rotate(elapsedTime * 1.8);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([9, 7]);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.38, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Tactical hooded marksman half-cloak
+    ctx.fillStyle = isMono ? "#171717" : "#0F172A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.34, -radius * 0.72);
+    ctx.quadraticCurveTo(-radius * 1.3, -radius * 0.68 + sway * 3, -radius * 1.56, sway * 2.5);
+    ctx.quadraticCurveTo(-radius * 1.3, radius * 0.68 + sway * 3, -radius * 0.34, radius * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Right shoulder ballistic stabilizer + gold rail cell
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#262626" : "#1E293B";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : s === 1 ? "#FACC15" : "#38BDF8";
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.roundRect(-9, s * radius * 0.66 - (s === 1 ? 0 : 7), 14, 7, 2.5);
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   // 1. Clean circular hero body with rich 3D sphere shading
@@ -7035,6 +7477,50 @@ export function drawHeroBody(ctx, opts) {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.12, 0, Math.PI * 2);
     ctx.fill();
+  } else if (heroId === "bach") {
+    // Bach — Twin Wind-Blade Crest & Cyan Vortex Core
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.42, -radius * 0.38);
+    ctx.lineTo(radius * 0.42, radius * 0.38);
+    ctx.moveTo(-radius * 0.42, radius * 0.38);
+    ctx.lineTo(radius * 0.42, -radius * 0.38);
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, radius * 0.34, radius * 0.12, "#FFFFFF", "#E879F9");
+  } else if (heroId === "thai") {
+    // Thai — Imperial Crowned Colosseum Shield Crest
+    ctx.fillStyle = isMono ? "#222222" : "#991B1B";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(radius * 0.46, 0);
+    ctx.lineTo(0, -radius * 0.44);
+    ctx.lineTo(-radius * 0.46, 0);
+    ctx.lineTo(0, radius * 0.44);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, radius * 0.32, radius * 0.13, "#FEF08A", "#EF4444");
+  } else if (heroId === "khair") {
+    // Khair — Hexagonal Optical Chassis & Golden Sniper Core
+    ctx.fillStyle = isMono ? "#222222" : "#0C4A6E";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 1.9;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      let a = (Math.PI / 3) * i;
+      let px = Math.cos(a) * radius * 0.44;
+      let py = Math.sin(a) * radius * 0.44;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FDE047";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.16, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.38, 0, Math.PI * 2);
@@ -7055,7 +7541,7 @@ export function drawHeroBody(ctx, opts) {
     ctx.arc(radius * 0.58, -radius * 0.22, 2.0, 0, Math.PI * 2);
     ctx.arc(radius * 0.58, radius * 0.22, 2.0, 0, Math.PI * 2);
     ctx.fill();
-  } else if (heroId === "tin" || heroId === "bao" || heroId === "dung" || heroId === "danh" || heroId === "gau" || heroId === "phong" || heroId === "dang" || heroId === "thien" || heroId === "thanh" || heroId === "nhi") {
+  } else if (heroId === "tin" || heroId === "bao" || heroId === "dung" || heroId === "danh" || heroId === "gau" || heroId === "phong" || heroId === "dang" || heroId === "thien" || heroId === "thanh" || heroId === "nhi" || heroId === "bach" || heroId === "thai") {
     // Fierce angled MOBA warrior / assassin visor eyes
     let eyeCol = isMono
       ? "#FFFFFF"
@@ -7077,6 +7563,10 @@ export function drawHeroBody(ctx, opts) {
       ? isUlt ? "#E879F9" : "#A7F3D0"
       : heroId === "nhi"
       ? nhiAmmoType === "green" ? "#4ADE80" : nhiAmmoType === "life" ? "#2DD4BF" : "#E879F9"
+      : heroId === "bach"
+      ? "#67E8F9"
+      : heroId === "thai"
+      ? thaiInArena || isUlt ? "#FEF08A" : "#FCA5A5"
       : "#FDE68A";
     for (let s of [-1, 1]) {
       ctx.fillStyle = darkInk;
@@ -7088,6 +7578,28 @@ export function drawHeroBody(ctx, opts) {
       ctx.ellipse(radius * 0.58, s * radius * 0.23, 2.7, 1.5, s * -0.32, 0, Math.PI * 2);
       ctx.fill();
     }
+  } else if (heroId === "khair") {
+    // Left sharp marksman eye + Right Golden Eagle-Eye Sniper Rangefinder Monocle
+    ctx.fillStyle = darkInk;
+    ctx.beginPath();
+    ctx.ellipse(radius * 0.56, -radius * 0.23, 3.6, 2.2, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#38BDF8";
+    ctx.beginPath();
+    ctx.ellipse(radius * 0.58, -radius * 0.23, 2.4, 1.3, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 2.1;
+    ctx.fillStyle = isMono ? "#222222" : "#0F172A";
+    ctx.beginPath();
+    ctx.arc(radius * 0.56, radius * 0.23, 4.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = khairAiming ? "#FEF08A" : "#38BDF8";
+    ctx.beginPath();
+    ctx.arc(radius * 0.57, radius * 0.23, 2.0, 0, Math.PI * 2);
+    ctx.fill();
   } else if (heroId === "taidu") {
     // Cybernetic wraparound tactical HUD visor
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#020617";
@@ -7162,6 +7674,15 @@ export function drawHeroBody(ctx, opts) {
 }
 
 export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
+  if (enemy?.voidVariant) {
+    let vr = enemy.radius || 20;
+    ctx.beginPath();
+    ctx.ellipse(enemy.x, enemy.y + vr * 0.75, vr * 0.92, vr * 0.42, 0, 0, Math.PI * 2);
+    ctx.fillStyle = isMono ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.45)";
+    ctx.fill();
+    drawVoidCityEnemySprite(ctx, enemy, elapsedTime || 0, (enemy.hitFlash || 0) > 0);
+    return;
+  }
   let r = enemy.radius || 16;
   let facing = enemy.facing || 0;
   let hit = enemy.hitFlash > 0;
@@ -11583,8 +12104,314 @@ export function drawDucAnhMeteorLeaps(ctx, leaps, elapsedTime, isMono) {
   }
 }
 
+export function drawBachPhantomBlades(ctx, p, elapsedTime, state, isMono) {
+  let atkProg = state?.atkProg || 0;
+  let atkSin = state?.hasAtk ? Math.sin(atkProg * Math.PI) : 0;
+  let parity = state?.parity || 1;
+  let flare = clamp((state?.skillAlpha || 0) + (state?.critAlpha || 0) + (p?.bachDashing ? 0.55 : 0), 0, 1);
 
+  for (let s of [-1, 1]) {
+    let isLead = s * parity > 0;
+    let thrust = isLead ? atkSin * 11 : -atkSin * 3;
+    ctx.save();
+    ctx.translate(10 + thrust, s * 16);
+    ctx.rotate((isLead ? -s * atkSin * 0.65 : s * 0.22) + s * 0.26);
 
+    // Reverse-grip wind ribbon trailing from hilt
+    ctx.strokeStyle = isMono ? "#FFFFFF" : s === -1 ? "rgba(103, 232, 249, 0.7)" : "rgba(232, 121, 249, 0.65)";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.quadraticCurveTo(-18, s * 5 + Math.sin(elapsedTime * 10) * 3, -27, s * 2);
+    ctx.stroke();
 
+    // Hilt & wind-rune guard
+    ctx.fillStyle = isMono ? "#262626" : "#0F172A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
+    ctx.lineWidth = 1.6;
+    ctx.fillRect(-7, -2.5, 9, 5);
+    ctx.strokeRect(-7, -2.5, 9, 5);
 
+    // Curved phantom wind katar-blade
+    let bg = ctx.createLinearGradient(0, -5, 24, 5);
+    bg.addColorStop(0, "#0891B2");
+    bg.addColorStop(0.55, "#67E8F9");
+    bg.addColorStop(1, "#FFFFFF");
+    ctx.fillStyle = isMono ? "#FFFFFF" : bg;
+    ctx.strokeStyle = isMono ? "#000000" : "#E879F9";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(2, -4.2);
+    ctx.quadraticCurveTo(16, -7.2 * s, 25, 0);
+    ctx.quadraticCurveTo(12, 4.4 * s, 2, 4.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 
+    if (flare > 0.15) {
+      drawFourPointStar(ctx, 13, 0, 4.5 + flare * 3, 1.5, "#FFFFFF", "#22D3EE");
+    }
+    ctx.restore();
+  }
+}
+
+export function drawThaiColosseumHalberd(ctx, p, elapsedTime, state, isMono) {
+  let atkProg = state?.atkProg || 0;
+  let atkSin = state?.hasAtk ? Math.sin(atkProg * Math.PI) : 0;
+  let parity = state?.parity || 1;
+  let inArena = Boolean(p?.thai_inArena);
+  let swing = state?.hasAtk ? (-0.7 + atkProg * 1.85) * parity : Math.sin(elapsedTime * 2.4) * 0.06;
+
+  ctx.save();
+  ctx.translate(12, 11 * parity);
+  ctx.rotate(swing);
+
+  // Heavy gilded war-shaft
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#7F1D1D";
+  ctx.lineWidth = 4.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-24, 0);
+  ctx.lineTo(24, 0);
+  ctx.stroke();
+  ctx.strokeStyle = isMono ? "#999999" : "#F59E0B";
+  ctx.lineWidth = 2.0;
+  ctx.stroke();
+
+  // Flowing crimson war-tassel
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#EF4444";
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(10, 2);
+  ctx.quadraticCurveTo(4, 9 + Math.sin(elapsedTime * 9) * 2.5, -2, 12);
+  ctx.stroke();
+
+  // Crescent Colosseum War-Axe Head + Spear Spike
+  let axeG = ctx.createLinearGradient(12, -14, 30, 14);
+  axeG.addColorStop(0, inArena ? "#FEF08A" : "#E2E8F0");
+  axeG.addColorStop(0.5, "#EF4444");
+  axeG.addColorStop(1, "#F59E0B");
+  ctx.fillStyle = isMono ? "#FFFFFF" : axeG;
+  ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
+  ctx.lineWidth = 1.9;
+  ctx.beginPath();
+  ctx.moveTo(13, -4);
+  ctx.quadraticCurveTo(22, -17, 29, -12);
+  ctx.quadraticCurveTo(22, 0, 29, 12);
+  ctx.quadraticCurveTo(22, 17, 13, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Imperial halberd spear tip
+  ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+  ctx.beginPath();
+  ctx.moveTo(22, -4);
+  ctx.lineTo(38, 0);
+  ctx.lineTo(22, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  if (inArena || atkSin > 0.25) {
+    drawFourPointStar(ctx, 20, 0, inArena ? 6.8 : 4.5, 2.0, "#FFFFFF", "#FDE047");
+  }
+  ctx.restore();
+}
+
+export function drawKhairRailSniper(ctx, p, elapsedTime, state, isMono) {
+  let recoil = clamp((state?.bowRecoil || 0) * 32, 0, 8);
+  let aimCharge = clamp(p?.khair_aimZoomBlend || 0, 0, 1);
+
+  ctx.save();
+  ctx.translate(10 - recoil, 9);
+
+  // Sniper rifle stock & chassis
+  ctx.fillStyle = isMono ? "#171717" : "#0F172A";
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.roundRect(-14, -4.2, 22, 8.4, 2.5);
+  ctx.fill();
+  ctx.stroke();
+
+  // Dual magnetic rail accelerator barrels
+  for (let s of [-1, 1]) {
+    ctx.fillStyle = isMono ? "#404040" : "#1E293B";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : aimCharge > 0.2 ? "#FACC15" : "#38BDF8";
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(6, s * 2.8 - 1.4, 27, 2.8);
+    ctx.strokeRect(6, s * 2.8 - 1.4, 27, 2.8);
+  }
+
+  // Glowing golden-cyan plasma energy chamber along the center rail
+  ctx.fillStyle = isMono ? "#FFFFFF" : aimCharge > 0.2 ? "#FEF08A" : "#38BDF8";
+  ctx.fillRect(4, -1.3, 24, 2.6);
+
+  // Telescopic Eagle-Eye optical scope mounted top-side
+  ctx.fillStyle = isMono ? "#262626" : "#334155";
+  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(-2, -7.8, 15, 4.2, 1.5);
+  ctx.fill();
+  ctx.stroke();
+
+  // Muzzle focusing core when aiming C2
+  if (aimCharge > 0.08) {
+    let pulse = 4.5 + aimCharge * 5 + Math.sin(elapsedTime * 16) * 1.4;
+    drawFourPointStar(ctx, 35, 0, pulse, pulse * 0.32, "#FFFFFF", "#FACC15");
+  }
+  ctx.restore();
+}
+
+export function drawThaiArenaDomains(ctx, zones, elapsedTime, isMono) {
+  if (!zones || zones.length === 0) return;
+  for (let z of zones) {
+    let r = z.radius || 410;
+    let fade = Math.min(1, (z.duration - z.timer) / 0.45);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(z.x, z.y);
+
+    // Imperial crimson-gold Colosseum floor aura
+    let g = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r);
+    g.addColorStop(0, "rgba(250, 204, 21, 0.08)");
+    g.addColorStop(0.68, isMono ? "rgba(255,255,255,0.12)" : "rgba(220, 38, 38, 0.19)");
+    g.addColorStop(0.95, isMono ? "rgba(255,255,255,0.22)" : "rgba(245, 158, 11, 0.30)");
+    g.addColorStop(1, "rgba(220, 38, 38, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer double arena stone & gold rings
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = isMono ? "#999999" : "#EF4444";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Rotating Colosseum rune circle & crossed halberd emblem in center
+    ctx.save();
+    ctx.rotate(elapsedTime * 0.35);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.62)";
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([18, 12]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // 8 Carved Colosseum Battle Pillars on perimeter
+    for (let i = 0; i < 8; i++) {
+      let a = (Math.PI / 4) * i + elapsedTime * 0.08;
+      let px = Math.cos(a) * r;
+      let py = Math.sin(a) * r;
+      ctx.fillStyle = isMono ? "#262626" : "#450A0A";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(px, py, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      drawFourPointStar(ctx, px, py, 6.2, 2.2, "#FEF08A", "#EF4444");
+    }
+
+    ctx.restore();
+  }
+}
+
+export function drawKhairMedBeacons(ctx, beacons, elapsedTime, isMono) {
+  if (!beacons || beacons.length === 0) return;
+  for (let b of beacons) {
+    let r = b.radius || 220;
+    let fade = Math.min(1, (b.duration - b.timer) / 0.35);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(b.x, b.y);
+
+    // Emerald-Gold Med-Sensor Zone
+    let g = ctx.createRadialGradient(0, 0, 8, 0, 0, r);
+    g.addColorStop(0, "rgba(74, 222, 128, 0.28)");
+    g.addColorStop(0.65, "rgba(56, 189, 248, 0.14)");
+    g.addColorStop(1, "rgba(16, 185, 129, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#4ADE80";
+    ctx.lineWidth = 2.4;
+    ctx.setLineDash([12, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Rotating radar sweep sector
+    let sweep = elapsedTime * 2.4;
+    ctx.fillStyle = "rgba(250, 204, 21, 0.16)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r * 0.96, sweep, sweep + 0.72);
+    ctx.closePath();
+    ctx.fill();
+
+    // Expanding sonar heal pulse
+    let wave = ((elapsedTime * 0.85) % 1) * r;
+    ctx.strokeStyle = `rgba(74, 222, 128, ${1 - wave / r})`;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, wave, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Central Med-Beacon Tripod Device
+    ctx.fillStyle = isMono ? "#262626" : "#0F172A";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Glowing Emerald Medical Cross
+    ctx.fillStyle = "#4ADE80";
+    ctx.fillRect(-5.5, -2, 11, 4);
+    ctx.fillRect(-2, -5.5, 4, 11);
+    ctx.restore();
+  }
+}
+
+export function drawBachDashRifts(ctx, rifts, elapsedTime, isMono) {
+  if (!rifts || rifts.length === 0) return;
+  for (let rf of rifts) {
+    let f = clamp((rf.timer || 0) / Math.max(0.08, rf.duration || 0.45), 0, 1);
+    let alpha = 1 - f;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : rf.color || "#22D3EE";
+    ctx.lineWidth = (rf.width || 16) * (1 - f * 0.65);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(rf.sx, rf.sy);
+    ctx.lineTo(rf.tx, rf.ty);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = Math.max(1.5, (rf.width || 16) * 0.28 * (1 - f));
+    ctx.stroke();
+
+    let mx = (rf.sx + rf.tx) * 0.5;
+    let my = (rf.sy + rf.ty) * 0.5;
+    drawFourPointStar(ctx, mx, my, 12 * alpha + 3, 3.2, "#FFFFFF", "#E879F9");
+    ctx.restore();
+  }
+}

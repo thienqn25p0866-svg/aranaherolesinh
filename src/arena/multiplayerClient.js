@@ -573,7 +573,7 @@ class MultiplayerClient {
     }
     if (this.httpFlushing) {
       // Wait briefly and flush any remaining items
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((r) => setTimeout(r, 16));
       if (this.httpFlushing) return;
     }
     if (this.httpOutbox.length === 0) return;
@@ -615,7 +615,7 @@ class MultiplayerClient {
         this.httpFlushTimer = setTimeout(() => {
           this.httpFlushTimer = null;
           this._flushHttpOutbox().catch(() => {});
-        }, 30);
+        }, 16);
       }
     }
   }
@@ -1374,7 +1374,7 @@ class MultiplayerClient {
           this.p2pRelayFlushTimer = setTimeout(() => {
             this.p2pRelayFlushTimer = null;
             this._flushP2PHostRelayOutbox(roomCode, host).catch(() => {});
-          }, 28);
+          }, 16);
         }
       }
       // Also mirror over MQTT relay if no server URL and MQTT sockets are open
@@ -1445,7 +1445,7 @@ class MultiplayerClient {
         this.p2pRelayFlushTimer = setTimeout(() => {
           this.p2pRelayFlushTimer = null;
           this._flushP2PHostRelayOutbox(roomCode, host).catch(() => {});
-        }, 28);
+        }, 16);
       }
     }
   }
@@ -1626,7 +1626,7 @@ class MultiplayerClient {
           this.p2pRelayFlushTimer = setTimeout(() => {
             this.p2pRelayFlushTimer = null;
             this._flushP2PPeerRelayOutbox(roomCode, peer, httpBase.baseUrl).catch(() => {});
-          }, 28);
+          }, 16);
         }
       });
       this._runP2PPeerRelayPollLoop(roomCode, peer, httpBase.baseUrl);
@@ -1708,7 +1708,7 @@ class MultiplayerClient {
         this.p2pRelayFlushTimer = setTimeout(() => {
           this.p2pRelayFlushTimer = null;
           this._flushP2PPeerRelayOutbox(roomCode, peer, baseUrl).catch(() => {});
-        }, 28);
+        }, 16);
       }
     }
   }
@@ -1911,7 +1911,7 @@ class MultiplayerClient {
         this.httpFlushTimer = setTimeout(() => {
           this.httpFlushTimer = null;
           this._flushHttpOutbox().catch(() => {});
-        }, 35);
+        }, 16);
       }
       return true;
     }

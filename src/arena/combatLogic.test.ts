@@ -315,6 +315,41 @@ import {
   getGrudgeForestCompassTarget,
   stepGrudgeForestHazards,
 } from './grudgeForestMap.ts';
+import {
+  VOID_CITY_WIDTH,
+  VOID_CITY_HEIGHT,
+  VOID_CITY_SPAWN,
+  VOID_CITY_ZONES,
+  VOID_CITY_INTERACTABLES,
+  VOID_CITY_CHESTS,
+  VOID_CITY_DOCS,
+  RELIC1_TARGET_RINGS,
+  RELIC2_TARGET_IDS,
+  RELIC3_TARGET_ORDER,
+  RELIC4_TARGET_MAPPING,
+  RELIC6_TARGET_SEQUENCE,
+  createDefaultVoidCityProgress,
+  normalizeVoidCityProgress,
+  mergeVoidCityProgress,
+  countVoidCityBaseRelics,
+  countVoidCityRelics,
+  isRelic6Accessible,
+  computeVoidCityRewardStatBonuses,
+  createInitialVoidCityRuntimeState,
+  getVoidCityZoneAt,
+  getVoidCityCompassTarget,
+  getActiveVoidCityObstacles,
+  toggleVoidCityClockReversal,
+  stepVoidCityHazards,
+  findNearestVoidCityInteractable,
+  evaluateVoidCityInteraction,
+  solveVoidCityRelicPuzzle,
+  applyStarShardUpgrade,
+  exchangeStarShardForGold,
+  applyReflectionCoreSubstat,
+  toggleVoidCityCollectiblePerk,
+  buildVoidCityEndingPayload,
+} from './voidCityMap.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -502,6 +537,22 @@ test('Client environment detection catches iOS, Zalo, Messenger, and file/conten
     hasNativeFullscreen: true,
   });
   assert.equal(androidContentFile.isFileProtocol, true);
+
+  const iframeBlockedFullscreen = detectClientEnvironment({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36',
+    protocol: 'https:',
+    hasNativeFullscreen: true,
+    fullscreenEnabled: false,
+  });
+  assert.equal(iframeBlockedFullscreen.supportsNativeFullscreen, false);
+
+  const desktopAllowedFullscreen = detectClientEnvironment({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36',
+    protocol: 'https:',
+    hasNativeFullscreen: true,
+    fullscreenEnabled: true,
+  });
+  assert.equal(desktopAllowedFullscreen.supportsNativeFullscreen, true);
 });
 
 test('Co-op wave reward and P2P signal encoding/room host state work deterministically', async () => {
@@ -4320,16 +4371,17 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   assert.equal(CITADEL_UNLOCK_WAVE, 27);
   assert.equal(ARENA_MAPS.blood_citadel.width, BLOOD_CITADEL_SIZE);
   assert.equal(ARENA_MAPS.blood_citadel.height, BLOOD_CITADEL_SIZE);
-  assert.equal(ARENA_MAP_LIST.length, 5);
+  assert.equal(ARENA_MAP_LIST.length, 6);
 
-  // Strict sequential progression without Founder access: Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb -> Grudge Forest
-  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: ['inferno_ash', 'frozen_tomb', 'grudge_forest'], founderUnlocked: false });
+  // Strict sequential progression without Founder access: Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb -> Grudge Forest -> Void City
+  const lockedMaps = computeUnlockedMaps({ highestWaveCleared: 26, classicCleared: false, storedUnlocked: ['inferno_ash', 'frozen_tomb', 'grudge_forest', 'void_city'], founderUnlocked: false });
   assert.deepEqual(lockedMaps, ['classic']);
   assert.equal(isMapUnlocked('classic', lockedMaps, false), true);
   assert.equal(isMapUnlocked('blood_citadel', lockedMaps, false), false);
   assert.equal(isMapUnlocked('inferno_ash', lockedMaps, false), false);
   assert.equal(isMapUnlocked('frozen_tomb', lockedMaps, false), false);
   assert.equal(isMapUnlocked('grudge_forest', lockedMaps, false), false);
+  assert.equal(isMapUnlocked('void_city', lockedMaps, false), false);
 
   // Clearing Classic Wave 27 unlocks only Blood Citadel (Fire & Ice remain locked)
   const wave27Unlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: false, storedUnlocked: [], founderUnlocked: false });
@@ -4340,7 +4392,7 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   const classicFlagUnlocked = computeUnlockedMaps({ highestWaveCleared: 5, classicCleared: true, storedUnlocked: [], founderUnlocked: false });
   assert.deepEqual(classicFlagUnlocked, ['classic', 'blood_citadel']);
 
-  // Clearing Blood Citadel unlocks Inferno Ash; clearing Inferno Ash unlocks Frozen Tomb; clearing Frozen Tomb unlocks Grudge Forest
+  // Clearing Blood Citadel unlocks Inferno Ash; clearing Inferno Ash unlocks Frozen Tomb; clearing Frozen Tomb unlocks Grudge Forest; clearing Grudge Forest unlocks Void City
   const infernoUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, founderUnlocked: false });
   assert.deepEqual(infernoUnlocked, ['classic', 'blood_citadel', 'inferno_ash']);
   assert.equal(isMapUnlocked('inferno_ash', infernoUnlocked, false), true);
@@ -4349,8 +4401,11 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
   const frozenUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, founderUnlocked: false });
   assert.deepEqual(frozenUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb']);
 
-  const allSequentialUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, frozenTombCleared: true, founderUnlocked: false });
-  assert.deepEqual(allSequentialUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
+  const grudgeUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, frozenTombCleared: true, founderUnlocked: false });
+  assert.deepEqual(grudgeUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
+
+  const allSequentialUnlocked = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: true, infernoCleared: true, frozenTombCleared: true, grudgeForestCleared: true, founderUnlocked: false });
+  assert.deepEqual(allSequentialUnlocked, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest', 'void_city']);
 
   // Cannot skip directly from Inferno clear without Blood Citadel clear
   const cannotSkipBlood = computeUnlockedMaps({ highestWaveCleared: 27, classicCleared: true, bloodCitadelCleared: false, infernoCleared: true, founderUnlocked: false });
@@ -4358,11 +4413,12 @@ test('Cổ Thành Huyết Táng unlock rules, Founder free toggle, obstacles & s
 
   // Founder unlock allows free switching to all maps even before Wave 27
   const founderMaps = computeUnlockedMaps({ highestWaveCleared: 0, classicCleared: false, storedUnlocked: [], founderUnlocked: true });
-  assert.deepEqual(founderMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
+  assert.deepEqual(founderMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest', 'void_city']);
   assert.equal(isMapUnlocked('blood_citadel', ['classic'], true), true);
   assert.equal(isMapUnlocked('inferno_ash', ['classic'], true), true);
   assert.equal(isMapUnlocked('frozen_tomb', ['classic'], true), true);
   assert.equal(isMapUnlocked('grudge_forest', ['classic'], true), true);
+  assert.equal(isMapUnlocked('void_city', ['classic'], true), true);
 
   // Verify spawn & all interactables sit cleanly outside obstacles in 1600x1600 arena
   const runtime = createInitialCitadelRuntimeState('blood_citadel');
@@ -6349,7 +6405,7 @@ test('Map 2 (inferno_ash) 8-zone upgraded render and Map 3 (frozen_tomb) upgrade
   }
 });
 
-test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb -> Grudge Forest) across legacy saves, solo Wave 27, Co-op MATCH_OVER, and cloud merge', async () => {
+test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash -> Frozen Tomb -> Grudge Forest -> Void City) across legacy saves, solo Wave 27, Co-op MATCH_OVER, and cloud merge', async () => {
   const { GameEngine } = await import('./GameEngine.js');
   const { Mi } = await import('./gameData.js');
 
@@ -6357,11 +6413,13 @@ test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash
   assert.equal(getNextCampaignMapId('blood_citadel'), 'inferno_ash');
   assert.equal(getNextCampaignMapId('inferno_ash'), 'frozen_tomb');
   assert.equal(getNextCampaignMapId('frozen_tomb'), 'grudge_forest');
-  assert.equal(getNextCampaignMapId('grudge_forest'), null);
+  assert.equal(getNextCampaignMapId('grudge_forest'), 'void_city');
+  assert.equal(getNextCampaignMapId('void_city'), null);
   assert.match(getMapUnlockRequirement('blood_citadel', 'vi'), /Đấu Trường Cổ Điển/);
   assert.match(getMapUnlockRequirement('inferno_ash', 'vi'), /Cổ Thành Huyết Táng/);
   assert.match(getMapUnlockRequirement('frozen_tomb', 'vi'), /Hỏa Ngục Tàn Tro/);
   assert.match(getMapUnlockRequirement('grudge_forest', 'vi'), /Băng Mộ Vĩnh Cửu/);
+  assert.match(getMapUnlockRequirement('void_city', 'vi'), /Rừng Oán Niệm/);
 
   const prevWindow = (globalThis as any).window;
   const prevLocalStorage = (globalThis as any).localStorage;
@@ -6457,11 +6515,19 @@ test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash
     assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
     assert.equal(engine.setSelectedMap('grudge_forest'), true);
 
-    // 4b. Clear Grudge Forest Wave 27 -> sets grudgeForestCleared
+    // 4b. Clear Grudge Forest Wave 27 -> sets grudgeForestCleared & unlocks Void City
     engine.activeMapId = 'grudge_forest';
     engine.wave = 27;
     engine.unlockCitadelIfEligible();
     assert.equal(engine.grudgeForestCleared, true);
+    assert.deepEqual(engine.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest', 'void_city']);
+    assert.equal(engine.setSelectedMap('void_city'), true);
+
+    // 4c. Clear Void City Wave 27 -> sets voidCityCleared
+    engine.activeMapId = 'void_city';
+    engine.wave = 27;
+    engine.unlockCitadelIfEligible();
+    assert.equal(engine.voidCityCleared, true);
 
     // 5. Verify Co-op MATCH_OVER on Host or Guest triggers sequential unlock on active map
     storageMap.clear();
@@ -6516,7 +6582,7 @@ test('Strict sequential campaign unlock (Classic -> Blood Citadel -> Inferno Ash
     );
     assert.equal(mergedAll.frozenTombCleared, true);
     assert.equal(mergedAll.grudgeForestCleared, true);
-    assert.deepEqual(mergedAll.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest']);
+    assert.deepEqual(mergedAll.unlockedMaps, ['classic', 'blood_citadel', 'inferno_ash', 'frozen_tomb', 'grudge_forest', 'void_city']);
     assert.equal(mergedAll.grudgeForestProgress?.ee2MirrorLakeSeen, true);
     assert.equal(mergedAll.grudgeForestProgress?.ee3DuyLaughHeard, true);
     assert.equal(mergedAll.grudgeForestProgress?.ee5TrungRoomUnlocked, true);
@@ -7500,3 +7566,373 @@ test('Map traps across Blood Citadel, Inferno Ash, Frozen Tomb, and Grudge Fores
     (globalThis as any).cancelAnimationFrame = prevCancelRaf;
   }
 });
+
+test('Map 5 (Thành Phố Vạn Không) scale, 8 zones, clock reversal, all 6 Relic puzzles, Memory Key chests, workshop rewards, and non-Thien constraint', () => {
+  // Equal scale to Map 4 (Grudge Forest 4800x4000) and strictly 8 zones
+  assert.equal(VOID_CITY_WIDTH, GRUDGE_FOREST_WIDTH);
+  assert.equal(VOID_CITY_HEIGHT, GRUDGE_FOREST_HEIGHT);
+  assert.equal(VOID_CITY_WIDTH, 4800);
+  assert.equal(VOID_CITY_HEIGHT, 4000);
+  assert.equal(VOID_CITY_ZONES.length, 8);
+  assert.equal(ARENA_MAPS.void_city.width, 4800);
+  assert.equal(ARENA_MAPS.void_city.height, 4000);
+
+  let prog = createDefaultVoidCityProgress();
+  const runtime = createInitialVoidCityRuntimeState(prog);
+  const initialObstacles = getActiveVoidCityObstacles(prog, runtime);
+
+  // Spawn & all interactables sit clear of obstacles
+  assert.equal(doesPointOverlapAnyObstacle(VOID_CITY_SPAWN.x, VOID_CITY_SPAWN.y, 20, initialObstacles), false);
+  for (const node of VOID_CITY_INTERACTABLES) {
+    assert.equal(doesPointOverlapAnyObstacle(node.x, node.y, 14, initialObstacles), false, `Void City node ${node.id} overlaps obstacle`);
+  }
+
+  // Zone lookup & compass guidance
+  assert.equal(getVoidCityZoneAt(VOID_CITY_SPAWN.x, VOID_CITY_SPAWN.y).id, 'zone_1');
+  assert.equal(getVoidCityZoneAt(3920, 920).id, 'zone_8');
+  const firstCompass = getVoidCityCompassTarget(prog, runtime, 'vi');
+  assert.ok(firstCompass && firstCompass.tag.includes('DI TÍCH 1'));
+
+  // Clock tower time-reversal dynamically flips clock gate
+  const clockToggle = toggleVoidCityClockReversal(runtime, prog);
+  assert.equal(clockToggle.toggled, true);
+  assert.equal(clockToggle.reversed, true);
+  prog = clockToggle.nextProgress;
+  assert.equal(prog.clockReversedEver, true);
+
+  // Relic 6 is locked before >= 3 base relics solved
+  assert.equal(isRelic6Accessible(prog), false);
+  const lockedR6 = solveVoidCityRelicPuzzle({
+    relicId: 'relic_6_origin_sanctum',
+    submission: { sequence: [...RELIC6_TARGET_SEQUENCE] },
+    progress: prog,
+    lang: 'vi',
+  });
+  assert.equal(lockedR6.solved, false);
+  assert.match(lockedR6.message, /3/);
+
+  // Relic 1: Astrolabe wrong vs right
+  const r1Wrong = solveVoidCityRelicPuzzle({ relicId: 'relic_1_astrolabe', submission: { rings: [0, 0, 0, 0] }, progress: prog, lang: 'vi' });
+  assert.equal(r1Wrong.solved, false);
+  const r1Ok = solveVoidCityRelicPuzzle({ relicId: 'relic_1_astrolabe', submission: { rings: [...RELIC1_TARGET_RINGS] }, progress: prog, lang: 'vi' });
+  assert.equal(r1Ok.solved, true);
+  prog = r1Ok.nextProgress;
+  assert.equal(prog.starShardCount, 2);
+
+  // Relic 2: Nameless Tomb
+  const r2Ok = solveVoidCityRelicPuzzle({ relicId: 'relic_2_nameless_tomb', submission: { statueIds: [...RELIC2_TARGET_IDS] }, progress: prog, lang: 'vi' });
+  assert.equal(r2Ok.solved, true);
+  prog = r2Ok.nextProgress;
+  assert.equal(prog.namelessSealUnlocked, true);
+  assert.equal(prog.namelessSealActive, true);
+
+  // Relic 3: Sealed Archive -> +3 Memory Keys
+  const r3Ok = solveVoidCityRelicPuzzle({ relicId: 'relic_3_sealed_archive', submission: { pageOrder: [...RELIC3_TARGET_ORDER] }, progress: prog, lang: 'vi' });
+  assert.equal(r3Ok.solved, true);
+  prog = r3Ok.nextProgress;
+  assert.equal(prog.memoryKeys, 3);
+
+  // Open an Ancient Chest with a Memory Key
+  const lockedChestNode = VOID_CITY_INTERACTABLES.find((n) => n.kind === 'ancient_chest' && n.chestId === 'chest_library_vault')!;
+  const chestRes = evaluateVoidCityInteraction({ nodeId: lockedChestNode.id, progress: prog, runtime, lang: 'vi' });
+  assert.ok(chestRes.claimChestDef);
+  prog = chestRes.nextProgress;
+  assert.equal(prog.memoryKeys, 2);
+  assert.ok(prog.openedChests.includes('chest_library_vault'));
+  assert.ok(prog.starShardCount > 2);
+
+  // Relic 4: Theater Masks -> wrong answer triggers ambush, right answer unlocks Memory Mask
+  const r4Wrong = solveVoidCityRelicPuzzle({ relicId: 'relic_4_theater_masks', submission: { mapping: { creator: 'm_ash_tear' } }, progress: prog, lang: 'vi' });
+  assert.equal(r4Wrong.solved, false);
+  assert.equal(r4Wrong.spawnAmbush, true);
+  const r4Ok = solveVoidCityRelicPuzzle({ relicId: 'relic_4_theater_masks', submission: { mapping: { ...RELIC4_TARGET_MAPPING } }, progress: prog, lang: 'vi' });
+  assert.equal(r4Ok.solved, true);
+  prog = r4Ok.nextProgress;
+  assert.equal(prog.memoryMaskUnlocked, true);
+
+  // Relic 5: Mirror Vault -> requires disabling illusion mirror + 45/135/225
+  const r5Wrong = solveVoidCityRelicPuzzle({ relicId: 'relic_5_mirror_vault', submission: { illusionDisabled: false, angles: { 1: 45, 2: 135, 4: 225 } }, progress: prog, lang: 'vi' });
+  assert.equal(r5Wrong.solved, false);
+  const r5Ok = solveVoidCityRelicPuzzle({ relicId: 'relic_5_mirror_vault', submission: { illusionDisabled: true, angles: { 1: 45, 2: 135, 4: 225 } }, progress: prog, lang: 'vi' });
+  assert.equal(r5Ok.solved, true);
+  prog = r5Ok.nextProgress;
+  assert.equal(prog.reflectionCoreCount, 2);
+
+  // Relic 6: Origin Sanctum now accessible (5 >= 3 base relics), unlocks Origin Fragment & NEVER unlocks Founder hero 'thien'
+  assert.equal(isRelic6Accessible(prog), true);
+  const r6Ok = solveVoidCityRelicPuzzle({ relicId: 'relic_6_origin_sanctum', submission: { sequence: [...RELIC6_TARGET_SEQUENCE] }, progress: prog, lang: 'vi' });
+  assert.equal(r6Ok.solved, true);
+  prog = r6Ok.nextProgress;
+  assert.equal(prog.originFragmentUnlocked, true);
+  assert.equal(prog.originFragmentForged, true);
+  assert.equal(countVoidCityBaseRelics(prog), 5);
+  assert.equal(countVoidCityRelics(prog), 6);
+  assert.equal((prog as any).founderUnlocked, undefined);
+
+  // Check Trung Pre-Reset Dossier exists in docs
+  assert.ok(VOID_CITY_DOCS.doc_trung_dossier.body.vi.includes('Trung'));
+
+  // Workshop persistent upgrades & stat bonuses
+  const shardForge = applyStarShardUpgrade(prog, 'weapon', 'vi');
+  assert.equal(shardForge.ok, true);
+  prog = shardForge.nextProgress;
+  const shardGold = exchangeStarShardForGold(prog, 'vi');
+  assert.equal(shardGold.ok, true);
+  assert.equal(shardGold.goldGranted, 480);
+  prog = shardGold.nextProgress;
+
+  const coreAtk = applyReflectionCoreSubstat(prog, 'atk', 'vi');
+  assert.equal(coreAtk.ok, true);
+  prog = coreAtk.nextProgress;
+  const coreCrit = applyReflectionCoreSubstat(prog, 'crit', 'vi');
+  assert.equal(coreCrit.ok, true);
+  prog = coreCrit.nextProgress;
+
+  const stats = computeVoidCityRewardStatBonuses(prog);
+  assert.ok(stats.atk >= 22 + 40 + 55);
+  assert.ok(stats.matk >= 26 + 68);
+  assert.equal(stats.ms, 0.08);
+  assert.equal(stats.dmgRed, 0.06);
+  assert.equal(stats.bossDmgBonus, 0.12);
+  assert.ok(stats.crit >= 0.099);
+
+  // Toggle collectible perk
+  const toggleMask = toggleVoidCityCollectiblePerk(prog, 'memoryMask', 'vi');
+  assert.equal(toggleMask.ok, true);
+  assert.equal(toggleMask.active, false);
+  assert.equal(computeVoidCityRewardStatBonuses(toggleMask.nextProgress).ms, 0);
+
+  // Cross-map Easter egg: Map 4 special puppet -> Theater Stage -> Secret Chest
+  const puppetNode = VOID_CITY_INTERACTABLES.find((n) => n.kind === 'theater_puppet_stage')!;
+  const noPuppetRes = evaluateVoidCityInteraction({
+    nodeId: puppetNode.id,
+    progress: prog,
+    grudgeForestProgress: { ...createDefaultGrudgeForestProgress(), ee1RoguePuppetSeen: false },
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(noPuppetRes.nextProgress.map4PuppetPlaySeen, false);
+  const withPuppetRes = evaluateVoidCityInteraction({
+    nodeId: puppetNode.id,
+    progress: prog,
+    grudgeForestProgress: { ...createDefaultGrudgeForestProgress(), ee1RoguePuppetSeen: true },
+    runtime,
+    lang: 'vi',
+  });
+  assert.equal(withPuppetRes.nextProgress.map4PuppetPlaySeen, true);
+  assert.equal(withPuppetRes.coinBonus, 450);
+
+  // Nameless Seal Title Unlock (does not require founderUnlocked or thien)
+  const titlesWithoutSeal = computeUnlockedTitles(10, false, { namelessSealUnlocked: false });
+  assert.equal(titlesWithoutSeal.includes('Kẻ Mang Ấn Vô Danh'), false);
+  const titles = computeUnlockedTitles(10, false, { namelessSealUnlocked: prog.namelessSealUnlocked });
+  assert.ok(titles.includes('Kẻ Mang Ấn Vô Danh'));
+
+  // Ending Dossier & PHẾ ĐÔ THIÊN CƠ hint + Merge
+  const ending = buildVoidCityEndingPayload(prog, 'vi');
+  assert.equal(ending.kind, 'ending');
+  assert.match(ending.tag + ending.title + ending.body, /PHẾ ĐÔ THIÊN CƠ/);
+
+  const merged = mergeVoidCityProgress(createDefaultVoidCityProgress(), withPuppetRes.nextProgress);
+  assert.equal(countVoidCityRelics(merged), 6);
+  assert.equal(merged.map4PuppetPlaySeen, true);
+});
+
+test('Map 5 (Void City) GameEngine + zero-shadowBlur renderer + Boss Kẻ Giữ Hồ Sơ smoke test', async () => {
+  const { GameEngine } = await import('./GameEngine.js');
+  const { Mi } = await import('./gameData.js');
+  const vcRenderer = await import('./voidCityRenderer.js');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCancelRaf = (globalThis as any).cancelAnimationFrame;
+  const storageMap = new Map<string, string>();
+  let shadowBlurWrites = 0;
+
+  const rawCtx: any = {
+    canvas: { width: 1280, height: 720 },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arc() {}, arcTo() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 20 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+  const ctxProxy = new Proxy(rawCtx, {
+    set(target, prop, value) {
+      if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+      target[prop] = value;
+      return true;
+    },
+  });
+
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => storageMap.get(k) ?? null,
+    setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+    removeItem: (k: string) => storageMap.delete(k),
+  };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const canvasStub: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxProxy,
+    };
+    const engine: any = new GameEngine(canvasStub);
+    engine.setFounderUnlocked(true);
+    engine.startNewGame(Mi[0], 'void_city');
+
+    assert.equal(engine.activeMapId, 'void_city');
+    assert.equal(engine.mapWidth, 4800);
+    assert.equal(engine.mapHeight, 4000);
+    assert.ok(engine.voidCityRuntime);
+
+    // Step world & verify Boss spawning + non-Thien interaction
+    engine.updateVoidCityMap(0.1);
+    const boss = engine.spawnVoidCityBoss();
+    assert.ok(boss && boss.isVoidCityBoss);
+    assert.equal(boss.bossWave, 27);
+    assert.equal(engine.voidCityRuntime.bossSpawnedThisRun, true);
+
+    // Render every Map 5 visual layer + all zones + ending page + hero aura + sprites + boss phase 2 + atmosphere and assert ZERO ctx.shadowBlur
+    assert.doesNotThrow(() => engine.render());
+    engine.voidCityRuntime.endingPageSpawned = true;
+    engine.voidCityRuntime.endingPagePos = { x: 3920, y: 920 };
+    engine.voidCityProgress.relic1Solved = true;
+    engine.voidCityProgress.relic2Solved = true;
+    engine.voidCityProgress.relic4Solved = true;
+    engine.voidCityProgress.relic5Solved = true;
+    engine.voidCityProgress.relic6Solved = true;
+    boss.phase = 2;
+    assert.doesNotThrow(() => {
+      for (const vb of [
+        { minX: 0, maxX: 2600, minY: 2400, maxY: 4000 },
+        { minX: 0, maxX: 2900, minY: 1200, maxY: 2600 },
+        { minX: 0, maxX: 4800, minY: 0, maxY: 1300 },
+        { minX: 2800, maxX: 4800, minY: 1600, maxY: 4000 },
+      ]) {
+        vcRenderer.drawVoidCityFloorScene(ctxProxy, engine, 2.4, vb);
+        vcRenderer.drawVoidCityStructuresScene(ctxProxy, engine, 2.4, vb);
+      }
+      vcRenderer.drawVoidCityHeroAura(ctxProxy, engine.player.x, engine.player.y, 28, {
+        ...engine.voidCityProgress,
+        namelessSealActive: true,
+        memoryMaskActive: true,
+        originFragmentForged: true,
+      }, 2.4);
+      for (const variant of ['faceless_statue', 'erased_shadow', 'mirror_dweller', 'shadow_clone', 'relic_guardian', 'librarian_wraith']) {
+        vcRenderer.drawVoidCityEnemySprite(ctxProxy, { x: 600, y: 3400, radius: 22, facing: 0.2, voidVariant: variant, color: '#60A5FA', accentColor: '#E2E8F0' }, 2.4);
+      }
+      vcRenderer.drawVoidCityBossEntityScene(ctxProxy, boss, 2.4);
+      vcRenderer.renderVoidCityAtmosphere(ctxProxy, engine, 2.4, 1280, 720);
+    });
+
+    // Nearest interactable near Trung dossier / Relic 1
+    const trungNode = VOID_CITY_INTERACTABLES.find((n) => n.kind === 'trung_dossier')!;
+    const nearTrung = findNearestVoidCityInteractable(trungNode.x, trungNode.y, engine.voidCityProgress, engine.voidCityRuntime);
+    assert.equal(nearTrung?.id, trungNode.id);
+
+    // Step hazards produces valid state
+    const hazTick = stepVoidCityHazards({
+      runtime: engine.voidCityRuntime,
+      progress: engine.voidCityProgress,
+      dt: 0.2,
+      playerX: engine.player.x,
+      playerY: engine.player.y,
+      playerRadius: 22,
+    });
+    assert.ok(hazTick.zone);
+    assert.equal(shadowBlurWrites, 0, 'Void City renderer and engine must NEVER set ctx.shadowBlur');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCancelRaf;
+  }
+});
+
+test('60Hz frame pacing gate and online dead-reckoning interpolation stay smooth without stutter or teleport overshoot', async () => {
+  const { shouldSkipFrameForTargetFps, stepDeadReckoningEntity } = await import('./combatLogic');
+
+  // 60Hz vsync timestamps commonly jitter down to 15.1–15.6ms — must NOT skip a frame
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 15.2, targetFps: 60, hidden: false }), false);
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 16.6, targetFps: 60, hidden: false }), false);
+  // 120Hz ProMotion frame (~8.3ms) must be gated to hold steady 60fps
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 8.3, targetFps: 60, hidden: false }), true);
+  // Lower explicit FPS cap (e.g. 45fps) still skips 16.6ms frames cleanly
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 16.6, targetFps: 45, hidden: false }), true);
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 22.5, targetFps: 45, hidden: false }), false);
+  // Hidden tab throttles heavily (~10fps)
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 50, targetFps: 60, hidden: true }), true);
+  assert.equal(shouldSkipFrameForTargetFps({ rawMs: 105, targetFps: 60, hidden: true }), false);
+
+  // Dead reckoning advances smoothly toward predicted target and clamps extreme speeds
+  const smoothStep = stepDeadReckoningEntity({
+    x: 100,
+    y: 100,
+    targetX: 130,
+    targetY: 100,
+    vx: 250,
+    vy: 0,
+    syncAge: 0.04,
+    dt: 0.016,
+    minX: 0,
+    maxX: 2000,
+    minY: 0,
+    maxY: 2000,
+    maxSpeed: 500,
+  });
+  assert.ok(smoothStep.x > 100 && smoothStep.x < 150, `expected smooth progress, got ${smoothStep.x}`);
+  assert.equal(smoothStep.snapped, false);
+  assert.equal(smoothStep.y, 100);
+
+  // Stale packets decay lead velocity cleanly so entity does not overshoot
+  const staleStep = stepDeadReckoningEntity({
+    x: 130,
+    y: 100,
+    targetX: 130,
+    targetY: 100,
+    vx: 600,
+    vy: 0,
+    syncAge: 0.5,
+    dt: 0.016,
+    minX: 0,
+    maxX: 2000,
+    minY: 0,
+    maxY: 2000,
+  });
+  assert.ok(Math.abs(staleStep.x - 130) < 1.5, `stale sync should decay lead momentum cleanly, got ${staleStep.x}`);
+
+  // Extreme jumps beyond snapDist teleport immediately rather than sliding across the arena
+  const snapStep = stepDeadReckoningEntity({
+    x: 100,
+    y: 100,
+    targetX: 900,
+    targetY: 900,
+    vx: 0,
+    vy: 0,
+    syncAge: 0,
+    dt: 0.016,
+    minX: 0,
+    maxX: 2000,
+    minY: 0,
+    maxY: 2000,
+    snapDist: 280,
+  });
+  assert.equal(snapStep.snapped, true);
+  assert.equal(snapStep.x, 900);
+  assert.equal(snapStep.y, 900);
+});
+

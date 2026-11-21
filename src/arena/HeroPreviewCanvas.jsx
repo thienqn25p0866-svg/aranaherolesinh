@@ -437,6 +437,91 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
       ctx.restore();
     }
     ctx.restore();
+    return;
+  }
+
+  if (heroId === "bach") {
+    ctx.save();
+    // Counter-rotating cyan-orchid phantom wind ribbons & crescent shuriken arcs
+    ctx.rotate(t * 2.5 * activeBoost);
+    ctx.strokeStyle = "rgba(34, 211, 238, 0.58)";
+    ctx.lineWidth = 1.7;
+    ctx.setLineDash([11, 7]);
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 1.08, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (let i = 0; i < 3; i++) {
+      const a = (Math.PI * 2 * i) / 3;
+      ctx.save();
+      ctx.rotate(a);
+      ctx.fillStyle = i % 2 === 0 ? "#67E8F9" : "#E879F9";
+      ctx.beginPath();
+      ctx.moveTo(auraR * 1.06, -5.5);
+      ctx.quadraticCurveTo(auraR * 1.28, 0, auraR * 1.06, 5.5);
+      ctx.quadraticCurveTo(auraR * 1.14, 0, auraR * 1.06, -5.5);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "thai") {
+    ctx.save();
+    // Imperial crimson-gold Colosseum boundary ring & 6 arena pillars
+    ctx.rotate(t * 1.05 * activeBoost);
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.72)";
+    ctx.lineWidth = 2.1;
+    ctx.setLineDash([12, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 1.12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i;
+      const px = Math.cos(a) * auraR * 1.12;
+      const py = Math.sin(a) * auraR * 1.12;
+      ctx.fillStyle = i % 2 === 0 ? "#EF4444" : "#FDE047";
+      ctx.strokeStyle = "#7F1D1D";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(px, py - 4.4);
+      ctx.lineTo(px + 4.4, py);
+      ctx.lineTo(px, py + 4.4);
+      ctx.lineTo(px - 4.4, py);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "khair") {
+    ctx.save();
+    // High-tech rotating golden-sky ballistic rangefinder reticle
+    ctx.rotate(-t * 1.3 * activeBoost);
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.65)";
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, auraR * 1.1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 2) * i;
+      ctx.strokeStyle = i % 2 === 0 ? "#FACC15" : "#38BDF8";
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * auraR * 0.94, Math.sin(a) * auraR * 0.94);
+      ctx.lineTo(Math.cos(a) * auraR * 1.22, Math.sin(a) * auraR * 1.22);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }
 
@@ -675,6 +760,9 @@ export default function HeroPreviewCanvas({
         dung_c3_buff_timer: hero.id === "dung" && st.skillTimer > 0 ? 1 : 0,
         thanh_c3Timer: hero.id === "thanh" && st.skillTimer > 0 ? 1 : 0,
         nhi_ammoType: previewNhiAmmo,
+        bachDashing: hero.id === "bach" && st.skillTimer > 0,
+        thai_inArena: hero.id === "thai" && st.skillTimer > 0,
+        khair_aimZoomBlend: hero.id === "khair" && st.skillTimer > 0 ? 1 : 0,
       };
 
       ctx.save();
@@ -704,6 +792,9 @@ export default function HeroPreviewCanvas({
           color: mainCol,
           accentColor: accentCol,
           nhiAmmoType: previewNhiAmmo,
+          bachDashing: hero.id === "bach" && st.skillTimer > 0,
+          thaiInArena: hero.id === "thai" && st.skillTimer > 0,
+          khairAiming: hero.id === "khair" && st.skillTimer > 0,
           isMono: false,
           hitFlash: false,
           isUlt: hero.id === "thien" || st.skillTimer > 0,

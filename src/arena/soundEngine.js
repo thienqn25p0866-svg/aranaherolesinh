@@ -1003,6 +1003,18 @@ class SoundEngine {
         this.playDucAnhFortress();
         this.playSubPunch(105, 34, 0.24, 0.26);
         break;
+      case "bach":
+        this.playBachDash(1);
+        this.playChord([523.25, 659.25, 783.99, 1046.5], 0.2, { type: "triangle", vol: 0.08, stagger: 0.025, sendAmbiance: true });
+        break;
+      case "thai":
+        this.playThaiArenaDomain();
+        this.playSubPunch(110, 38, 0.22, 0.24);
+        break;
+      case "khair":
+        this.playKhairRailAim(1);
+        this.playKhairSniperShot();
+        break;
       default:
         this.playChord([440, 659.25], 0.18, { type: "triangle", vol: 0.1, sendAmbiance: true });
     }
@@ -1029,6 +1041,9 @@ class SoundEngine {
       else if (heroId === "nhi") this.playBow();
       else if (heroId === "minh") this.playMinhBasic();
       else if (heroId === "ducanh") this.playDucAnhSmash();
+      else if (heroId === "bach") this.playDaggerSlash(1.2);
+      else if (heroId === "thai") this.playThaiHalberd();
+      else if (heroId === "khair") this.playKhairSniperShot();
       else this.playIceSlash();
       return;
     }
@@ -1053,6 +1068,18 @@ class SoundEngine {
         this.playDucAnhRoll();
         return;
       }
+      if (heroId === "bach") {
+        this.playBachDash(1);
+        return;
+      }
+      if (heroId === "thai") {
+        this.playThaiSlam(true);
+        return;
+      }
+      if (heroId === "khair") {
+        this.playKhairBeacon();
+        return;
+      }
     }
     if (skillKey === "c2") {
       if (heroId === "thien") {
@@ -1075,6 +1102,18 @@ class SoundEngine {
         this.playDucAnhFortress();
         return;
       }
+      if (heroId === "bach") {
+        this.playBachDaggerFan();
+        return;
+      }
+      if (heroId === "thai") {
+        this.playThaiRoar(true);
+        return;
+      }
+      if (heroId === "khair") {
+        this.playKhairRailBlast();
+        return;
+      }
     }
     if (skillKey === "c3") {
       if (heroId === "dung") this.playThunderStrike();
@@ -1095,6 +1134,9 @@ class SoundEngine {
       else if (heroId === "nhi") this.playNhiUltShot();
       else if (heroId === "minh") this.playMinhPrison();
       else if (heroId === "ducanh") this.playDucAnhMeteor();
+      else if (heroId === "bach") this.playBachUltMatrix();
+      else if (heroId === "thai") this.playThaiArenaDomain();
+      else if (heroId === "khair") this.playKhairUltRecoil();
       else this.playShurikenThrow();
       return;
     }
@@ -2338,6 +2380,100 @@ class SoundEngine {
     } else {
       this.playFilteredNoise({ duration: 0.8, filterType: "bandpass", freqStart: 560, freqEnd: 260, q: 1.8, gainPeak: 0.042, sendAmbiance: true });
     }
+  }
+
+  // =========================================================
+  // HEROES: BÁCH, THÁI, KHAIR
+  // =========================================================
+
+  playBachDash(step = 1) {
+    if (this.canThrottle("bachDash", 75)) return;
+    this.playFilteredNoise({ duration: 0.16, filterType: "bandpass", freqStart: 1200 + step * 350, freqEnd: 3400, q: 1.6, gainPeak: 0.17, sendAmbiance: true });
+    this.playLayerTone({ startFreq: 680 + step * 110, endFreq: 1320, duration: 0.13, type: "triangle", vol: 0.11, sendAmbiance: true });
+    this.playMetallicClang(1180 + step * 160, 0.1, 0.08);
+  }
+
+  playBachDaggerFan() {
+    if (this.canThrottle("bachFan", 120)) return;
+    this.playFilteredNoise({ duration: 0.14, filterType: "highpass", freqStart: 2200, freqEnd: 4600, gainPeak: 0.14, sendAmbiance: true });
+    [0, 1, 2].forEach((i) => {
+      this.playLayerTone({ startFreq: 980 + i * 190, endFreq: 540 + i * 110, duration: 0.09, type: "sine", vol: 0.08, delay: i * 0.025 });
+    });
+  }
+
+  playBachUltMatrix() {
+    if (this.canThrottle("bachUlt", 240)) return;
+    this.playSubPunch(125, 42, 0.24, 0.26);
+    [0, 1, 2, 3, 4].forEach((i) => {
+      const d = i * 0.11;
+      this.playFilteredNoise({ duration: 0.1, filterType: "highpass", freqStart: 2600, freqEnd: 5200, gainPeak: 0.13, delay: d, sendAmbiance: true });
+      this.playLayerTone({ startFreq: 740 + i * 130, endFreq: 1480, duration: 0.11, type: "sawtooth", vol: 0.075, delay: d, filterFreq: 2600 });
+    });
+    this.playChord([523.25, 783.99, 1046.5], 0.36, { type: "triangle", vol: 0.11, delay: 0.52, stagger: 0.025, sendAmbiance: true });
+  }
+
+  playThaiHalberd() {
+    if (this.canThrottle("thaiAtk", 110)) return;
+    this.playSubPunch(115, 44, 0.14, 0.18);
+    this.playMetallicClang(440, 0.18, 0.13);
+    this.playFilteredNoise({ duration: 0.14, filterType: "lowpass", freqStart: 1900, freqEnd: 450, gainPeak: 0.15, sendAmbiance: true });
+  }
+
+  playThaiSlam(upgraded = false) {
+    if (this.canThrottle("thaiSlam", 140)) return;
+    this.playSubPunch(upgraded ? 76 : 92, 26, 0.34, upgraded ? 0.36 : 0.28);
+    this.playMetallicClang(upgraded ? 620 : 480, 0.26, 0.16);
+    this.playFilteredNoise({ duration: 0.26, filterType: "lowpass", freqStart: 1400, freqEnd: 180, q: 1.2, gainPeak: 0.26, sendAmbiance: true });
+  }
+
+  playThaiRoar(upgraded = false) {
+    if (this.canThrottle("thaiRoar", 180)) return;
+    this.playSubPunch(95, 32, 0.3, 0.28);
+    this.playLayerTone({ startFreq: 196, endFreq: upgraded ? 440 : 330, duration: 0.32, type: "sawtooth", vol: 0.14, filterFreq: 1150, sendAmbiance: true });
+    if (upgraded) {
+      this.playChord([293.66, 440, 587.33], 0.34, { type: "triangle", vol: 0.1, stagger: 0.03, sendAmbiance: true });
+    }
+  }
+
+  playThaiArenaDomain() {
+    if (this.canThrottle("thaiArena", 280)) return;
+    this.playSubPunch(72, 24, 0.48, 0.38);
+    this.playMetallicClang(392, 0.44, 0.2);
+    this.playChord([220, 293.66, 440, 587.33], 0.56, { type: "sawtooth", vol: 0.095, filterFreq: 1500, stagger: 0.04, sendAmbiance: true });
+    this.playChord([440, 659.25, 880], 0.44, { type: "triangle", vol: 0.09, delay: 0.18, stagger: 0.035, sendAmbiance: true });
+  }
+
+  playKhairSniperShot() {
+    if (this.canThrottle("khairAtk", 180)) return;
+    this.playSubPunch(120, 38, 0.18, 0.26);
+    this.playLayerTone({ startFreq: 1650, endFreq: 320, duration: 0.16, type: "sawtooth", vol: 0.13, filterFreq: 2800, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.15, filterType: "bandpass", freqStart: 3600, freqEnd: 900, q: 1.5, gainPeak: 0.2, sendAmbiance: true });
+  }
+
+  playKhairBeacon() {
+    if (this.canThrottle("khairBeacon", 160)) return;
+    this.playFilteredNoise({ duration: 0.16, filterType: "highpass", freqStart: 2000, freqEnd: 4200, gainPeak: 0.14, sendAmbiance: true });
+    this.playChord([523.25, 659.25, 987.77], 0.3, { type: "sine", vol: 0.09, stagger: 0.03, sendAmbiance: true });
+  }
+
+  playKhairRailAim(charge = 0) {
+    if (this.canThrottle("khairAim", 240)) return;
+    this.playLayerTone({ startFreq: 480 + charge * 420, endFreq: 860 + charge * 620, duration: 0.18, type: "sine", vol: 0.075, sendAmbiance: true });
+  }
+
+  playKhairRailBlast() {
+    if (this.canThrottle("khairRail", 160)) return;
+    this.playSubPunch(78, 22, 0.42, 0.42);
+    this.playLayerTone({ startFreq: 2400, endFreq: 180, duration: 0.34, type: "sawtooth", vol: 0.18, filterFreq: 3600, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.36, filterType: "bandpass", freqStart: 4800, freqEnd: 520, q: 1.2, gainPeak: 0.32, sendAmbiance: true });
+    this.playChord([587.33, 880, 1174.66], 0.28, { type: "triangle", vol: 0.09, delay: 0.03, sendAmbiance: true });
+  }
+
+  playKhairUltRecoil() {
+    if (this.canThrottle("khairUlt", 240)) return;
+    this.playSubPunch(66, 20, 0.48, 0.44);
+    this.playLayerTone({ startFreq: 1900, endFreq: 120, duration: 0.38, type: "sawtooth", vol: 0.18, filterFreq: 3200, sendAmbiance: true });
+    this.playFilteredNoise({ duration: 0.45, filterType: "lowpass", freqStart: 3200, freqEnd: 240, q: 1.0, gainPeak: 0.35, sendAmbiance: true });
   }
 }
 

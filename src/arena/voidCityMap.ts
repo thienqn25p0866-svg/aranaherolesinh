@@ -1202,6 +1202,67 @@ export function getVoidCityZoneAt(x: number, y: number): VoidCityZone {
   return VOID_CITY_ZONES[0];
 }
 
+export function getVoidCityCompassTarget(
+  progressInput: VoidCityProgressState | unknown,
+  runtime?: VoidCityRuntimeState | null,
+  lang: VoidCityLang = "vi"
+): { x: number; y: number; color: string; bg: string; icon: string; tag: string } | null {
+  const p = normalizeVoidCityProgress(progressInput);
+  const isEn = lang === "en";
+  if (runtime?.endingPageSpawned && runtime.endingPagePos) {
+    return {
+      x: runtime.endingPagePos.x,
+      y: runtime.endingPagePos.y,
+      color: "#FDE68A",
+      bg: "rgba(30, 27, 75, 0.92)",
+      icon: "📜",
+      tag: isEn ? "FINAL" : "TRANG CUỐI",
+    };
+  }
+  const byId = (id: string) => VOID_CITY_INTERACTABLES.find((n) => n.id === id);
+  if (!p.relic1Solved) {
+    const target =
+      !p.foundConstellations.includes("doc_constellation_west")
+        ? byId("vc_node_constellation_west")
+        : !p.foundConstellations.includes("doc_constellation_library")
+        ? byId("vc_node_constellation_lib")
+        : byId("vc_node_relic1");
+    if (target) return { x: target.x, y: target.y, color: "#38BDF8", bg: "rgba(12, 74, 110, 0.9)", icon: "🔭", tag: isEn ? "RELIC 1" : "DI TÍCH 1" };
+  }
+  if (!p.relic2Solved) {
+    const target = !p.tombInscriptionsRead ? byId("vc_node_tomb_clue") : byId("vc_node_relic2");
+    if (target) return { x: target.x, y: target.y, color: "#CBD5E1", bg: "rgba(30, 41, 59, 0.9)", icon: "⚰️", tag: isEn ? "RELIC 2" : "DI TÍCH 2" };
+  }
+  if (!p.relic3Solved) {
+    const target =
+      !p.foundTornPages.includes("page_genesis")
+        ? byId("vc_node_torn_1")
+        : !p.foundTornPages.includes("page_trung")
+        ? byId("vc_node_torn_2")
+        : !p.foundTornPages.includes("page_erasure")
+        ? byId("vc_node_torn_3")
+        : byId("vc_node_relic3");
+    if (target) return { x: target.x, y: target.y, color: "#60A5FA", bg: "rgba(30, 58, 138, 0.9)", icon: "📖", tag: isEn ? "RELIC 3" : "DI TÍCH 3" };
+  }
+  if (!p.relic4Solved) {
+    const target = !p.theaterScriptRead ? byId("vc_node_theater_script") : byId("vc_node_relic4");
+    if (target) return { x: target.x, y: target.y, color: "#C084FC", bg: "rgba(88, 28, 135, 0.9)", icon: "🎭", tag: isEn ? "RELIC 4" : "DI TÍCH 4" };
+  }
+  if (!p.relic5Solved) {
+    const target = !p.mirrorClueRead ? byId("vc_node_mirror_clue") : byId("vc_node_relic5");
+    if (target) return { x: target.x, y: target.y, color: "#67E8F9", bg: "rgba(14, 116, 144, 0.9)", icon: "🪞", tag: isEn ? "RELIC 5" : "DI TÍCH 5" };
+  }
+  if (!p.relic6Solved && isRelic6Accessible(p)) {
+    const target = byId("vc_node_relic6");
+    if (target) return { x: target.x, y: target.y, color: "#FDE68A", bg: "rgba(120, 53, 15, 0.9)", icon: "✨", tag: isEn ? "RELIC 6" : "DI TÍCH 6" };
+  }
+  if (!p.bossClearedVoidCity && !runtime?.bossSpawnedThisRun) {
+    const bossAltar = byId("vc_node_boss_altar");
+    if (bossAltar) return { x: bossAltar.x, y: bossAltar.y, color: "#F43F5E", bg: "rgba(136, 19, 55, 0.9)", icon: "📜", tag: isEn ? "ALTAR" : "ĐÀI BOSS" };
+  }
+  return null;
+}
+
 export function isVoidCityObstacleOpen(
   ob: VoidCityObstacle,
   progress: VoidCityProgressState,
@@ -1414,9 +1475,24 @@ export function findNearestVoidCityInteractable(
   runtime?: VoidCityRuntimeState | null
 ): VoidCityInteractable | null {
   void progressInput;
-  void runtime;
   let best: VoidCityInteractable | null = null;
   let bestD = Infinity;
+  if (runtime?.endingPageSpawned && runtime.endingPagePos) {
+    const dPage = Math.hypot(px - runtime.endingPagePos.x, py - runtime.endingPagePos.y);
+    if (dPage <= 115) {
+      bestD = dPage;
+      best = {
+        id: "ending_last_page",
+        x: runtime.endingPagePos.x,
+        y: runtime.endingPagePos.y,
+        radius: 75,
+        zoneId: "zone_8",
+        kind: "lore_echo",
+        docId: "doc_ending_phe_do",
+        label: { vi: "Trang Giấy Cuối Cùng · Hồ Sơ Kết", en: "The Last Fallen Page · Final Dossier" },
+      };
+    }
+  }
   for (const node of VOID_CITY_INTERACTABLES) {
     const d = Math.hypot(px - node.x, py - node.y);
     if (d <= node.radius + 46 && d < bestD) {
@@ -1472,8 +1548,24 @@ export function evaluateVoidCityInteraction({
   toggledClockReversed?: boolean;
 } {
   let progress = normalizeVoidCityProgress(progInput);
-  const node = VOID_CITY_INTERACTABLES.find((n) => n.id === nodeId);
   const isEn = lang === "en";
+  if (nodeId === "ending_last_page") {
+    let nextCols = appendDoc(progress, "doc_boss_last_page");
+    progress = normalizeVoidCityProgress({
+      ...progress,
+      endingDossierSeen: true,
+      pheDoRevealed: true,
+      collectedDocIds: nextCols.includes("doc_ending_phe_do") ? nextCols : [...nextCols, "doc_ending_phe_do"].slice(0, 32),
+    });
+    return {
+      nextProgress: progress,
+      coinBonus: 0,
+      spawnBoss: false,
+      spawnAmbush: false,
+      payload: buildVoidCityEndingPayload(progress, lang),
+    };
+  }
+  const node = VOID_CITY_INTERACTABLES.find((n) => n.id === nodeId);
   if (!node) {
     return {
       nextProgress: progress,
@@ -1705,8 +1797,8 @@ export function evaluateVoidCityInteraction({
   // 6. Cross-Map 1–3 Echo Seal
   if (node.kind === "cross_map_seal") {
     const m1 = Boolean(citadelSecrets?.combinedUnlocked || citadelSecrets?.tinClue || citadelSecrets?.baoClue);
-    const m2 = Boolean(infernoProgress?.trueEndingUnlocked || infernoProgress?.fourChairsSeen);
-    const m3 = Boolean(frozenTombProgress?.ee1ArchiveSeen || frozenTombProgress?.ee6MemoryAlteredSeen);
+    const m2 = Boolean(infernoProgress?.trungTriggered || infernoProgress?.fourChairsUnlocked);
+    const m3 = Boolean(frozenTombProgress?.linkedDeviceTriggered || frozenTombProgress?.endingShardSeen);
     progress = normalizeVoidCityProgress({
       ...progress,
       map1EchoSeen: progress.map1EchoSeen || m1,
@@ -1931,7 +2023,10 @@ export function solveVoidCityRelicPuzzle({
       relic3Solved: true,
       memoryKeys: progress.memoryKeys + 3,
       memoryKeysTotalEarned: progress.memoryKeysTotalEarned + 3,
-      collectedDocIds: appendDoc(appendDoc(progress, "doc_torn_page_2"), "doc_torn_page_3"),
+      collectedDocIds: appendDoc(
+        { ...progress, collectedDocIds: appendDoc(progress, "doc_torn_page_2") },
+        "doc_torn_page_3"
+      ),
     });
     return {
       solved: true,

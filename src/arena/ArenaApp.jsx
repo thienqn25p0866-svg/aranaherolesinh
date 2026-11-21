@@ -14,6 +14,7 @@ import { CitadelTacticalMinimap, CitadelLoreCrest } from "./CitadelVisuals";
 import { InfernoTacticalMinimap, InfernoStoryModal, InfernoJournalModal } from "./InfernoVisuals";
 import { FrozenTombTacticalMinimap, FrozenTombStoryModal, FrozenTombJournalModal } from "./FrozenTombVisuals";
 import { GrudgeForestTacticalMinimap, GrudgeForestStoryModal, GrudgeForestJournalModal } from "./GrudgeForestVisuals";
+import { VoidCityTacticalMinimap, VoidCityStoryModal, VoidCityRelicsModal } from "./VoidCityVisuals";
 import {
   ARENA_MAPS,
   CITADEL_UNLOCK_WAVE,
@@ -43,6 +44,13 @@ import {
   GRUDGE_FOREST_DOCS,
   countGrudgeForestSecrets,
 } from "./grudgeForestMap";
+import {
+  createDefaultVoidCityProgress,
+  mergeVoidCityProgress,
+  normalizeVoidCityProgress,
+  VOID_CITY_DOCS,
+  countVoidCityRelics,
+} from "./voidCityMap";
 import {
   GAME_SAVE_STORAGE_KEY,
   MP_PLAYER_NAME_STORAGE_KEY,
@@ -1169,7 +1177,7 @@ function iy(s, a) {
   let h = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><radialGradient id="g" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="${c}"/><stop offset="100%" stop-color="#050811"/></radialGradient></defs><rect x="1" y="1" width="62" height="62" rx="11" fill="url(#g)" stroke="${g}" stroke-width="2.5"/>${p}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(h)}`;
 }
-var Wt = ({ heroId: s, skillId: a, size: l = 48, hiRes: m = false, roundedClass: c = "rounded-xl", className: g = "", alt: p, bare: bare = false }) => {
+var Wt = (0, ie.memo)(({ heroId: s, skillId: a, size: l = 48, hiRes: m = false, roundedClass: c = "rounded-xl", className: g = "", alt: p, bare: bare = false }) => {
   let h = gl(s, a), f = SKILL_ICON_DATA_URLS?.[`${s}_${a}`] || HERO_SKILL_ICONS?.[s]?.[a] || (typeof window < "u" ? window.__SKILL_ICON_DATA_URLS__ : void 0)?.[`${s}_${a}`], T = h.svgDataUrl ? h.svgDataUrl : f ? f : ty(s, a, m || l >= 140 ? 512 : 128), [b, x] = (0, ie.useState)(T);
   (0, ie.useEffect)(() => {
     x(T);
@@ -1179,16 +1187,129 @@ var Wt = ({ heroId: s, skillId: a, size: l = 48, hiRes: m = false, roundedClass:
     let H = iy(s, a);
     f && b !== f ? x(f) : b !== H && x(H);
   } }) });
-};
-var LienQuanSkillBezel = ({ isUlt, isRecast, isEmpowered, isCharging, idPrefix }) => {
+});
+var LienQuanSkillBezel = (0, ie.memo)(({ isUlt, isRecast, isEmpowered, isCharging, idPrefix }) => {
   const rimGradId = `${idPrefix}-rim`;
   const innerRim = isCharging ? "rgba(248, 113, 113, 0.92)" : isRecast ? "rgba(56, 189, 248, 0.95)" : isEmpowered ? "rgba(253, 224, 71, 0.95)" : isUlt ? "rgba(253, 224, 71, 0.68)" : "rgba(186, 230, 253, 0.45)";
   if (isUlt) {
     return (0, u.jsxs)("svg", { viewBox: "-8 -12 116 124", className: "lq-bezel-svg is-ult", "aria-hidden": "true", children: [(0, u.jsx)("defs", { children: (0, u.jsxs)("linearGradient", { id: rimGradId, x1: "0%", y1: "0%", x2: "100%", y2: "100%", children: [(0, u.jsx)("stop", { offset: "0%", stopColor: "#fff7cc" }), (0, u.jsx)("stop", { offset: "28%", stopColor: "#f6c042" }), (0, u.jsx)("stop", { offset: "58%", stopColor: "#8f5b0d" }), (0, u.jsx)("stop", { offset: "82%", stopColor: "#e6af39" }), (0, u.jsx)("stop", { offset: "100%", stopColor: "#fff1a8" })] }) }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "47.5", fill: "none", stroke: "#040710", strokeWidth: "3.2" }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "45", fill: "none", stroke: `url(#${rimGradId})`, strokeWidth: "4.8" }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "42", fill: "none", stroke: "#060b16", strokeWidth: "1.6" }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "40.6", fill: "none", stroke: innerRim, strokeWidth: "1.25" }), (0, u.jsx)("path", { d: "M35 2 L50 -9 L65 2 L59 7 L50 2 L41 7 Z", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "1.2" }), (0, u.jsx)("path", { d: "M12 18 C18 8, 28 3, 38 1 L35 6 C27 8, 20 13, 15 21 Z", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("path", { d: "M88 18 C82 8, 72 3, 62 1 L65 6 C73 8, 80 13, 85 21 Z", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "1,50 7,45 7,55", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "99,50 93,45 93,55", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "44,94 50,102 56,94 50,91", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "1" })] });
   }
   return (0, u.jsxs)("svg", { viewBox: "-3 -3 106 106", className: "lq-bezel-svg", "aria-hidden": "true", children: [(0, u.jsx)("defs", { children: (0, u.jsxs)("linearGradient", { id: rimGradId, x1: "0%", y1: "0%", x2: "100%", y2: "100%", children: [(0, u.jsx)("stop", { offset: "0%", stopColor: "#faecc0" }), (0, u.jsx)("stop", { offset: "30%", stopColor: "#c89c45" }), (0, u.jsx)("stop", { offset: "62%", stopColor: "#5c4317" }), (0, u.jsx)("stop", { offset: "86%", stopColor: "#d9b466" }), (0, u.jsx)("stop", { offset: "100%", stopColor: "#fff2c6" })] }) }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "47.5", fill: "none", stroke: "#040710", strokeWidth: "2.8" }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "45", fill: "none", stroke: `url(#${rimGradId})`, strokeWidth: "4.4" }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "42.2", fill: "none", stroke: "#060b16", strokeWidth: "1.5" }), (0, u.jsx)("circle", { cx: "50", cy: "50", r: "40.8", fill: "none", stroke: innerRim, strokeWidth: "1.15" }), (0, u.jsx)("polygon", { points: "46,2 50,-2 54,2 50,5", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "0.9" }), (0, u.jsx)("polygon", { points: "46,98 50,102 54,98 50,95", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "0.9" }), (0, u.jsx)("polygon", { points: "2,46 -2,50 2,54 5,50", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "0.9" }), (0, u.jsx)("polygon", { points: "98,46 102,50 98,54 95,50", fill: `url(#${rimGradId})`, stroke: "#070b14", strokeWidth: "0.9" })] });
-};
-var LienQuanAttackBezel = () => (0, u.jsxs)("svg", { viewBox: "-4 -4 128 128", className: "lq-atk-bezel-svg", "aria-hidden": "true", children: [(0, u.jsx)("defs", { children: (0, u.jsxs)("linearGradient", { id: "lqAtkRimGrad", x1: "0%", y1: "0%", x2: "100%", y2: "100%", children: [(0, u.jsx)("stop", { offset: "0%", stopColor: "#fff3b8" }), (0, u.jsx)("stop", { offset: "26%", stopColor: "#e6b244" }), (0, u.jsx)("stop", { offset: "56%", stopColor: "#754b10" }), (0, u.jsx)("stop", { offset: "84%", stopColor: "#d99e32" }), (0, u.jsx)("stop", { offset: "100%", stopColor: "#ffe99a" })] }) }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "57.5", fill: "none", stroke: "#050811", strokeWidth: "3.4" }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "54.5", fill: "none", stroke: "url(#lqAtkRimGrad)", strokeWidth: "5.2" }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "51.2", fill: "none", stroke: "#080c17", strokeWidth: "1.8" }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "49.6", fill: "none", stroke: "rgba(253, 224, 71, 0.55)", strokeWidth: "1.2" }), (0, u.jsx)("polygon", { points: "55,3 60,-2 65,3 60,7", fill: "url(#lqAtkRimGrad)", stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "3,55 -2,60 3,65 7,60", fill: "url(#lqAtkRimGrad)", stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "117,55 122,60 117,65 113,60", fill: "url(#lqAtkRimGrad)", stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("circle", { cx: "21", cy: "21", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" }), (0, u.jsx)("circle", { cx: "99", cy: "21", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" }), (0, u.jsx)("circle", { cx: "21", cy: "99", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" }), (0, u.jsx)("circle", { cx: "99", cy: "99", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" })] });
+});
+var LienQuanAttackBezel = (0, ie.memo)(() => (0, u.jsxs)("svg", { viewBox: "-4 -4 128 128", className: "lq-atk-bezel-svg", "aria-hidden": "true", children: [(0, u.jsx)("defs", { children: (0, u.jsxs)("linearGradient", { id: "lqAtkRimGrad", x1: "0%", y1: "0%", x2: "100%", y2: "100%", children: [(0, u.jsx)("stop", { offset: "0%", stopColor: "#fff3b8" }), (0, u.jsx)("stop", { offset: "26%", stopColor: "#e6b244" }), (0, u.jsx)("stop", { offset: "56%", stopColor: "#754b10" }), (0, u.jsx)("stop", { offset: "84%", stopColor: "#d99e32" }), (0, u.jsx)("stop", { offset: "100%", stopColor: "#ffe99a" })] }) }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "57.5", fill: "none", stroke: "#050811", strokeWidth: "3.4" }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "54.5", fill: "none", stroke: "url(#lqAtkRimGrad)", strokeWidth: "5.2" }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "51.2", fill: "none", stroke: "#080c17", strokeWidth: "1.8" }), (0, u.jsx)("circle", { cx: "60", cy: "60", r: "49.6", fill: "none", stroke: "rgba(253, 224, 71, 0.55)", strokeWidth: "1.2" }), (0, u.jsx)("polygon", { points: "55,3 60,-2 65,3 60,7", fill: "url(#lqAtkRimGrad)", stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "3,55 -2,60 3,65 7,60", fill: "url(#lqAtkRimGrad)", stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("polygon", { points: "117,55 122,60 117,65 113,60", fill: "url(#lqAtkRimGrad)", stroke: "#070b14", strokeWidth: "1" }), (0, u.jsx)("circle", { cx: "21", cy: "21", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" }), (0, u.jsx)("circle", { cx: "99", cy: "21", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" }), (0, u.jsx)("circle", { cx: "21", cy: "99", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" }), (0, u.jsx)("circle", { cx: "99", cy: "99", r: "2.3", fill: "#fef08a", stroke: "#5c3d0c", strokeWidth: "0.9" })] }));
+var LQ_JOY_DEGREE_TICKS = Array.from({ length: 24 }, (_, idx) => idx * 15).filter((deg) => deg % 90 !== 0);
+var LienQuanJoystickBezel = (0, ie.memo)(() => (
+  <svg viewBox="-8 -8 216 216" className="lq-joy-bezel-svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="lqJoyGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#fff7cc" />
+        <stop offset="24%" stopColor="#f6c042" />
+        <stop offset="52%" stopColor="#7c4f0d" />
+        <stop offset="78%" stopColor="#e6af39" />
+        <stop offset="100%" stopColor="#fff1a8" />
+      </linearGradient>
+      <linearGradient id="lqJoyGoldAlt" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#fef08a" />
+        <stop offset="50%" stopColor="#b47b1e" />
+        <stop offset="100%" stopColor="#fde047" />
+      </linearGradient>
+      <radialGradient id="lqJoyCenterDish" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="rgba(56, 189, 248, 0.22)" />
+        <stop offset="65%" stopColor="rgba(15, 23, 42, 0.14)" />
+        <stop offset="100%" stopColor="rgba(2, 6, 23, 0)" />
+      </radialGradient>
+    </defs>
+    <circle cx="100" cy="100" r="97.5" fill="none" stroke="#040710" strokeWidth="4.4" />
+    <circle cx="100" cy="100" r="93.5" fill="none" stroke="url(#lqJoyGoldGrad)" strokeWidth="5.4" />
+    <circle cx="100" cy="100" r="89.5" fill="none" stroke="#070b14" strokeWidth="2.2" />
+    <circle cx="100" cy="100" r="87" fill="none" stroke="rgba(125, 211, 252, 0.44)" strokeWidth="1.15" />
+    <circle cx="100" cy="100" r="61" fill="none" stroke="rgba(253, 230, 138, 0.22)" strokeWidth="1.2" strokeDasharray="3.5 6.5" />
+    <circle cx="100" cy="100" r="28" fill="url(#lqJoyCenterDish)" stroke="rgba(125, 211, 252, 0.34)" strokeWidth="1.1" />
+    <circle cx="100" cy="100" r="16" fill="none" stroke="rgba(253, 224, 71, 0.35)" strokeWidth="0.9" />
+    <line x1="91" y1="100" x2="109" y2="100" stroke="rgba(186, 230, 253, 0.42)" strokeWidth="1.1" strokeLinecap="round" />
+    <line x1="100" y1="91" x2="100" y2="109" stroke="rgba(186, 230, 253, 0.42)" strokeWidth="1.1" strokeLinecap="round" />
+    {LQ_JOY_DEGREE_TICKS.map((deg) => {
+      const rad = (deg * Math.PI) / 180;
+      const isMinor45 = deg % 45 === 0;
+      const r1 = isMinor45 ? 77.5 : 81;
+      const r2 = 85.2;
+      return (
+        <line
+          key={deg}
+          x1={(100 + Math.cos(rad) * r1).toFixed(2)}
+          y1={(100 + Math.sin(rad) * r1).toFixed(2)}
+          x2={(100 + Math.cos(rad) * r2).toFixed(2)}
+          y2={(100 + Math.sin(rad) * r2).toFixed(2)}
+          stroke={isMinor45 ? "rgba(253, 224, 71, 0.65)" : "rgba(186, 230, 253, 0.34)"}
+          strokeWidth={isMinor45 ? "1.8" : "1.1"}
+          strokeLinecap="round"
+        />
+      );
+    })}
+    {/* 4 Cardinal Gold Spearheads (N, S, W, E) */}
+    <polygon points="94,10 100,0 106,10 100,15" fill="url(#lqJoyGoldGrad)" stroke="#060913" strokeWidth="1.2" />
+    <polygon points="95,18 100,12 105,18 100,22" fill="#bae6fd" opacity="0.82" />
+    <polygon points="94,190 100,200 106,190 100,185" fill="url(#lqJoyGoldGrad)" stroke="#060913" strokeWidth="1.2" />
+    <polygon points="95,182 100,188 105,182 100,178" fill="#bae6fd" opacity="0.82" />
+    <polygon points="10,94 0,100 10,106 15,100" fill="url(#lqJoyGoldGrad)" stroke="#060913" strokeWidth="1.2" />
+    <polygon points="18,95 12,100 18,105 22,100" fill="#bae6fd" opacity="0.82" />
+    <polygon points="190,94 200,100 190,106 185,100" fill="url(#lqJoyGoldGrad)" stroke="#060913" strokeWidth="1.2" />
+    <polygon points="182,95 188,100 182,105 178,100" fill="#bae6fd" opacity="0.82" />
+    {/* 4 Intercardinal Stud Jewels */}
+    {[45, 135, 225, 315].map((deg) => {
+      const rad = (deg * Math.PI) / 180;
+      const gx = +(100 + Math.cos(rad) * 93.5).toFixed(2);
+      const gy = +(100 + Math.sin(rad) * 93.5).toFixed(2);
+      return (
+        <g key={deg}>
+          <circle cx={gx} cy={gy} r="4.2" fill="#070b14" stroke="url(#lqJoyGoldAlt)" strokeWidth="1.4" />
+          <circle cx={gx} cy={gy} r="2.1" fill="#7dd3fc" />
+        </g>
+      );
+    })}
+  </svg>
+));
+var LienQuanJoystickDirectionArc = (0, ie.memo)(() => (
+  <svg viewBox="-8 -8 216 216" className="w-full h-full overflow-visible" aria-hidden="true">
+    <defs>
+      <linearGradient id="lqJoyBeamGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+        <stop offset="0%" stopColor="rgba(56, 189, 248, 0.0)" />
+        <stop offset="45%" stopColor="rgba(56, 189, 248, 0.24)" />
+        <stop offset="88%" stopColor="rgba(253, 224, 71, 0.48)" />
+        <stop offset="100%" stopColor="rgba(254, 249, 195, 0.72)" />
+      </linearGradient>
+    </defs>
+    <path d="M 100 100 L 175 41 A 95 95 0 0 1 175 159 Z" fill="url(#lqJoyBeamGrad)" />
+    <path d="M 169 36 A 93.5 93.5 0 0 1 169 164" fill="none" stroke="rgba(56, 189, 248, 0.65)" strokeWidth="7.5" strokeLinecap="round" />
+    <path d="M 174 44 A 93.5 93.5 0 0 1 174 156" fill="none" stroke="#fef08a" strokeWidth="3.2" strokeLinecap="round" />
+    <polygon points="187,93 203,100 187,107 191,100" fill="#fef9c3" stroke="#0284c7" strokeWidth="1.2" />
+  </svg>
+));
+var LienQuanJoystickKnobCap = (0, ie.memo)(() => (
+  <svg viewBox="0 0 64 64" className="lq-joy-knob-svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="lqJoyKnobCapGold" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#fffbeb" />
+        <stop offset="35%" stopColor="#fcd34d" />
+        <stop offset="70%" stopColor="#b45309" />
+        <stop offset="100%" stopColor="#fef08a" />
+      </linearGradient>
+    </defs>
+    <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(254, 240, 138, 0.55)" strokeWidth="1.2" />
+    <circle cx="32" cy="32" r="18" fill="none" stroke="rgba(186, 230, 253, 0.45)" strokeWidth="1" strokeDasharray="3 3" />
+    {/* Glossy specular crescent */}
+    <path d="M 16 25 A 18 18 0 0 1 42 15" fill="none" stroke="rgba(255, 255, 255, 0.72)" strokeWidth="2.4" strokeLinecap="round" />
+    {/* Central 4-point celestial compass star */}
+    <polygon
+      points="32,14 35.8,28.2 50,32 35.8,35.8 32,50 28.2,35.8 14,32 28.2,28.2"
+      fill="url(#lqJoyKnobCapGold)"
+      stroke="#082f49"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+    <circle cx="32" cy="32" r="4.6" fill="#fef9c3" stroke="#0369a1" strokeWidth="1.4" />
+  </svg>
+));
 function formatWaveClock(sec) {
   let s = Math.max(0, Number(sec) || 0);
   let m = Math.floor(s / 60);
@@ -1242,10 +1363,14 @@ function ny() {
     [grudgeForestStoryModal, setGrudgeForestStoryModal] = (0, ie.useState)(null),
     [grudgeForestJournalOpen, setGrudgeForestJournalOpen] = (0, ie.useState)(false),
     [grudgeForestMinimapOpen, setGrudgeForestMinimapOpen] = (0, ie.useState)(true),
+    [voidCityProgress, setVoidCityProgress] = (0, ie.useState)(() => createDefaultVoidCityProgress()),
+    [voidCityStoryModal, setVoidCityStoryModal] = (0, ie.useState)(null),
+    [voidCityWorkshopOpen, setVoidCityWorkshopOpen] = (0, ie.useState)(false),
+    [voidCityMinimapOpen, setVoidCityMinimapOpen] = (0, ie.useState)(true),
     [chroniclesOpen, setChroniclesOpen] = (0, ie.useState)(false),
     [chroniclesTab, setChroniclesTab] = (0, ie.useState)("world"),
     [chroniclesFocusHeroId, setChroniclesFocusHeroId] = (0, ie.useState)(null),
-    [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null, mapId: "classic", nearbyInteractable: null, citadelSecrets: createDefaultCitadelSecrets(), citadelHud: null, infernoProgress: createDefaultInfernoProgress(), infernoHud: null, frozenTombProgress: createDefaultFrozenTombProgress(), frozenTombHud: null, grudgeForestProgress: createDefaultGrudgeForestProgress(), grudgeForestHud: null }),
+    [re, vt] = (0, ie.useState)({ heroName: "\xC9o hy\xEAn", level: 1, hp: 960, maxHp: 960, shield: 0, xpPct: 0, wave: 1, kills: 0, waveTotal: 10, totalKilled: 0, totalDamage: 0, waveElapsedTime: 0, lastWaveClearTime: 0, buffsText: "", resourceText: "", thienState: null, droneMode: "attack", droneLabel: "T\u1EA5n C\xF4ng", droneColor: "#38BDF8", cooldowns: [0, 0, 0, 0], padTeleportCds: [0, 0, 0, 0], skillStates: ["ready", "ready", "ready", "ready"], chargeActive: false, chargeProgress: 0, chargeLabel: "", combo: { active: false, rank: "D", hits: 0, score: 0, timer: 0, maxTimer: 3.5, comboName: "", efficiency: 100 }, coopActive: false, localDowned: false, powerMultiplier: 1, teammates: [], boss: null, mapId: "classic", nearbyInteractable: null, citadelSecrets: createDefaultCitadelSecrets(), citadelHud: null, infernoProgress: createDefaultInfernoProgress(), infernoHud: null, frozenTombProgress: createDefaultFrozenTombProgress(), frozenTombHud: null, grudgeForestProgress: createDefaultGrudgeForestProgress(), grudgeForestHud: null, voidCityProgress: createDefaultVoidCityProgress(), voidCityHud: null }),
     [aimSkillIdx, setAimSkillIdx] = (0, ie.useState)(-1),
     [mt, S] = (0, ie.useState)(null),
     selectedHeroRef = (0, ie.useRef)(p),
@@ -1255,10 +1380,13 @@ function ny() {
     infernoStoryPausedRef = (0, ie.useRef)(false),
     frozenTombStoryPausedRef = (0, ie.useRef)(false),
     grudgeForestStoryPausedRef = (0, ie.useRef)(false),
+    voidCityStoryPausedRef = (0, ie.useRef)(false),
     founderUnlockedRef = (0, ie.useRef)(false),
     founderPendingActionRef = (0, ie.useRef)(null),
+    lastCoinsRef = (0, ie.useRef)(100),
     mpBusyTimerRef = (0, ie.useRef)(null),
     toastTimerRef = (0, ie.useRef)(null),
+    appShellRef = (0, ie.useRef)(null),
     googleUserRef = (0, ie.useRef)(null),
     playerProfileRef = (0, ie.useRef)(playerProfile),
     lastTrackedMatchKillsRef = (0, ie.useRef)(0),
@@ -1317,12 +1445,27 @@ function ny() {
     if (typeof window === "undefined") {
       return { isIOS: false, isZalo: false, isMessenger: false, isInAppBrowser: false, isFileProtocol: false, isStandalonePwa: false, supportsNativeFullscreen: true };
     }
-    const hasNativeFs = Boolean(document.documentElement?.requestFullscreen || document.documentElement?.webkitRequestFullscreen);
+    const rootEl = document.documentElement;
+    const bodyEl = document.body;
+    const hasNativeFs = Boolean(
+      rootEl?.requestFullscreen ||
+      rootEl?.webkitRequestFullscreen ||
+      rootEl?.mozRequestFullScreen ||
+      rootEl?.msRequestFullscreen ||
+      bodyEl?.requestFullscreen ||
+      bodyEl?.webkitRequestFullscreen
+    );
+    const fsEnabledFlag =
+      document.fullscreenEnabled ??
+      document.webkitFullscreenEnabled ??
+      document.mozFullScreenEnabled ??
+      document.msFullscreenEnabled;
     const isStandalone = Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator?.standalone);
     return detectClientEnvironment({
       userAgent: navigator.userAgent || "",
       protocol: window.location.protocol || "http:",
       hasNativeFullscreen: hasNativeFs,
+      fullscreenEnabled: fsEnabledFlag !== false,
       isStandalone,
       maxTouchPoints: navigator.maxTouchPoints || 0,
     });
@@ -1382,6 +1525,7 @@ function ny() {
       setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
       setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
       setGrudgeForestProgress(normalizeGrudgeForestProgress(w.grudgeForestProgress));
+      setVoidCityProgress(normalizeVoidCityProgress(w.voidCityProgress));
       setResumableRun(w.getSavedRunSnapshot?.() || null);
     };
     w.onCitadelLore = (lorePayload) => {
@@ -1421,6 +1565,16 @@ function ny() {
       grudgeForestStoryPausedRef.current = false;
       w.setEasterEggReading?.(true);
       setGrudgeForestStoryModal(storyPayload);
+    };
+    w.onVoidCityStory = (storyPayload) => {
+      if (!storyPayload) return;
+      if (storyPayload.progress || w.voidCityProgress) {
+        setVoidCityProgress(normalizeVoidCityProgress(storyPayload.progress || w.voidCityProgress));
+      }
+      v(w.playerCoins);
+      voidCityStoryPausedRef.current = false;
+      w.setEasterEggReading?.(true);
+      setVoidCityStoryModal(storyPayload);
     };
     const recordCareerProgress = (waveReached, isMatchEnd, victory) => {
       if (isMatchEnd) {
@@ -1464,6 +1618,13 @@ function ny() {
           w.infernoCleared = true;
           w.frozenTombCleared = true;
           w.grudgeForestCleared = true;
+        } else if (clearedMap === "void_city") {
+          w.classicCleared = true;
+          w.bloodCitadelCleared = true;
+          w.infernoCleared = true;
+          w.frozenTombCleared = true;
+          w.grudgeForestCleared = true;
+          w.voidCityCleared = true;
         }
       }
       w.unlockedMaps = computeUnlockedMaps({
@@ -1472,6 +1633,7 @@ function ny() {
         infernoCleared: Boolean(w.infernoCleared),
         frozenTombCleared: Boolean(w.frozenTombCleared),
         grudgeForestCleared: Boolean(w.grudgeForestCleared),
+        voidCityCleared: Boolean(w.voidCityCleared),
         highestWaveCleared: w.highestWaveCleared,
         storedUnlocked: w.unlockedMaps,
         founderUnlocked: founderUnlockedRef.current,
@@ -1482,6 +1644,7 @@ function ny() {
       setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
       setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
       setGrudgeForestProgress(normalizeGrudgeForestProgress(w.grudgeForestProgress));
+      setVoidCityProgress(normalizeVoidCityProgress(w.voidCityProgress));
       const activeHeroId = w.currentHero?.id || w.selectedHeroId || "eohyen";
       const nextHeroStats = recordHeroMatchProgress(curProf.heroStats, {
         heroId: activeHeroId,
@@ -1499,7 +1662,9 @@ function ny() {
           lifetimeKills: (curProf.lifetimeKills || 0) + deltaKills,
           matchesPlayed: (curProf.matchesPlayed || 0) + (isMatchEnd ? 1 : 0),
           victories: (curProf.victories || 0) + (isMatchEnd && victory ? 1 : 0),
-          unlockedTitles: computeUnlockedTitles(nextHighestWave, founderUnlockedRef.current),
+          unlockedTitles: computeUnlockedTitles(nextHighestWave, founderUnlockedRef.current, {
+            namelessSealUnlocked: Boolean(w.voidCityProgress?.namelessSealUnlocked),
+          }),
           heroStats: nextHeroStats,
         },
         { founderUnlocked: founderUnlockedRef.current, minHighestWave: nextHighestWave }
@@ -1530,11 +1695,13 @@ function ny() {
           infernoCleared: Boolean(w.infernoCleared),
           frozenTombCleared: Boolean(w.frozenTombCleared),
           grudgeForestCleared: Boolean(w.grudgeForestCleared),
+          voidCityCleared: Boolean(w.voidCityCleared),
           unlockedMaps: [...w.unlockedMaps],
           citadelSecrets: normalizeCitadelSecrets(w.citadelSecrets),
           infernoProgress: normalizeInfernoProgress(w.infernoProgress),
           frozenTombProgress: normalizeFrozenTombProgress(w.frozenTombProgress),
           grudgeForestProgress: normalizeGrudgeForestProgress(w.grudgeForestProgress),
+          voidCityProgress: normalizeVoidCityProgress(w.voidCityProgress),
         };
         Promise.allSettled([
           savePrivatePlayerSave(signedUser.uid, snapshot, founderUnlockedRef.current),
@@ -1556,6 +1723,7 @@ function ny() {
         infernoCleared: Boolean(w.infernoCleared),
         frozenTombCleared: Boolean(w.frozenTombCleared),
         grudgeForestCleared: Boolean(w.grudgeForestCleared),
+        voidCityCleared: Boolean(w.voidCityCleared),
         highestWaveCleared: w.highestWaveCleared,
         storedUnlocked: w.unlockedMaps,
         founderUnlocked: founderUnlockedRef.current,
@@ -1568,6 +1736,7 @@ function ny() {
     setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
     setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
     setGrudgeForestProgress(normalizeGrudgeForestProgress(w.grudgeForestProgress));
+    setVoidCityProgress(normalizeVoidCityProgress(w.voidCityProgress));
     setResumableRun(w.getSavedRunSnapshot?.() || null);
     setDeviceInfo(loadDeviceRecord());
     v(w.playerCoins);
@@ -1624,6 +1793,7 @@ function ny() {
           setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
           setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
           setGrudgeForestProgress(normalizeGrudgeForestProgress(w.grudgeForestProgress));
+          setVoidCityProgress(normalizeVoidCityProgress(w.voidCityProgress));
           setResumableRun(w.getSavedRunSnapshot?.() || null);
           bt((n) => n + 1);
         }
@@ -1682,7 +1852,11 @@ function ny() {
             mates.push({ id: mem.id, name: mem.name, heroId: rp?.heroId || mem.heroId, isHost: mem.isHost, hp: Math.max(0, Math.ceil(mHp)), maxHp: Math.max(1, Math.ceil(mMaxHp)), level: rp?.level || mem.level || 1, alive: mAlive });
           }
         }
-        vt({ heroName: w.currentHero.name.split("(")[0].trim(), level: w.player.level, hp: Math.ceil(w.player.hp), maxHp: w.player.maxHp, shield: Math.ceil(w.player.shield), xpPct: Math.min(100, w.player.xp / w.player.xpToNext * 100), wave: w.wave, kills: w.waveKilled, waveTotal: w.waveTotal, totalKilled: w.totalKilled || 0, totalDamage: Math.round(w.player.totalDamage || 0), waveElapsedTime: w.waveElapsedTime || 0, lastWaveClearTime: w.lastWaveClearTime || 0, buffsText: X.join(" \xB7 "), resourceText: we.resourceText, thienState: we.thienState || null, droneMode: we.droneMode || "attack", droneLabel: we.droneLabel || "T\u1EA5n C\xF4ng", droneColor: we.droneColor || "#38BDF8", cooldowns: [...w.player.cooldowns], padTeleportCds: we.padTeleportCds || [0, 0, 0, 0], skillStates: we.skillStates, chargeActive: we.chargeActive, chargeProgress: we.chargeProgress, chargeLabel: we.chargeLabel, combo: we.combo, coopActive: Boolean(w.multiplayer?.active), localDowned: Boolean(w.multiplayer?.localDowned), powerMultiplier: w.multiplayer?.powerMultiplier || 1, teammates: mates, boss: le && le.hp > 0 ? { name: le.name, hp: Math.ceil(le.hp), maxHp: le.maxHp, immune: false, phase: le.phase || 1 } : null, mapId: we.mapId || w.activeMapId || "classic", nearbyInteractable: we.nearbyInteractable || null, citadelSecrets: we.citadelSecrets || w.citadelSecrets || createDefaultCitadelSecrets(), citadelHud: we.citadelHud || null, infernoProgress: we.infernoProgress || normalizeInfernoProgress(w.infernoProgress), infernoHud: we.infernoHud || null, frozenTombProgress: we.frozenTombProgress || normalizeFrozenTombProgress(w.frozenTombProgress), frozenTombHud: we.frozenTombHud || null, grudgeForestProgress: we.grudgeForestProgress || normalizeGrudgeForestProgress(w.grudgeForestProgress), grudgeForestHud: we.grudgeForestHud || null }), v(w.playerCoins);
+        vt({ heroName: w.currentHero.name.split("(")[0].trim(), level: w.player.level, hp: Math.ceil(w.player.hp), maxHp: w.player.maxHp, shield: Math.ceil(w.player.shield), xpPct: Math.min(100, w.player.xp / w.player.xpToNext * 100), wave: w.wave, kills: w.waveKilled, waveTotal: w.waveTotal, totalKilled: w.totalKilled || 0, totalDamage: Math.round(w.player.totalDamage || 0), waveElapsedTime: w.waveElapsedTime || 0, lastWaveClearTime: w.lastWaveClearTime || 0, buffsText: X.join(" \xB7 "), resourceText: we.resourceText, thienState: we.thienState || null, droneMode: we.droneMode || "attack", droneLabel: we.droneLabel || "T\u1EA5n C\xF4ng", droneColor: we.droneColor || "#38BDF8", cooldowns: [...w.player.cooldowns], padTeleportCds: we.padTeleportCds || [0, 0, 0, 0], skillStates: we.skillStates, chargeActive: we.chargeActive, chargeProgress: we.chargeProgress, chargeLabel: we.chargeLabel, combo: we.combo, coopActive: Boolean(w.multiplayer?.active), localDowned: Boolean(w.multiplayer?.localDowned), powerMultiplier: w.multiplayer?.powerMultiplier || 1, teammates: mates, boss: le && le.hp > 0 ? { name: le.name, hp: Math.ceil(le.hp), maxHp: le.maxHp, immune: false, phase: le.phase || 1 } : null, mapId: we.mapId || w.activeMapId || "classic", nearbyInteractable: we.nearbyInteractable || null, citadelSecrets: we.citadelSecrets || w.citadelSecrets || createDefaultCitadelSecrets(), citadelHud: we.citadelHud || null, infernoProgress: we.infernoProgress || normalizeInfernoProgress(w.infernoProgress), infernoHud: we.infernoHud || null, frozenTombProgress: we.frozenTombProgress || normalizeFrozenTombProgress(w.frozenTombProgress), frozenTombHud: we.frozenTombHud || null, grudgeForestProgress: we.grudgeForestProgress || normalizeGrudgeForestProgress(w.grudgeForestProgress), grudgeForestHud: we.grudgeForestHud || null, voidCityProgress: we.voidCityProgress || normalizeVoidCityProgress(w.voidCityProgress), voidCityHud: we.voidCityHud || null });
+        if (w.playerCoins !== lastCoinsRef.current) {
+          lastCoinsRef.current = w.playerCoins;
+          v(w.playerCoins);
+        }
       }
       const nextMs = isHidden || w.gameState !== "PLAYING" ? 280 : (w.getPerformanceProfile?.().hudIntervalMs || 80);
       hudTimerId = setTimeout(tickHud, nextMs);
@@ -1892,9 +2066,25 @@ function ny() {
       } else {
         document.documentElement.style.removeProperty("--app-h");
       }
-      let fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      let fs = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
       setIsFullscreen(fs);
+      if (fs) {
+        setIsPseudoFullscreen(false);
+      }
       a.current?.resizeCanvas();
+    };
+    let onFullscreenChange = () => {
+      syncViewport();
+      setTimeout(syncViewport, 80);
+      setTimeout(syncViewport, 240);
+    };
+    let onFullscreenError = () => {
+      syncViewport();
     };
     syncViewport();
     let rootObs = null;
@@ -1904,16 +2094,24 @@ function ny() {
     }
     window.addEventListener("resize", syncViewport);
     window.addEventListener("orientationchange", syncViewport);
-    document.addEventListener("fullscreenchange", syncViewport);
-    document.addEventListener("webkitfullscreenchange", syncViewport);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    document.addEventListener("mozfullscreenchange", onFullscreenChange);
+    document.addEventListener("MSFullscreenChange", onFullscreenChange);
+    document.addEventListener("fullscreenerror", onFullscreenError);
+    document.addEventListener("webkitfullscreenerror", onFullscreenError);
     window.visualViewport?.addEventListener("resize", syncViewport);
     window.visualViewport?.addEventListener("scroll", syncViewport);
     return () => {
       rootObs?.disconnect();
       window.removeEventListener("resize", syncViewport);
       window.removeEventListener("orientationchange", syncViewport);
-      document.removeEventListener("fullscreenchange", syncViewport);
-      document.removeEventListener("webkitfullscreenchange", syncViewport);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", onFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", onFullscreenChange);
+      document.removeEventListener("fullscreenerror", onFullscreenError);
+      document.removeEventListener("webkitfullscreenerror", onFullscreenError);
       window.visualViewport?.removeEventListener("resize", syncViewport);
       window.visualViewport?.removeEventListener("scroll", syncViewport);
     };
@@ -1935,61 +2133,160 @@ function ny() {
     };
   }, [mpLobbyOpen]);
   let toggleFullscreen = (0, ie.useCallback)(async () => {
-    R.playClick();
-    let activatePseudoFs = (nextVal) => {
+    const getFsElement = () =>
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement ||
+      null;
+
+    const isNativeAllowed = (() => {
+      const enabledFlag =
+        document.fullscreenEnabled ??
+        document.webkitFullscreenEnabled ??
+        document.mozFullScreenEnabled ??
+        document.msFullscreenEnabled;
+      return enabledFlag !== false;
+    })();
+
+    let inIframe = false;
+    try {
+      inIframe = window.self !== window.top;
+    } catch {
+      inIframe = true;
+    }
+
+    let activatePseudoFs = (nextVal, blockedByIframe = false) => {
+      R.playClick();
       setIsPseudoFullscreen(nextVal);
       try {
         window.scrollTo(0, 1);
       } catch {
       }
       setTimeout(() => a.current?.resizeCanvas(), 60);
+      setTimeout(() => a.current?.resizeCanvas(), 220);
       if (nextVal) {
         if (envInfo.isInAppBrowser) {
-          G("Đã bật chế độ Tập Trung Toàn Khung! Để ẩn thanh Zalo/Messenger trên iOS, hãy bấm ⋯ → Mở bằng Safari → Thêm vào MH chính.");
+          G(
+            c === "vi"
+              ? "Đã bật chế độ Toàn Khung Tập Trung! Để ẩn thanh Zalo/Messenger trên iOS, hãy bấm ⋯ → Mở bằng Safari → Thêm vào MH chính."
+              : "Focus Fullscreen enabled! In Zalo/Messenger iOS, tap ⋯ → Open in Safari → Add to Home Screen.",
+            3400
+          );
         } else if (envInfo.isIOS) {
-          G("Đã bật chế độ Tập Trung iOS! Chọn Chia sẻ ⬆ → 'Thêm vào MH chính' để chơi full màn hình chuẩn 100%.");
+          G(
+            c === "vi"
+              ? "Đã bật chế độ Tập Trung iOS! Chọn Chia sẻ ⬆ → 'Thêm vào MH chính' để chơi full màn hình chuẩn 100%."
+              : "iOS Focus Mode enabled! Tap Share ⬆ → 'Add to Home Screen' for 100% native fullscreen.",
+            3400
+          );
+        } else if (blockedByIframe || (inIframe && !isNativeAllowed)) {
+          G(
+            c === "vi"
+              ? "Đã bật Toàn Khung! Lưu ý: khung nhúng (iframe) đang chặn API Fullscreen của trình duyệt — mở link game ở tab riêng để phóng to 100%."
+              : "Focus Fullscreen active! Embedded iframe blocks OS Fullscreen — open the game in its own browser tab for 100% fullscreen.",
+            3800
+          );
         } else {
-          G("Đã bật chế độ Toàn Khung Tập Trung!");
+          G(c === "vi" ? "Đã bật chế độ Toàn Khung Tập Trung!" : "Focus Fullscreen enabled!");
         }
       } else {
-        G("Đã thoát chế độ Toàn Khung.");
+        G(c === "vi" ? "Đã thoát chế độ Toàn Khung." : "Exited Fullscreen mode.");
       }
     };
 
     try {
-      let fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-      if (envInfo.supportsNativeFullscreen && !envInfo.isInAppBrowser) {
-        if (!fsEl) {
-          let root = document.documentElement;
-          if (root.requestFullscreen) await root.requestFullscreen();
-          else if (root.webkitRequestFullscreen) await root.webkitRequestFullscreen();
-          let nowFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-          if (nowFs) {
-            try {
-              if (layoutMode === "standard") {
-                await screen.orientation?.lock?.("landscape");
+      const fsEl = getFsElement();
+      if (fsEl) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+        else if (document.mozCancelFullScreen) await document.mozCancelFullScreen();
+        else if (document.msExitFullscreen) await document.msExitFullscreen();
+        setIsFullscreen(false);
+        setIsPseudoFullscreen(false);
+        setTimeout(() => a.current?.resizeCanvas(), 80);
+        setTimeout(() => a.current?.resizeCanvas(), 240);
+        R.playClick();
+        return;
+      }
+
+      if (envInfo.supportsNativeFullscreen && !envInfo.isInAppBrowser && isNativeAllowed) {
+        const candidates = [appShellRef.current, document.documentElement, document.body].filter(Boolean);
+        let triedNative = false;
+        let nativeSucceeded = false;
+
+        for (const el of candidates) {
+          try {
+            let reqResult;
+            if (typeof el.requestFullscreen === "function") {
+              triedNative = true;
+              try {
+                reqResult = el.requestFullscreen({ navigationUI: "hide" });
+              } catch {
+                reqResult = el.requestFullscreen();
               }
-            } catch {
+            } else if (typeof el.webkitRequestFullscreen === "function") {
+              triedNative = true;
+              reqResult = el.webkitRequestFullscreen();
+            } else if (typeof el.mozRequestFullScreen === "function") {
+              triedNative = true;
+              reqResult = el.mozRequestFullScreen();
+            } else if (typeof el.msRequestFullscreen === "function") {
+              triedNative = true;
+              reqResult = el.msRequestFullscreen();
+            } else {
+              continue;
             }
-            setIsPseudoFullscreen(false);
-            return;
+
+            if (reqResult && typeof reqResult.then === "function") {
+              await reqResult;
+            } else {
+              await new Promise((resolve) => setTimeout(resolve, 160));
+            }
+
+            if (!getFsElement()) {
+              await new Promise((resolve) => setTimeout(resolve, 120));
+            }
+
+            if (getFsElement()) {
+              nativeSucceeded = true;
+              break;
+            }
+          } catch {
+            // Try next candidate target (e.g., documentElement -> appShell -> body)
           }
-        } else {
-          if (document.exitFullscreen) await document.exitFullscreen();
-          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+        }
+
+        if (nativeSucceeded) {
+          setIsFullscreen(true);
           setIsPseudoFullscreen(false);
+          try {
+            if (layoutMode === "standard") {
+              await screen.orientation?.lock?.("landscape");
+            }
+          } catch {
+          }
+          setTimeout(() => a.current?.resizeCanvas(), 60);
+          setTimeout(() => a.current?.resizeCanvas(), 240);
+          R.playClick();
           return;
         }
+        activatePseudoFs(!isPseudoFullscreen, triedNative && inIframe);
+        return;
       }
-      activatePseudoFs(!isPseudoFullscreen);
+      activatePseudoFs(!isPseudoFullscreen, inIframe && !isNativeAllowed);
     } catch {
-      activatePseudoFs(!isPseudoFullscreen);
+      activatePseudoFs(!isPseudoFullscreen, inIframe);
     }
-  }, [G, envInfo, isPseudoFullscreen, layoutMode]);
+  }, [G, c, envInfo, isPseudoFullscreen, layoutMode]);
 
   (0, ie.useEffect)(() => {
+    document.documentElement?.classList.toggle("ios-focus-mode", isPseudoFullscreen);
     document.body.classList.toggle("ios-focus-mode", isPseudoFullscreen);
-    return () => document.body.classList.remove("ios-focus-mode");
+    return () => {
+      document.documentElement?.classList.remove("ios-focus-mode");
+      document.body.classList.remove("ios-focus-mode");
+    };
   }, [isPseudoFullscreen]);
 
   (0, ie.useEffect)(() => {
@@ -2172,12 +2469,14 @@ function ny() {
       infernoCleared: Boolean(w?.infernoCleared),
       frozenTombCleared: Boolean(w?.frozenTombCleared),
       grudgeForestCleared: Boolean(w?.grudgeForestCleared),
+      voidCityCleared: Boolean(w?.voidCityCleared),
       unlockedMaps: computeUnlockedMaps({
         classicCleared: Boolean(w?.classicCleared),
         bloodCitadelCleared: Boolean(w?.bloodCitadelCleared),
         infernoCleared: Boolean(w?.infernoCleared),
         frozenTombCleared: Boolean(w?.frozenTombCleared),
         grudgeForestCleared: Boolean(w?.grudgeForestCleared),
+        voidCityCleared: Boolean(w?.voidCityCleared),
         highestWaveCleared: highestWave,
         storedUnlocked: w?.unlockedMaps,
         founderUnlocked: founderUnlockedRef.current,
@@ -2186,6 +2485,7 @@ function ny() {
       infernoProgress: normalizeInfernoProgress(w?.infernoProgress),
       frozenTombProgress: normalizeFrozenTombProgress(w?.frozenTombProgress),
       grudgeForestProgress: normalizeGrudgeForestProgress(w?.grudgeForestProgress),
+      voidCityProgress: normalizeVoidCityProgress(w?.voidCityProgress),
     };
   }, []);
   let applyProgressSnapshotToEngine = (0, ie.useCallback)((snapshot) => {
@@ -2211,12 +2511,14 @@ function ny() {
     w.infernoCleared = Boolean(w.infernoCleared || snapshot.infernoCleared);
     w.frozenTombCleared = Boolean(w.frozenTombCleared || snapshot.frozenTombCleared);
     w.grudgeForestCleared = Boolean(w.grudgeForestCleared || snapshot.grudgeForestCleared);
+    w.voidCityCleared = Boolean(w.voidCityCleared || snapshot.voidCityCleared);
     w.unlockedMaps = computeUnlockedMaps({
       classicCleared: w.classicCleared,
       bloodCitadelCleared: w.bloodCitadelCleared,
       infernoCleared: w.infernoCleared,
       frozenTombCleared: w.frozenTombCleared,
       grudgeForestCleared: w.grudgeForestCleared,
+      voidCityCleared: w.voidCityCleared,
       highestWaveCleared: w.highestWaveCleared,
       storedUnlocked: [...(w.unlockedMaps || []), ...(snapshot.unlockedMaps || [])],
       founderUnlocked: founderUnlockedRef.current,
@@ -2228,6 +2530,7 @@ function ny() {
     w.infernoProgress = mergeInfernoProgress(w.infernoProgress, snapshot.infernoProgress);
     w.frozenTombProgress = mergeFrozenTombProgress(w.frozenTombProgress, snapshot.frozenTombProgress);
     w.grudgeForestProgress = mergeGrudgeForestProgress(w.grudgeForestProgress, snapshot.grudgeForestProgress);
+    w.voidCityProgress = mergeVoidCityProgress(w.voidCityProgress, snapshot.voidCityProgress);
     const reqMap = normalizeArenaMapId(snapshot.selectedMapId || w.selectedMapId);
     w.selectedMapId = isMapUnlocked(reqMap, w.unlockedMaps, founderUnlockedRef.current) ? reqMap : "classic";
     let candidate = Mi.find((hr) => hr.id === snapshot.selectedHeroId) || Mi[4];
@@ -2245,6 +2548,7 @@ function ny() {
     setInfernoProgress(normalizeInfernoProgress(w.infernoProgress));
     setFrozenTombProgress(normalizeFrozenTombProgress(w.frozenTombProgress));
     setGrudgeForestProgress(normalizeGrudgeForestProgress(w.grudgeForestProgress));
+    setVoidCityProgress(normalizeVoidCityProgress(w.voidCityProgress));
     v(w.playerCoins);
     bt((n) => n + 1);
   }, []);
@@ -2978,8 +3282,13 @@ function ny() {
     }
   }, ve = (0, ie.useCallback)(() => {
     let w = a.current;
-    w && (R.playClick(), w.multiplayer?.active ? setMpMenuOpen((prev) => !prev) : w.gameState === "PLAYING" ? (w.gameState = "PAUSED", w.moveInput = { x: 0, y: 0 }, w.tapDestination = null, w.aimState.active = false, m("PAUSED")) : w.gameState === "PAUSED" && (w.gameState = "PLAYING", m("PLAYING")));
-  }, []), A = (0, ie.useRef)({ pointerId: null, center: { x: 0, y: 0 }, dragRadius: 42 }), O = (0, ie.useRef)(null), K = (w) => {
+    w && (R.playClick(), resetJoystickVisual(), w.multiplayer?.active ? setMpMenuOpen((prev) => !prev) : w.gameState === "PLAYING" ? (w.gameState = "PAUSED", w.moveInput = { x: 0, y: 0 }, w.tapDestination = null, w.aimState.active = false, m("PAUSED")) : w.gameState === "PAUSED" && (w.gameState = "PLAYING", m("PLAYING")));
+  }, []), A = (0, ie.useRef)({ pointerId: null, center: { x: 0, y: 0 }, dragRadius: 42 }), O = (0, ie.useRef)(null), joyZoneRef = (0, ie.useRef)(null), joyArcRef = (0, ie.useRef)(null), resetJoystickVisual = () => {
+    A.current.pointerId = null;
+    joyZoneRef.current && joyZoneRef.current.classList.remove("is-active");
+    O.current && (O.current.style.transform = "translate3d(0px, 0px, 0)");
+    joyArcRef.current && (joyArcRef.current.style.opacity = "0");
+  }, K = (w) => {
     let j = a.current;
     if (!j || j.gameState !== "PLAYING" || w.pointerType === "mouse" && w.button !== 0) return;
     w.preventDefault(), w.stopPropagation();
@@ -2989,6 +3298,7 @@ function ny() {
     } catch {
     }
     A.current.pointerId = w.pointerId;
+    joyZoneRef.current && joyZoneRef.current.classList.add("is-active");
     let he = ee.getBoundingClientRect();
     A.current.dragRadius = computeJoystickDragRadius(he.width);
     A.current.center = { x: he.left + he.width / 2, y: he.top + he.height / 2 }, j.tapDestination = null, ge(w);
@@ -2996,19 +3306,29 @@ function ny() {
     if (A.current.pointerId !== w.pointerId) return;
     let maxR = A.current.dragRadius || 42;
     let j = w.clientX - A.current.center.x, ee = w.clientY - A.current.center.y, he = Math.hypot(j, ee) || 1, le = Math.min(maxR, he), X = j / he * le, we = ee / he * le;
-    O.current && (O.current.style.transform = `translate(${X}px, ${we}px)`), a.current && (a.current.moveInput = { x: X / maxR, y: we / maxR });
+    O.current && (O.current.style.transform = `translate3d(${X.toFixed(1)}px, ${we.toFixed(1)}px, 0)`);
+    if (joyArcRef.current) {
+      if (he > 4) {
+        let deg = (Math.atan2(we, X) * 180) / Math.PI;
+        joyArcRef.current.style.transform = `rotate(${deg.toFixed(1)}deg)`;
+        joyArcRef.current.style.opacity = String(Math.min(1, 0.25 + (le / maxR) * 0.75));
+      } else {
+        joyArcRef.current.style.opacity = "0";
+      }
+    }
+    a.current && (a.current.moveInput = { x: X / maxR, y: we / maxR });
   }, ut = (w) => {
     if (A.current.pointerId === w.pointerId) {
-      A.current.pointerId = null;
       try {
         w.currentTarget.hasPointerCapture(w.pointerId) && w.currentTarget.releasePointerCapture(w.pointerId);
       } catch {
       }
-      O.current && (O.current.style.transform = "translate(0px, 0px)"), a.current && (a.current.moveInput = { x: 0, y: 0 });
+      resetJoystickVisual();
+      a.current && (a.current.moveInput = { x: 0, y: 0 });
     }
   }, pt = (0, ie.useRef)(null), Ye = (0, ie.useRef)(null), at = (w, j) => {
     if (!Ye.current) return false;
-    let ee = Ye.current.getBoundingClientRect();
+    let ee = pt.current?.cancelRect && pt.current.cancelRect.width > 0 ? pt.current.cancelRect : Ye.current.getBoundingClientRect();
     return w >= ee.left - 24 && w <= ee.right + 24 && j >= ee.top - 24 && j <= ee.bottom + 24;
   }, Be = (w, j) => {
     let ee = a.current;
@@ -3020,12 +3340,17 @@ function ny() {
     } catch {
     }
     let le = he.getBoundingClientRect();
-    pt.current = { idx: w, pointerId: j.pointerId, originX: le.left + le.width / 2, originY: le.top + le.height / 2 };
+    pt.current = { idx: w, pointerId: j.pointerId, originX: le.left + le.width / 2, originY: le.top + le.height / 2, cancelRect: null };
     setAimSkillIdx(w);
     aimKnobRef.current && (aimKnobRef.current.style.transform = "translate3d(0px, 0px, 0)");
     aimWheelRef.current && aimWheelRef.current.classList.remove("is-cancel");
     let X = ee.currentHero.skills[w], we = ee.getDefaultAimForSkill(w);
-    ee.aimState = { active: true, skillIdx: w, aimType: X.aimType, angle: we.angle, targetX: we.targetX, targetY: we.targetY, cancelled: false, range: X.range, radius: X.radius || 0, width: X.width || 0, hasTargetInRange: ee.checkAimHasTarget(we.angle, X.range, X.aimType, X.width || 0) }, ee.startSkillHold(w, we.angle, we.targetX, we.targetY), Ye.current && (Ye.current.style.display = "flex", Ye.current.classList.remove("hover-cancel"));
+    ee.aimState = { active: true, skillIdx: w, aimType: X.aimType, angle: we.angle, targetX: we.targetX, targetY: we.targetY, cancelled: false, range: X.range, radius: X.radius || 0, width: X.width || 0, hasTargetInRange: ee.checkAimHasTarget(we.angle, X.range, X.aimType, X.width || 0) }, ee.startSkillHold(w, we.angle, we.targetX, we.targetY);
+    if (Ye.current) {
+      Ye.current.style.display = "flex";
+      Ye.current.classList.remove("hover-cancel");
+      pt.current.cancelRect = Ye.current.getBoundingClientRect();
+    }
   }, ta = (w) => {
     let j = a.current, ee = pt.current;
     if (!j || !ee || ee.pointerId !== w.pointerId || !j.aimState.active) return;
@@ -3051,6 +3376,7 @@ function ny() {
         let maxW = (j.mapWidth || 2000) - 30, maxH = (j.mapHeight || 1400) - 30;
         j.aimState.targetX = Math.max(30, Math.min(maxW, j.player.x + Math.cos(Et) * fe)), j.aimState.targetY = Math.max(30, Math.min(maxH, j.player.y + Math.sin(Et) * fe));
       } else j.aimState.targetX = j.player.x + Math.cos(Et) * (rt.range || 120), j.aimState.targetY = j.player.y + Math.sin(Et) * (rt.range || 120);
+      j.aimState.hasTargetInRange = j.checkAimHasTarget(Et, rt.range, rt.aimType, rt.width || 0);
       j.updateSkillHoldAim(j.aimState.angle, j.aimState.targetX, j.aimState.targetY);
     }
   }, Ha = (w) => {
@@ -3159,12 +3485,12 @@ function ny() {
       console.error(w);
     }
     setShareGuideOpen(true);
-  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen || chroniclesOpen || infernoJournalOpen || frozenTombJournalOpen || grudgeForestJournalOpen, _i = (0, ie.useRef)(Xa), readingAnyEasterEgg = Boolean(citadelLoreModal || infernoStoryModal || frozenTombStoryModal || grudgeForestStoryModal);
+  }, Kt = (0, ie.useRef)(null), Ci = (0, ie.useRef)(/* @__PURE__ */ new Set()), Da = (0, ie.useRef)(/* @__PURE__ */ new Map()), Xa = T || x || H || P || W || oe || De || mpLobbyOpen || mpMenuOpen || shareGuideOpen || founderModalOpen || accountModalOpen || chroniclesOpen || infernoJournalOpen || frozenTombJournalOpen || grudgeForestJournalOpen || voidCityWorkshopOpen, _i = (0, ie.useRef)(Xa), readingAnyEasterEgg = Boolean(citadelLoreModal || infernoStoryModal || frozenTombStoryModal || grudgeForestStoryModal || voidCityStoryModal);
   (0, ie.useEffect)(() => {
     a.current?.setEasterEggReading?.(readingAnyEasterEgg);
   }, [readingAnyEasterEgg]);
   (0, ie.useEffect)(() => {
-    _i.current = Xa, Xa && (Ci.current.clear(), Da.current.clear(), pt.current = null, setAimSkillIdx(-1), Ye.current && (Ye.current.style.display = "none", Ye.current.classList.remove("hover-cancel")), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.tapDestination = null, a.current.aimState.active = false, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true)));
+    _i.current = Xa, Xa && (resetJoystickVisual(), Ci.current.clear(), Da.current.clear(), pt.current = null, setAimSkillIdx(-1), Ye.current && (Ye.current.style.display = "none", Ye.current.classList.remove("hover-cancel")), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.tapDestination = null, a.current.aimState.active = false, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true)));
   }, [Xa]), (0, ie.useEffect)(() => {
     let w = Ci.current, j = Da.current, ee = /* @__PURE__ */ new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]), he = (ue) => {
       let fe = 0, Ie = 0;
@@ -3197,6 +3523,18 @@ function ny() {
       let fe = a.current;
       if (!fe) return;
       if (ue.code === "Escape") {
+        if (voidCityStoryModal) {
+          setVoidCityStoryModal(null);
+          if (voidCityStoryPausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
+            voidCityStoryPausedRef.current = false;
+            a.current.gameState = "PLAYING";
+          }
+          return;
+        }
+        if (voidCityWorkshopOpen) {
+          setVoidCityWorkshopOpen(false);
+          return;
+        }
         if (grudgeForestStoryModal) {
           setGrudgeForestStoryModal(null);
           if (grudgeForestStoryPausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
@@ -3307,18 +3645,18 @@ function ny() {
         }
       } else ee.has(ue.code) && (w.delete(ue.code), fe && he(fe));
     }, Et = () => {
-      w.clear(), j.clear(), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true));
+      resetJoystickVisual(), w.clear(), j.clear(), a.current && (a.current.moveInput = { x: 0, y: 0 }, a.current.player.chargeState.active && a.current.releaseSkillHold(a.current.player.chargeState.skillIdx, a.current.player.facing, a.current.player.x, a.current.player.y, true));
     };
     return window.addEventListener("keydown", we), window.addEventListener("keyup", rt), window.addEventListener("blur", Et), () => {
       window.removeEventListener("keydown", we), window.removeEventListener("keyup", rt), window.removeEventListener("blur", Et);
     };
-  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen, chroniclesOpen, citadelLoreModal, infernoStoryModal, infernoJournalOpen, frozenTombStoryModal, frozenTombJournalOpen, grudgeForestStoryModal, grudgeForestJournalOpen]);
+  }, [ve, W, oe, P, T, x, H, De, mpLobbyOpen, mpMenuOpen, founderModalOpen, accountModalOpen, chroniclesOpen, citadelLoreModal, infernoStoryModal, infernoJournalOpen, frozenTombStoryModal, frozenTombJournalOpen, grudgeForestStoryModal, grudgeForestJournalOpen, voidCityStoryModal, voidCityWorkshopOpen]);
   let ze = Ef[c];
   let fsActive = isFullscreen || isPseudoFullscreen;
   let portraitVp = computeCameraViewportConfig({ viewW: viewportSize.w, viewH: viewportSize.h, layoutMode, fovPreset: portraitFov });
   let isPortraitHud = portraitVp.isPortrait;
-  return (0, u.jsxs)("div", { className: `app-shell select-none ${isPseudoFullscreen ? "ios-focus-mode" : ""} ${isPortraitHud ? "portrait-ui" : ""}`, children: [(0, u.jsx)("canvas", { ref: s, id: "gameCanvas", onContextMenu: (w) => w.preventDefault(), onPointerMove: (w) => {
-    let j = a.current, ee = w.currentTarget.getBoundingClientRect(), he = w.clientX - ee.left, le = w.clientY - ee.top;
+  return (0, u.jsxs)("div", { ref: appShellRef, className: `app-shell select-none ${isPseudoFullscreen ? "ios-focus-mode" : ""} ${isPortraitHud ? "portrait-ui" : ""}`, children: [(0, u.jsx)("canvas", { ref: s, id: "gameCanvas", onContextMenu: (w) => w.preventDefault(), onPointerMove: (w) => {
+    let j = a.current, ee = j?.canvasRect && j.canvasRect.width > 0 ? j.canvasRect : w.currentTarget.getBoundingClientRect(), he = w.clientX - ee.left, le = w.clientY - ee.top;
     if (Kt.current = { x: he, y: le }, j && j.gameState === "PLAYING" && j.player.chargeState.active) {
       let X = j.screenToWorld(he, le), we = Math.atan2(X.y - j.player.y, X.x - j.player.x);
       j.updateSkillHoldAim(we, X.x, X.y);
@@ -3330,7 +3668,7 @@ function ny() {
   }, onPointerDown: (w) => {
     let j = a.current;
     if (!j || j.gameState !== "PLAYING" || j.waitingReward || j.waveCleared) return;
-    let ee = w.currentTarget.getBoundingClientRect(), he = w.clientX - ee.left, le = w.clientY - ee.top;
+    let ee = j.canvasRect && j.canvasRect.width > 0 ? j.canvasRect : w.currentTarget.getBoundingClientRect(), he = w.clientX - ee.left, le = w.clientY - ee.top;
     Kt.current = { x: he, y: le };
     let X = j.screenToWorld(he, le);
     w.button === 2 ? (w.preventDefault(), j.player.facing = Math.atan2(X.y - j.player.y, X.x - j.player.x), j.triggerBasicAttack()) : (w.pointerType === "touch" || w.button === 0) && (j.tapDestination = { x: X.x, y: X.y }, j.tapRipple = { x: X.x, y: X.y, radius: 10, alpha: 1 });
@@ -3338,21 +3676,21 @@ function ny() {
     R.playClick(), je(p.id), N(true);
   }, title: "Cửa Hàng Trang Bị", children: [(0, u.jsx)("span", { children: "🪙" }), (0, u.jsx)("span", { className: "font-mono-numbers tabular-nums", children: f })] }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn border-cyan-500/45 text-cyan-200", onClick: () => {
     R.playClick(), ye(true);
-  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-rose-950/55 border-t border-rose-500/30 text-rose-200", children: [(0, u.jsx)("span", { className: "font-bold truncate", children: c === "vi" ? "🏰 Cổ Thành Huyết Táng" : "🏰 Bloodsoaked Citadel" }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: ["Tin ", re.citadelSecrets?.tinClue ? "✓" : "?", " · Bảo ", re.citadelSecrets?.baoClue ? "✓" : "?", " · Ẩn ", re.citadelSecrets?.combinedUnlocked ? "✓" : "?"] })] }), re.mapId === "inferno_ash" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-orange-950/60 border-t border-orange-500/35 text-orange-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["🔥 ", re.infernoHud?.zoneLabel || (c === "vi" ? "Hỏa Ngục Tàn Tro" : "Inferno of Ashes")] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setInfernoJournalOpen(true); }, className: "font-mono-numbers text-amber-200 hover:text-white shrink-0 cursor-pointer", children: `📜 ${re.infernoHud?.docsCount || 0}/${re.infernoHud?.docsTotal || 13}` })] }), re.mapId === "frozen_tomb" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-sky-950/70 border-t border-sky-400/35 text-sky-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["❄️ ", re.frozenTombHud?.zoneLabel || (c === "vi" ? "Băng Mộ Vĩnh Cửu" : "Eternal Frozen Tomb"), re.frozenTombHud?.frostBuildup > 0 ? ` · 🥶${Math.round(re.frozenTombHud.frostBuildup * 100)}%` : ""] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setFrozenTombJournalOpen(true); }, className: "font-mono-numbers text-cyan-200 hover:text-white shrink-0 cursor-pointer", children: `📜 ${re.frozenTombProgress?.collectedDocs?.length || 0}/${Object.keys(FROZEN_TOMB_DOCS).length}` })] }), re.mapId === "grudge_forest" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-emerald-950/75 border-t border-emerald-400/35 text-emerald-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["🌿 ", re.grudgeForestHud?.zoneLabel || (c === "vi" ? "Rừng Oán Niệm" : "Forest of Grudges"), re.grudgeForestHud?.inSilenceZone ? (c === "vi" ? " · 🤫 CÂM LẶNG" : " · 🤫 SILENCE") : ""] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setGrudgeForestJournalOpen(true); }, className: "font-mono-numbers text-emerald-200 hover:text-white shrink-0 cursor-pointer", children: `📜 ${re.grudgeForestHud?.docsCount ?? (re.grudgeForestProgress?.collectedDocs?.length || 0)}/${re.grudgeForestHud?.docsTotal || Object.keys(GRUDGE_FOREST_DOCS).length}` })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState) || re.mapId === "blood_citadel" || re.mapId === "inferno_ash" || re.mapId === "frozen_tomb" || re.mapId === "grudge_forest") && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
+  }, title: "Bảng Kỹ Năng", children: "📖" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn border-emerald-500/45 text-emerald-200 hidden min-[390px]:inline-flex", onClick: toggleFullscreen, title: fsActive ? (c === "vi" ? "Thoát toàn màn hình" : "Exit Fullscreen") : (c === "vi" ? "Toàn màn hình" : "Fullscreen"), "aria-label": fsActive ? "Exit Fullscreen" : "Fullscreen", children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "hud-portrait-btn", onClick: ve, title: "Tạm dừng / Cài đặt", children: "❚❚" })] })] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-rose-950/55 border-t border-rose-500/30 text-rose-200", children: [(0, u.jsx)("span", { className: "font-bold truncate", children: c === "vi" ? "🏰 Cổ Thành Huyết Táng" : "🏰 Bloodsoaked Citadel" }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: ["Tin ", re.citadelSecrets?.tinClue ? "✓" : "?", " · Bảo ", re.citadelSecrets?.baoClue ? "✓" : "?", " · Ẩn ", re.citadelSecrets?.combinedUnlocked ? "✓" : "?"] })] }), re.mapId === "inferno_ash" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-orange-950/60 border-t border-orange-500/35 text-orange-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["🔥 ", re.infernoHud?.zoneLabel || (c === "vi" ? "Hỏa Ngục Tàn Tro" : "Inferno of Ashes")] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setInfernoJournalOpen(true); }, className: "font-mono-numbers text-amber-200 hover:text-white shrink-0 cursor-pointer", children: `📜 ${re.infernoHud?.docsCount || 0}/${re.infernoHud?.docsTotal || 13}` })] }), re.mapId === "frozen_tomb" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-sky-950/70 border-t border-sky-400/35 text-sky-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["❄️ ", re.frozenTombHud?.zoneLabel || (c === "vi" ? "Băng Mộ Vĩnh Cửu" : "Eternal Frozen Tomb"), re.frozenTombHud?.frostBuildup > 0 ? ` · 🥶${Math.round(re.frozenTombHud.frostBuildup * 100)}%` : ""] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setFrozenTombJournalOpen(true); }, className: "font-mono-numbers text-cyan-200 hover:text-white shrink-0 cursor-pointer", children: `📜 ${re.frozenTombProgress?.collectedDocs?.length || 0}/${Object.keys(FROZEN_TOMB_DOCS).length}` })] }), re.mapId === "grudge_forest" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-emerald-950/75 border-t border-emerald-400/35 text-emerald-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["🌿 ", re.grudgeForestHud?.zoneLabel || (c === "vi" ? "Rừng Oán Niệm" : "Forest of Grudges"), re.grudgeForestHud?.inSilenceZone ? (c === "vi" ? " · 🤫 CÂM LẶNG" : " · 🤫 SILENCE") : ""] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setGrudgeForestJournalOpen(true); }, className: "font-mono-numbers text-emerald-200 hover:text-white shrink-0 cursor-pointer", children: `📜 ${re.grudgeForestHud?.docsCount ?? (re.grudgeForestProgress?.collectedDocs?.length || 0)}/${re.grudgeForestHud?.docsTotal || Object.keys(GRUDGE_FOREST_DOCS).length}` })] }), re.mapId === "void_city" && (0, u.jsxs)("div", { className: "px-2 py-0.5 flex items-center justify-between gap-2 text-[9px] font-moba bg-indigo-950/80 border-t border-sky-400/35 text-sky-100 pointer-events-auto", children: [(0, u.jsxs)("span", { className: "font-bold truncate", children: ["🏛️ ", re.voidCityHud?.zoneLabel || (c === "vi" ? "Thành Phố Vạn Không" : "Void City"), re.voidCityHud?.clockReversed ? " · ↺ REV" : ""] }), (0, u.jsx)("button", { type: "button", onClick: () => { R.playModalOpen(); setVoidCityWorkshopOpen(true); }, className: "font-mono-numbers text-amber-200 hover:text-white shrink-0 cursor-pointer", children: `❖ ${re.voidCityHud?.relicCount ?? countVoidCityRelics(re.voidCityProgress)}/6 · 📜${re.voidCityHud?.docsCount ?? (re.voidCityProgress?.collectedDocIds?.length || 0)}/${re.voidCityHud?.docsTotal || Object.keys(VOID_CITY_DOCS).length}` })] }), re.boss && (0, u.jsxs)("div", { className: "hud-portrait-boss", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0 tabular-nums", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[6px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })]  }), (re.resourceText || re.buffsText || re.combo.active || (re.coopActive && re.teammates && re.teammates.length > 0) || (p.id === "thien" && re.thienState) || re.mapId === "blood_citadel" || re.mapId === "inferno_ash" || re.mapId === "frozen_tomb" || re.mapId === "grudge_forest" || re.mapId === "void_city") && (0, u.jsxs)("div", { className: "hud-portrait-subrow", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start gap-1 max-w-[60vw]", children: [(re.resourceText || re.buffsText) && (0, u.jsx)("div", { className: "px-2 py-0.5 rounded-md bg-slate-950/65 border border-slate-700/50 text-[9px] font-mono-numbers font-bold text-amber-200 truncate max-w-full", children: [re.resourceText, re.buffsText].filter(Boolean).join(" \xB7 ") }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel thien-eye-compact", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: "Boss HP" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name.split(" ")[0]} ${b.hp}/${b.maxHp}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1 ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2 ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3 ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4 ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-0.5 border-t border-sky-500/20", children: [(0, u.jsxs)("span", { className: "font-mono-numbers text-amber-200 font-bold", children: ["Σ ", (re.thienState.totalDamage || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300", children: ["💀 ", re.thienState.totalKilled || 0] }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200", children: ["⏱ ", re.thienState.lastWaveClearTime > 0 ? formatWaveClock(re.thienState.lastWaveClearTime) : formatWaveClock(re.thienState.waveElapsedTime)] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "flex flex-col gap-0.5 w-[136px]", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "px-1.5 py-0.5 rounded-md bg-slate-950/68 border border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "💀" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
-  }) })] }), (0, u.jsxs)("div", { className: "flex flex-col items-end gap-1", children: [re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: [re.combo.efficiency, "%"] })] })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] }), re.mapId === "blood_citadel" && (0, u.jsx)(CitadelTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: citadelMinimapOpen, onToggle: () => { R.playTabSwitch(); setCitadelMinimapOpen((vOpen) => !vOpen); } }), re.mapId === "inferno_ash" && (0, u.jsx)(InfernoTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: infernoMinimapOpen, onToggle: () => { R.playTabSwitch(); setInfernoMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setInfernoJournalOpen(true); } }), re.mapId === "frozen_tomb" && (0, u.jsx)(FrozenTombTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: frozenTombMinimapOpen, onToggle: () => { R.playTabSwitch(); setFrozenTombMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setFrozenTombJournalOpen(true); } }), re.mapId === "grudge_forest" && (0, u.jsx)(GrudgeForestTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: grudgeForestMinimapOpen, onToggle: () => { R.playTabSwitch(); setGrudgeForestMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setGrudgeForestJournalOpen(true); } })] })] })]  }) : (0, u.jsxs)("div", { className: "hud-header", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-hero-card w-[162px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold leading-tight", children: [(0, u.jsx)("span", { className: "text-white font-moba text-xs text-neon-cyan truncate", children: re.heroName }), (0, u.jsxs)("span", { className: "text-[#F59E0B] font-mono-numbers text-[11px] shrink-0", children: ["Lv.", re.level] })] }), (0, u.jsxs)("div", { className: "bar-container h-[7px] mt-1", children: [(0, u.jsx)("div", { className: "bar-fill hp-fill", style: { width: `${re.hp / re.maxHp * 100}%` } }), (0, u.jsx)("div", { className: "shield-fill", style: { width: `${Math.min(100, re.shield / re.maxHp * 100)}%` } })] }), (0, u.jsxs)("div", { className: "flex justify-between text-[9.5px] text-slate-400 mt-0.5 font-mono-numbers leading-tight", children: [(0, u.jsxs)("span", { children: [re.hp, " / ", re.maxHp] }), re.shield > 0 && (0, u.jsxs)("span", { className: "text-[#38BDF8]", children: ["Khi\xEAn: ", re.shield] })] }), re.resourceText && (0, u.jsx)("div", { className: "text-[9.5px] font-mono-numbers font-extrabold text-amber-300 mt-0.5 truncate leading-tight", children: re.resourceText }), re.buffsText && (0, u.jsx)("div", { className: "text-[9.5px] text-[#FDE68A] mt-0.5 truncate font-semibold leading-tight", children: re.buffsText }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill xp-fill", style: { width: `${re.xpPct}%` } }) })] }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap mt-1 pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "HP Boss:" : "Boss HP:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name} ${b.hp.toLocaleString()}/${b.maxHp.toLocaleString()}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK: ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1: ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2: ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3: ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4: ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-1 border-t border-sky-500/20", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Tổng ST:" : "Total DMG:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-amber-300 font-black", children: (re.thienState.totalDamage || 0).toLocaleString() })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Quái hạ gục:" : "Kills:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300 font-bold", children: [re.kills, "/", re.waveTotal, " (Tổng ", re.thienState.totalKilled || 0, ")"] })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Hoàn thành màn:" : "Wave Clear:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200 font-bold", children: [formatWaveClock(re.thienState.waveElapsedTime), re.thienState.lastWaveClearTime > 0 ? ` · Trước ${formatWaveClock(re.thienState.lastWaveClearTime)}` : ""] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "mt-1 flex flex-col gap-1 w-[152px] sm:w-[162px] pointer-events-none", children: re.teammates.map((mate) => {
+  }) })] }), (0, u.jsxs)("div", { className: "flex flex-col items-end gap-1", children: [re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: [re.combo.efficiency, "%"] })] })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] }), re.mapId === "blood_citadel" && (0, u.jsx)(CitadelTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: citadelMinimapOpen, onToggle: () => { R.playTabSwitch(); setCitadelMinimapOpen((vOpen) => !vOpen); } }), re.mapId === "inferno_ash" && (0, u.jsx)(InfernoTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: infernoMinimapOpen, onToggle: () => { R.playTabSwitch(); setInfernoMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setInfernoJournalOpen(true); } }), re.mapId === "frozen_tomb" && (0, u.jsx)(FrozenTombTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: frozenTombMinimapOpen, onToggle: () => { R.playTabSwitch(); setFrozenTombMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setFrozenTombJournalOpen(true); } }), re.mapId === "grudge_forest" && (0, u.jsx)(GrudgeForestTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: true, isOpen: grudgeForestMinimapOpen, onToggle: () => { R.playTabSwitch(); setGrudgeForestMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setGrudgeForestJournalOpen(true); } }), re.mapId === "void_city" && (0, u.jsx)(VoidCityTacticalMinimap, { hudSnapshot: re, lang: c, compact: true, isOpen: voidCityMinimapOpen, onToggle: () => { R.playTabSwitch(); setVoidCityMinimapOpen((vOpen) => !vOpen); }, onOpenRelics: () => { R.playModalOpen(); setVoidCityWorkshopOpen(true); } })] })] })]  }) : (0, u.jsxs)("div", { className: "hud-header", children: [(0, u.jsxs)("div", { className: "flex flex-col items-start pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-hero-card w-[162px]", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-bold leading-tight", children: [(0, u.jsx)("span", { className: "text-white font-moba text-xs text-neon-cyan truncate", children: re.heroName }), (0, u.jsxs)("span", { className: "text-[#F59E0B] font-mono-numbers text-[11px] shrink-0", children: ["Lv.", re.level] })] }), (0, u.jsxs)("div", { className: "bar-container h-[7px] mt-1", children: [(0, u.jsx)("div", { className: "bar-fill hp-fill", style: { width: `${re.hp / re.maxHp * 100}%` } }), (0, u.jsx)("div", { className: "shield-fill", style: { width: `${Math.min(100, re.shield / re.maxHp * 100)}%` } })] }), (0, u.jsxs)("div", { className: "flex justify-between text-[9.5px] text-slate-400 mt-0.5 font-mono-numbers leading-tight", children: [(0, u.jsxs)("span", { children: [re.hp, " / ", re.maxHp] }), re.shield > 0 && (0, u.jsxs)("span", { className: "text-[#38BDF8]", children: ["Khi\xEAn: ", re.shield] })] }), re.resourceText && (0, u.jsx)("div", { className: "text-[9.5px] font-mono-numbers font-extrabold text-amber-300 mt-0.5 truncate leading-tight", children: re.resourceText }), re.buffsText && (0, u.jsx)("div", { className: "text-[9.5px] text-[#FDE68A] mt-0.5 truncate font-semibold leading-tight", children: re.buffsText }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill xp-fill", style: { width: `${re.xpPct}%` } }) })] }), p.id === "thien" && re.thienState && (0, u.jsxs)("div", { className: "thien-eye-wrap mt-1 pointer-events-auto", children: [(0, u.jsxs)("button", { type: "button", className: "thien-eye-toggle", onClick: () => { R.playTabSwitch(); setThienEyeOpen((vOpen) => !vOpen); }, children: [(0, u.jsx)("span", { children: "👁" }), (0, u.jsx)("span", { children: c === "vi" ? "THIÊN NHÃN" : "HEAVENLY EYE" }), (0, u.jsx)("span", { className: "font-mono-numbers text-sky-300", children: formatWaveClock(re.thienState.waveElapsedTime) }), (0, u.jsx)("span", { className: "text-[9px] opacity-80", children: thienEyeOpen ? "▲" : "▼" })] }), thienEyeOpen && (0, u.jsxs)("div", { className: "thien-eye-panel", children: [(0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "HP Boss:" : "Boss HP:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-rose-300 font-bold truncate max-w-[140px]", children: re.thienState.bosses?.length > 0 ? re.thienState.bosses.map((b) => `${b.name} ${b.hp.toLocaleString()}/${b.maxHp.toLocaleString()}`).join(" · ") : (c === "vi" ? "Chưa xuất hiện" : "None") })] }), (0, u.jsxs)("div", { className: "thien-eye-skills", children: [(0, u.jsxs)("span", { children: ["ATK: ", (re.thienState.breakdown?.atk || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C1: ", (re.thienState.breakdown?.c1 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C2: ", (re.thienState.breakdown?.c2 || 0).toLocaleString()] }), (0, u.jsxs)("span", { children: ["C3: ", (re.thienState.breakdown?.c3 || 0).toLocaleString()] }), (0, u.jsxs)("span", { className: "text-amber-300 font-bold", children: ["C4: ", (re.thienState.breakdown?.c4 || 0).toLocaleString()] })] }), (0, u.jsxs)("div", { className: "thien-eye-row pt-1 border-t border-sky-500/20", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Tổng ST:" : "Total DMG:" }), (0, u.jsx)("span", { className: "font-mono-numbers text-amber-300 font-black", children: (re.thienState.totalDamage || 0).toLocaleString() })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Quái hạ gục:" : "Kills:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-emerald-300 font-bold", children: [re.kills, "/", re.waveTotal, " (Tổng ", re.thienState.totalKilled || 0, ")"] })] }), (0, u.jsxs)("div", { className: "thien-eye-row", children: [(0, u.jsx)("span", { className: "text-slate-400", children: c === "vi" ? "Hoàn thành màn:" : "Wave Clear:" }), (0, u.jsxs)("span", { className: "font-mono-numbers text-cyan-200 font-bold", children: [formatWaveClock(re.thienState.waveElapsedTime), re.thienState.lastWaveClearTime > 0 ? ` · Trước ${formatWaveClock(re.thienState.lastWaveClearTime)}` : ""] })] })] })] }), re.coopActive && re.teammates && re.teammates.length > 0 && (0, u.jsx)("div", { className: "mt-1 flex flex-col gap-1 w-[152px] sm:w-[162px] pointer-events-none", children: re.teammates.map((mate) => {
     let mateHero = Mi.find((hr) => hr.id === mate.heroId) || Mi[0];
     return (0, u.jsxs)("div", { className: "hud-card py-0.5 px-2 border-cyan-500/40", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between text-[9.5px] gap-1", children: [(0, u.jsxs)("span", { className: "flex items-center gap-1 font-moba font-bold text-slate-100 truncate", children: [(0, u.jsx)("span", { className: "w-1.5 h-1.5 rounded-full shrink-0", style: { backgroundColor: mateHero.color } }), (0, u.jsx)("span", { className: "truncate", children: mate.name })] }), (0, u.jsx)("span", { className: `font-mono-numbers shrink-0 ${mate.alive ? "text-cyan-300" : "text-rose-400"}`, children: mate.alive ? `Lv.${mate.level}` : "\u{1F480} Ng\xE3" })] }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: `bar-fill ${mate.alive ? "bg-gradient-to-r from-cyan-500 to-sky-400" : "bg-slate-600"}`, style: { width: `${mate.alive ? Math.max(0, Math.min(100, mate.hp / mate.maxHp * 100)) : 0}%` } }) })] }, mate.id);
-  }) }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: ["Hi\u1EC7u su\u1EA5t ", re.combo.efficiency, "%"] })] })] }), re.combo.comboName && (0, u.jsx)("div", { className: "text-[9.5px] font-moba font-bold text-cyan-300 mt-0.5 truncate", children: re.combo.comboName }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-center gap-1 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-wave-card text-center px-2.5 py-1 border-amber-500/50", children: [(0, u.jsxs)("div", { className: "text-xs font-black text-[#F59E0B] font-mono-numbers tracking-wider leading-tight", children: [c === "vi" ? "M\xC0N" : "WAVE", " ", re.wave, " / 27"] }), (0, u.jsxs)("div", { className: "text-[10px] text-slate-300 font-mono-numbers mt-0.5 leading-tight", children: [c === "vi" ? "Ti\xEAu di\u1EC7t" : "Slain", ": ", re.kills, " / ", re.waveTotal] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-rose-300 mt-0.5", children: ["🏰 ", c === "vi" ? "Cổ Thành" : "Citadel", " · ", [re.citadelSecrets?.tinClue, re.citadelSecrets?.baoClue, re.citadelSecrets?.combinedUnlocked].filter(Boolean).length, "/3"] }), re.mapId === "inferno_ash" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-orange-300 mt-0.5", children: ["🔥 ", re.infernoHud?.zoneLabel || (c === "vi" ? "Hỏa Ngục" : "Inferno"), ` · ${re.infernoHud?.clueCount || 0}/3 · 📜${re.infernoHud?.docsCount || 0}/${re.infernoHud?.docsTotal || 13}`] }), re.mapId === "frozen_tomb" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-sky-300 mt-0.5", children: ["❄️ ", re.frozenTombHud?.zoneLabel || (c === "vi" ? "Băng Mộ" : "Frozen Tomb"), ` · 📜${re.frozenTombProgress?.collectedDocs?.length || 0}/${Object.keys(FROZEN_TOMB_DOCS).length}`, re.frozenTombHud?.frostBuildup > 0 ? ` · 🥶${Math.round(re.frozenTombHud.frostBuildup * 100)}%` : ""] }), re.mapId === "grudge_forest" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-emerald-300 mt-0.5", children: ["🌿 ", re.grudgeForestHud?.zoneLabel || (c === "vi" ? "Rừng Oán Niệm" : "Grudge Forest"), ` · EE ${re.grudgeForestHud?.secretCount ?? countGrudgeForestSecrets(re.grudgeForestProgress)}/6 · 📜${re.grudgeForestHud?.docsCount ?? (re.grudgeForestProgress?.collectedDocs?.length || 0)}/${re.grudgeForestHud?.docsTotal || Object.keys(GRUDGE_FOREST_DOCS).length}`] }), re.coopActive && mpRoom && (0, u.jsxs)("div", { className: "text-[9px] font-mono-numbers font-bold text-cyan-300 mt-0.5", children: ["CO-OP ", mpRoom.roomId, " \xB7 Qu\xE1i ", Math.round((re.powerMultiplier || 1) * 100), "%"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-card hud-boss-card w-[196px] text-center py-1 px-2 border-red-500/70", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10.5px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[5px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-end gap-1.5 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-actions-bar flex items-center gap-1.5 pointer-events-auto", children: [(0, u.jsxs)("div", { className: "hud-action-group", children: [(0, u.jsxs)("button", { type: "button", className: "hud-group-btn text-amber-300", onClick: () => {
+  }) }), re.combo.active && (0, u.jsxs)("div", { className: "combo-hud", children: [(0, u.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [(0, u.jsx)("span", { className: `combo-rank-badge combo-rank-${re.combo.rank}`, children: re.combo.rank }), (0, u.jsxs)("div", { className: "text-right font-mono-numbers leading-tight", children: [(0, u.jsxs)("div", { className: "text-[11px] font-black text-white tabular-nums", children: [re.combo.hits, " HIT"] }), (0, u.jsxs)("div", { className: "text-[9px] text-amber-300 tabular-nums", children: ["Hi\u1EC7u su\u1EA5t ", re.combo.efficiency, "%"] })] })] }), re.combo.comboName && (0, u.jsx)("div", { className: "text-[9.5px] font-moba font-bold text-cyan-300 mt-0.5 truncate", children: re.combo.comboName }), (0, u.jsx)("div", { className: "bar-container h-[3px] mt-0.5", children: (0, u.jsx)("div", { className: "bar-fill bg-gradient-to-r from-amber-400 to-rose-500", style: { width: `${Math.min(100, re.combo.timer / Math.max(0.1, re.combo.maxTimer) * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-center gap-1 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-card hud-wave-card text-center px-2.5 py-1 border-amber-500/50", children: [(0, u.jsxs)("div", { className: "text-xs font-black text-[#F59E0B] font-mono-numbers tracking-wider leading-tight", children: [c === "vi" ? "M\xC0N" : "WAVE", " ", re.wave, " / 27"] }), (0, u.jsxs)("div", { className: "text-[10px] text-slate-300 font-mono-numbers mt-0.5 leading-tight", children: [c === "vi" ? "Ti\xEAu di\u1EC7t" : "Slain", ": ", re.kills, " / ", re.waveTotal] }), re.mapId === "blood_citadel" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-rose-300 mt-0.5", children: ["🏰 ", c === "vi" ? "Cổ Thành" : "Citadel", " · ", [re.citadelSecrets?.tinClue, re.citadelSecrets?.baoClue, re.citadelSecrets?.combinedUnlocked].filter(Boolean).length, "/3"] }), re.mapId === "inferno_ash" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-orange-300 mt-0.5", children: ["🔥 ", re.infernoHud?.zoneLabel || (c === "vi" ? "Hỏa Ngục" : "Inferno"), ` · ${re.infernoHud?.clueCount || 0}/3 · 📜${re.infernoHud?.docsCount || 0}/${re.infernoHud?.docsTotal || 13}`] }), re.mapId === "frozen_tomb" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-sky-300 mt-0.5", children: ["❄️ ", re.frozenTombHud?.zoneLabel || (c === "vi" ? "Băng Mộ" : "Frozen Tomb"), ` · 📜${re.frozenTombProgress?.collectedDocs?.length || 0}/${Object.keys(FROZEN_TOMB_DOCS).length}`, re.frozenTombHud?.frostBuildup > 0 ? ` · 🥶${Math.round(re.frozenTombHud.frostBuildup * 100)}%` : ""] }), re.mapId === "grudge_forest" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-emerald-300 mt-0.5", children: ["🌿 ", re.grudgeForestHud?.zoneLabel || (c === "vi" ? "Rừng Oán Niệm" : "Grudge Forest"), ` · EE ${re.grudgeForestHud?.secretCount ?? countGrudgeForestSecrets(re.grudgeForestProgress)}/6 · 📜${re.grudgeForestHud?.docsCount ?? (re.grudgeForestProgress?.collectedDocs?.length || 0)}/${re.grudgeForestHud?.docsTotal || Object.keys(GRUDGE_FOREST_DOCS).length}`] }), re.mapId === "void_city" && (0, u.jsxs)("div", { className: "text-[9.5px] font-mono-numbers font-bold text-sky-200 mt-0.5", children: ["🏛️ ", re.voidCityHud?.zoneLabel || (c === "vi" ? "Thành Phố Vạn Không" : "Void City"), ` · ❖ ${re.voidCityHud?.relicCount ?? countVoidCityRelics(re.voidCityProgress)}/6 · 📜${re.voidCityHud?.docsCount ?? (re.voidCityProgress?.collectedDocIds?.length || 0)}/${re.voidCityHud?.docsTotal || Object.keys(VOID_CITY_DOCS).length}`, re.voidCityHud?.clockReversed ? " · ↺ REV" : ""] }), re.coopActive && mpRoom && (0, u.jsxs)("div", { className: "text-[9px] font-mono-numbers font-bold text-cyan-300 mt-0.5", children: ["CO-OP ", mpRoom.roomId, " \xB7 Qu\xE1i ", Math.round((re.powerMultiplier || 1) * 100), "%"] })] }), re.boss && (0, u.jsxs)("div", { className: "hud-card hud-boss-card w-[196px] text-center py-1 px-2 border-red-500/70", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[10.5px] font-bold text-red-300 gap-2 leading-tight", children: [(0, u.jsxs)("span", { className: "font-moba truncate", children: [re.boss.name, re.boss.phase > 1 ? ` · GĐ ${re.boss.phase}` : ""] }), (0, u.jsxs)("span", { className: "font-mono-numbers shrink-0", children: [re.boss.hp, "/", re.boss.maxHp] })] }), (0, u.jsx)("div", { className: "bar-container h-[5px] mt-0.5 border-red-800", children: (0, u.jsx)("div", { className: "bar-fill boss-hp-fill", style: { width: `${Math.max(0, re.boss.hp / re.boss.maxHp * 100)}%` } }) })] })] }), (0, u.jsxs)("div", { className: "flex flex-col items-end gap-1.5 pointer-events-none", children: [(0, u.jsxs)("div", { className: "hud-actions-bar flex items-center gap-1.5 pointer-events-auto", children: [(0, u.jsxs)("div", { className: "hud-action-group", children: [(0, u.jsxs)("button", { type: "button", className: "hud-group-btn text-amber-300", onClick: () => {
     R.playClick(), je(p.id), N(true);
   }, title: c === "vi" ? "Mở Cửa Hàng Trang Bị" : "Open Armory", children: [(0, u.jsx)("span", { children: "🪙" }), (0, u.jsx)("span", { className: "font-mono-numbers tabular-nums font-extrabold", children: f }), (0, u.jsx)("span", { className: "hidden sm:inline text-amber-200/90", children: c === "vi" ? "· Cửa Hàng" : "· Shop" })] }), (0, u.jsx)("button", { type: "button", className: "hud-group-btn text-cyan-200 border-l border-slate-700/80", onClick: () => {
     R.playClick(), ye(true);
-  }, title: c === "vi" ? "Bảng Kỹ Năng & Chỉ Số" : "Skills & Stats", children: c === "vi" ? "Kỹ Năng" : "Skills" })] }), (0, u.jsxs)("div", { className: "hud-action-group", children: [(0, u.jsx)("button", { type: "button", className: "hud-group-btn text-emerald-200 px-2", onClick: toggleFullscreen, title: fsActive ? (c === "vi" ? "Thoát toàn màn hình" : "Exit Fullscreen") : (c === "vi" ? "Toàn màn hình" : "Fullscreen"), children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "hud-group-btn text-slate-100 border-l border-slate-700/80 px-2", onClick: ve, title: c === "vi" ? "Tạm dừng / Cài đặt" : "Pause / Settings", children: "\u275A\u275A" })] })] }), re.mapId === "blood_citadel" && (0, u.jsx)(CitadelTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: citadelMinimapOpen, onToggle: () => { R.playTabSwitch(); setCitadelMinimapOpen((vOpen) => !vOpen); } }), re.mapId === "inferno_ash" && (0, u.jsx)(InfernoTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: infernoMinimapOpen, onToggle: () => { R.playTabSwitch(); setInfernoMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setInfernoJournalOpen(true); } }), re.mapId === "frozen_tomb" && (0, u.jsx)(FrozenTombTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: frozenTombMinimapOpen, onToggle: () => { R.playTabSwitch(); setFrozenTombMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setFrozenTombJournalOpen(true); } }), re.mapId === "grudge_forest" && (0, u.jsx)(GrudgeForestTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: grudgeForestMinimapOpen, onToggle: () => { R.playTabSwitch(); setGrudgeForestMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setGrudgeForestJournalOpen(true); } })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), re.mapId === "inferno_ash" && re.infernoHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#1C0A08]/92 border border-orange-400/75 text-amber-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(249,115,22,0.35)]", children: re.infernoHud.discoveryToast }), re.mapId === "frozen_tomb" && re.frozenTombHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#07162A]/92 border border-sky-400/75 text-sky-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(56,189,248,0.35)]", children: re.frozenTombHud.discoveryToast }), re.mapId === "grudge_forest" && re.grudgeForestHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#061D17]/92 border border-emerald-400/75 text-emerald-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(52,211,153,0.35)]", children: re.grudgeForestHud.discoveryToast }), re.nearbyInteractable && (0, u.jsxs)("button", { type: "button", className: `pointer-events-auto absolute bottom-[126px] sm:bottom-[142px] left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl border text-xs sm:text-sm font-moba font-extrabold flex items-center gap-2 hover:brightness-110 active:scale-95 transition cursor-pointer ${re.mapId === "inferno_ash" ? "bg-gradient-to-r from-[#280D08]/95 via-[#1C090C]/95 to-[#18081C]/95 border-orange-400/85 text-orange-100 shadow-[0_0_24px_rgba(249,115,22,0.38)]" : re.mapId === "frozen_tomb" ? "bg-gradient-to-r from-[#07182C]/95 via-[#091E3A]/95 to-[#160B2B]/95 border-sky-400/85 text-sky-100 shadow-[0_0_24px_rgba(56,189,248,0.38)]" : re.mapId === "grudge_forest" ? "bg-gradient-to-r from-[#061D17]/95 via-[#0B1420]/95 to-[#1B0A2B]/95 border-emerald-400/85 text-emerald-100 shadow-[0_0_24px_rgba(52,211,153,0.38)]" : "bg-gradient-to-r from-rose-950/95 via-amber-950/95 to-purple-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.35)]"}`, onPointerDown: (ev) => {
+  }, title: c === "vi" ? "Bảng Kỹ Năng & Chỉ Số" : "Skills & Stats", children: c === "vi" ? "Kỹ Năng" : "Skills" })] }), (0, u.jsxs)("div", { className: "hud-action-group", children: [(0, u.jsx)("button", { type: "button", className: "hud-group-btn text-emerald-200 px-2", onClick: toggleFullscreen, title: fsActive ? (c === "vi" ? "Thoát toàn màn hình" : "Exit Fullscreen") : (c === "vi" ? "Toàn màn hình" : "Fullscreen"), children: fsActive ? "\u2922" : "\u26F6" }), (0, u.jsx)("button", { type: "button", className: "hud-group-btn text-slate-100 border-l border-slate-700/80 px-2", onClick: ve, title: c === "vi" ? "Tạm dừng / Cài đặt" : "Pause / Settings", children: "\u275A\u275A" })] })] }), re.mapId === "blood_citadel" && (0, u.jsx)(CitadelTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: citadelMinimapOpen, onToggle: () => { R.playTabSwitch(); setCitadelMinimapOpen((vOpen) => !vOpen); } }), re.mapId === "inferno_ash" && (0, u.jsx)(InfernoTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: infernoMinimapOpen, onToggle: () => { R.playTabSwitch(); setInfernoMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setInfernoJournalOpen(true); } }), re.mapId === "frozen_tomb" && (0, u.jsx)(FrozenTombTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: frozenTombMinimapOpen, onToggle: () => { R.playTabSwitch(); setFrozenTombMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setFrozenTombJournalOpen(true); } }), re.mapId === "grudge_forest" && (0, u.jsx)(GrudgeForestTacticalMinimap, { hudSnapshot: re, heroId: p?.id, lang: c, compact: false, isOpen: grudgeForestMinimapOpen, onToggle: () => { R.playTabSwitch(); setGrudgeForestMinimapOpen((vOpen) => !vOpen); }, onOpenJournal: () => { R.playModalOpen(); setGrudgeForestJournalOpen(true); } }), re.mapId === "void_city" && (0, u.jsx)(VoidCityTacticalMinimap, { hudSnapshot: re, lang: c, compact: false, isOpen: voidCityMinimapOpen, onToggle: () => { R.playTabSwitch(); setVoidCityMinimapOpen((vOpen) => !vOpen); }, onOpenRelics: () => { R.playModalOpen(); setVoidCityWorkshopOpen(true); } })] })] }), re.coopActive && re.localDowned && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[92px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-rose-950/90 border border-rose-400/70 text-rose-100 text-xs font-moba font-bold text-center shadow-lg", children: "\u{1F480} B\u1EA1n \u0111\xE3 ng\xE3 xu\u1ED1ng \u2014 \u0110\u1ED3ng \u0111\u1ED9i \u0111\u1EE9ng g\u1EA7n 2,4s \u0111\u1EC3 h\u1ED3i sinh ngay, ho\u1EB7c ch\u1EDD qua m\xE0n m\u1EDBi!" }), re.mapId === "inferno_ash" && re.infernoHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#1C0A08]/92 border border-orange-400/75 text-amber-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(249,115,22,0.35)]", children: re.infernoHud.discoveryToast }), re.mapId === "frozen_tomb" && re.frozenTombHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#07162A]/92 border border-sky-400/75 text-sky-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(56,189,248,0.35)]", children: re.frozenTombHud.discoveryToast }), re.mapId === "grudge_forest" && re.grudgeForestHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#061D17]/92 border border-emerald-400/75 text-emerald-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(52,211,153,0.35)]", children: re.grudgeForestHud.discoveryToast }), re.mapId === "void_city" && re.voidCityHud?.discoveryToast && (0, u.jsx)("div", { className: "pointer-events-none absolute top-[108px] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-xl bg-[#0C1022]/92 border border-sky-400/75 text-amber-100 text-xs font-moba font-extrabold text-center shadow-[0_0_24px_rgba(56,189,248,0.35)]", children: re.voidCityHud.discoveryToast }), re.nearbyInteractable && (0, u.jsxs)("button", { type: "button", className: `pointer-events-auto absolute bottom-[126px] sm:bottom-[142px] left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl border text-xs sm:text-sm font-moba font-extrabold flex items-center gap-2 hover:brightness-110 active:scale-95 transition cursor-pointer ${re.mapId === "inferno_ash" ? "bg-gradient-to-r from-[#280D08]/95 via-[#1C090C]/95 to-[#18081C]/95 border-orange-400/85 text-orange-100 shadow-[0_0_24px_rgba(249,115,22,0.38)]" : re.mapId === "frozen_tomb" ? "bg-gradient-to-r from-[#07182C]/95 via-[#091E3A]/95 to-[#160B2B]/95 border-sky-400/85 text-sky-100 shadow-[0_0_24px_rgba(56,189,248,0.38)]" : re.mapId === "grudge_forest" ? "bg-gradient-to-r from-[#061D17]/95 via-[#0B1420]/95 to-[#1B0A2B]/95 border-emerald-400/85 text-emerald-100 shadow-[0_0_24px_rgba(52,211,153,0.38)]" : re.mapId === "void_city" ? "bg-gradient-to-r from-[#0F172A]/95 via-[#1E1B4B]/95 to-[#130B29]/95 border-sky-400/85 text-amber-100 shadow-[0_0_24px_rgba(129,140,248,0.42)]" : "bg-gradient-to-r from-rose-950/95 via-amber-950/95 to-purple-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.35)]"}`, onPointerDown: (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
     a.current?.interactNearestMapNode ? a.current.interactNearestMapNode() : a.current?.interactNearestCitadelNode?.();
-  }, children: [(0, u.jsx)("span", { className: `px-1.5 py-0.5 rounded font-mono-numbers text-[11px] font-black ${re.mapId === "inferno_ash" ? "bg-orange-400 text-slate-950" : re.mapId === "frozen_tomb" ? "bg-sky-400 text-slate-950" : re.mapId === "grudge_forest" ? "bg-emerald-400 text-slate-950" : "bg-amber-400 text-slate-950"}`, children: "V" }), (0, u.jsx)("span", { children: re.nearbyInteractable.shortPrompt?.[c === "en" ? "en" : "vi"] || re.nearbyInteractable.label?.[c === "en" ? "en" : "vi"] || (c === "vi" ? "Tương tác" : "Interact") })] }), (0, u.jsx)("div", { id: "joystickZone", onPointerDown: K, onPointerMove: ge, onPointerUp: ut, onPointerCancel: ut, onLostPointerCapture: ut, children: (0, u.jsx)("div", { id: "joystickKnob", ref: O }) }), re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", className: p.skills.length >= 4 ? "four-skills" : void 0, children: [p.skills.map((skItem, w) => {
+  }, children: [(0, u.jsx)("span", { className: `px-1.5 py-0.5 rounded font-mono-numbers text-[11px] font-black ${re.mapId === "inferno_ash" ? "bg-orange-400 text-slate-950" : re.mapId === "frozen_tomb" ? "bg-sky-400 text-slate-950" : re.mapId === "grudge_forest" ? "bg-emerald-400 text-slate-950" : re.mapId === "void_city" ? "bg-indigo-300 text-slate-950" : "bg-amber-400 text-slate-950"}`, children: "V" }), (0, u.jsx)("span", { children: re.nearbyInteractable.shortPrompt?.[c === "en" ? "en" : "vi"] || re.nearbyInteractable.label?.[c === "en" ? "en" : "vi"] || (c === "vi" ? "Tương tác" : "Interact") })] }), <div id="joystickZone" ref={joyZoneRef} style={{ "--joy-accent": p?.elementColor || "#38bdf8" }} onPointerDown={K} onPointerMove={ge} onPointerUp={ut} onPointerCancel={ut} onLostPointerCapture={ut}><LienQuanJoystickBezel /><div className="lq-joy-arc" ref={joyArcRef}><LienQuanJoystickDirectionArc /></div><div id="joystickKnob" ref={O}><div className="lq-joy-knob-core"><LienQuanJoystickKnobCap /></div></div></div>, re.chargeActive && (0, u.jsxs)("div", { className: "charge-bar-hud", children: [(0, u.jsxs)("div", { className: "flex justify-between items-center text-[11px] font-moba font-bold text-amber-200", children: [(0, u.jsx)("span", { children: re.chargeLabel }), (0, u.jsxs)("span", { className: "font-mono-numbers tabular-nums text-amber-400", children: [Math.round(re.chargeProgress * 100), "%"] })] }), (0, u.jsx)("div", { className: "charge-bar-track", children: (0, u.jsx)("div", { className: "charge-bar-fill", style: { width: `${Math.min(100, re.chargeProgress * 100)}%` } }) })] }), (0, u.jsxs)("div", { id: "actionControls", className: p.skills.length >= 4 ? "four-skills" : void 0, children: [p.skills.map((skItem, w) => {
     let j = skItem, ee = re.cooldowns[w] || 0, he = j.cooldown, le = re.skillStates[w] || "ready", padCd = re.padTeleportCds?.[w] || 0, isPadWaiting = p.id === "duccong" && w > 0 && padCd > 0, X = isPadWaiting || ee > 0 && le !== "recast" && le !== "charging", displayCd = isPadWaiting ? padCd : ee, displayMax = isPadWaiting ? 1.5 : he, isAiming = aimSkillIdx === w, we = `${X ? "state-cooldown" : le === "empowered" ? "state-empowered state-ready" : le === "recast" ? "state-recast state-ready" : le === "charging" ? "state-charging state-ready" : "state-ready"}${isAiming ? " active-aim" : ""}`;
     let isUlt = w === p.skills.length - 1;
     let btnIconSize = isPortraitHud ? (p.skills.length >= 4 ? (isUlt ? 64 : 58) : (isUlt ? 70 : 62)) : (p.skills.length >= 4 ? (isUlt ? 78 : 70) : (isUlt ? 84 : 76));
@@ -3376,7 +3714,7 @@ function ny() {
       a.current.selectedHeroId = w.id;
       a.current.saveGame();
     }
-  }, onEnterArena: (w) => ke(w), resumableRun, onResumeRun: handleResumeSavedRun, deviceInfo, onOpenHeroSelect: () => m("HERO_SELECT"), selectedMapId, unlockedMaps, citadelSecrets, infernoProgress, frozenTombProgress, grudgeForestProgress, onSelectMap: (nextMapId) => {
+  }, onEnterArena: (w) => ke(w), resumableRun, onResumeRun: handleResumeSavedRun, deviceInfo, onOpenHeroSelect: () => m("HERO_SELECT"), selectedMapId, unlockedMaps, citadelSecrets, infernoProgress, frozenTombProgress, grudgeForestProgress, voidCityProgress, onOpenVoidCityRelics: () => { R.playModalOpen(); setVoidCityWorkshopOpen(true); }, onSelectMap: (nextMapId) => {
     if (a.current?.setSelectedMap?.(nextMapId)) {
       setSelectedMapId(a.current.selectedMapId);
     } else {
@@ -3446,7 +3784,7 @@ function ny() {
     R.playClick(), setFpsCapMode(opt.k);
   }, children: opt.k === "auto" ? "Auto" : `${opt.label}fps` }, opt.k)) })] })] }), (0, u.jsxs)("div", { className: "grid grid-cols-2 gap-1.5", children: [(0, u.jsx)("button", { className: "btn-secondary py-2 text-xs border-cyan-500/40 text-cyan-200", onClick: () => ye(true), children: c === "vi" ? "📖 Kỹ Năng" : "📖 Skills" }), (0, u.jsx)("button", { className: "btn-secondary py-2 text-xs border-amber-500/40 text-amber-200", onClick: () => {
     je(p.id), N(true);
-  }, children: c === "vi" ? "🪙 Cửa Hàng" : "🪙 Armory" })] }), (0, u.jsx)("button", { className: "btn-secondary py-1.5 text-xs border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, children: fsActive ? "\u2922 Tho\xE1t To\xE0n M\xE0n H\xECnh" : "\u26F6 B\u1EADt To\xE0n M\xE0n H\xECnh" }), a.current?.multiplayer?.active ? (0, u.jsxs)(u.Fragment, { children: [mpRoom?.hostId === mpClient.playerId && (0, u.jsx)("button", { className: "btn-secondary py-2 text-xs sm:text-sm border-emerald-500/40 text-emerald-200", onClick: () => {
+  }, children: c === "vi" ? "🪙 Cửa Hàng" : "🪙 Armory" })] }), (0, u.jsx)("button", { type: "button", className: "btn-secondary py-1.5 text-xs border-emerald-500/40 text-emerald-200", onClick: toggleFullscreen, children: fsActive ? "\u2922 Tho\xE1t To\xE0n M\xE0n H\xECnh" : "\u26F6 B\u1EADt To\xE0n M\xE0n H\xECnh" }), a.current?.multiplayer?.active ? (0, u.jsxs)(u.Fragment, { children: [mpRoom?.hostId === mpClient.playerId && (0, u.jsx)("button", { className: "btn-secondary py-2 text-xs sm:text-sm border-emerald-500/40 text-emerald-200", onClick: () => {
     R.playClick();
     mpClient.restartMatch();
     setMpMenuOpen(false);
@@ -3482,7 +3820,7 @@ function ny() {
       return (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-rose-950/75 border border-rose-400/60 text-rose-100 text-xs font-moba font-bold", children: c === "vi" ? `🗺️ Bản đồ tiếp theo ĐÃ MỞ KHÓA: ${nextName}! Chọn trong Sảnh Chính.` : `🗺️ Next Map UNLOCKED: ${nextName}! Select it in the Lobby.` });
     }
     if (!nextMapId) {
-      return (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-sky-950/75 border border-sky-400/60 text-sky-100 text-xs font-moba font-bold", children: c === "vi" ? "🏆 CHÚC MỪNG! Bạn đã chinh phục trọn vẹn cả 4 Bản Đồ Chiến Trường!" : "🏆 CONGRATULATIONS! You conquered all 4 Campaign Battlegrounds!" });
+      return (0, u.jsx)("div", { className: "mt-2 px-3 py-2 rounded-xl bg-sky-950/75 border border-sky-400/60 text-sky-100 text-xs font-moba font-bold", children: c === "vi" ? "🏆 CHÚC MỪNG! Bạn đã chinh phục trọn vẹn cả 5 Bản Đồ Chiến Trường!" : "🏆 CONGRATULATIONS! You conquered all 5 Campaign Battlegrounds!" });
     }
     return null;
   })(), (0, u.jsxs)("div", { className: "bg-slate-900 border border-slate-800 rounded-xl p-3 my-3 grid grid-cols-2 gap-2 text-left text-xs font-mono-numbers", children: [(0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "M\xE0n ch\u01A1i:" }), (0, u.jsxs)("div", { className: "text-amber-400 font-bold text-sm", children: [a.current?.wave || 1, " / 27"] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "Ti\xEAu di\u1EC7t:" }), (0, u.jsx)("div", { className: "text-white font-bold text-sm", children: a.current?.totalKilled || 0 })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "C\u1EA5p \u0111\u1ED9:" }), (0, u.jsx)("div", { className: "text-emerald-400 font-bold text-sm", children: ["Lv.", a.current?.player?.level || 1] })] }), (0, u.jsxs)("div", { children: [(0, u.jsx)("span", { className: "text-slate-400 text-[10px]", children: "T\u1ED5ng s\xE1t th\u01B0\u01A1ng:" }), (0, u.jsx)("div", { className: "text-rose-400 font-bold text-sm", children: (a.current?.player?.totalDamage || 0).toLocaleString() })] })] }), (a.current?.multiplayer?.active || mpMatchResult) && (mpMatchResult?.room?.members || mpRoom?.members) && (0, u.jsxs)("div", { className: "bg-slate-900/90 border border-cyan-500/35 rounded-xl p-2.5 mb-3 text-left text-xs", children: [(0, u.jsx)("div", { className: "text-[10px] font-moba font-bold text-cyan-300 uppercase tracking-wider mb-1.5", children: "B\u1EA3ng S\xE1t Th\u01B0\u01A1ng \u0110\u1ED3ng \u0110\u1ED9i" }), (0, u.jsx)("div", { className: "space-y-1", children: (mpMatchResult?.room?.members || mpRoom?.members || []).map((mem) => (0, u.jsxs)("div", { className: "flex items-center justify-between font-mono-numbers text-[11px]", children: [(0, u.jsxs)("span", { className: "text-slate-200 truncate", children: [mem.isHost ? "\u{1F451} " : "", mem.name] }), (0, u.jsx)("span", { className: "text-rose-400 font-bold", children: [(mem.totalDamage || 0).toLocaleString(), " DMG"] })] }, mem.id)) })] }), (0, u.jsxs)("div", { className: "flex flex-col gap-2", children: [a.current?.multiplayer?.active || mpMatchResult ? (0, u.jsxs)(u.Fragment, { children: [(mpMatchResult?.room?.hostId || mpRoom?.hostId) === mpClient.playerId && (0, u.jsx)("button", { className: "btn-primary py-2.5 text-xs font-bold", onClick: () => {
@@ -3586,7 +3924,35 @@ function ny() {
       grudgeForestStoryPausedRef.current = false;
       a.current.gameState = "PLAYING";
     }
-  } }), grudgeForestJournalOpen && (0, u.jsx)(GrudgeForestJournalModal, { open: grudgeForestJournalOpen, progress: grudgeForestProgress, citadelSecrets, infernoProgress, frozenTombProgress, lang: c, onClose: () => setGrudgeForestJournalOpen(false) }), chroniclesOpen && (0, u.jsx)(ChroniclesModal, { open: chroniclesOpen, lang: c, heroes: Mi, initialTab: chroniclesTab, focusHeroId: chroniclesFocusHeroId, founderUnlocked, citadelUnlocked: isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked), infernoUnlocked: isMapUnlocked("inferno_ash", unlockedMaps, founderUnlocked), frozenTombUnlocked: isMapUnlocked("frozen_tomb", unlockedMaps, founderUnlocked), grudgeForestUnlocked: isMapUnlocked("grudge_forest", unlockedMaps, founderUnlocked), citadelSecrets, infernoProgress, frozenTombProgress, grudgeForestProgress, onSelectHero: (heroIdArg) => {
+  } }), grudgeForestJournalOpen && (0, u.jsx)(GrudgeForestJournalModal, { open: grudgeForestJournalOpen, progress: grudgeForestProgress, citadelSecrets, infernoProgress, frozenTombProgress, lang: c, onClose: () => setGrudgeForestJournalOpen(false) }), voidCityStoryModal && (0, u.jsx)(VoidCityStoryModal, { payload: voidCityStoryModal, progressInput: voidCityProgress, lang: c, onSolveRelic: (relicIdArg, submission) => {
+    const res = a.current?.solveVoidCityRelic?.(relicIdArg, submission);
+    if (res?.nextProgress) {
+      setVoidCityProgress(normalizeVoidCityProgress(res.nextProgress));
+    }
+    return res;
+  }, onOpenRelicsWorkshop: () => {
+    R.playModalOpen?.();
+    setVoidCityWorkshopOpen(true);
+  }, onClose: () => {
+    setVoidCityStoryModal(null);
+    if (voidCityStoryPausedRef.current && a.current && !a.current.multiplayer?.active && a.current.gameState === "PAUSED") {
+      voidCityStoryPausedRef.current = false;
+      a.current.gameState = "PLAYING";
+    }
+  } }), voidCityWorkshopOpen && (0, u.jsx)(VoidCityRelicsModal, { isOpen: voidCityWorkshopOpen, progressInput: voidCityProgress, lang: c, onAction: (actionType, actionPayload) => {
+    let payloadArg = {};
+    if (actionType === "forgeStarShard") payloadArg = { slotId: actionPayload };
+    else if (actionType === "applyReflectionCore") payloadArg = { statKey: actionPayload };
+    else if (actionType === "togglePerk") payloadArg = { perk: actionPayload };
+    const res = a.current?.runVoidCityWorkshopAction?.(actionType, payloadArg);
+    if (res?.nextProgress) {
+      setVoidCityProgress(normalizeVoidCityProgress(res.nextProgress));
+    }
+    if (a.current) {
+      v(a.current.playerCoins);
+    }
+    return res;
+  }, onClose: () => setVoidCityWorkshopOpen(false) }), chroniclesOpen && (0, u.jsx)(ChroniclesModal, { open: chroniclesOpen, lang: c, heroes: Mi, initialTab: chroniclesTab, focusHeroId: chroniclesFocusHeroId, founderUnlocked, citadelUnlocked: isMapUnlocked("blood_citadel", unlockedMaps, founderUnlocked), infernoUnlocked: isMapUnlocked("inferno_ash", unlockedMaps, founderUnlocked), frozenTombUnlocked: isMapUnlocked("frozen_tomb", unlockedMaps, founderUnlocked), grudgeForestUnlocked: isMapUnlocked("grudge_forest", unlockedMaps, founderUnlocked), voidCityUnlocked: isMapUnlocked("void_city", unlockedMaps, founderUnlocked), citadelSecrets, infernoProgress, frozenTombProgress, grudgeForestProgress, voidCityProgress, onSelectHero: (heroIdArg) => {
     const found = Mi.find((hr) => hr.id === heroIdArg);
     if (!found) return;
     if (found.isSecretFounder && !founderUnlockedRef.current) return;
@@ -3616,6 +3982,13 @@ function ny() {
       G(c === "vi" ? "Đã chọn map: Rừng Oán Niệm!" : "Selected map: Forest of Grudges!");
     } else {
       G(getMapUnlockRequirement("grudge_forest", c));
+    }
+  }, onSelectVoidCityMap: () => {
+    if (a.current?.setSelectedMap?.("void_city")) {
+      setSelectedMapId("void_city");
+      G(c === "vi" ? "Đã chọn map: Thành Phố Vạn Không!" : "Selected map: City of Endless Void!");
+    } else {
+      G(getMapUnlockRequirement("void_city", c));
     }
   }, onSelectCitadelMap: () => {
     if (a.current?.setSelectedMap?.("blood_citadel")) {

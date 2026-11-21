@@ -656,6 +656,8 @@ export function mergeLocalAndCloudProgress(
   const localInfernoCleared = Boolean(local.infernoCleared);
   const localFrozenTombCleared = Boolean(local.frozenTombCleared);
   const localGrudgeForestCleared = Boolean(local.grudgeForestCleared);
+  const localVoidCity = normalizeVoidCityProgress(local.voidCityProgress);
+  const localVoidCityCleared = Boolean(local.voidCityCleared || localVoidCity.bossClearedVoidCity);
   if (!cloud) {
     const safeHero = local.selectedHeroId === "thien" && !founderUnlocked ? "eohyen" : local.selectedHeroId;
     const unlockedMaps = computeUnlockedMaps({
@@ -669,6 +671,9 @@ export function mergeLocalAndCloudProgress(
       founderUnlocked,
     });
     const rawMap = normalizeArenaMapId(local.selectedMapId);
+    const unlockedTitles = computeUnlockedTitles(Number(local.highestWave) || 0, founderUnlocked, {
+      namelessSealUnlocked: Boolean(localVoidCity.namelessSealUnlocked),
+    });
     return {
       ...local,
       selectedHeroId: safeHero || "eohyen",
@@ -678,11 +683,14 @@ export function mergeLocalAndCloudProgress(
       infernoCleared: localInfernoCleared,
       frozenTombCleared: localFrozenTombCleared,
       grudgeForestCleared: localGrudgeForestCleared,
+      voidCityCleared: localVoidCityCleared,
       unlockedMaps,
+      unlockedTitles,
       citadelSecrets: normalizeCitadelSecrets(local.citadelSecrets),
       infernoProgress: normalizeInfernoProgress(local.infernoProgress),
       frozenTombProgress: normalizeFrozenTombProgress(local.frozenTombProgress),
       grudgeForestProgress: normalizeGrudgeForestProgress(local.grudgeForestProgress),
+      voidCityProgress: localVoidCity,
     };
   }
   const cloudWave = Math.max(0, Math.min(27, Math.floor(Number(cloud.highestWave) || 0)));
@@ -875,6 +883,7 @@ export function parseSavePackageJson(
           matchesPlayed: Math.max(progress.matchesPlayed, Number(prof?.matchesPlayed) || 0),
           victories: Math.max(progress.victories, Number(prof?.victories) || 0),
           dailyCheckInDate: progress.dailyCheckInDate || prof?.dailyCheckInDate || "",
+          unlockedTitles: progress.unlockedTitles,
           heroStats: parsedHeroStats,
         },
         { founderUnlocked }

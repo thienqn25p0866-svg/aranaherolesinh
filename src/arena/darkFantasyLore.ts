@@ -559,6 +559,66 @@ export const HERO_CHRONICLES: Record<string, HeroChronicleEntry> = {
       en: "Stands unbowed beneath the Bloodsoaked Citadel's watchtower barrage like a living iron keep.",
     },
   },
+  bach: {
+    heroId: "bach",
+    faction: { vi: "Phong Ảnh Hội Vô Hình", en: "Order of the Phantom Gale" },
+    originTitle: {
+      vi: "Lưỡi Dao Gió Không Thể Chạm Tới Giữa Bão Đạn",
+      en: "Untouchable Wind-Blade Amid the Storm",
+    },
+    epitaph: {
+      vi: "“Mọi xiềng xích trói buộc chỉ kịp khép lại sau khi vạt áo của ta đã cắt đôi đường chân trời.”",
+      en: "“Chains only snap shut where my shadow stood a heartbeat ago.”",
+    },
+    story: {
+      vi: "Bách rèn luyện thân pháp tại hẻm núi Cuồng Phong, nơi chỉ những kẻ hòa mình vào luồng gió sắc bén mới tránh khỏi bị nghiền nát. Mỗi cú lướt của anh không chỉ vượt qua mọi khống chế mà còn hóa giải sát thương thành sinh lực hồi phục.",
+      en: "Bách forged his footwork in the Hurricane Chasm, learning to slip straight through bindings and heavy blows during high-speed dashes while turning momentum into lethal counter-strikes.",
+    },
+    citadelBond: {
+      vi: "Là người đầu tiên lướt xuyên qua hành lang bẫy chông của Cổ Thành Huyết Táng mà không để lại một dấu chân.",
+      en: "The first scout to dash clean through the Bloodsoaked Citadel's spike corridors without leaving a single footprint.",
+    },
+  },
+  thai: {
+    heroId: "thai",
+    faction: { vi: "Đấu Trường Huyết Kim Đế Quốc", en: "Crimson-Gold Colosseum Legion" },
+    originTitle: {
+      vi: "Bá Chủ Kiến Tạo Vùng Đấu Trường Tối Thượng",
+      en: "Sovereign Who Forges His Own Colosseum",
+    },
+    epitaph: {
+      vi: "“Bước vào vòng tròn của ta, luật lệ duy nhất là thanh chiến kích này và chiến ý bất diệt!”",
+      en: "“Step inside my ring, and only my halberd's law remains!”",
+    },
+    story: {
+      vi: "Thái là nhà vô địch bất bại của Đại Đấu Trường Hoàng Kim. Khi cắm lá cờ Bá Chủ xuống chiến trường, anh tái hiện toàn bộ hào khí đấu trường cổ đại, tăng vọt sức mạnh bản thân và thức tỉnh hình thái cường hóa của mọi tuyệt kỹ.",
+      en: "Thái reigned undefeated inside the Imperial Colosseum. By slamming his War Banner onto the battlefield, he raises a living Colosseum Domain that surges his stats and awakens upgraded forms of his skills.",
+    },
+    citadelBond: {
+      vi: "Dựng cờ thách đấu ngay giữa quảng trường Cổ Thành, ép đám quái vật phải tuân theo luật sinh tử của riêng anh.",
+      en: "Planted his Colosseum banner squarely inside the Citadel courtyard, forcing the abyssal swarm to fight on his terms.",
+    },
+  },
+  khair: {
+    heroId: "khair",
+    faction: { vi: "Đội Trinh Sát Ưng Nhãn Hoàng Gia", en: "Royal Eagle-Eye Overwatch" },
+    originTitle: {
+      vi: "Xạ Thủ Viễn Kích Nhìn Thấu Tận Đường Chân Trời",
+      en: "Rail Sniper Whose Sight Pierces the Horizon",
+    },
+    epitaph: {
+      vi: "“Không cần bắn nhanh như mưa — một viên đạn chuẩn xác từ ngoài tầm mắt là quá đủ định đoạt trận chiến.”",
+      en: "“Rapid fire is for those who miss — a single calibrated shot from beyond sightlines decides the war.”",
+    },
+    story: {
+      vi: "Khair từ bỏ tốc độ bắn vội vã để mang theo khẩu Đại Pháo Bắn Tỉa Hư Không nặng nề. Khi kích hoạt ống ngắm Viễn Kích, tầm nhìn của anh mở rộng bao trùm cả chiến trường trước khi tung ra phát đạn xuyên thấu khổng lồ.",
+      en: "Khair traded rapid-fire haste for a heavy Void-Rail sniper cannon. When locking into his scope, his field of view expands across the battlefield before unleashing a colossal armor-piercing rail shot.",
+    },
+    citadelBond: {
+      vi: "Từ đỉnh tháp canh xa nhất, Khair đã bắn hạ ba hộ vệ ma thạch trước khi chúng kịp thấy tia ngắm laser.",
+      en: "From the Citadel's farthest spire, Khair neutralized three obsidian sentinels before they ever spotted his laser sight.",
+    },
+  },
 };
 
 export const BOSS_CHRONICLES: BossChronicleEntry[] = [

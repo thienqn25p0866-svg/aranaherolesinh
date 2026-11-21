@@ -31,24 +31,35 @@ export function VoidCityBlueprintEmblem({ className = "w-20 h-20" }) {
       aria-hidden="true"
     >
       <defs>
-        <radialGradient id="vcBg" cx="50%" cy="45%" r="60%">
-          <stop offset="0%" stopColor="#1E1B4B" stopOpacity="0.96" />
-          <stop offset="65%" stopColor="#0F172A" stopOpacity="0.98" />
-          <stop offset="100%" stopColor="#05060A" stopOpacity="1" />
+        <radialGradient id="vcBg" cx="50%" cy="42%" r="62%">
+          <stop offset="0%" stopColor="#261B52" stopOpacity="0.98" />
+          <stop offset="58%" stopColor="#0F172A" stopOpacity="0.99" />
+          <stop offset="100%" stopColor="#04050A" stopOpacity="1" />
         </radialGradient>
+        <linearGradient id="vcGold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FEF08A" />
+          <stop offset="100%" stopColor="#F59E0B" />
+        </linearGradient>
       </defs>
-      <rect x="6" y="6" width="108" height="108" rx="18" fill="url(#vcBg)" stroke="#38BDF8" strokeOpacity="0.65" strokeWidth="2" />
-      <circle cx="60" cy="48" r="24" stroke="#A855F7" strokeOpacity="0.55" strokeWidth="1.6" strokeDasharray="4 3" />
-      {/* Gothic spires */}
-      <path d="M24 94 L32 48 L40 94 Z" fill="#1E293B" stroke="#94A3B8" strokeWidth="1.4" />
-      <path d="M80 94 L88 48 L96 94 Z" fill="#1E293B" stroke="#94A3B8" strokeWidth="1.4" />
-      <path d="M46 96 L60 22 L74 96 Z" fill="#0F172A" stroke="#FDE68A" strokeWidth="1.8" />
-      {/* Inverted Clock face */}
-      <circle cx="60" cy="56" r="10" fill="#090D16" stroke="#38BDF8" strokeWidth="1.6" />
-      <path d="M60 56 L60 49 M60 56 L55 59" stroke="#FDE68A" strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="6" y="6" width="108" height="108" rx="18" fill="url(#vcBg)" stroke="#38BDF8" strokeOpacity="0.78" strokeWidth="2.2" />
+      <rect x="11" y="11" width="98" height="98" rx="14" stroke="#A855F7" strokeOpacity="0.32" strokeWidth="1" />
+      {/* Eclipse Ring & Astrolabe Orbit */}
+      <circle cx="60" cy="48" r="28" stroke="#C084FC" strokeOpacity="0.58" strokeWidth="1.6" strokeDasharray="4 3" />
+      <circle cx="60" cy="48" r="20" stroke="#38BDF8" strokeOpacity="0.38" strokeWidth="1.1" />
+      {/* Twin Gothic Citadel Spires + Lancet Windows */}
+      <path d="M22 92 L32 42 L42 92 Z" fill="#182235" stroke="#94A3B8" strokeWidth="1.4" />
+      <path d="M78 92 L88 42 L98 92 Z" fill="#182235" stroke="#94A3B8" strokeWidth="1.4" />
+      <path d="M44 94 L60 18 L76 94 Z" fill="#0B1120" stroke="url(#vcGold)" strokeWidth="1.9" />
+      {/* Inverted Clock Dial */}
+      <circle cx="60" cy="57" r="11" fill="#070A14" stroke="#38BDF8" strokeWidth="1.8" />
+      <circle cx="60" cy="57" r="7.5" stroke="#FDE68A" strokeOpacity="0.45" strokeWidth="0.9" />
+      <path d="M60 57 L60 49 M60 57 L54 60" stroke="#FDE68A" strokeWidth="1.9" strokeLinecap="round" />
+      {/* Mirror Canal Ripple at Base */}
+      <path d="M24 98 H96" stroke="#38BDF8" strokeOpacity="0.65" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M36 103 H84" stroke="#C084FC" strokeOpacity="0.45" strokeWidth="1.2" strokeLinecap="round" />
       {/* Swirling Archive Pages */}
-      <rect x="28" y="28" width="8" height="11" rx="1" transform="rotate(-18 28 28)" fill="#E2E8F0" fillOpacity="0.78" />
-      <rect x="82" y="24" width="8" height="11" rx="1" transform="rotate(22 82 24)" fill="#FDE68A" fillOpacity="0.82" />
+      <rect x="24" y="25" width="9" height="12" rx="1.2" transform="rotate(-18 24 25)" fill="#E2E8F0" fillOpacity="0.86" />
+      <rect x="85" y="22" width="9" height="12" rx="1.2" transform="rotate(22 85 22)" fill="#FDE68A" fillOpacity="0.88" />
     </svg>
   );
 }
@@ -94,7 +105,7 @@ export function VoidCityTacticalMinimap({
   const sy = h / VOID_CITY_HEIGHT;
 
   return (
-    <div className="pointer-events-auto rounded-xl bg-slate-950/90 border border-sky-500/45 p-1.5 shadow-[0_8px_24px_rgba(3,7,18,0.82)] flex flex-col gap-1">
+    <div className="pointer-events-auto rounded-xl bg-slate-950/92 border border-sky-500/50 p-1.5 shadow-[0_8px_24px_rgba(3,7,18,0.86)] flex flex-col gap-1">
       <div className="flex items-center justify-between gap-1 text-[9.5px] font-moba font-bold text-sky-200 px-0.5">
         <span className="truncate max-w-[100px]">
           🏛️ {hud?.zoneLabel || (lang === "en" ? "Void City" : "TP Vạn Không")}
@@ -103,7 +114,7 @@ export function VoidCityTacticalMinimap({
           <button
             type="button"
             onClick={onOpenRelics}
-            className="px-1.5 py-0.5 rounded bg-indigo-950/90 border border-amber-400/50 text-[9px] text-amber-200 hover:text-white cursor-pointer"
+            className="px-1.5 py-0.5 rounded bg-indigo-950/90 border border-amber-400/55 text-[9px] text-amber-200 hover:text-white cursor-pointer"
             title={lang === "en" ? "Relics & Dossiers" : "Di Tích & Hồ Sơ"}
           >
             ❖{relicCount}/6
@@ -118,7 +129,7 @@ export function VoidCityTacticalMinimap({
         </div>
       </div>
 
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="rounded-lg bg-[#05060B] border border-slate-800 block">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="rounded-lg bg-[#04050A] border border-slate-800 block">
         {VOID_CITY_ZONES.map((z) => (
           <rect
             key={z.id}
@@ -127,12 +138,35 @@ export function VoidCityTacticalMinimap({
             width={z.rect.w * sx}
             height={z.rect.h * sy}
             fill={z.accentColor}
-            fillOpacity={hud?.zoneId === z.id ? 0.24 : 0.08}
+            fillOpacity={hud?.zoneId === z.id ? 0.28 : 0.08}
             stroke={z.accentColor}
-            strokeOpacity={0.38}
-            strokeWidth="0.7"
+            strokeOpacity={hud?.zoneId === z.id ? 0.72 : 0.34}
+            strokeWidth={hud?.zoneId === z.id ? "1.1" : "0.7"}
           />
         ))}
+        {/* Void Canals */}
+        <rect x={2860 * sx} y={1250 * sy} width={280 * sx} height={2750 * sy} fill="#020307" stroke="#38BDF8" strokeOpacity="0.3" strokeWidth="0.6" />
+        <rect x={3140 * sx} y={1700 * sy} width={1660 * sx} height={200 * sy} fill="#020307" stroke="#38BDF8" strokeOpacity="0.3" strokeWidth="0.6" />
+        {/* Bridges & Underground Catacomb */}
+        <rect x={2800 * sx} y={2740 * sy} width={460 * sx} height={170 * sy} fill="#334155" stroke="#FDE68A" strokeOpacity="0.55" strokeWidth="0.6" />
+        <rect x={3740 * sx} y={1580 * sy} width={220 * sx} height={520 * sy} fill="#334155" stroke="#FDE68A" strokeOpacity="0.55" strokeWidth="0.6" />
+        <rect x={1820 * sx} y={2040 * sy} width={1360 * sx} height={135 * sy} fill="#3B0764" fillOpacity="0.45" stroke="#A855F7" strokeOpacity="0.6" strokeDasharray="2 1.5" strokeWidth="0.6" />
+
+        {/* Clues & Landmarks */}
+        {VOID_CITY_INTERACTABLES.filter(
+          (n) => n.kind !== "relic_puzzle" && n.kind !== "boss_altar" && n.kind !== "trung_dossier" && n.kind !== "ancient_chest"
+        ).map((n) => (
+          <circle
+            key={n.id}
+            cx={n.x * sx}
+            cy={n.y * sy}
+            r="1.3"
+            fill="#7DD3FC"
+            fillOpacity="0.7"
+          />
+        ))}
+
+        {/* Major Relics, Chests, Trung Dossier & Boss Altar */}
         {VOID_CITY_INTERACTABLES.filter(
           (n) => n.kind === "relic_puzzle" || n.kind === "boss_altar" || n.kind === "trung_dossier" || n.kind === "ancient_chest"
         ).map((n) => {
@@ -145,7 +179,7 @@ export function VoidCityTacticalMinimap({
             (n.relicId === "relic_6_origin_sanctum" && prog.relic6Solved);
           const col =
             n.kind === "boss_altar"
-              ? "#EF4444"
+              ? "#F43F5E"
               : n.kind === "trung_dossier"
               ? "#FDE68A"
               : n.kind === "ancient_chest"
@@ -153,17 +187,30 @@ export function VoidCityTacticalMinimap({
               : solved
               ? "#34D399"
               : "#C084FC";
+          if (n.kind === "relic_puzzle") {
+            const cx = n.x * sx;
+            const cy = n.y * sy;
+            return (
+              <polygon
+                key={n.id}
+                points={`${cx},${cy - 3.1} ${cx + 3.1},${cy} ${cx},${cy + 3.1} ${cx - 3.1},${cy}`}
+                fill={col}
+                stroke="#0F172A"
+                strokeWidth="0.6"
+              />
+            );
+          }
           return (
             <circle
               key={n.id}
               cx={n.x * sx}
               cy={n.y * sy}
-              r={n.kind === "relic_puzzle" || n.kind === "boss_altar" ? 2.5 : 1.7}
+              r={n.kind === "boss_altar" || n.kind === "trung_dossier" ? 2.8 : 1.9}
               fill={col}
             />
           );
         })}
-        <circle cx={px * sx} cy={py * sy} r="3.6" fill="#FFFFFF" stroke="#38BDF8" strokeWidth="1.4" />
+        <circle cx={px * sx} cy={py * sy} r="3.8" fill="#FFFFFF" stroke="#38BDF8" strokeWidth="1.5" />
       </svg>
 
       <div className="flex items-center justify-between text-[9px] font-mono-numbers text-slate-300 px-0.5">

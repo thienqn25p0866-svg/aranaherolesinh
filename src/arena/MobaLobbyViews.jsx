@@ -16,6 +16,8 @@ import { CitadelBlueprintEmblem } from "./CitadelVisuals.jsx";
 import { InfernoBlueprintEmblem } from "./InfernoVisuals.jsx";
 import { FrozenTombBlueprintEmblem } from "./FrozenTombVisuals.jsx";
 import { GrudgeForestBlueprintEmblem } from "./GrudgeForestVisuals.jsx";
+import { VoidCityBlueprintEmblem } from "./VoidCityVisuals.jsx";
+import { countVoidCityRelics } from "./voidCityMap";
 
 export function MobaLobbyMenu({
   lang,
@@ -62,8 +64,10 @@ export function MobaLobbyMenu({
   infernoProgress = null,
   frozenTombProgress = null,
   grudgeForestProgress = null,
+  voidCityProgress = null,
   onSelectMap,
   onOpenChronicles,
+  onOpenVoidCityRelics,
   resumableRun = null,
   onResumeRun,
 }) {
@@ -560,7 +564,7 @@ export function MobaLobbyMenu({
                   {isVi ? "📜 Biên Niên Sử" : "📜 Chronicles"}
                 </button>
                 <span className="text-[10px] font-mono-numbers text-slate-400 tabular-nums">
-                  {founderUnlocked ? "5/5" : `${unlockedMaps.length}/5`}
+                  {founderUnlocked ? `${ARENA_MAP_LIST.length}/${ARENA_MAP_LIST.length}` : `${unlockedMaps.length}/${ARENA_MAP_LIST.length}`}
                 </span>
               </div>
             </div>
@@ -572,6 +576,7 @@ export function MobaLobbyMenu({
                 const isInferno = m.id === "inferno_ash";
                 const isFrozen = m.id === "frozen_tomb";
                 const isForest = m.id === "grudge_forest";
+                const isVoidCity = m.id === "void_city";
                 const mapName = m.name?.[lang] || m.name?.vi || m.id;
                 const mapSub = m.subtitle?.[lang] || m.subtitle?.vi || "";
 
@@ -594,6 +599,9 @@ export function MobaLobbyMenu({
                     grudgeForestProgress?.ee6FourMapSecretSeen,
                   ].filter(Boolean).length;
                   secretSummary = isVi ? `Bí mật ${cnt}/5` : `Secrets ${cnt}/5`;
+                } else if (unlocked && isVoidCity) {
+                  const cnt = countVoidCityRelics(voidCityProgress);
+                  secretSummary = isVi ? `Di tích ${cnt}/6` : `Relics ${cnt}/6`;
                 }
 
                 return (
@@ -619,6 +627,8 @@ export function MobaLobbyMenu({
                           ? "bg-gradient-to-br from-[#081C33]/95 via-[#071124] to-[#050814] border-sky-400/85 text-sky-50 shadow-[0_0_16px_rgba(56,189,248,0.2)]"
                           : isForest
                           ? "bg-gradient-to-br from-[#062319]/95 via-[#130921] to-[#04080B] border-emerald-400/85 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.2)]"
+                          : isVoidCity
+                          ? "bg-gradient-to-br from-[#13172C]/95 via-[#0C0F1E] to-[#05060B] border-indigo-400/85 text-indigo-50 shadow-[0_0_16px_rgba(129,140,248,0.22)]"
                           : "bg-gradient-to-br from-amber-950/65 to-slate-950 border-amber-400/80 text-amber-50 shadow-[0_0_14px_rgba(245,158,11,0.15)]"
                         : unlocked
                           ? isCitadel
@@ -629,6 +639,8 @@ export function MobaLobbyMenu({
                             ? "bg-[#071120]/90 border-sky-900/55 hover:border-sky-400/65 text-slate-200"
                             : isForest
                             ? "bg-[#071913]/90 border-emerald-900/55 hover:border-emerald-400/65 text-slate-200"
+                            : isVoidCity
+                            ? "bg-[#0B0E1A]/90 border-indigo-900/60 hover:border-indigo-400/70 text-slate-200"
                             : "bg-slate-900/90 border-slate-700/80 hover:border-slate-500 text-slate-200"
                           : "bg-slate-950/60 border-slate-800/70 text-slate-500 opacity-80"
                     }`}
@@ -650,6 +662,8 @@ export function MobaLobbyMenu({
                       <FrozenTombBlueprintEmblem className="w-9 h-9 shrink-0" />
                     ) : isForest ? (
                       <GrudgeForestBlueprintEmblem className="w-9 h-9 shrink-0" />
+                    ) : isVoidCity ? (
+                      <VoidCityBlueprintEmblem className="w-9 h-9 shrink-0" />
                     ) : (
                       <div
                         className={`w-9 h-9 rounded-md border flex items-center justify-center text-sm shrink-0 ${
@@ -670,7 +684,7 @@ export function MobaLobbyMenu({
                         {active && (
                           <span
                             className={`text-[9px] font-mono-numbers font-black uppercase tracking-wider shrink-0 ${
-                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : isFrozen ? "text-sky-300" : isForest ? "text-emerald-300" : "text-amber-300"
+                              isCitadel ? "text-rose-300" : isInferno ? "text-orange-300" : isFrozen ? "text-sky-300" : isForest ? "text-emerald-300" : isVoidCity ? "text-indigo-300" : "text-amber-300"
                             }`}
                           >
                             ●
@@ -685,6 +699,19 @@ export function MobaLobbyMenu({
                 );
               })}
             </div>
+            {onOpenVoidCityRelics && isMapUnlocked("void_city", unlockedMaps, founderUnlocked) && (
+              <button
+                type="button"
+                onClick={() => {
+                  R.playModalOpen?.();
+                  onOpenVoidCityRelics();
+                }}
+                className="mt-1.5 w-full px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#13172C] to-[#1D1234] border border-sky-400/45 hover:border-amber-300/75 text-[11px] font-moba font-bold text-amber-200 flex items-center justify-between cursor-pointer"
+              >
+                <span>❖ {isVi ? "Xưởng Di Tích Vạn Không (Phần Thưởng & Hồ Sơ)" : "Void City Relics Workshop (Upgrades & Dossiers)"}</span>
+                <span className="font-mono-numbers text-sky-300">{countVoidCityRelics(voidCityProgress)}/6 ↗</span>
+              </button>
+            )}
           </div>
 
           {/* Group 3: Primary CTA + Grouped Secondary & Utility Controls */}
