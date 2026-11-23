@@ -2401,6 +2401,17 @@ class SoundEngine {
     });
   }
 
+  playBachFanVolley() {
+    this.playBachDaggerFan();
+  }
+
+  playBachSealDetonate() {
+    if (this.canThrottle("bachSeal", 110)) return;
+    this.playSubPunch(110, 38, 0.22, 0.24);
+    this.playFilteredNoise({ duration: 0.18, filterType: "bandpass", freqStart: 1800, freqEnd: 4200, q: 1.5, gainPeak: 0.16, sendAmbiance: true });
+    this.playChord([659.25, 987.77], 0.2, { type: "triangle", vol: 0.085, sendAmbiance: true });
+  }
+
   playBachUltMatrix() {
     if (this.canThrottle("bachUlt", 240)) return;
     this.playSubPunch(125, 42, 0.24, 0.26);
@@ -2456,6 +2467,10 @@ class SoundEngine {
     this.playChord([523.25, 659.25, 987.77], 0.3, { type: "sine", vol: 0.09, stagger: 0.03, sendAmbiance: true });
   }
 
+  playKhairMedBeacon() {
+    this.playKhairBeacon();
+  }
+
   playKhairRailAim(charge = 0) {
     if (this.canThrottle("khairAim", 240)) return;
     this.playLayerTone({ startFreq: 480 + charge * 420, endFreq: 860 + charge * 620, duration: 0.18, type: "sine", vol: 0.075, sendAmbiance: true });
@@ -2467,6 +2482,10 @@ class SoundEngine {
     this.playLayerTone({ startFreq: 2400, endFreq: 180, duration: 0.34, type: "sawtooth", vol: 0.18, filterFreq: 3600, sendAmbiance: true });
     this.playFilteredNoise({ duration: 0.36, filterType: "bandpass", freqStart: 4800, freqEnd: 520, q: 1.2, gainPeak: 0.32, sendAmbiance: true });
     this.playChord([587.33, 880, 1174.66], 0.28, { type: "triangle", vol: 0.09, delay: 0.03, sendAmbiance: true });
+  }
+
+  playKhairRailFire(_charge = 0.5) {
+    this.playKhairRailBlast();
   }
 
   playKhairUltRecoil() {

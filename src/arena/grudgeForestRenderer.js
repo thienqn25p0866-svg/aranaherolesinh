@@ -2717,23 +2717,34 @@ export function renderGrudgeForestBossEntity(ctx, boss, t) {
   ctx.save();
   ctx.translate(boss.x, boss.y);
 
+  const br = Math.max(28, Number(boss.radius) || 54);
   const pulse = 0.5 + 0.5 * Math.sin(t * 3.6);
-  // Multi-ring spore aura
-  ctx.fillStyle = "rgba(16, 185, 129, 0.16)";
+  const hit = (boss.hitFlash || 0) > 0;
+  // Multi-ring radial spore aura
+  const auraGrad = ctx.createRadialGradient(0, 0, br * 0.35, 0, 0, br + 30 + pulse * 8);
+  auraGrad.addColorStop(0, "rgba(16, 185, 129, 0.24)");
+  auraGrad.addColorStop(0.65, "rgba(192, 132, 252, 0.14)");
+  auraGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = auraGrad;
   ctx.beginPath();
-  ctx.arc(0, 0, boss.radius + 26 + pulse * 8, 0, Math.PI * 2);
+  ctx.arc(0, 0, br + 30 + pulse * 8, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "rgba(192, 132, 252, 0.34)";
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.arc(0, 0, boss.radius + 18 + pulse * 4, 0, Math.PI * 2);
-  ctx.stroke();
 
-  // Writhing colossal root tentacles
+  ctx.strokeStyle = "rgba(192, 132, 252, 0.42)";
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([10, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, br + 19 + pulse * 4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Writhing colossal root tentacles with glowing sap tips
   ctx.lineCap = "round";
   for (let i = 0; i < 8; i++) {
     const a = (Math.PI * 2 * i) / 8 + t * 0.55;
     const wave = Math.sin(t * 4.5 + i * 1.3) * 15;
+    const tx = Math.cos(a) * (br + 28) + wave;
+    const ty = Math.sin(a) * (br + 28);
     ctx.strokeStyle = "#1E1612";
     ctx.lineWidth = 8;
     ctx.beginPath();
@@ -2741,24 +2752,32 @@ export function renderGrudgeForestBossEntity(ctx, boss, t) {
     ctx.quadraticCurveTo(
       Math.cos(a) * 34 + wave * 0.4,
       Math.sin(a) * 34,
-      Math.cos(a) * (boss.radius + 28) + wave,
-      Math.sin(a) * (boss.radius + 28)
+      tx,
+      ty
     );
     ctx.stroke();
 
     ctx.strokeStyle = i % 2 === 0 ? "#34D399" : "#C084FC";
     ctx.lineWidth = 1.8;
     ctx.stroke();
+    ctx.fillStyle = i % 2 === 0 ? "#6EE7B7" : "#E879F9";
+    ctx.beginPath();
+    ctx.arc(tx, ty, 3.2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // Bark carapace body
-  ctx.fillStyle = "#171C19";
+  // Bark carapace body with radial emerald-heartwood shading
+  const barkGrad = ctx.createRadialGradient(-br * 0.22, -br * 0.25, 4, 0, 0, br * 1.08);
+  barkGrad.addColorStop(0, hit ? "#D1FAE5" : "#14532D");
+  barkGrad.addColorStop(0.55, hit ? "#A7F3D0" : "#171C19");
+  barkGrad.addColorStop(1, "#090B0A");
+  ctx.fillStyle = barkGrad;
   ctx.strokeStyle = "#34D399";
   ctx.lineWidth = 2.8;
   ctx.beginPath();
   for (let k = 0; k < 10; k++) {
     const a = (Math.PI * 2 * k) / 10 + Math.sin(t * 1.4 + k) * 0.05;
-    const r = boss.radius * (k % 2 === 0 ? 1.08 : 0.86);
+    const r = br * (k % 2 === 0 ? 1.08 : 0.86);
     if (k === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
     else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
   }
@@ -2766,19 +2785,41 @@ export function renderGrudgeForestBossEntity(ctx, boss, t) {
   ctx.fill();
   ctx.stroke();
 
+  // Glowing emerald sap veins across carapace
+  ctx.strokeStyle = `rgba(52, 211, 153, ${0.55 + pulse * 0.35})`;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(-br * 0.72, -br * 0.18);
+  ctx.lineTo(-br * 0.4, r_frac(br, 0.06));
+  ctx.moveTo(br * 0.72, -br * 0.18);
+  ctx.lineTo(br * 0.4, r_frac(br, 0.06));
+  ctx.stroke();
+
   // Hollow purple-jade core face & glowing eyes
   ctx.fillStyle = "#05070A";
+  ctx.strokeStyle = "#6EE7B7";
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(0, 0, boss.radius * 0.52, 0, Math.PI * 2);
+  ctx.arc(0, 0, br * 0.52, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
 
-  ctx.fillStyle = `rgba(192, 132, 252, ${0.72 + pulse * 0.28})`;
+  ctx.fillStyle = `rgba(192, 132, 252, ${0.75 + pulse * 0.25})`;
   ctx.beginPath();
-  ctx.ellipse(-10, -4, 6.2, 3.5, 0.25, 0, Math.PI * 2);
-  ctx.ellipse(10, -4, 6.2, 3.5, -0.25, 0, Math.PI * 2);
+  ctx.ellipse(-10, -4, 6.4, 3.6, 0.25, 0, Math.PI * 2);
+  ctx.ellipse(10, -4, 6.4, 3.6, -0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#FEF08A";
+  ctx.beginPath();
+  ctx.arc(-10, -4, 2.0, 0, Math.PI * 2);
+  ctx.arc(10, -4, 2.0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
+}
+
+function r_frac(br, f) {
+  return br * f;
 }
 
 // ---------------------------------------------------------------------------

@@ -1974,74 +1974,125 @@ export function drawVoidCityHeroAura(ctx, heroX, heroY, radius, progressInput, t
 export function drawVoidCityEnemySprite(ctx, enemy, t, hitFlash) {
   ctx.save();
   ctx.translate(enemy.x, enemy.y);
-  ctx.rotate(enemy.facing || 0);
   const r = enemy.radius || 20;
   const kind = enemy.voidVariant || "faceless_statue";
-  const pulse = 0.7 + 0.3 * Math.sin(t * 4.2 + (enemy.id || 0));
+  const eid = Number(enemy.id) || 0;
+  const pulse = 0.7 + 0.3 * Math.sin(t * 4.2 + eid);
+
+  // Mini-Boss / Elite golden archive crown ring
+  if (enemy.isMiniBoss || enemy.elite) {
+    ctx.save();
+    ctx.rotate(t * 1.6);
+    ctx.strokeStyle = `rgba(253, 224, 71, ${0.72 * pulse})`;
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([7, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  ctx.rotate(enemy.facing || 0);
 
   if (kind === "mirror_dweller") {
     // Reflective Azure Crystal Shard Being + Orbiting Glass Splinters
-    ctx.fillStyle = hitFlash ? "#FFFFFF" : "#0E7490";
-    ctx.strokeStyle = "#67E8F9";
+    const g = ctx.createRadialGradient(-r * 0.25, -r * 0.25, 2, 0, 0, r * 1.15);
+    g.addColorStop(0, hitFlash ? "#FFFFFF" : "#67E8F9");
+    g.addColorStop(0.55, hitFlash ? "#E0F2FE" : "#0E7490");
+    g.addColorStop(1, "#083344");
+    ctx.fillStyle = g;
+    ctx.strokeStyle = "#A5F3FC";
     ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(r * 1.15, 0);
-    ctx.lineTo(0, r * 0.88);
-    ctx.lineTo(-r * 1.05, 0);
-    ctx.lineTo(0, -r * 0.88);
+    ctx.moveTo(r * 1.18, 0);
+    ctx.lineTo(0, r * 0.9);
+    ctx.lineTo(-r * 1.06, 0);
+    ctx.lineTo(0, -r * 0.9);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    // Specular mirror diagonal reflection line
+    // Internal facet lines + specular diagonal
     ctx.strokeStyle = "#E0F2FE";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.moveTo(-r * 0.45, -r * 0.45);
-    ctx.lineTo(r * 0.55, r * 0.2);
+    ctx.moveTo(-r * 0.5, -r * 0.45);
+    ctx.lineTo(r * 0.6, r * 0.22);
+    ctx.moveTo(0, -r * 0.65);
+    ctx.lineTo(0, r * 0.65);
     ctx.stroke();
-    // Orbiting glass shard
-    const oa = t * 2.8 + (enemy.id || 0);
-    ctx.fillStyle = "#BAE6FD";
-    ctx.beginPath();
-    ctx.arc(Math.cos(oa) * (r + 5), Math.sin(oa) * (r + 5), 3.2, 0, Math.PI * 2);
-    ctx.fill();
+    // Twin orbiting glass splinters
+    for (let si = 0; si < 2; si++) {
+      const oa = t * 2.8 + eid + si * Math.PI;
+      ctx.save();
+      ctx.translate(Math.cos(oa) * (r + 5), Math.sin(oa) * (r + 5));
+      ctx.rotate(oa + Math.PI * 0.5);
+      ctx.fillStyle = "#BAE6FD";
+      ctx.beginPath();
+      ctx.moveTo(0, -4.5);
+      ctx.lineTo(2.8, 0);
+      ctx.lineTo(0, 4.5);
+      ctx.lineTo(-2.8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
   } else if (kind === "shadow_clone") {
     // Assassin Shadow Reflection with Twin Crescent Blades
-    ctx.fillStyle = hitFlash ? "#E9D5FF" : "#1E1B4B";
+    const g = ctx.createRadialGradient(-r * 0.25, -r * 0.25, 2, 0, 0, r);
+    g.addColorStop(0, hitFlash ? "#F5D0FE" : "#4338CA");
+    g.addColorStop(0.55, hitFlash ? "#E9D5FF" : "#1E1B4B");
+    g.addColorStop(1, "#09071A");
+    ctx.fillStyle = g;
     ctx.strokeStyle = "#C084FC";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // Specular shoulder rim
+    ctx.strokeStyle = "rgba(233, 213, 255, 0.45)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.82, -Math.PI * 0.8, -Math.PI * 0.2);
+    ctx.stroke();
     // Twin crescent shadow-blades
     ctx.strokeStyle = "#38BDF8";
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 2.6;
     ctx.beginPath();
-    ctx.arc(r * 0.4, 0, r * 0.85, -1.1, -0.3);
+    ctx.arc(r * 0.4, 0, r * 0.86, -1.12, -0.28);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(r * 0.4, 0, r * 0.85, 0.3, 1.1);
+    ctx.arc(r * 0.4, 0, r * 0.86, 0.28, 1.12);
     ctx.stroke();
-    ctx.fillStyle = "#38BDF8";
+    ctx.fillStyle = "#67E8F9";
     ctx.beginPath();
-    ctx.arc(r * 0.35, -4, 3, 0, Math.PI * 2);
-    ctx.arc(r * 0.35, 4, 3, 0, Math.PI * 2);
+    ctx.arc(r * 0.36, -4.2, 3.2, 0, Math.PI * 2);
+    ctx.arc(r * 0.36, 4.2, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(r * 0.36, -4.2, 1.3, 0, Math.PI * 2);
+    ctx.arc(r * 0.36, 4.2, 1.3, 0, Math.PI * 2);
     ctx.fill();
   } else if (kind === "relic_guardian") {
     // Hexagonal Gilded-Obsidian Automaton with Rotating Halo
     ctx.save();
     ctx.rotate(t * 1.4);
-    ctx.strokeStyle = `rgba(253, 230, 138, ${0.55 * pulse})`;
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = `rgba(253, 230, 138, ${0.62 * pulse})`;
+    ctx.lineWidth = 1.8;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
-    ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
+    ctx.arc(0, 0, r + 5.5, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
 
-    ctx.fillStyle = hitFlash ? "#FEF3C7" : "#1E293B";
+    const g = ctx.createRadialGradient(-r * 0.25, -r * 0.25, 2, 0, 0, r);
+    g.addColorStop(0, hitFlash ? "#FEF3C7" : "#475569");
+    g.addColorStop(0.55, hitFlash ? "#FEF3C7" : "#1E293B");
+    g.addColorStop(1, "#090D16");
+    ctx.fillStyle = g;
     ctx.strokeStyle = "#FDE68A";
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -2055,27 +2106,37 @@ export function drawVoidCityEnemySprite(ctx, enemy, t, hitFlash) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    // Glowing gilded eye lens
     ctx.fillStyle = "#F59E0B";
     ctx.beginPath();
-    ctx.arc(r * 0.25, 0, 5, 0, Math.PI * 2);
+    ctx.arc(r * 0.26, 0, 5.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FEF08A";
+    ctx.beginPath();
+    ctx.arc(r * 0.26, 0, 2.5, 0, Math.PI * 2);
     ctx.fill();
   } else if (kind === "erased_shadow" || kind === "librarian_wraith") {
     // Tattered Erased Void Phantom with Floating Dossier Strips & Blank Scratched Oval
-    ctx.fillStyle = hitFlash ? "#CBD5E1" : "#090D18";
-    ctx.strokeStyle = kind === "librarian_wraith" ? "#60A5FA" : "#A855F7";
-    ctx.lineWidth = 2.2;
+    const accent = kind === "librarian_wraith" ? "#60A5FA" : "#A855F7";
+    const g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, 2, 0, 0, r);
+    g.addColorStop(0, hitFlash ? "#CBD5E1" : "#1E293B");
+    g.addColorStop(0.55, hitFlash ? "#CBD5E1" : "#090D18");
+    g.addColorStop(1, "#020409");
+    ctx.fillStyle = g;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.ellipse(0, 0, r * 0.92, r * 1.08, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, r * 0.94, r * 1.1, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     // Trailing shredded parchment ribbons
     ctx.strokeStyle = "#E2E8F0";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(-r * 0.6, -5);
-    ctx.lineTo(-r * 1.15, -9 + Math.sin(t * 7) * 3);
+    ctx.lineTo(-r * 1.18, -9 + Math.sin(t * 7 + eid) * 3.5);
     ctx.moveTo(-r * 0.6, 5);
-    ctx.lineTo(-r * 1.15, 9 + Math.cos(t * 7) * 3);
+    ctx.lineTo(-r * 1.18, 9 + Math.cos(t * 7 + eid) * 3.5);
     ctx.stroke();
     // Blank scratched-out face oval
     ctx.fillStyle = "#E2E8F0";
@@ -2083,7 +2144,7 @@ export function drawVoidCityEnemySprite(ctx, enemy, t, hitFlash) {
     ctx.ellipse(r * 0.28, 0, r * 0.34, r * 0.44, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#0F172A";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(r * 0.14, -4);
     ctx.lineTo(r * 0.42, 4);
@@ -2092,24 +2153,40 @@ export function drawVoidCityEnemySprite(ctx, enemy, t, hitFlash) {
     ctx.stroke();
   } else {
     // faceless_statue: Weathered Marble Sentinel with Stone Shoulder Pauldrons & Blank Visor
-    ctx.fillStyle = hitFlash ? "#FFFFFF" : "#334155";
+    const g = ctx.createRadialGradient(-r * 0.26, -r * 0.26, 2, 0, 0, r);
+    g.addColorStop(0, hitFlash ? "#FFFFFF" : "#64748B");
+    g.addColorStop(0.55, hitFlash ? "#FFFFFF" : "#334155");
+    g.addColorStop(1, "#0F172A");
+    ctx.fillStyle = g;
     ctx.strokeStyle = "#CBD5E1";
     ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // Specular chisel rim
+    ctx.strokeStyle = "rgba(241, 245, 249, 0.45)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.82, -Math.PI * 0.85, -Math.PI * 0.25);
+    ctx.stroke();
     // Stone pauldrons
     ctx.fillStyle = "#475569";
+    ctx.strokeStyle = "#94A3B8";
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.arc(0, -r * 0.72, r * 0.34, 0, Math.PI * 2);
     ctx.arc(0, r * 0.72, r * 0.34, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
     // Smooth featureless face band
     ctx.fillStyle = "#0F172A";
     ctx.beginPath();
     ctx.roundRect(2, -r * 0.44, r * 0.56, r * 0.88, 3);
     ctx.fill();
+    ctx.strokeStyle = "#38BDF8";
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -2121,10 +2198,20 @@ export function drawVoidCityBossEntityScene(ctx, boss, t) {
   const hit = (boss.hitFlash || 0) > 0;
   const phase = boss.phase || 1;
   const pulse = 0.72 + 0.28 * Math.sin(t * 4);
+  const rimCol = phase >= 2 ? "#C084FC" : "#38BDF8";
+
+  // Soft radial archive aura
+  const auraGrad = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, r * 1.85);
+  auraGrad.addColorStop(0, phase >= 2 ? "rgba(168, 85, 247, 0.28)" : "rgba(56, 189, 248, 0.22)");
+  auraGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = auraGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.85, 0, Math.PI * 2);
+  ctx.fill();
 
   // Ground Void Archive Aura Ring
-  ctx.strokeStyle = phase >= 2 ? `rgba(192, 132, 252, ${0.5 * pulse})` : `rgba(56, 189, 248, ${0.42 * pulse})`;
-  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = phase >= 2 ? `rgba(192, 132, 252, ${0.58 * pulse})` : `rgba(56, 189, 248, ${0.48 * pulse})`;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
   ctx.arc(0, 0, r * 1.68, 0, Math.PI * 2);
   ctx.stroke();
@@ -2143,7 +2230,7 @@ export function drawVoidCityBossEntityScene(ctx, boss, t) {
     ctx.rotate(a + Math.PI * 0.5);
     ctx.fillStyle = i % 2 === 0 ? "#FEF3C7" : "#E2E8F0";
     ctx.fillRect(-7, -10, 14, 20);
-    ctx.strokeStyle = phase >= 2 ? "#C084FC" : "#38BDF8";
+    ctx.strokeStyle = rimCol;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(-7, -10, 14, 20);
     ctx.fillStyle = "#475569";
@@ -2151,14 +2238,18 @@ export function drawVoidCityBossEntityScene(ctx, boss, t) {
     ctx.fillRect(-4, -2, 6, 1.5);
     ctx.fillStyle = "#EF4444";
     ctx.beginPath();
-    ctx.arc(3, 5, 2, 0, Math.PI * 2);
+    ctx.arc(3, 5, 2.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
   ctx.restore();
 
-  // Giant Abyssal Archival Cloak Body
-  ctx.fillStyle = hit ? "#E2E8F0" : "#090B16";
+  // Giant Abyssal Archival Cloak Body with 3D radial shading
+  const bodyGrad = ctx.createRadialGradient(-r * 0.22, -r * 0.22, 4, 0, 0, r * 1.12);
+  bodyGrad.addColorStop(0, hit ? "#F8FAFC" : phase >= 2 ? "#3B0764" : "#1E293B");
+  bodyGrad.addColorStop(0.6, hit ? "#E2E8F0" : "#090B16");
+  bodyGrad.addColorStop(1, "#020308");
+  ctx.fillStyle = bodyGrad;
   ctx.strokeStyle = phase >= 2 ? "#A855F7" : "#94A3B8";
   ctx.lineWidth = 3.8;
   ctx.beginPath();
@@ -2172,12 +2263,31 @@ export function drawVoidCityBossEntityScene(ctx, boss, t) {
   ctx.fill();
   ctx.stroke();
 
-  // Gilded Celestial Brass Crown-Halo
+  // Phase 2/3 Void Archive Fissures across Cloak
+  if (phase >= 2) {
+    ctx.strokeStyle = "#E879F9";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.78, -r * 0.15);
+    ctx.lineTo(-r * 0.48, r * 0.08);
+    ctx.moveTo(r * 0.78, -r * 0.15);
+    ctx.lineTo(r * 0.48, r * 0.08);
+    ctx.stroke();
+  }
+
+  // Double-Bevel Gilded Celestial Brass Crown-Halo
   ctx.strokeStyle = "#FDE68A";
-  ctx.lineWidth = 2.6;
+  ctx.lineWidth = 2.8;
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.74, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.64, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
   // Swirling Paper Vortex where the Face should be
   ctx.fillStyle = "#030408";
@@ -2193,12 +2303,17 @@ export function drawVoidCityBossEntityScene(ctx, boss, t) {
     ctx.restore();
   }
 
-  // Piercing Phase-2 Observer Slit Eyes inside the Vortex
+  // Piercing Phase-2 Observer Slit Eyes + sharp inner glints
   if (phase >= 2) {
     ctx.fillStyle = "#E879F9";
     ctx.beginPath();
-    ctx.ellipse(-10, -3, 5, 2.2, 0.2, 0, Math.PI * 2);
-    ctx.ellipse(10, -3, 5, 2.2, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(-10, -3, 5.4, 2.5, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(10, -3, 5.4, 2.5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(-10, -3, 1.4, 0, Math.PI * 2);
+    ctx.arc(10, -3, 1.4, 0, Math.PI * 2);
     ctx.fill();
   }
 

@@ -179,6 +179,46 @@ import {
   computeDucAnhC1RollDamage,
   computeDucAnhC2ExplosionDamage,
   computeDucAnhC3ImpactDamage,
+  BACH_DASH_DR,
+  BACH_ULT_DR,
+  BACH_DASH_GRACE_SEC,
+  BACH_PASSIVE_MAX_STACKS,
+  BACH_C1_RECAST_WINDOW,
+  BACH_C3_DURATION,
+  BACH_C3_SLASH_COUNT,
+  computeBachDashDefense,
+  computeBachDashProtection,
+  computeBachWindMarkBurst,
+  computeBachHealOnHit,
+  THAI_ARENA_RADIUS,
+  THAI_ARENA_DURATION,
+  THAI_ARENA_ATK_MULT,
+  THAI_ARENA_AS_BONUS,
+  THAI_ARENA_MS_BONUS,
+  THAI_ARENA_DR,
+  THAI_ARENA_DR_BONUS,
+  THAI_ARENA_REGEN_PCT,
+  THAI_ARENA_CDR_SCALE,
+  isPointInThaiArena,
+  computeThaiArenaModifiers,
+  computeThaiSkillDamage,
+  KHAIR_BASE_ATTACK_INTERVAL,
+  KHAIR_C1_DURATION,
+  KHAIR_C1_RADIUS,
+  KHAIR_C1_HEAL_PER_SEC,
+  KHAIR_C1_AS_BONUS,
+  KHAIR_C1_MS_BONUS,
+  KHAIR_C1_ENEMY_SLOW,
+  KHAIR_C2_MAX_CHARGES,
+  KHAIR_C2_RECHARGE_SEC,
+  KHAIR_C2_FULL_CHARGE_SEC,
+  KHAIR_C2_MIN_ZOOM_MULT,
+  KHAIR_C2_MAX_RANGE,
+  KHAIR_C3_IMMUNE_SEC,
+  KHAIR_C3_BACKDASH_DIST,
+  computeKhairSniperZoom,
+  computeKhairC2Damage,
+  computeKhairSniperHeal,
 } from './combatLogic.ts';
 import {
   DAILY_CHECKIN_REWARD,
@@ -851,15 +891,15 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (20 standard + 1 secret Founder = 21 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (23 standard + 1 secret Founder = 24 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 21, 'Must preserve all 20 standard heroes + secret Founder hero Thien');
-  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 20, 'Standard unlocked roster must be 20 heroes');
+  assert.equal(Mi.length, 24, 'Must preserve all 23 standard heroes + secret Founder hero Thien');
+  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 23, 'Standard unlocked roster must be 23 heroes');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 21);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'thien']) {
+  assert.equal(heroIds.size, 24);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'bach', 'thai', 'khair', 'thien']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
@@ -1735,9 +1775,9 @@ test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/ani
   }
 });
 
-test('MOBA hero role classification & filtering covers all 21 champions accurately', async () => {
+test('MOBA hero role classification & filtering covers all 24 champions accurately', async () => {
   const { Mi } = await import('./gameData.js');
-  assert.equal(Mi.length, 21);
+  assert.equal(Mi.length, 24);
   assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
 
   const allFiltered = filterHeroesByRole(Mi, 'all');
@@ -1762,7 +1802,7 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
   const prevWindow = (globalThis as any).window;
 
   const invokeAllSounds = () => {
-    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'thien'];
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'bach', 'thai', 'khair', 'thien'];
     for (const id of heroIds) {
       R.lastCooldowns.clear();
       R.playHeroSelect(id);
@@ -3623,65 +3663,65 @@ test('GameEngine performance integration: resizeCanvas DPR/dimension clamping, s
   }
 });
 
-test('Dung yeu SaNy buff: boosted base stats, strong sustain, high crit & crit dmg, reduced cooldowns, and GameEngine integration', async () => {
+test('Dung yeu SaNy rebalance: tuned base stats, moderate sustain, balanced crit & cooldowns, and GameEngine integration', async () => {
   const { Mi } = await import('./gameData.js');
   const { GameEngine } = await import('./GameEngine.js');
 
   const dung = Mi.find((h: any) => h.id === 'dung');
   assert.ok(dung);
-  assert.equal(dung.stats.hp, 1280);
-  assert.equal(dung.stats.damage, 46);
-  assert.equal(dung.stats.speed, 116);
-  assert.equal(dung.stats.attackInterval, 0.50);
+  assert.equal(dung.stats.hp, 1180);
+  assert.equal(dung.stats.damage, 41);
+  assert.equal(dung.stats.speed, 112);
+  assert.equal(dung.stats.attackInterval, 0.54);
   assert.equal(dung.baseCrit, DUNG_BASE_CRIT);
   assert.equal(dung.maxCrit, DUNG_MAX_CRIT);
   assert.equal(dung.critDmgRatio, DUNG_BASE_CRIT_DMG_RATIO);
-  assert.equal(DUNG_BASE_LIFESTEAL, 0.12);
+  assert.equal(DUNG_BASE_LIFESTEAL, 0.06);
   assert.deepEqual(
     dung.skills.map((s: any) => s.cooldown),
     [DUNG_C1_COOLDOWN, DUNG_C2_COOLDOWN, DUNG_C3_COOLDOWN],
   );
-  assert.deepEqual(dung.skills.map((s: any) => s.cooldown), [4.2, 10.5, 21]);
+  assert.deepEqual(dung.skills.map((s: any) => s.cooldown), [4.8, 12, 24]);
 
   const baseCritProfile = computeDungCritProfile({
     baseAndGearCrit: DUNG_BASE_CRIT,
     berserkActive: false,
     c3Active: false,
   });
-  assert.equal(baseCritProfile.critChance, 0.28);
-  assert.equal(baseCritProfile.critDmgRatio, 2.05);
+  assert.equal(baseCritProfile.critChance, 0.16);
+  assert.equal(baseCritProfile.critDmgRatio, 1.75);
 
   const fullBuffCritProfile = computeDungCritProfile({
     baseAndGearCrit: DUNG_BASE_CRIT,
     berserkActive: true,
     c3Active: true,
   });
-  assert.ok(Math.abs(fullBuffCritProfile.critChance - 0.56) < 1e-6);
-  assert.ok(Math.abs(fullBuffCritProfile.critDmgRatio - 2.60) < 1e-6);
+  assert.ok(Math.abs(fullBuffCritProfile.critChance - 0.36) < 1e-6);
+  assert.ok(Math.abs(fullBuffCritProfile.critDmgRatio - 2.15) < 1e-6);
 
   const cappedGearProfile = computeDungCritProfile({
     baseAndGearCrit: 0.90,
     berserkActive: false,
     c3Active: false,
   });
-  assert.equal(cappedGearProfile.critChance, 0.80);
+  assert.equal(cappedGearProfile.critChance, 0.65);
 
   const cappedBuffedGearProfile = computeDungCritProfile({
     baseAndGearCrit: 0.90,
     berserkActive: true,
     c3Active: true,
   });
-  assert.equal(cappedBuffedGearProfile.critChance, 0.95);
+  assert.equal(cappedBuffedGearProfile.critChance, 0.78);
 
-  const healsNormal = computeDungHealValues({ maxHp: 1280, c3Active: false });
-  const healsC3 = computeDungHealValues({ maxHp: 1280, c3Active: true });
-  assert.equal(healsNormal.passiveHeal, Math.round(85 + 1280 * 0.045));
-  assert.equal(healsC3.passiveHeal, Math.round(260 + 1280 * 0.065));
-  assert.equal(healsNormal.c1HitHeal, Math.round(45 + 1280 * 0.03));
-  assert.equal(healsNormal.c2CastHeal, Math.round(80 + 1280 * 0.06));
-  assert.equal(healsC3.c2HitHeal, healsNormal.c2HitHeal * 2);
-  assert.equal(healsNormal.c3CastHeal, Math.round(240 + 1280 * 0.14));
-  assert.equal(healsNormal.c3HitBonusHeal, Math.round(100 + 1280 * 0.04));
+  const healsNormal = computeDungHealValues({ maxHp: 1180, c3Active: false });
+  const healsC3 = computeDungHealValues({ maxHp: 1180, c3Active: true });
+  assert.equal(healsNormal.passiveHeal, Math.round(45 + 1180 * 0.02));
+  assert.equal(healsC3.passiveHeal, Math.round(95 + 1180 * 0.025));
+  assert.equal(healsNormal.c1HitHeal, Math.round(28 + 1180 * 0.018));
+  assert.equal(healsNormal.c2CastHeal, Math.round(50 + 1180 * 0.035));
+  assert.equal(healsC3.c2HitHeal, Math.round((22 + 1180 * 0.016) * 1.5));
+  assert.equal(healsNormal.c3CastHeal, Math.round(135 + 1180 * 0.075));
+  assert.equal(healsNormal.c3HitBonusHeal, Math.round(55 + 1180 * 0.022));
 
   const prevWindow = (globalThis as any).window;
   const prevLocalStorage = (globalThis as any).localStorage;
@@ -3727,22 +3767,22 @@ test('Dung yeu SaNy buff: boosted base stats, strong sustain, high crit & crit d
     // Base crit includes DUNG_BASE_CRIT even with empty gear
     const baseGearStats = engine.getHeroGearStats('dung');
     assert.ok(Math.abs(baseGearStats.crit - DUNG_BASE_CRIT) < 1e-6);
-    assert.equal(engine.getDungEffectiveCrit().critChance, 0.28);
-    assert.equal(engine.getDungEffectiveCrit().critDmgRatio, 2.05);
+    assert.equal(engine.getDungEffectiveCrit().critChance, 0.16);
+    assert.equal(engine.getDungEffectiveCrit().critDmgRatio, 1.75);
 
     const baseAtkInterval = engine.getEffectiveAttackInterval();
 
-    // Test C2 cast heal, reduced cooldown (10.5s), berserkTimer, and crit boost
+    // Test C2 cast heal, balanced cooldown (12s), berserkTimer (5.5s), and crit boost
     engine.player.hp = Math.round(engine.player.maxHp * 0.4);
     const hpBeforeC2 = engine.player.hp;
     engine.castSkill(1, 0);
-    assert.equal(engine.player.cooldowns[1], 10.5);
-    assert.equal(engine.player.berserkTimer, 6.5);
-    assert.ok(engine.player.hp > hpBeforeC2, 'C2 cast must heal immediately');
-    assert.ok(Math.abs(engine.getDungEffectiveCrit().critChance - 0.38) < 1e-6);
-    assert.ok(Math.abs(engine.getDungEffectiveCrit().critDmgRatio - 2.25) < 1e-6);
+    assert.equal(engine.player.cooldowns[1], 12);
+    assert.equal(engine.player.berserkTimer, 5.5);
+    assert.ok(engine.player.hp > hpBeforeC2, 'C2 cast must still heal');
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critChance - 0.24) < 1e-6);
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critDmgRatio - 1.9) < 1e-6);
 
-    // Spawn an enemy within C3 radius and test C3 cast sustain, shield, cooldown (21s), crit, and AS boost
+    // Spawn an enemy within C3 radius and test C3 cast sustain, nerfed shield (340), cooldown (24s), crit, and AS boost
     engine.enemies.push({
       id: 7777,
       kind: 'minion',
@@ -3758,12 +3798,13 @@ test('Dung yeu SaNy buff: boosted base stats, strong sustain, high crit & crit d
     });
     const hpBeforeC3 = engine.player.hp;
     engine.castSkill(2, 0);
-    assert.equal(engine.player.cooldowns[2], 21);
-    assert.equal(engine.player.dung_c3_buff_timer, 10.5);
-    assert.ok(engine.player.shield >= 650, 'C3 must grant 650 shield');
-    assert.ok(engine.player.hp > hpBeforeC3, 'C3 must grant strong sustain heal on cast + hit');
-    assert.ok(Math.abs(engine.getDungEffectiveCrit().critChance - 0.56) < 1e-6);
-    assert.ok(Math.abs(engine.getDungEffectiveCrit().critDmgRatio - 2.60) < 1e-6);
+    assert.equal(engine.player.cooldowns[2], 24);
+    assert.equal(engine.player.dung_c3_buff_timer, 8.0);
+    assert.ok(engine.player.shield >= 340, 'C3 must grant 340 shield');
+    assert.ok(engine.player.shield < 500, 'C3 shield must remain nerfed below pre-rebalance level');
+    assert.ok(engine.player.hp > hpBeforeC3, 'C3 must grant heal on cast + hit');
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critChance - 0.36) < 1e-6);
+    assert.ok(Math.abs(engine.getDungEffectiveCrit().critDmgRatio - 2.15) < 1e-6);
     assert.ok(engine.getEffectiveAttackInterval() < baseAtkInterval, 'C2 + C3 must speed up attack interval');
   } finally {
     (globalThis as any).window = prevWindow;
@@ -4526,7 +4567,7 @@ test('Cổ Thành Huyết Táng interactive Easter eggs (Tin, Bảo, and Combine
   assert.equal(doneTarget, null);
 });
 
-test('Dark Fantasy lore covers all 21 heroes, all 9 bosses, and Citadel dossier summaries cleanly', async () => {
+test('Dark Fantasy lore covers all 24 heroes, all 9 bosses, and Citadel dossier summaries cleanly', async () => {
   const { Mi, hm } = await import('./gameData.js');
 
   assert.ok(CHRONICLE_CHAPTERS.length >= 3);
@@ -4535,7 +4576,7 @@ test('Dark Fantasy lore covers all 21 heroes, all 9 bosses, and Citadel dossier 
     assert.ok(ch.paragraphs.vi.length >= 2 && ch.paragraphs.en.length >= 2);
   }
 
-  assert.equal(Mi.length, 21);
+  assert.equal(Mi.length, 24);
   for (const hero of Mi) {
     const entry = HERO_CHRONICLES[hero.id];
     assert.ok(entry, `Missing HERO_CHRONICLES entry for ${hero.id}`);
@@ -7936,3 +7977,1054 @@ test('60Hz frame pacing gate and online dead-reckoning interpolation stay smooth
   assert.equal(snapStep.y, 900);
 });
 
+test('Bách (Sát Thủ Lướt Phong Ấn): dash CC immunity, DR scaling, Wind Mark burst, and sustain math', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
+
+  const bach = Mi.find((h: any) => h.id === 'bach');
+  assert.ok(bach, 'Bách hero definition must exist');
+  assert.equal(getHeroRoleKey('bach'), 'assassin');
+  assert.ok(
+    HERO_SKILL_ICONS.bach?.atk &&
+      HERO_SKILL_ICONS.bach?.passive &&
+      HERO_SKILL_ICONS.bach?.c1 &&
+      HERO_SKILL_ICONS.bach?.c2 &&
+      HERO_SKILL_ICONS.bach?.c3
+  );
+
+  // Idle protection is off
+  const idleDef = computeBachDashDefense({ isDashing: false, dashProtectTimer: 0, ultFlurryTimer: 0 });
+  assert.equal(idleDef.ccImmune, false);
+  assert.equal(idleDef.drBonus, 0);
+
+  const idleProt = computeBachDashProtection({ dashActive: false, dashGraceTimer: 0, ultActive: false });
+  assert.equal(idleProt.ccImmune, false);
+  assert.equal(idleProt.damageReduction, 0);
+  assert.equal(idleProt.msBonus, 0);
+
+  // Active dash / grace grants 50% DR, CC immunity, and +20% MS
+  const dashProt = computeBachDashProtection({ dashActive: true, dashGraceTimer: 0, ultActive: false });
+  assert.equal(dashProt.ccImmune, true);
+  assert.equal(dashProt.damageReduction, BACH_DASH_DR);
+  assert.equal(dashProt.msBonus, 0.2);
+
+  const graceProt = computeBachDashProtection({ dashActive: false, dashGraceTimer: BACH_DASH_GRACE_SEC, ultActive: false });
+  assert.equal(graceProt.ccImmune, true);
+  assert.equal(graceProt.damageReduction, BACH_DASH_DR);
+
+  // C3 Flurry escalates to 65% DR and keeps CC immunity
+  const ultProt = computeBachDashProtection({ dashActive: false, dashGraceTimer: 0, ultActive: true });
+  assert.equal(ultProt.ccImmune, true);
+  assert.equal(ultProt.damageReduction, BACH_ULT_DR);
+  assert.equal(BACH_PASSIVE_MAX_STACKS, 3);
+  assert.equal(BACH_C1_RECAST_WINDOW, 3.5);
+  assert.equal(BACH_C3_DURATION, 1.8);
+  assert.equal(BACH_C3_SLASH_COUNT, 5);
+
+  // 3-stack Wind Mark burst & CD refund
+  const burst = computeBachWindMarkBurst({ atk: 120 });
+  assert.equal(burst.burstDmg, Math.round(135 + 120 * 1.45));
+  assert.equal(burst.cdRefundSec, 0.6);
+
+  // Sustain scaling on hit count and passive 3-mark detonation
+  const singleHeal = computeBachHealOnHit({ maxHp: 1200, atk: 100, isPassiveProc: false, hitCount: 1 });
+  const multiHeal = computeBachHealOnHit({ maxHp: 1200, atk: 100, isPassiveProc: false, hitCount: 3 });
+  const procHeal = computeBachHealOnHit({ maxHp: 1200, atk: 100, isPassiveProc: true });
+  assert.ok(multiHeal > singleHeal, 'Multi-hit dagger sustain must exceed single-hit sustain');
+  assert.equal(procHeal, Math.round(1200 * 0.055 + 100 * 0.42));
+});
+
+test('Thái (Đấu Sĩ Đấu Trường): Arena domain detection, stat amplification, CDR, and inside-Arena skill upgrades', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
+
+  const thai = Mi.find((h: any) => h.id === 'thai');
+  assert.ok(thai, 'Thái hero definition must exist');
+  assert.equal(getHeroRoleKey('thai'), 'fighter');
+  assert.ok(
+    HERO_SKILL_ICONS.thai?.atk &&
+      HERO_SKILL_ICONS.thai?.passive &&
+      HERO_SKILL_ICONS.thai?.c1 &&
+      HERO_SKILL_ICONS.thai?.c2 &&
+      HERO_SKILL_ICONS.thai?.c3
+  );
+
+  const arena = { x: 500, y: 500, radius: THAI_ARENA_RADIUS, life: THAI_ARENA_DURATION, visualOnly: false };
+  assert.equal(isPointInThaiArena(500, 500, arena), true);
+  assert.equal(isPointInThaiArena(500 + THAI_ARENA_RADIUS - 1, 500, arena), true);
+  assert.equal(isPointInThaiArena(500 + THAI_ARENA_RADIUS + 20, 500, arena), false);
+  assert.equal(isPointInThaiArena(500, 500, { ...arena, life: 0 }), false);
+  assert.equal(isPointInThaiArena(500, 500, { ...arena, visualOnly: true }), false);
+
+  const outsideMods = computeThaiArenaModifiers(false);
+  assert.equal(outsideMods.insideArena, false);
+  assert.equal(outsideMods.atkMult, 1);
+  assert.equal(outsideMods.skillsUpgraded, false);
+  assert.equal(outsideMods.cdScale, 1);
+  assert.equal(outsideMods.regenRatioPerSec, 0);
+
+  const insideMods = computeThaiArenaModifiers(true);
+  assert.equal(insideMods.insideArena, true);
+  assert.equal(insideMods.atkMult, THAI_ARENA_ATK_MULT);
+  assert.equal(insideMods.asBonus, THAI_ARENA_AS_BONUS);
+  assert.equal(insideMods.msBonus, THAI_ARENA_MS_BONUS);
+  assert.equal(insideMods.drBonus, THAI_ARENA_DR_BONUS);
+  assert.equal(insideMods.regenRatioPerSec, THAI_ARENA_REGEN_PCT);
+  assert.equal(insideMods.skillsUpgraded, true);
+  assert.equal(insideMods.cdScale, THAI_ARENA_CDR_SCALE);
+
+  const c1Out = computeThaiSkillDamage({ skillKey: 'c1', atk: 120, ap: 60, insideArena: false, targetCurrentHp: 2000, isBoss: false });
+  const c1In = computeThaiSkillDamage({ skillKey: 'c1', atk: 120, ap: 60, insideArena: true, targetCurrentHp: 2000, isBoss: false });
+  assert.ok(c1In > c1Out * 1.5, 'Thái C1 inside Arena must receive 1.55x amp + %HP bonus');
+
+  const c2Out = computeThaiSkillDamage({ skillKey: 'c2', atk: 120, ap: 60, insideArena: false });
+  const c2In = computeThaiSkillDamage({ skillKey: 'c2', atk: 120, ap: 60, insideArena: true });
+  assert.equal(c2In, Math.round(c2Out * 1.65));
+
+  const c3Dmg = computeThaiSkillDamage({ skillKey: 'c3', atk: 120, ap: 60 });
+  assert.equal(c3Dmg, Math.round(240 + 120 * 2.15 + 60 * 1.25));
+});
+
+test('Khải (Xạ Thủ Bắn Tỉa): slow cadence, C1 beacon sustain, C2 FOV zoom-out + charge/range scaling, and pierce heal', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
+
+  const khair = Mi.find((h: any) => h.id === 'khair');
+  assert.ok(khair, 'Khải hero definition must exist');
+  assert.equal(getHeroRoleKey('khair'), 'marksman');
+  assert.ok(
+    HERO_SKILL_ICONS.khair?.atk &&
+      HERO_SKILL_ICONS.khair?.passive &&
+      HERO_SKILL_ICONS.khair?.c1 &&
+      HERO_SKILL_ICONS.khair?.c2 &&
+      HERO_SKILL_ICONS.khair?.c3
+  );
+
+  // Sniper cadence & C1/C2/C3 constants
+  assert.ok(KHAIR_BASE_ATTACK_INTERVAL > 1.0);
+  assert.equal(KHAIR_C1_DURATION, 7.0);
+  assert.equal(KHAIR_C1_RADIUS, 175);
+  assert.equal(KHAIR_C1_HEAL_PER_SEC, 0.032);
+  assert.equal(KHAIR_C1_AS_BONUS, 0.35);
+  assert.equal(KHAIR_C1_MS_BONUS, 0.16);
+  assert.equal(KHAIR_C1_ENEMY_SLOW, 0.30);
+  assert.equal(KHAIR_C2_MAX_CHARGES, 2);
+  assert.equal(KHAIR_C2_RECHARGE_SEC, 9.0);
+  assert.equal(KHAIR_C2_FULL_CHARGE_SEC, 0.85);
+  assert.equal(KHAIR_C3_IMMUNE_SEC, 0.85);
+  assert.equal(KHAIR_C3_BACKDASH_DIST, 190);
+
+  // Camera zoom-out & lookahead expand cleanly with C2 aim blend
+  const restZoom = computeKhairSniperZoom({ aimBlend: 0 });
+  assert.equal(restZoom.zoomMult, 1);
+  assert.equal(restZoom.fovExpansionFactor, 1);
+  assert.equal(restZoom.lookAheadPx, 0);
+
+  const fullZoom = computeKhairSniperZoom({ aimBlend: 1 });
+  assert.equal(fullZoom.zoomMult, KHAIR_C2_MIN_ZOOM_MULT);
+  assert.ok(fullZoom.fovExpansionFactor > 1.75);
+  assert.equal(fullZoom.lookAheadPx, 170);
+
+  // C2 damage scales with chargeRatio and distanceTraveled
+  const tapPointBlank = computeKhairC2Damage({ atk: 140, ap: 40, chargeRatio: 0, distanceTraveled: 0 });
+  const fullShort = computeKhairC2Damage({ atk: 140, ap: 40, chargeRatio: 1, distanceTraveled: 0 });
+  const fullLong = computeKhairC2Damage({ atk: 140, ap: 40, chargeRatio: 1, distanceTraveled: KHAIR_C2_MAX_RANGE });
+  assert.ok(fullShort > tapPointBlank * 3, 'Full sniper charge must deal vastly more than quick tap');
+  assert.ok(fullLong > fullShort, 'Long-range snipe must gain distance bonus');
+
+  // Sniper pierce & crit sustain
+  const healOne = computeKhairSniperHeal({ maxHp: 1400, atk: 140, piercedCount: 1, isCrit: false });
+  const healMultiCrit = computeKhairSniperHeal({ maxHp: 1400, atk: 140, piercedCount: 4, isCrit: true });
+  assert.equal(healOne, Math.round(1400 * 0.10 + 140 * 0.35));
+  assert.equal(healMultiCrit, Math.round(1400 * 0.25 + 140 * 0.35));
+  assert.ok(healMultiCrit > healOne * 2);
+});
+
+test('Runtime & VFX end-to-end: Bách, Thái, và Khải thực thi đầy đủ C1/C2/C3, hồi phục, giáp ảo & render()', async () => {
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+
+  let shadowBlurWrites = 0;
+  const createMockCtx = () => {
+    const gradient = { addColorStop() {} };
+    const noop = () => {};
+    const target: any = {
+      save: noop,
+      restore: noop,
+      translate: noop,
+      rotate: noop,
+      scale: noop,
+      setTransform: noop,
+      resetTransform: noop,
+      clearRect: noop,
+      drawImage: noop,
+      beginPath: noop,
+      closePath: noop,
+      arc: noop,
+      ellipse: noop,
+      rect: noop,
+      moveTo: noop,
+      lineTo: noop,
+      quadraticCurveTo: noop,
+      bezierCurveTo: noop,
+      fill: noop,
+      stroke: noop,
+      fillRect: noop,
+      strokeRect: noop,
+      fillText: noop,
+      strokeText: noop,
+      setLineDash: noop,
+      clip: noop,
+      roundRect: noop,
+      createLinearGradient: () => gradient,
+      createRadialGradient: () => gradient,
+      measureText: () => ({ width: 20 }),
+      fillStyle: '#000',
+      strokeStyle: '#000',
+      lineWidth: 1,
+      globalAlpha: 1,
+      shadowBlur: 0,
+      shadowColor: '#000',
+      font: '12px sans-serif',
+      textAlign: 'center',
+      textBaseline: 'middle',
+      lineCap: 'round',
+      lineJoin: 'round',
+    };
+    return new Proxy(target, {
+      set(obj, prop, value) {
+        if (prop === 'shadowBlur' && Number(value) > 0) shadowBlurWrites++;
+        obj[prop] = value;
+        return true;
+      },
+    });
+  };
+
+  const spawnDummyEnemy = (id: number, x: number, y: number, hp = 3000) => ({
+    id,
+    kind: 'monster',
+    type: 'melee',
+    name: `Dummy_${id}`,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    radius: 24,
+    hp,
+    maxHp: hp,
+    damage: 10,
+    speed: 0,
+    facing: Math.PI,
+    color: '#EF4444',
+    accentColor: '#FCA5A5',
+    hitFlash: 0,
+    slowFactor: 0,
+    slowTimer: 0,
+    stunTimer: 0,
+    rootTimer: 0,
+    burnTimer: 0,
+    burnDps: 0,
+    burnTick: 0,
+    poisonTimer: 0,
+    poisonStacks: 0,
+    animWalkPhase: 0,
+    aiPhase: 0,
+    attackCd: 99,
+  });
+
+  try {
+    (globalThis as any).window = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      devicePixelRatio: 1,
+      location: { protocol: 'https:', host: 'arena.example.com', origin: 'https://arena.example.com' },
+    };
+    (globalThis as any).localStorage = {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+    (globalThis as any).requestAnimationFrame = () => 1;
+    (globalThis as any).cancelAnimationFrame = () => {};
+
+    const { GameEngine } = await import('./GameEngine.js');
+    const { Mi } = await import('./gameData.js');
+
+    const mockCtx: any = createMockCtx();
+    const mockCanvas: any = {
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => mockCtx,
+    };
+
+    const engine = new GameEngine(mockCanvas);
+
+    // === 1. BÁCH ===
+    const bachHero = Mi.find((h: any) => h.id === 'bach');
+    engine.startNewGame(bachHero);
+    assert.ok(engine.player, 'Bach player initialized');
+    engine.player.x = 700;
+    engine.player.y = 700;
+    engine.player.facing = 0;
+    engine.player.hp = Math.round(engine.player.maxHp * 0.45);
+    engine.enemies = [
+      spawnDummyEnemy(101, 780, 700, 4000),
+      spawnDummyEnemy(102, 850, 725, 4000),
+    ];
+
+    const hpBeforeBach = engine.player.hp;
+    engine.triggerBasicAttack();
+    assert.ok(engine.player.hp > hpBeforeBach, 'Bach basic attack must heal on hit');
+
+    // Cast C2: backstep + 7 daggers + explosive wind seal
+    const hpBeforeBachC2 = engine.player.hp;
+    const xBeforeBachC2 = engine.player.x;
+    engine.castSkill(1, 0, 820, 700);
+    const bachDaggers = engine.projectiles.filter((p: any) => p.kind === 'bach_dagger');
+    assert.equal(bachDaggers.length, 7, 'Bach C2 must fire 7 fanned daggers');
+    assert.equal((engine.bachWindSeals || []).filter((s: any) => s.kind === 'decoy').length, 1, 'Bach C2 must spawn Explosive Wind Seal');
+    assert.ok(engine.player.hp > hpBeforeBachC2, 'Bach C2 must heal immediately on cast');
+
+    // Step simulation to verify dash movement, dagger hits, and decoy seal detonation
+    for (let i = 0; i < 30; i++) engine.update(0.02);
+    assert.ok(engine.player.x < xBeforeBachC2 - 50, 'Bach C2 must back-dash safely');
+    assert.ok(engine.enemies[0].hp < 4000, 'Bach C2 daggers and decoy seal must damage enemies');
+
+    // Cast C1 (2 steps) and C3
+    engine.player.cooldowns[0] = 0;
+    engine.castSkill(0, 0, 780, 700);
+    assert.equal(engine.player.bach_c1_awaitingSecond, true, 'Bach C1 step 1 opens recast window');
+    engine.castSkill(0, 0, 820, 700);
+    assert.equal(engine.player.bach_c1_awaitingSecond, false, 'Bach C1 step 2 completes 2-step dash');
+
+    engine.player.cooldowns[2] = 0;
+    engine.castSkill(2, 0, engine.player.x, engine.player.y);
+    assert.ok((engine.bachWindSeals || []).some((s: any) => s.kind === 'ult_domain'), 'Bach C3 must spawn Ult Wind Matrix Seal');
+    for (let i = 0; i < 55; i++) engine.update(0.03);
+    assert.ok(engine.player.shield > 0 || engine.player.hp > hpBeforeBachC2, 'Bach C3 must sustain & grant shield');
+
+    for (const isMono of [false, true]) {
+      engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+      engine.render();
+    }
+
+    // === 2. THÁI ===
+    const thaiHero = Mi.find((h: any) => h.id === 'thai');
+    engine.startNewGame(thaiHero);
+    engine.player.x = 700;
+    engine.player.y = 700;
+    engine.player.facing = 0;
+    engine.player.hp = Math.round(engine.player.maxHp * 0.4);
+    engine.enemies = [
+      spawnDummyEnemy(201, 860, 700, 5000),
+      spawnDummyEnemy(202, 770, 740, 5000),
+    ];
+
+    // Cast C3 first to open Arena
+    engine.castSkill(2, 0, 700, 700);
+    assert.equal(engine.thaiArenas.length, 1, 'Thai C3 must deploy Colosseum Arena');
+    assert.equal(engine.player.thai_inArena, true, 'Thai must be flagged inside Arena');
+    assert.ok(engine.player.shield > 0, 'Thai C3 must grant shield');
+
+    // Cast C1 inside Arena -> 3 Golden Waves + shield
+    engine.castSkill(0, 0, 860, 700);
+    const thaiWaves = engine.projectiles.filter((p: any) => p.kind === 'thai_arena_wave');
+    assert.equal(thaiWaves.length, 3, 'Thai Arena C1 must launch 3 golden waves');
+
+    // Basic attack inside Arena refunds C1 CD
+    const c1CdBeforeBasic = engine.player.cooldowns[0];
+    engine.player.attackTimer = 0;
+    engine.player.thai_passiveCd = 0;
+    engine.triggerBasicAttack();
+    assert.ok(engine.player.cooldowns[0] < c1CdBeforeBasic, 'Thai basic hit in Arena must refund C1 CD');
+
+    // Cast C2 inside Arena -> pull inward + lightning + second strike
+    const distBeforePull = Math.hypot(engine.enemies[0].x - engine.player.x, engine.enemies[0].y - engine.player.y);
+    engine.castSkill(1, 0, 700, 700);
+    const distAfterPull = Math.hypot(engine.enemies[0].x - engine.player.x, engine.enemies[0].y - engine.player.y);
+    assert.ok(distAfterPull < distBeforePull, 'Thai Arena C2 must pull enemies inward');
+    assert.ok(engine.player.thai_c2SecondStrike, 'Thai Arena C2 must queue second strike');
+
+    // Step 1.3s to trigger C2 second strike & Arena War-Pulse
+    for (let i = 0; i < 45; i++) engine.update(0.03);
+    assert.equal(engine.player.thai_c2SecondStrike, null, 'Thai C2 second strike must execute');
+    assert.ok(engine.enemies[0].hp < 5000, 'Thai skills & Arena War-Pulse must damage enemy');
+
+    for (const isMono of [false, true]) {
+      engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+      engine.render();
+    }
+
+    // === 3. KHẢI ===
+    const khairHero = Mi.find((h: any) => h.id === 'khair');
+    engine.startNewGame(khairHero);
+    engine.player.x = 700;
+    engine.player.y = 700;
+    engine.player.facing = 0;
+    engine.player.hp = Math.round(engine.player.maxHp * 0.45);
+    const farEnemy = spawnDummyEnemy(301, 1380, 700, 5000);
+    const nearEnemy = spawnDummyEnemy(302, 790, 700, 5000);
+    engine.enemies = [nearEnemy, farEnemy];
+
+    // Basic attack
+    engine.triggerBasicAttack();
+    assert.ok(engine.projectiles.some((p: any) => p.kind === 'khair_bullet'), 'Khair basic must fire khair_bullet');
+
+    // C1 Med-Beacon + instant heal + Sonar pulse
+    const hpBeforeKhairC1 = engine.player.hp;
+    engine.castSkill(0, 0, 700, 700);
+    assert.equal(engine.khairBeacons.length, 1, 'Khair C1 must deploy Med-Beacon');
+    assert.ok(engine.player.hp > hpBeforeKhairC1, 'Khair C1 beacon must grant instant heal when inside');
+
+    // C2 quick-tap
+    engine.castSkill(1, 0, 1200, 700);
+    assert.equal(engine.player.khair_c2Charges, 1, 'Khair C2 quick-tap consumes 1 charge');
+    assert.ok(engine.projectiles.some((p: any) => p.kind === 'khair_c2_sniper'), 'Khair C2 quick-tap must fire sniper bullet');
+    assert.equal((engine.khairRailBeams || []).length, 1, 'Khair C2 quick-tap must spawn hyperspace rail beam');
+
+    // C2 hold-and-release full charge + anti-tunneling check against distant 680px enemy
+    engine.startSkillHold(1, 0, 1200, 700);
+    for (let i = 0; i < 32; i++) engine.update(0.03); // ~0.96s >= full charge 0.85s
+    assert.ok(engine.enemies[0].hp < 5000, 'Quick-tap sniper & Beacon Sonar must hit near enemy');
+    assert.ok(engine.enemies[1].hp < 5000, 'High-velocity sniper must hit distant enemy without tunneling');
+    engine.releaseSkillHold(1, 0, 1200, 700);
+    assert.equal(engine.player.khair_c2Charges, 0, 'Khair C2 hold release fires 2nd charge');
+    for (let i = 0; i < 20; i++) engine.update(0.02);
+    assert.ok(engine.player.shield > 0, 'Khair full-charge crit snipe must grant shield');
+
+    // C3 Recoil Blast -> reloads +1 C2 charge & leaves khair_ion_crater zone on hit/end
+    engine.castSkill(2, 0, 900, 700);
+    assert.equal(engine.player.khair_c2Charges, 1, 'Khair C3 must reload +1 C2 charge');
+    assert.ok(engine.player.khair_c3ImmuneTimer > 0, 'Khair C3 must grant CC immunity');
+    for (let i = 0; i < 35; i++) engine.update(0.03);
+    assert.ok(engine.zones.some((z: any) => z.kind === 'khair_ion_crater'), 'Khair C3 plasma shell detonation must spawn khair_ion_crater zone');
+
+    for (const isMono of [false, true]) {
+      engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+      engine.render();
+    }
+    assert.equal(shadowBlurWrites, 0, 'Render paths for Bach, Thai, Khair must emit zero shadowBlur writes');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+});
+
+test('Full visual upgrade smoke test: all 24 circular heroes, 14 monster kinds, 5 void variants, mini-bosses, Wave 3-27 bosses, and map bosses render cleanly with zero shadowBlur', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+  const {
+    drawHeroBody,
+    drawHeroWeapon,
+    drawMonsterEntity,
+    drawBossWeapon,
+    drawUpgradedBossBody,
+    drawUpgradedProjectile,
+    drawUpgradedSlash,
+  } = await import('./weaponRenderer.js');
+  const {
+    drawVoidCityEnemySprite,
+    drawVoidCityBossEntityScene,
+  } = await import('./voidCityRenderer.js');
+  const { renderFrozenTombEntityBoss } = await import('./frozenTombRenderer.js');
+  const { renderGrudgeForestBossEntity } = await import('./grudgeForestRenderer.js');
+
+  let shadowBlurWrites = 0;
+  let arcCalls = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {},
+    arc(_x: number, _y: number, _r: number, _s: number, _e: number) {
+      arcCalls++;
+    },
+    ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  assert.equal(Mi.length, 24, 'Expected 24 heroes');
+  for (const hero of Mi) {
+    for (const isUlt of [false, true]) {
+      for (const isMono of [false, true]) {
+        const arcBefore = arcCalls;
+        assert.doesNotThrow(() => {
+          drawHeroBody(ctxStub, {
+            heroId: hero.id,
+            elapsedTime: 4.2,
+            radius: 22,
+            facing: 0.4,
+            color: hero.color,
+            accentColor: hero.accentColor,
+            isUlt,
+            isMono,
+            hitFlash: isUlt ? 0.1 : 0,
+            attackAnimTimer: 0.12,
+            weaponAttackDuration: 0.24,
+            weaponSkillTimer: 0.1,
+            weaponSkillDur: 0.25,
+          });
+          drawHeroWeapon(ctxStub, hero.id, {
+            radius: 22,
+            facing: 0.4,
+            attackAnimTimer: 0.12,
+            weaponAttackDuration: 0.24,
+            weaponSkillTimer: 0.1,
+            weaponSkillDur: 0.25,
+            weaponCritTimer: isUlt ? 0.1 : 0,
+            bowRecoilTimer: 0.08,
+            color: hero.color,
+            accentColor: hero.accentColor,
+          }, 4.2, isMono);
+        });
+        assert.ok(arcCalls > arcBefore, `Hero ${hero.id} must retain circular arc geometry`);
+      }
+    }
+  }
+
+  const monsterKinds = [
+    'brute', 'charger', 'caster', 'frost_archer', 'bomber',
+    'assassin', 'shield_knight', 'void_acolyte', 'root_woodfolk',
+    'faceless_wraith', 'root_burrower', 'hero_mimic', 'fog_stalker', 'minion',
+  ];
+  for (const kind of monsterKinds) {
+    for (const isMiniBoss of [false, true]) {
+      for (const isMono of [false, true]) {
+        assert.doesNotThrow(() => {
+          drawMonsterEntity(ctxStub, {
+            id: 101,
+            kind,
+            x: 200,
+            y: 200,
+            radius: isMiniBoss ? 30 : 20,
+            facing: 0.5,
+            hp: 400,
+            maxHp: 500,
+            color: '#F43F5E',
+            isMiniBoss,
+            elite: isMiniBoss,
+            hitFlash: isMiniBoss ? 0.1 : 0,
+            attackTelegraph: 0.5,
+          }, 3.5, isMono);
+        });
+      }
+    }
+  }
+
+  const voidVariants = [
+    'mirror_dweller', 'shadow_clone', 'relic_guardian', 'erased_shadow', 'librarian_wraith', 'faceless_statue',
+  ];
+  for (const voidVariant of voidVariants) {
+    for (const isMiniBoss of [false, true]) {
+      assert.doesNotThrow(() => {
+        drawVoidCityEnemySprite(ctxStub, {
+          id: 202,
+          voidVariant,
+          x: 300,
+          y: 300,
+          radius: 24,
+          facing: 0.2,
+          isMiniBoss,
+        }, 2.4, isMiniBoss);
+      });
+    }
+  }
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+    engine.startNewGame(Mi[0]);
+
+    for (const bossWave of [3, 6, 9, 12, 15, 18, 21, 24, 27]) {
+      for (const phase of [1, 2, 3]) {
+        for (const isMono of [false, true]) {
+          engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+          const bossStub = {
+            id: 900 + bossWave,
+            kind: 'boss',
+            bossWave,
+            phase,
+            x: 640,
+            y: 360,
+            radius: 52,
+            facing: 0.3,
+            hp: 5000,
+            maxHp: 10000,
+            hitFlash: phase === 3 ? 0.1 : 0,
+            castWindupTimer: phase >= 2 ? 0.3 : 0,
+            castWindupTotal: 0.6,
+          };
+          assert.doesNotThrow(() => {
+            engine.drawBossEntity(bossStub);
+            drawBossWeapon(ctxStub, bossStub, 5.0, isMono);
+            if (bossWave >= 15) drawUpgradedBossBody(ctxStub, bossStub, 5.0, isMono);
+          });
+        }
+      }
+    }
+
+    assert.doesNotThrow(() => {
+      drawVoidCityBossEntityScene(ctxStub, { x: 500, y: 500, radius: 58, phase: 2, hitFlash: 0.1 }, 4.0);
+      renderFrozenTombEntityBoss(ctxStub, { x: 500, y: 500, radius: 54, phase: 2, hitFlash: 0 }, 4.0);
+      renderGrudgeForestBossEntity(ctxStub, { x: 500, y: 500, radius: 56, phase: 2, hitFlash: 0.1 }, 4.0);
+      drawUpgradedProjectile(ctxStub, { kind: 'generic_orb', x: 100, y: 100, vx: 120, vy: 0, radius: 8, color: '#38BDF8', angle: 0 }, 2.0, false);
+      drawUpgradedSlash(ctxStub, { x: 100, y: 100, angle: 0, radius: 80, life: 0.1, maxLife: 0.3, color: '#F59E0B', glowColor: '#FEF08A', dir: 1 }, 2.0, false);
+    });
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.equal(shadowBlurWrites, 0, 'All upgraded hero, monster, mini-boss, and boss render paths must have zero shadowBlur writes');
+});
+
+test('Upgraded hero skill and basic attack VFX render cleanly in color and monochrome with zero shadowBlur', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+  const {
+    drawUpgradedProjectile,
+    drawUpgradedSlash,
+    drawCurvedLightning,
+    drawImpactBurst,
+  } = await import('./weaponRenderer.js');
+
+  let shadowBlurWrites = 0;
+  let fillCalls = 0;
+  let strokeCalls = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {},
+    arc() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() { fillCalls++; }, stroke() { strokeCalls++; }, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  const projKinds = [
+    'slash_wave', 'boomerang_glaive', 'wisp_bolt', 'frost_bolt', 'void_bolt',
+    'kin_arrow', 'pierce_arrow', 'fox_arrow', 'longhoi_arrow',
+    'trung_orb', 'duccong_orb', 'tin_slash_wave', 'nguyen_bolt',
+  ];
+  for (const kind of projKinds) {
+    for (const isMono of [false, true]) {
+      assert.doesNotThrow(() => {
+        drawUpgradedProjectile(ctxStub, {
+          kind,
+          isWhirlwindArrow: kind === 'kin_arrow',
+          x: 200,
+          y: 200,
+          vx: 500,
+          vy: 0,
+          radius: 14,
+          color: '#38BDF8',
+          angle: 0.4,
+        }, 3.2, isMono);
+      });
+    }
+  }
+
+  const slashKinds = [
+    'tin_spatial_slash', 'eohyen_frost_slash', 'kin_gale_slash',
+    'thien_sword_slash', 'ducanh_hammer_cleave', 'shockwave',
+    'bao_slash', 'danh_slash', 'danh_kiem_khi_slash', 'duy_dash_cut',
+    'khair_sniper_muzzle',
+  ];
+  for (const kind of slashKinds) {
+    for (const isMono of [false, true]) {
+      assert.doesNotThrow(() => {
+        drawUpgradedSlash(ctxStub, {
+          x: 240,
+          y: 240,
+          angle: 0.3,
+          radius: 110,
+          spread: 1.6,
+          dir: 1,
+          step: 2,
+          crossed: true,
+          empowered: true,
+          color: '#FACC15',
+          accentColor: '#38BDF8',
+          life: 0.08,
+          maxLife: 0.25,
+          kind,
+        }, 0.32, isMono);
+      });
+    }
+  }
+
+  for (const isMono of [false, true]) {
+    for (const isCrit of [false, true]) {
+      assert.doesNotThrow(() => {
+        drawImpactBurst(ctxStub, {
+          x: 300,
+          y: 300,
+          color: '#38BDF8',
+          isCrit,
+          angle: 0.5,
+          radius: isCrit ? 34 : 20,
+          life: 0.05,
+          maxLife: 0.2,
+        }, isMono);
+      });
+    }
+    assert.doesNotThrow(() => {
+      drawCurvedLightning(ctxStub, {
+        points: [{ x: 100, y: 100 }, { x: 140, y: 160 }, { x: 185, y: 220 }, { x: 220, y: 280 }],
+        color: '#FDE047',
+        width: 3.5,
+        life: 0.06,
+        maxLife: 0.25,
+      }, isMono);
+    });
+  }
+  assert.ok(fillCalls > 100 && strokeCalls > 100, 'VFX helpers should execute draw calls');
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const heroSlashExpectations: Record<string, string> = {
+      tin: 'tin_spatial_slash',
+      eohyen: 'eohyen_frost_slash',
+      thien: 'thien_sword_slash',
+      ducanh: 'ducanh_hammer_cleave',
+    };
+    const sparkHeroes = new Set(['tin', 'eohyen', 'kin', 'trung', 'longhoi', 'duccong', 'bao', 'nguyen', 'thien', 'ducanh', 'khair']);
+    const testedHeroes = ['tin', 'eohyen', 'kin', 'thien', 'ducanh', 'trung', 'luan', 'nguyen', 'duy', 'bao', 'longhoi', 'duccong', 'bach', 'khair'];
+
+    for (const heroId of testedHeroes) {
+      const hero = Mi.find((h: any) => h.id === heroId);
+      assert.ok(hero, `Hero ${heroId} should exist`);
+      const engine: any = new GameEngine({
+        width: 1280,
+        height: 720,
+        getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+        getContext: () => ctxStub,
+      });
+      engine.startNewGame(hero);
+      engine.enemies = [{
+        id: 777, kind: 'brute', x: engine.player.x + 80, y: engine.player.y,
+        vx: 0, vy: 0, radius: 22, hp: 5000, maxHp: 5000, speed: 90,
+      }];
+
+      engine.triggerBasicAttack(0);
+      if (heroSlashExpectations[heroId]) {
+        assert.ok(
+          engine.slashes.some((s: any) => s.kind === heroSlashExpectations[heroId]),
+          `${heroId} basic attack should emit ${heroSlashExpectations[heroId]}`,
+        );
+      }
+      if (sparkHeroes.has(heroId)) {
+        assert.ok(
+          engine.particles.some((p: any) => p.shape === 'spark'),
+          `${heroId} basic attack should emit spark particles`,
+        );
+      }
+
+      for (const skillIdx of [0, 1]) {
+        engine.player.cooldowns[skillIdx] = 0;
+        engine.castSkill(skillIdx, 0, engine.player.x + 120, engine.player.y);
+      }
+
+      if (heroId === 'kin') {
+        assert.ok(
+          engine.slashes.some((s: any) => s.kind === 'kin_gale_slash'),
+          'kin C1/C2 should emit kin_gale_slash',
+        );
+      }
+      if (heroId === 'trung') {
+        assert.ok(engine.player.trung_orbs?.active, 'trung C2 should activate orbiting orbs');
+      }
+
+      engine.dragonWaves.push({ id: 901, x: engine.player.x + 50, y: engine.player.y, angle: 0, empowered: true });
+      engine.skyDragons.push({ id: 902, x: engine.player.x + 90, y: engine.player.y, radius: 110, timer: 0.1, duration: 0.5, empowered: true, impacted: false });
+      engine.cataclysmicExplosions.push({ x: engine.player.x + 60, y: engine.player.y, radius: 95, color: '#F97316', life: 0.05, maxLife: 0.35 });
+
+      for (const isMono of [false, true]) {
+        engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+        assert.doesNotThrow(() => {
+          engine.render();
+        });
+      }
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.equal(shadowBlurWrites, 0, 'Upgraded hero VFX & GameEngine render paths must have zero shadowBlur writes');
+});
+
+test('All dedicated world skill renderers and inline zone VFX render cleanly in color and monochrome with zero shadowBlur', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+  const wr = await import('./weaponRenderer.js');
+
+  let shadowBlurWrites = 0;
+  let fillCalls = 0;
+  let strokeCalls = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {},
+    arc() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() { fillCalls++; }, stroke() { strokeCalls++; }, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  const skillProjKinds = [
+    'taidu_missile', 'duy_atk_shuriken', 'duy_shuriken', 'duy_c3_shuriken',
+    'minh_chain', 'duccong_push_orb', 'danh_kiem_khi', 'tin_crystal_throw',
+    'luan_orb', 'luan_shard', 'taidu_rail', 'bach_gale_blade', 'bach_dagger',
+    'thai_arena_wave', 'khair_bullet', 'khair_c2_sniper', 'khair_c3_shell',
+    'dang_tiger_wave', 'thanh_c1_snake', 'nhi_c2_flask', 'nhi_c3_arrow',
+  ];
+  for (const kind of skillProjKinds) {
+    for (const isMono of [false, true]) {
+      assert.doesNotThrow(() => {
+        wr.drawUpgradedProjectile(ctxStub, {
+          kind,
+          x: 250,
+          y: 250,
+          vx: 460,
+          vy: 0,
+          radius: 16,
+          color: '#38BDF8',
+          angle: 0.35,
+          trail: [{ x: 210, y: 250 }, { x: 230, y: 250 }, { x: 250, y: 250 }],
+          elixir: kind === 'nhi_c2_flask' ? 'green' : undefined,
+          empowered: true,
+        }, 2.8, isMono);
+      }, `drawUpgradedProjectile failed for kind=${kind}, isMono=${isMono}`);
+    }
+  }
+
+  const skillSlashKinds = [
+    'luan_portal_wave', 'nguyen_wave', 'taidu_hex_blast', 'nguyen_lotus_boom',
+    'shield_explode', 'gau_shockring', 'phong_swap_burst', 'phong_c3_mark',
+    'dang_punch', 'dang_tiger_fist_aoe', 'dang_black_shield_boom',
+    'danh_dragon_shockring', 'dung_cerberus_bite', 'dung_c1_charge', 'dung_c2_awaken',
+    'duy_decoy_boom', 'duy_heal_lotus', 'thanh_snake_fan', 'thanh_devour_bite',
+    'thanh_shield_pulse', 'nhi_flask_boom', 'nhi_mist_pulse', 'nhi_ult_shock',
+    'minh_seal_boom', 'minh_chain_rect', 'ducanh_fortress_boom', 'ducanh_meteor_boom',
+    'bach_cross_slash', 'thai_arena_cleave', 'thai_cyclone_ring', 'khair_recoil_blast',
+  ];
+  for (const kind of skillSlashKinds) {
+    for (const isMono of [false, true]) {
+      assert.doesNotThrow(() => {
+        wr.drawUpgradedSlash(ctxStub, {
+          x: 260,
+          y: 260,
+          tx: 380,
+          ty: 310,
+          sx: 260,
+          sy: 260,
+          angle: 0.4,
+          radius: 120,
+          spread: 1.5,
+          dir: 1,
+          step: 2,
+          color: '#F59E0B',
+          glowColor: '#FEF08A',
+          elixir: 'purple',
+          life: 0.08,
+          maxLife: 0.25,
+          kind,
+        }, 0.32, isMono);
+      }, `drawUpgradedSlash failed for kind=${kind}, isMono=${isMono}`);
+    }
+  }
+
+  for (const isMono of [false, true]) {
+    assert.doesNotThrow(() => {
+      wr.drawTaiDuTurret(ctxStub, { x: 200, y: 200, facing: 0.4, fireFlash: 0.2, timer: 1.0, duration: 8.0, targetX: 320, targetY: 220 }, 2.4, isMono);
+      wr.drawLuanPortal(ctxStub, { x: 220, y: 220, radius: 54, life: 1.2, maxLife: 6.0 }, 2.4, isMono);
+      wr.drawLuanRift(ctxStub, { x1: 180, y1: 180, x2: 320, y2: 240, width: 16, life: 0.2, maxLife: 1.0 }, isMono);
+      wr.drawLuanBeam(ctxStub, { x1: 200, y1: 200, x2: 520, y2: 240, width: 42, life: 0.15, maxLife: 0.5 }, isMono);
+      wr.drawNguyenSanctuaryWave(ctxStub, { x: 240, y: 240, radius: 130, maxRadius: 210, life: 0.25, maxLife: 0.6 }, isMono);
+      wr.drawTaiDuCarpetStrike(ctxStub, { x: 260, y: 260, radius: 140, timer: 0.3, duration: 0.9, isOrbital: false }, 2.4, isMono);
+      wr.drawTaiDuCarpetStrike(ctxStub, { x: 280, y: 280, radius: 160, timer: 0.4, duration: 0.9, isOrbital: true }, 2.4, isMono);
+      wr.drawNguyenSanctuaryField(ctxStub, { x: 250, y: 250, radius: 155, timer: 0.8, duration: 5.0 }, 2.4, isMono);
+      wr.drawNguyenBastionAura(ctxStub, 250, 250, 42, 2.4, 0.8, true, isMono);
+      wr.drawDuyDecoy(ctxStub, { x: 260, y: 260, facing: 0.3, radius: 22, timer: 0.6, duration: 3.0 }, 2.4, isMono);
+      wr.drawPhongIllusion(ctxStub, { x: 270, y: 270, facing: 0.5, radius: 22, timer: 0.5, duration: 3.0 }, 2.4, isMono);
+      wr.drawDuyHealOrb(ctxStub, { x: 280, y: 280, radius: 16, timer: 0.4, duration: 4.0 }, 2.4, isMono);
+      wr.drawThienSwords(ctxStub, [{ x: 300, y: 300, angle: 0.2, phase: 'out', trail: [{ x: 250, y: 290 }, { x: 275, y: 295 }, { x: 300, y: 300 }] }], 2.4, isMono);
+      wr.drawThienTimeZone(ctxStub, [{ x: 310, y: 310, radius: 210, storedDamage: 650, life: 2.0, maxLife: 3.5 }], 2.4, isMono);
+      wr.drawThienSpatialPortal(ctxStub, [{ x: 320, y: 320, radius: 46 }], 2.4, isMono);
+      wr.drawThienSunJudgement(ctxStub, [{ x: 330, y: 330, radius: 320, life: 0.9, maxLife: 1.65 }], 2.4, isMono);
+      wr.drawThanhSpiritSnakes(ctxStub, [{ x: 340, y: 340, angle: 0.5, life: 0.3, maxLife: 1.5, isCompanion: true, idx: 1 }], 2.4, isMono);
+      wr.drawThanhDevourSerpents(ctxStub, [{ x: 350, y: 350, radius: 140, life: 0.35, maxLife: 1.0 }], 2.4, isMono);
+      const zA = { x: 260, y: 260 }, zB = { x: 390, y: 290 };
+      wr.drawNhiPoisonTethers(ctxStub, [zA, zB], [{ a: zA, b: zB }], 2.4, isMono);
+      wr.drawNhiToxicMist(ctxStub, [{ x: 360, y: 360, radius: 165, timer: 0.6, maxLife: 3.5, elixir: 'green' }], 2.4, isMono);
+      wr.drawMinhSanctuaries(ctxStub, [{ x: 370, y: 370, radius: 155, timer: 0.8, duration: 4.5 }], 2.4, isMono);
+      wr.drawMinhPrisons(ctxStub, [{ x: 380, y: 380, radius: 185, timer: 0.7, duration: 2.5 }], 2.4, isMono);
+      wr.drawDucAnhMeteorLeaps(ctxStub, [{ sx: 220, sy: 220, tx: 420, ty: 260, radius: 185, timer: 0.22, duration: 0.45 }], 2.4, isMono);
+      wr.drawThaiArenaDomains(ctxStub, [{ x: 390, y: 390, radius: 220, timer: 1.0, duration: 5.5 }], 2.4, isMono);
+      wr.drawKhairMedBeacons(ctxStub, [{ x: 400, y: 400, radius: 175, timer: 0.8, duration: 6.0 }], 2.4, isMono, { x: 430, y: 410 } as any);
+      wr.drawBachDashRifts(ctxStub, [{ sx: 240, sy: 240, tx: 440, ty: 280, width: 18, timer: 0.12, duration: 0.45, color: '#22D3EE' }], 2.4, isMono);
+      wr.drawBachWindSeals(ctxStub, [
+        { x: 410, y: 410, radius: 145, timer: 0.18, duration: 0.42, kind: 'decoy' },
+        { x: 430, y: 430, radius: 220, timer: 0.9, duration: 4.0, kind: 'ult_domain' },
+      ], 2.4, isMono);
+      wr.drawKhairRailBeams(ctxStub, [{ sx: 200, sy: 200, ex: 760, ey: 250, life: 0.14, maxLife: 0.48, chargeRatio: 1.0 }], 2.4, isMono);
+      wr.drawDungCerberusUlt(ctxStub, [{ x: 420, y: 420, angle: 0.2, radius: 185, timer: 0.2, duration: 0.75 }], 2.4, isMono);
+    }, `Dedicated world renderer failed for isMono=${isMono}`);
+  }
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const luanHero = Mi.find((h: any) => h.id === 'luan') || Mi[0];
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+    engine.startNewGame(luanHero);
+    const px = engine.player.x;
+    const py = engine.player.y;
+
+    engine.player.luan_c3Charge = { timer: 0.3, maxTimer: 0.8, angle: 0.25 };
+    engine.duccong_pads = {
+      1: { x: px + 60, y: py + 40, radius: 36, teleportCd: 0 },
+      2: { x: px - 60, y: py - 40, radius: 36, teleportCd: 1.5 },
+    };
+    engine.scorchMarks.push({ x: px + 30, y: py, len: 90, angle: 0.2, life: 0.2, maxLife: 1.5 });
+    engine.lavaPools.push({ x: px + 40, y: py + 30, radius: 75, timer: 0.4, duration: 3.0 });
+    for (const state of ['rising', 'plunging', 'levitating', 'launching']) {
+      engine.icePillars.push({
+        x: px + 50, y: py - 30, size: 22, rot: 0.2, state,
+        riseProgress: 0.6, plungeOffset: 40, levitateHeight: 35,
+        levitateTarget: { x: px + 140, y: py }, launchVx: 200, launchVy: 30,
+      });
+    }
+    engine.spatialTears.push({
+      x1: px - 60, y1: py - 40, x2: px + 80, y2: py + 40,
+      width: 14, color: '#E11D48', offsets: [-6, 9, -10, 7],
+      subRifts: [{ x: px, y: py, angle: 0.6, len: 28 }],
+      life: 0.15, maxLife: 0.9,
+    });
+    engine.tinCrystals.push({ x: px + 90, y: py - 50, radius: 44, pulse: 1.2, life: 0.4, maxLife: 4.0 });
+    engine.frostBarrages.push({ x: px - 80, y: py + 40, radius: 110, timer: 0.3, duration: 2.5 });
+    engine.galaxyVortices.push({
+      x: px + 110, y: py + 60, radius: 120, rotation: 0.8, isGalaxy: true,
+      stars: [{ distRatio: 0.4, angle: 0.5, size: 2.5, color: '#FDE047' }, { distRatio: 0.7, angle: 2.1, size: 2.0, color: '#38BDF8' }],
+    });
+    const zoneKinds = [
+      'arrow_rain', 'fox_king_rain', 'blizzard_vortex', 'gau_tremor',
+      'danh_dragon_fire', 'trung_thunder_zone', 'acid_pool', 'blood_sanctuary',
+      'boss_emp_field', 'boss_storm_field', 'taidu_plasma_zone',
+      'thanh_poison_zone', 'nhi_poison_zone', 'khair_ion_crater',
+    ];
+    for (let i = 0; i < zoneKinds.length; i++) {
+      engine.zones.push({
+        kind: zoneKinds[i],
+        x: px + ((i % 4) - 1.5) * 45,
+        y: py + (Math.floor(i / 4) - 1.5) * 45,
+        radius: 95,
+        rotation: 0.3 * i,
+        timer: 0.4,
+        duration: 4.0,
+      });
+    }
+    engine.cataclysmicExplosions.push({ x: px + 40, y: py - 20, radius: 95, color: '#F97316', life: 0.08, maxLife: 0.4 });
+
+    for (const isMono of [false, true]) {
+      engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+      assert.doesNotThrow(() => {
+        engine.render();
+      }, `GameEngine.render() failed with full zones/world skills in isMono=${isMono}`);
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.ok(fillCalls > 500 && strokeCalls > 500, 'Expected substantial draw calls across all skill VFX renderers');
+  assert.equal(shadowBlurWrites, 0, 'All dedicated world skill renderers and inline zone VFX must have zero shadowBlur writes');
+});

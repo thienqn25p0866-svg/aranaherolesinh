@@ -2157,36 +2157,72 @@ export function renderFrozenTombEntityBoss(ctx, boss, t) {
   ctx.save();
   ctx.translate(boss.x, boss.y);
 
+  const br = Math.max(28, Number(boss.radius) || 52);
   const pulse = 0.5 + 0.5 * Math.sin(t * 4.2);
-  ctx.fillStyle = "rgba(59, 7, 100, 0.35)";
+  const hit = (boss.hitFlash || 0) > 0;
+  const phase = boss.phase || 1;
+
+  // Radial abyssal-frost energy aura
+  const auraGrad = ctx.createRadialGradient(0, 0, br * 0.3, 0, 0, br + 28 + pulse * 8);
+  auraGrad.addColorStop(0, "rgba(192, 132, 252, 0.34)");
+  auraGrad.addColorStop(0.6, "rgba(14, 165, 233, 0.2)");
+  auraGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = auraGrad;
   ctx.beginPath();
-  ctx.arc(0, 0, boss.radius + 18 + pulse * 6, 0, Math.PI * 2);
+  ctx.arc(0, 0, br + 28 + pulse * 8, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(15, 10, 32, 0.9)";
-  ctx.lineWidth = 6;
+  // Outer rotating necrotic rune ring
+  ctx.save();
+  ctx.rotate(-t * (phase >= 2 ? 1.5 : 0.85));
+  ctx.strokeStyle = phase >= 2 ? "#E879F9" : "#38BDF8";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, br + 16, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Writhing void-frost tendrils with bioluminescent tips
   ctx.lineCap = "round";
   for (let i = 0; i < 6; i++) {
     const baseA = (Math.PI * 2 * i) / 6 + t * 0.9;
     const wave = Math.sin(t * 5 + i * 1.4) * 14;
+    const tx = Math.cos(baseA) * (br + 22) + wave;
+    const ty = Math.sin(baseA) * (br + 22);
+    ctx.strokeStyle = "rgba(15, 10, 32, 0.92)";
+    ctx.lineWidth = 6.5;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.quadraticCurveTo(
       Math.cos(baseA) * 28 + wave * 0.4,
       Math.sin(baseA) * 28,
-      Math.cos(baseA) * (boss.radius + 22) + wave,
-      Math.sin(baseA) * (boss.radius + 22)
+      tx,
+      ty
     );
     ctx.stroke();
+    ctx.strokeStyle = i % 2 === 0 ? "#67E8F9" : "#C084FC";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.fillStyle = "#E0F2FE";
+    ctx.beginPath();
+    ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  ctx.fillStyle = "rgba(14, 116, 144, 0.48)";
+  // Faceted Ice-Carapace Crown
+  const shellGrad = ctx.createRadialGradient(-br * 0.25, -br * 0.25, 4, 0, 0, br * 1.08);
+  shellGrad.addColorStop(0, hit ? "#FFFFFF" : "rgba(186, 230, 253, 0.72)");
+  shellGrad.addColorStop(0.55, hit ? "#E0F2FE" : "rgba(14, 116, 144, 0.62)");
+  shellGrad.addColorStop(1, "rgba(15, 23, 42, 0.9)");
+  ctx.fillStyle = shellGrad;
   ctx.strokeStyle = "#BAE6FD";
   ctx.lineWidth = 2.8;
   ctx.beginPath();
   for (let k = 0; k < 8; k++) {
     const a = (Math.PI * 2 * k) / 8 + Math.sin(t * 1.5 + k) * 0.06;
-    const r = boss.radius * (k % 2 === 0 ? 1.08 : 0.88);
+    const r = br * (k % 2 === 0 ? 1.08 : 0.88);
     if (k === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
     else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
   }
@@ -2194,16 +2230,28 @@ export function renderFrozenTombEntityBoss(ctx, boss, t) {
   ctx.fill();
   ctx.stroke();
 
+  // Inner abyssal void core + pulsing rune sigil + piercing twin eyes
   ctx.fillStyle = "#03050A";
   ctx.beginPath();
-  ctx.arc(0, 0, boss.radius * 0.56, 0, Math.PI * 2);
+  ctx.arc(0, 0, br * 0.56, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = `rgba(192, 132, 252, ${0.65 + pulse * 0.35})`;
-  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = `rgba(192, 132, 252, ${0.7 + pulse * 0.3})`;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.arc(0, 0, boss.radius * 0.42, 0, Math.PI * 2);
+  ctx.arc(0, 0, br * 0.42, 0, Math.PI * 2);
   ctx.stroke();
+
+  ctx.fillStyle = "#67E8F9";
+  ctx.beginPath();
+  ctx.ellipse(-9, -4, 4.8, 2.5, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(9, -4, 4.8, 2.5, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  ctx.arc(-9, -4, 1.5, 0, Math.PI * 2);
+  ctx.arc(9, -4, 1.5, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }

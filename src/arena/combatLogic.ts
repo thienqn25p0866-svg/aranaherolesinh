@@ -2113,21 +2113,21 @@ export function stepDeadReckoningEntity({
 // DŨNG YÊU SANY (CHIẾN THẦN SẤM SÉT) BUFF CONSTANTS & HELPERS
 // =====================================================================
 
-export const DUNG_BASE_CRIT = 0.28;
-export const DUNG_MAX_CRIT = 0.80;
-export const DUNG_BUFFED_MAX_CRIT = 0.95;
-export const DUNG_BASE_CRIT_DMG_RATIO = 2.05;
-export const DUNG_BASE_LIFESTEAL = 0.12;
-export const DUNG_C1_COOLDOWN = 4.2;
-export const DUNG_C2_COOLDOWN = 10.5;
-export const DUNG_C3_COOLDOWN = 21.0;
-export const DUNG_C2_DURATION = 6.5;
-export const DUNG_C3_DURATION = 10.5;
-export const DUNG_C2_CRIT_BONUS = 0.10;
-export const DUNG_C2_CRIT_DMG_BONUS = 0.20;
-export const DUNG_C3_CRIT_BONUS = 0.18;
-export const DUNG_C3_CRIT_DMG_BONUS = 0.35;
-export const DUNG_C3_BOSS_DMG_MULT = 1.30;
+export const DUNG_BASE_CRIT = 0.16;
+export const DUNG_MAX_CRIT = 0.65;
+export const DUNG_BUFFED_MAX_CRIT = 0.78;
+export const DUNG_BASE_CRIT_DMG_RATIO = 1.75;
+export const DUNG_BASE_LIFESTEAL = 0.06;
+export const DUNG_C1_COOLDOWN = 4.8;
+export const DUNG_C2_COOLDOWN = 12.0;
+export const DUNG_C3_COOLDOWN = 24.0;
+export const DUNG_C2_DURATION = 5.5;
+export const DUNG_C3_DURATION = 8.0;
+export const DUNG_C2_CRIT_BONUS = 0.08;
+export const DUNG_C2_CRIT_DMG_BONUS = 0.15;
+export const DUNG_C3_CRIT_BONUS = 0.12;
+export const DUNG_C3_CRIT_DMG_BONUS = 0.25;
+export const DUNG_C3_BOSS_DMG_MULT = 1.15;
 
 export function computeDungCritProfile({
   baseAndGearCrit = DUNG_BASE_CRIT,
@@ -2169,15 +2169,15 @@ export function computeDungHealValues({
   c3CastHeal: number;
   c3HitBonusHeal: number;
 } {
-  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1280);
+  const safeMaxHp = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1180);
   const passiveHeal = c3Active
-    ? Math.round(260 + safeMaxHp * 0.065)
-    : Math.round(85 + safeMaxHp * 0.045);
-  const c1HitHeal = Math.round(45 + safeMaxHp * 0.03);
-  const c2CastHeal = Math.round(80 + safeMaxHp * 0.06);
-  const c2HitHeal = Math.round((45 + safeMaxHp * 0.035) * (c3Active ? 2 : 1));
-  const c3CastHeal = Math.round(240 + safeMaxHp * 0.14);
-  const c3HitBonusHeal = Math.round(100 + safeMaxHp * 0.04);
+    ? Math.round(95 + safeMaxHp * 0.025)
+    : Math.round(45 + safeMaxHp * 0.02);
+  const c1HitHeal = Math.round(28 + safeMaxHp * 0.018);
+  const c2CastHeal = Math.round(50 + safeMaxHp * 0.035);
+  const c2HitHeal = Math.round((22 + safeMaxHp * 0.016) * (c3Active ? 1.5 : 1));
+  const c3CastHeal = Math.round(135 + safeMaxHp * 0.075);
+  const c3HitBonusHeal = Math.round(55 + safeMaxHp * 0.022);
   return {
     passiveHeal,
     c1HitHeal,
@@ -2399,6 +2399,9 @@ export const BACH_DASH_DR = 0.50;
 export const BACH_ULT_DR = 0.65;
 export const BACH_DASH_GRACE_SEC = 1.2;
 export const BACH_PASSIVE_MAX_STACKS = 3;
+export const BACH_C1_RECAST_WINDOW = 3.5;
+export const BACH_C3_DURATION = 1.8;
+export const BACH_C3_SLASH_COUNT = 5;
 
 export function computeBachDashDefense({
   isDashing = false,
@@ -2417,6 +2420,39 @@ export function computeBachDashDefense({
   return {
     ccImmune: true,
     drBonus: activeUlt ? BACH_ULT_DR : BACH_DASH_DR,
+  };
+}
+
+export function computeBachDashProtection({
+  dashActive = false,
+  dashGraceTimer = 0,
+  ultActive = false,
+}: {
+  dashActive?: boolean;
+  dashGraceTimer?: number;
+  ultActive?: boolean;
+}): { ccImmune: boolean; damageReduction: number; msBonus: number } {
+  const def = computeBachDashDefense({
+    isDashing: dashActive,
+    dashProtectTimer: dashGraceTimer,
+    ultFlurryTimer: ultActive ? 1 : 0,
+  });
+  return {
+    ccImmune: def.ccImmune,
+    damageReduction: def.drBonus,
+    msBonus: def.ccImmune ? 0.20 : 0,
+  };
+}
+
+export function computeBachWindMarkBurst({
+  atk,
+}: {
+  atk: number;
+}): { burstDmg: number; cdRefundSec: number } {
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 54);
+  return {
+    burstDmg: Math.max(1, Math.round(135 + safeAtk * 1.45)),
+    cdRefundSec: 0.6,
   };
 }
 
@@ -2447,6 +2483,7 @@ export const THAI_ARENA_ATK_MULT = 1.40;
 export const THAI_ARENA_AS_BONUS = 0.45;
 export const THAI_ARENA_MS_BONUS = 0.28;
 export const THAI_ARENA_DR = 0.28;
+export const THAI_ARENA_DR_BONUS = THAI_ARENA_DR;
 export const THAI_ARENA_REGEN_PCT = 0.035;
 export const THAI_ARENA_CDR_SCALE = 0.70;
 
@@ -2529,10 +2566,19 @@ export function computeThaiSkillDamage({
 
 // === KHAIR (Xạ Thủ Bắn Tỉa - Tốc Bắn Chậm, C2 Mở Rộng Tầm Nhìn & Viễn Kích Xuyên Thấu) ===
 export const KHAIR_BASE_ATTACK_INTERVAL = 1.18;
+export const KHAIR_C1_DURATION = 7.0;
+export const KHAIR_C1_RADIUS = 175;
+export const KHAIR_C1_HEAL_PER_SEC = 0.032;
+export const KHAIR_C1_AS_BONUS = 0.35;
+export const KHAIR_C1_MS_BONUS = 0.16;
+export const KHAIR_C1_ENEMY_SLOW = 0.30;
 export const KHAIR_C2_MAX_CHARGES = 2;
+export const KHAIR_C2_RECHARGE_SEC = 9.0;
 export const KHAIR_C2_FULL_CHARGE_SEC = 0.85;
 export const KHAIR_C2_MIN_ZOOM_MULT = 0.56;
 export const KHAIR_C2_MAX_RANGE = 1480;
+export const KHAIR_C3_IMMUNE_SEC = 0.85;
+export const KHAIR_C3_BACKDASH_DIST = 190;
 
 export function computeKhairSniperZoom({
   aimBlend = 0,
