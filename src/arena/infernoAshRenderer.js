@@ -220,12 +220,16 @@ function drawRealisticFire(ctx, x, y, t, scale = 1, colorMode = "fire", seed = 0
 function drawRisingSmokeCurl(ctx, x, y, t, scale = 1) {
   ctx.save();
   for (let i = 0; i < 4; i++) {
-    const phase = (t * 0.38 + i * 0.25 + x * 0.003) % 1;
-    const sy = y - 12 * scale - phase * 48 * scale;
-    const sx = x + Math.sin(phase * 6.5 + t * 2.2 + i * 1.4) * 8 * scale;
-    const sr = (4.5 + phase * 10) * scale;
-    ctx.globalAlpha = Math.max(0, (1 - phase) * 0.22);
-    ctx.fillStyle = i % 2 === 0 ? "#292524" : "#44403C";
+    const phase = (t * 0.34 + i * 0.25 + x * 0.003) % 1;
+    const sy = y - 12 * scale - phase * 52 * scale;
+    const sx = x + Math.sin(phase * 6.5 + t * 2.0 + i * 1.4) * 9 * scale;
+    const sr = (5.5 + phase * 11) * scale;
+    const fade = (phase < 0.15 ? phase / 0.15 : (1 - phase) / 0.85) * 0.15;
+    const rg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+    rg.addColorStop(0, i % 2 === 0 ? `rgba(68, 64, 60, ${fade.toFixed(3)})` : `rgba(87, 83, 78, ${fade.toFixed(3)})`);
+    rg.addColorStop(0.55, `rgba(41, 37, 36, ${(fade * 0.35).toFixed(3)})`);
+    rg.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = rg;
     ctx.beginPath();
     ctx.arc(sx, sy, sr, 0, Math.PI * 2);
     ctx.fill();

@@ -4,12 +4,15 @@ import { INFERNO_MAP_WIDTH, INFERNO_MAP_HEIGHT, INFERNO_SPAWN, INFERNO_ZONES, IN
 import { FROZEN_TOMB_WIDTH, FROZEN_TOMB_HEIGHT, FROZEN_TOMB_SPAWN, FROZEN_TOMB_ZONES, FROZEN_TOMB_DOCS, createDefaultFrozenTombProgress, normalizeFrozenTombProgress, mergeFrozenTombProgress, createInitialFrozenTombRuntimeState, getFrozenTombZoneAt, getActiveFrozenTombObstacles, damageFrozenTombDestructibleWalls, triggerEohyenFrozenTombReaction, findNearestFrozenTombInteractable, evaluateFrozenTombProximityEvents, buildEndingSequencePayload, evaluateFrozenTombInteraction, getFrozenTombCompassTarget, stepFrozenTombHazards, isPointOnFrozenIcePatch } from "./frozenTombMap";
 import { GRUDGE_FOREST_WIDTH, GRUDGE_FOREST_HEIGHT, GRUDGE_FOREST_SPAWN, GRUDGE_FOREST_DOCS, createDefaultGrudgeForestProgress, normalizeGrudgeForestProgress, mergeGrudgeForestProgress, countGrudgeForestSecrets, createInitialGrudgeForestRuntimeState, getGrudgeForestZoneAt, getActiveGrudgeForestObstacles, damageGrudgeForestVinesAt, findNearestGrudgeForestInteractable, evaluateGrudgeForestProximityEvents, buildGrudgeForestEndingPayload, evaluateGrudgeForestInteraction, getGrudgeForestCompassTarget, stepGrudgeForestHazards } from "./grudgeForestMap";
 import { VOID_CITY_WIDTH, VOID_CITY_HEIGHT, VOID_CITY_SPAWN, VOID_CITY_DOCS, createDefaultVoidCityProgress, normalizeVoidCityProgress, mergeVoidCityProgress, countVoidCityRelics, computeVoidCityRewardStatBonuses, createInitialVoidCityRuntimeState, getVoidCityZoneAt, getVoidCityCompassTarget, getActiveVoidCityObstacles, toggleVoidCityClockReversal, stepVoidCityHazards, findNearestVoidCityInteractable, evaluateVoidCityInteraction, solveVoidCityRelicPuzzle, applyStarShardUpgrade, exchangeStarShardForGold, applyReflectionCoreSubstat, toggleVoidCityCollectiblePerk, buildVoidCityEndingPayload } from "./voidCityMap";
-import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt, drawMinhSanctuaries, drawMinhPrisons, drawDucAnhMeteorLeaps, drawThaiArenaDomains, drawKhairMedBeacons, drawBachDashRifts, drawBachWindSeals, drawKhairRailBeams, drawWindRibbon, drawStylizedAfterimage, drawWarpRing, drawUltimateSequence, drawCosmicSpatialTear, drawHeroPassiveAura, drawEnemyStatusVfx } from "./weaponRenderer";
+import { drawHeroWeapon, drawBaoDagger, drawUpgradedProjectile, drawUpgradedSlash, drawCurvedLightning, drawImpactBurst, drawGroundCrack, drawHeroBody, drawMonsterEntity, drawBossWeapon, drawUpgradedBossBody, drawDanhDragonForm, drawTaperedArc, drawLuanPortal, drawLuanRift, drawLuanBeam, drawTaiDuDrone, drawTaiDuTurret, drawNguyenSatellites, drawNguyenSanctuaryWave, drawTaiDuCarpetStrike, drawNguyenSanctuaryField, drawNguyenBastionAura, drawDuyDecoy, drawDuyHealOrb, drawPhongIllusion, drawThienSwords, drawThienTimeZone, drawThienSpatialPortal, drawThienSunJudgement, drawThanhSpiritSnakes, drawThanhDevourSerpents, drawNhiPoisonTethers, drawNhiToxicMist, drawDungCerberusForm, drawDungCerberusUlt, drawMinhSanctuaries, drawMinhPrisons, drawDucAnhMeteorLeaps, drawThaiArenaDomains, drawKhairMedBeacons, drawBachDashRifts, drawBachWindSeals, drawKhairRailBeams, drawWindRibbon, drawStylizedAfterimage, drawWarpRing, drawUltimateSequence, drawCosmicSpatialTear, drawHeroPassiveAura, drawEnemyStatusVfx } from "./weaponRenderer";
+import { drawStructuralExplosion, drawVolumetricSmokeLobe, drawViscousDroplet, drawFacetedShard, drawBranchingArc, drawWindStreamRibbon, drawPerspectiveZoneBase, drawArcaneMagicCircle, drawEnergyVortexPillar, drawImpactCraterDecal } from "./vfxMaterials";
+import { spawnEnemyDeathVfx, renderDeadCorpse } from "./deathVfx";
 import { renderBloodCitadelFloor as drawBloodCitadelFloorScene, renderBloodCitadelStructuresAndProps as drawBloodCitadelStructuresScene, renderBloodCitadelAtmosphere as drawBloodCitadelAtmosphereScene, getBloodCitadelZoneLabel } from "./bloodCitadelRenderer";
 import { renderInfernoAshFloor as drawInfernoAshFloorScene, renderInfernoAshStructuresAndProps as drawInfernoAshStructuresScene, renderInfernoAshAtmosphere as drawInfernoAshAtmosphereScene, getInfernoZoneLabel } from "./infernoAshRenderer";
 import { renderFrozenTombFloor as drawFrozenTombFloorScene, renderFrozenTombStructuresAndProps as drawFrozenTombStructuresScene, renderFrozenTombPlayerEffects as drawFrozenTombPlayerEffectsScene, renderFrozenTombEntityBoss as drawFrozenTombEntityBossScene, renderFrozenTombAtmosphere as drawFrozenTombAtmosphereScene, getFrozenTombZoneLabel } from "./frozenTombRenderer";
 import { renderGrudgeForestFloor as drawGrudgeForestFloorScene, renderGrudgeForestStructures as drawGrudgeForestStructuresScene, renderGrudgeForestPlayerEffects as drawGrudgeForestPlayerEffectsScene, renderGrudgeForestBossEntity as drawGrudgeForestBossEntityScene, renderGrudgeForestAtmosphere as drawGrudgeForestAtmosphereScene, getGrudgeForestZoneLabel } from "./grudgeForestRenderer";
 import { drawVoidCityFloorScene, drawVoidCityStructuresScene, drawVoidCityHeroAura, drawVoidCityBossEntityScene, renderVoidCityAtmosphere, getVoidCityZoneLabel } from "./voidCityRenderer";
+import { drawClassicArenaFloor, drawClassicArenaAtmosphereScene } from "./classicArenaRenderer";
 import { MAX_WAVES, BOSS_WAVES, getBossStageCcDuration, computeLongHoiBurnApplication, computeLongHoiBurnDps, getBossCcDuration, getBossPowerModifiers, computeTinStackGain, computeTinCooldownTickRate, applyTinBasicHitCooldownRefund, TIN_EMPOWERED_SKILL_MULT, TIN_OVERLOAD_SHIELD_RATIO, computeLuanPortalBeamTransform, computeLuanC1ShardDamage, computeLuanRiftTickDamage, LUAN_RIFT_TICK_INTERVAL, LUAN_RIFT_MAX_SEGMENTS, LUAN_C3_MONOCHROME_DURATION, computeDanhDragonFormModifiers, cycleTaiDuDroneMode, getTaiDuDroneProfile, TAI_DU_DRONE_OVERDRIVE_DURATION, TAI_DU_MAX_TURRETS, computeTaiDuDroneShot, computeNguyenOverhealConversion, computeCameraViewportConfig, screenToWorldWithCamera, DUY_PASSIVE_MAX_MULT, DUY_PASSIVE_RAMP_SEC, DUY_QUIET_REGEN_DELAY, DUY_DECOY_DURATION, DUY_DECOY_BLAST_RADIUS, DUY_C2_STUN_DUR, DUY_C3_HEAL_PER_HIT, computeDuyPassiveMultiplier, computeDuyDecoyBlastDamage, computeDuyC2ShurikenCount, computeDuyC3ShurikenCount, computeDuyC3ShurikenDamage, selectMonsterTargetWithDecoy, PHONG_MAX_ILLUSIONS, PHONG_ILLUSION_DURATION, PHONG_KILL_HEAL_RATIO, PHONG_KILL_CD_REFUND, computePhongIllusionHitHeal, computePhongC3SlashDamage, DANG_RAGE_MAX, DANG_ARMOR_DURATION, DANG_ARMOR_DR, DANG_C3_AS_BONUS, DANG_C3_AS_DURATION, computeDangRageGain, computeDangC1WaveHeal, THIEN_ENERGY_MAX, THIEN_ASCENDED_DURATION, THIEN_GOD_MODE_CDR_MULT, THIEN_GOD_MODE_DMG_MULT, THIEN_GOD_MODE_REGEN_PER_SEC, THIEN_C1_SWORD_COUNT, computeThienPassiveGain, computeThienCooldownTickRate, computeThienAscendedModifiers, computeThienC1SwordDamage, computeThienC2Detonation, computeThienC4JudgementDamage, computeThienDamageBreakdownTotal, THANH_ECHO_DELAY, THANH_ECHO_DMG_RATIO, THANH_ECHO_MAX_QUEUE, THANH_C1_POISON_DURATION, THANH_C2_ZONE_DURATION, THANH_C2_ZONE_SLOW, THANH_C2_HEAL_RATIO_PER_TICK, THANH_C3_GUARD_COUNT, THANH_C3_GUARD_DURATION, THANH_C3_GUARD_DR, evaluateThanhBurstPassive, computeThanhC1SnakeDamage, computeThanhC1BoundedHeal, isThanhC2SwallowEligible, computeThanhC2Damage, computeThanhC3Sacrifice, NHI_PASSIVE_HP_THRESHOLD, NHI_PASSIVE_HEAL_RATIO, NHI_PASSIVE_MIST_DURATION, NHI_PASSIVE_SLOW, NHI_PASSIVE_CD, NHI_C2_MAX_ZONES, NHI_C2_ZONE_DURATION, NHI_C2_TETHER_RANGE, NHI_C2_HEAL_INTERVAL, NHI_C2_HEAL_RATIO_PER_TICK, cycleNhiAmmoType, getNhiAmmoProfile, computeNhiPoisonDps, computeNhiC1LifeHeal, computeNhiPoisonZoneTethers, selectHighestHpTarget, computeNhiC3ArrowDamage, computeNhiC3BoundedHeal, normalizeQualityMode, normalizeFpsCapMode, detectDeviceHardwareTier, resolvePerformanceProfile, stepAdaptiveQualityGovernor, computeWorldViewBounds, isCircleInViewBounds, isSegmentInViewBounds, swapRemoveAt, computeAdaptiveSyncIntervals, shouldSkipFrameForTargetFps, stepDeadReckoningEntity, DUNG_BASE_CRIT, DUNG_MAX_CRIT, DUNG_BASE_LIFESTEAL, DUNG_C2_DURATION, DUNG_C3_DURATION, DUNG_C3_BOSS_DMG_MULT, computeDungCritProfile, computeDungHealValues, BOSS_CC_IMMUNITY_WINDOW_SEC, HERO_SHIELD_CAP_RATIO, isBossHardCcImmune, evaluateEnemyHardCcApplication, computeBoundedShieldAdd, MINH_PASSIVE_HEAL_RATIO, MINH_PASSIVE_SHIELD_RATIO, MINH_PASSIVE_SHIELD_DUR, MINH_PASSIVE_ICD, MINH_C1_MOB_ROOT, MINH_C1_BOSS_ROOT, MINH_C1_BOSS27_SLOW, MINH_C1_BOSS27_SLOW_DUR, MINH_C1_RANGE, MINH_C1_WIDTH, MINH_C1_CHAIN_COUNT, MINH_C1_HEAL_RATIO, MINH_C1_MAX_HEAL_RATIO, MINH_C2_MOB_FREEZE, MINH_C2_BOSS_FREEZE, MINH_C2_BOSS_SLOW, MINH_C2_BOSS_SLOW_DUR, MINH_C2_ALLY_HEAL_RATIO, MINH_C2_ALLY_SHIELD_RATIO, MINH_C3_MOB_SEAL, MINH_C3_BOSS_SEAL, MINH_C3_ALLY_HEAL_RATIO, MINH_C3_ALLY_SHIELD_RATIO, computeMinhBasicDamage, computeMinhC1Damage, computeMinhC1CcHeal, computeMinhC2TickDamage, computeMinhC3DetonateDamage, DUCANH_PASSIVE_DR, DUCANH_PASSIVE_HP_THRESHOLD, DUCANH_PASSIVE_REGEN_RATIO, DUCANH_PASSIVE_REGEN_DUR, DUCANH_PASSIVE_SHIELD_RATIO, DUCANH_PASSIVE_CD, DUCANH_C1_DURATION, DUCANH_C1_DR, DUCANH_C1_BOSS_STUN, DUCANH_C1_PER_HIT_PCT, DUCANH_C1_MAX_PCT, DUCANH_C2_DURATION, DUCANH_C2_SHIELD_RATIO, DUCANH_C2_DR, DUCANH_C2_REGEN_RATIO, DUCANH_C2_END_ALLY_HEAL, DUCANH_C2_END_ALLY_SHIELD, DUCANH_C3_MOB_KNOCKUP, DUCANH_C3_BOSS_STUN, DUCANH_C3_SELF_HEAL, DUCANH_C3_SELF_SHIELD, DUCANH_C3_ALLY_HEAL, DUCANH_C3_ALLY_SHIELD, DUCANH_MAX_DR_CAP, computeDucAnhDamageReduction, computeDucAnhC1RollGain, computeDucAnhC1RollDamage, computeDucAnhC2ExplosionDamage, computeDucAnhC3ImpactDamage, BACH_DASH_GRACE_SEC, BACH_DASH_DR, BACH_ULT_DR, BACH_PASSIVE_MAX_STACKS, BACH_C1_RECAST_WINDOW, BACH_C3_DURATION, BACH_C3_SLASH_COUNT, computeBachDashProtection, computeBachHealOnHit, computeBachWindMarkBurst, THAI_ARENA_RADIUS, THAI_ARENA_DURATION, THAI_ARENA_ATK_MULT, THAI_ARENA_AS_BONUS, THAI_ARENA_MS_BONUS, THAI_ARENA_DR_BONUS, THAI_ARENA_REGEN_PCT, THAI_ARENA_CDR_SCALE, isPointInThaiArena, computeThaiSkillDamage, KHAIR_C1_DURATION, KHAIR_C1_RADIUS, KHAIR_C1_HEAL_PER_SEC, KHAIR_C1_AS_BONUS, KHAIR_C1_MS_BONUS, KHAIR_C1_ENEMY_SLOW, KHAIR_C2_MAX_CHARGES, KHAIR_C2_RECHARGE_SEC, KHAIR_C2_FULL_CHARGE_SEC, KHAIR_C2_MAX_RANGE, KHAIR_C3_IMMUNE_SEC, KHAIR_C3_BACKDASH_DIST, computeKhairSniperZoom, computeKhairC2Damage, computeKhairSniperHeal } from "./combatLogic";
 import { mpClient } from "./multiplayerClient";
 import { readDeviceKey, writeDeviceKey, recordDeviceSave, normalizeSavedRun } from "./deviceStorage";
@@ -2627,7 +2630,13 @@ export class GameEngine {
       if (l.startsWith("+") || l.includes("LV") || l.includes("M\xC0N")) this.floatingTexts.shift();
       else return;
     }
-    this.floatingTexts.push({ x: s + (Math.random() - 0.5) * 16, y: a - 14, vy: -42, text: l, color: m, life: 0, maxLife: 0.75, size: c });
+    let yOff = a - 14;
+    for (let existing of this.floatingTexts) {
+      if (existing.life < 0.42 && Math.abs(existing.x - s) < 92 && Math.abs(existing.y - yOff) < 22) {
+        yOff = Math.min(yOff - 22, existing.y - 22);
+      }
+    }
+    this.floatingTexts.push({ x: s + (Math.random() - 0.5) * 14, y: yOff, vy: -42, text: l, color: m, life: 0, maxLife: 0.75, size: c });
   }
   spawnImpactBurst(x, y, color = "#38BDF8", tierOrIsCrit = false, angle = 0) {
     let prof = this.getPerformanceProfile();
@@ -2638,19 +2647,19 @@ export class GameEngine {
         x, y, color, tier, isCrit: isHeavy, angle,
         radius: isFinisher ? 52 : isHeavy ? 36 : 20,
         life: 0,
-        maxLife: isFinisher ? 0.34 : isHeavy ? 0.25 : 0.17,
+        maxLife: isFinisher ? 0.68 : isHeavy ? 0.50 : 0.36,
       });
     }
     if (isFinisher || (isHeavy && prof.effectiveTier !== "saver")) {
-      this.spawnWarpRing(x, y, isFinisher ? 96 : 54, color, isFinisher ? "#F43F5E" : "#FEF08A", isFinisher ? 0.34 : 0.22, angle, 0.72);
+      this.spawnWarpRing(x, y, isFinisher ? 96 : 54, color, isFinisher ? "#F43F5E" : "#FEF08A", isFinisher ? 0.64 : 0.44, angle, 0.72);
     }
     if (isHeavy && this.gameSettings.particles) {
       let cnt = isFinisher ? 6 : 3;
       let pal = HERO_VFX_PALETTES[this.currentHero?.id] || [color, "#FFFFFF"];
-      this.spawnParticles(x, y, pal[0] || color, cnt, isFinisher ? 95 : 70, isFinisher ? 260 : 190, isFinisher ? 4.2 : 3.2, isFinisher ? 0.42 : 0.3, isFinisher ? "shard" : "streak", { drag: 0.9, spin: 8, angle, spread: isFinisher ? Math.PI * 2 : 1.7, additive: true });
+      this.spawnParticles(x, y, pal[0] || color, cnt, isFinisher ? 95 : 70, isFinisher ? 260 : 190, isFinisher ? 4.2 : 3.2, isFinisher ? 0.78 : 0.56, isFinisher ? "shard" : "streak", { drag: 0.9, spin: 8, angle, spread: isFinisher ? Math.PI * 2 : 1.7, additive: false });
     }
   }
-  spawnWindRibbon(sx, sy, tx, ty, color = "#67E8F9", accentColor = "#F8FAFC", width = 10, maxLife = 0.4, side = 1, sync = true) {
+  spawnWindRibbon(sx, sy, tx, ty, color = "#67E8F9", accentColor = "#F8FAFC", width = 10, maxLife = 0.78, side = 1, sync = true) {
     if (!this.windRibbons) this.windRibbons = [];
     let prof = this.getPerformanceProfile();
     let maxRibbons = prof.effectiveTier === "saver" ? 12 : prof.effectiveTier === "balanced" ? 24 : 40;
@@ -2658,34 +2667,34 @@ export class GameEngine {
     this.windRibbons.push({ id: this.nextEntityId++, sx, sy, tx, ty, color, accentColor, width, life: 0, maxLife, side, alpha: 0.85 });
     sync && this.queueVfx("wind_ribbon", { sx, sy, tx, ty, color, accentColor, width, maxLife, side });
   }
-  spawnWarpRing(x, y, maxRadius = 110, color = "#38BDF8", accentColor = "#E879F9", maxLife = 0.32, angle = 0, tiltY = 0.72) {
+  spawnWarpRing(x, y, maxRadius = 110, color = "#38BDF8", accentColor = "#E879F9", maxLife = 0.62, angle = 0, tiltY = 0.72) {
     if (!this.warpRings) this.warpRings = [];
     let prof = this.getPerformanceProfile();
-    let maxRings = prof.effectiveTier === "saver" ? 14 : prof.effectiveTier === "balanced" ? 20 : 28;
+    let maxRings = prof.effectiveTier === "saver" ? 14 : prof.effectiveTier === "balanced" ? 22 : 28;
     if (this.warpRings.length >= maxRings) swapRemoveAt(this.warpRings, 0);
     this.warpRings.push({ id: this.nextEntityId++, x, y, maxRadius, color, accentColor, life: 0, maxLife, angle, tiltY, alpha: 0.88 });
   }
-  spawnUltimateSequence(heroId, x, y, angle = 0, radius = 210, maxLife = 1.35, sync = true) {
+  spawnUltimateSequence(heroId, x, y, angle = 0, radius = 210, maxLife = 2.45, sync = true) {
     if (!this.ultimateSequences) this.ultimateSequences = [];
     let prof = this.getPerformanceProfile();
     let pal = HERO_VFX_PALETTES[heroId] || [this.currentHero?.color || "#FACC15", this.currentHero?.accentColor || "#38BDF8"];
     if (this.ultimateSequences.length >= 6) swapRemoveAt(this.ultimateSequences, 0);
     this.ultimateSequences.push({ id: this.nextEntityId++, heroId, x, y, angle, radius, color: pal[0], accentColor: pal[1], life: 0, maxLife, s3Done: false });
-    this.spawnWarpRing(x, y, Math.max(95, radius * 0.58), pal[0], pal[1], 0.36, angle, 0.72);
+    this.spawnWarpRing(x, y, Math.max(95, radius * 0.58), pal[0], pal[1], 0.68, angle, 0.72);
     if (this.gameSettings.particles && prof.effectiveTier !== "saver") {
       let count = prof.effectiveTier === "balanced" ? 6 : 10;
       for (let i = 0; i < count; i++) {
         let pa = (Math.PI * 2 / count) * i + Math.random() * 0.4;
         let dist = radius * (0.45 + Math.random() * 0.45);
         let px = x + Math.cos(pa) * dist, py = y + Math.sin(pa) * dist;
-        let spd = dist / 0.28;
+        let spd = dist / 0.48;
         let cap = Math.max(0, prof.maxParticles - this.particles.length);
         if (cap <= 0) break;
         this.particles.push(this._acquireVfxObj("particles", (o) => {
           o.x = px; o.y = py; o.vx = -Math.cos(pa) * spd; o.vy = -Math.sin(pa) * spd;
           o.radius = 3.2; o.color = i % 2 === 0 ? pal[0] : pal[1]; o.shape = "streak";
-          o.life = 0; o.maxLife = 0.28; o.drag = 0.96; o.gravity = 0; o.growRate = 0;
-          o.spin = 0; o.angle = pa + Math.PI; o.additive = true;
+          o.life = 0; o.maxLife = 0.52; o.drag = 0.94; o.gravity = 0; o.growRate = 0;
+          o.spin = 0; o.angle = pa + Math.PI; o.additive = false;
         }));
       }
     }
@@ -2698,14 +2707,15 @@ export class GameEngine {
     let cap = Math.max(0, prof.maxParticles - this.particles.length);
     let baseAng = opts && Number.isFinite(opts.angle) ? opts.angle : null;
     let spread = opts && Number.isFinite(opts.spread) ? opts.spread : Math.PI * 2;
+    let durBase = Math.max(0.32, h * 1.8);
     for (let f = 0, lim = Math.min(scaled, cap); f < lim; f++) {
       let v = baseAng !== null ? baseAng + (Math.random() - 0.5) * spread : Math.random() * Math.PI * 2;
       let T = c + Math.random() * (g - c);
       let obj = this._acquireVfxObj("particles", (o) => {
-        o.x = s; o.y = a; o.vx = Math.cos(v) * T; o.vy = Math.sin(v) * T;
+        o.x = s; o.y = a; o.vx = Math.cos(v) * T * 0.88; o.vy = Math.sin(v) * T * 0.88;
         o.radius = p * (0.6 + Math.random() * 0.7);
-        o.color = l; o.shape = shape; o.life = 0; o.maxLife = h * (0.7 + Math.random() * 0.5);
-        o.drag = opts?.drag ?? 0.94; o.gravity = opts?.gravity ?? 0; o.growRate = opts?.growRate ?? 0;
+        o.color = l; o.shape = shape; o.life = 0; o.maxLife = durBase * (0.7 + Math.random() * 0.5);
+        o.drag = opts?.drag ?? 0.93; o.gravity = opts?.gravity ?? 0; o.growRate = opts?.growRate ?? 0;
         o.spin = opts?.spin ?? 0; o.angle = v; o.additive = Boolean(opts?.additive);
       });
       this.particles.push(obj);
@@ -2721,7 +2731,7 @@ export class GameEngine {
       this.flameParticles.push(this._acquireVfxObj("flameParticles", (o) => {
         o.x = s + (Math.random() - 0.5) * 12; o.y = a + (Math.random() - 0.5) * 12;
         o.vx = Math.cos(h) * f; o.vy = Math.sin(h) * f;
-        o.radius = 3.5 + Math.random() * 4.5; o.colorMode = l; o.life = 0; o.maxLife = 0.35 + Math.random() * 0.35;
+        o.radius = 3.5 + Math.random() * 4.5; o.colorMode = l; o.life = 0; o.maxLife = 0.72 + Math.random() * 0.65;
       }));
     }
   }
@@ -2735,7 +2745,8 @@ export class GameEngine {
       this.redCrystals.push(this._acquireVfxObj("redCrystals", (o) => {
         o.x = s; o.y = a; o.vx = Math.cos(p) * h; o.vy = Math.sin(p) * h;
         o.size = 4 + Math.random() * 6; o.rot = Math.random() * Math.PI * 2;
-        o.rotSpd = (Math.random() - 0.5) * 12; o.alpha = 1; o.life = 0; o.maxLife = 0.5 + Math.random() * 0.4;
+        o.rotSpd = (Math.random() - 0.5) * 12; o.alpha = 1; o.life = 0; o.maxLife = 0.95 + Math.random() * 0.75;
+        o.shape = "crystal"; o.primary = undefined; o.highlight = undefined; o.shadow = undefined; o.rim = undefined;
       }));
     }
   }
@@ -2744,8 +2755,9 @@ export class GameEngine {
     let prof = this.getPerformanceProfile();
     if (this.smokePuffs.length >= prof.maxSmoke) return;
     this.smokePuffs.push(this._acquireVfxObj("smokePuffs", (o) => {
-      o.x = s; o.y = a; o.vx = (Math.random() - 0.5) * 20; o.vy = (Math.random() - 0.5) * 20 - 15;
-      o.radius = l; o.color = m; o.life = 0; o.maxLife = 0.45 + Math.random() * 0.35;
+      o.x = s; o.y = a; o.vx = (Math.random() - 0.5) * 14; o.vy = (Math.random() - 0.5) * 14 - 12;
+      o.radius = l; o.color = m; o.life = 0; o.maxLife = 1.05 + Math.random() * 0.7;
+      o.shadowColor = undefined; o.rimColor = undefined; o.seed = undefined;
     }));
   }
   spawnBloodSplatter(s, a, l = 12, m = null, c = Math.PI * 2) {
@@ -2772,13 +2784,13 @@ export class GameEngine {
         this.createBranchingLightning(P, N, P + Math.cos(V) * W, N + Math.sin(V) * W, c, g * 0.58, p + 1);
       }
     }
-    h.push({ x: l, y: m }), this.lightnings.push({ points: h, color: c, life: 0, maxLife: 0.22, width: g });
+    h.push({ x: l, y: m }), this.lightnings.push({ points: h, color: c, life: 0, maxLife: 0.42, width: g });
   }
-  createCataclysmicExplosion(s, a, l = 140, m = "#EF4444") {
+  createCataclysmicExplosion(s, a, l = 140, m = "#EF4444", element = null) {
     let prof = this.getPerformanceProfile();
     if (this.cataclysmicExplosions.length >= prof.maxExplosions) this.cataclysmicExplosions.shift();
-    this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 0.55, color: m }), this.addShake(16, 0.4), this.screenFlashWhite = Math.max(this.screenFlashWhite, 0.12), R.playExplosion(), this.spawnFlameParticles(s, a, "red", 18, 60, 240), this.spawnRedCrystals(s, a, 12, 80, 260);
-    for (let c = 0; c < 8; c++) this.spawnSmokePuff(s + (Math.random() - 0.5) * 40, a + (Math.random() - 0.5) * 40, 14 + Math.random() * 10);
+    this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 1.05, color: m, element }), this.addShake(16, 0.4), this.screenFlashWhite = Math.max(this.screenFlashWhite, 0.05), R.playExplosion(), this.spawnFlameParticles(s, a, "red", 18, 60, 240), this.spawnRedCrystals(s, a, 12, 80, 260);
+    for (let c = 0; c < 6; c++) this.spawnSmokePuff(s + (Math.random() - 0.5) * 40, a + (Math.random() - 0.5) * 40, 12 + Math.random() * 9);
   }
   spawnGroundCrack(s, a, l, m, c = "#EA580C", g = "#FEF08A") {
     let prof = this.getPerformanceProfile();
@@ -2802,7 +2814,7 @@ export class GameEngine {
       let pt = points[1 + Math.floor(Math.random() * (steps - 1))];
       rockChips.push({ x: pt.x + (Math.random() - 0.5) * 14, y: pt.y + (Math.random() > 0.5 ? 1 : -1) * (5 + Math.random() * 7), s: 2.2 + Math.random() * 2.4, rot: Math.random() * Math.PI });
     }
-    this.groundCracks.push({ id: this.nextEntityId++, x: s, y: a, angle: l, len: m, points, branches: h, rockChips, color: c, glowColor: g, life: 0, maxLife: 3.4 });
+    this.groundCracks.push({ id: this.nextEntityId++, x: s, y: a, angle: l, len: m, points, branches: h, rockChips, color: c, glowColor: g, life: 0, maxLife: 5.6 });
   }
   spawnSpatialTear(s, a, l, m, c = "#F43F5E", g = 10, accentColor = null) {
     let p = l - s, h = m - a, f = Math.hypot(p, h) || 1, v = Math.atan2(h, p), T = Math.max(5, Math.floor(f / 20)), b = [];
@@ -2814,10 +2826,10 @@ export class GameEngine {
     }
     if (this.spatialTears.length >= 24) swapRemoveAt(this.spatialTears, 0);
     let pal = HERO_VFX_PALETTES[this.currentHero?.id];
-    this.spatialTears.push({ id: this.nextEntityId++, x1: s, y1: a, x2: l, y2: m, life: 0, maxLife: 1.35, color: c, accentColor: accentColor || pal?.[1] || "#E879F9", width: g, offsets: b, subRifts: x }), this.spawnRedCrystals((s + l) / 2, (a + m) / 2, 8, 40, 140);
+    this.spatialTears.push({ id: this.nextEntityId++, x1: s, y1: a, x2: l, y2: m, life: 0, maxLife: 2.4, color: c, accentColor: accentColor || pal?.[1] || "#E879F9", width: g, offsets: b, subRifts: x }), this.spawnRedCrystals((s + l) / 2, (a + m) / 2, 8, 40, 140);
   }
   createFrostExplosion(s, a, l = 110) {
-    this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 0.45, color: "#38BDF8" }), this.spawnParticles(s, a, "#E0F2FE", 16, 60, 220, 3.8, 0.45), this.spawnFlameParticles(s, a, "blue", 10, 40, 140), this.spawnGroundCrack(s, a, Math.random() * Math.PI * 2, l * 0.8, "#38BDF8", "#E0F2FE"), R.playIceShatter();
+    this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 0.92, color: "#38BDF8", element: "frost" }), this.spawnParticles(s, a, "#E0F2FE", 16, 60, 220, 3.8, 0.45), this.spawnFlameParticles(s, a, "blue", 10, 40, 140), this.spawnGroundCrack(s, a, Math.random() * Math.PI * 2, l * 0.8, "#38BDF8", "#E0F2FE"), R.playIceShatter();
   }
   fireRocket(s, a, l, m, c, g = false, p = "#F97316") {
     let h = Math.atan2(m - a, l - s), f = g ? 600 : 340;
@@ -3298,11 +3310,26 @@ export class GameEngine {
     }
     let perfProf = this.getPerformanceProfile();
     if (this.deadCorpses.length >= perfProf.maxCorpses) swapRemoveAt(this.deadCorpses, 0);
-    let finCol = s.kind === "boss" ? "#FDE047" : (this.currentHero?.accentColor || "#F43F5E");
-    this.spawnImpactBurst(s.x, s.y, finCol, "finisher", s.facing || 0);
-    this.spawnParticles(s.x, s.y, s.kind === "boss" ? "#FEF08A" : "#E879F9", s.kind === "boss" ? 12 : 5, 65, 220, 3.8, 0.48, "star", { drag: 0.91, gravity: -45, spin: 5, additive: true });
-    this.multiplayer.active && isLocalKill && this.queueVfx("impact_tier", { x: s.x, y: s.y, color: finCol, tier: "finisher", angle: s.facing || 0 });
-    this.deadCorpses.push({ x: s.x, y: s.y, radius: s.radius, color: s.color, kind: s.kind, bossWave: s.bossWave, name: s.name, facing: s.facing || 0, timer: 0, maxLife: s.kind === "boss" ? 3.5 : 2.4, splatRadius: s.radius * 1.55, splatColor: s.kind === "boss" ? "#7F1D1D" : "#5C1D1D" }), this.spawnBloodSplatter(s.x, s.y, s.kind === "boss" ? 32 : 14), this.spawnRedCrystals(s.x, s.y, s.kind === "boss" ? 16 : 6, 60, 200), s.kind === "boss" && (this.createCataclysmicExplosion(s.x, s.y, 180, "#EF4444"), this.syncMusicState(), this.onStateChange && this.onStateChange());
+    spawnEnemyDeathVfx(this, s, { byPlayerId, attackerFacing: this.player?.facing });
+    this.multiplayer.active && isLocalKill && this.queueVfx("enemy_death", {
+      x: s.x,
+      y: s.y,
+      radius: s.radius,
+      color: s.color,
+      kind: s.kind,
+      bossWave: s.bossWave || 0,
+      miniBossType: s.miniBossType || "",
+      voidVariant: s.voidVariant || "",
+      isMiniBoss: Boolean(s.isMiniBoss),
+      isElite: Boolean(s.isElite),
+      isFrozenTombEntityBoss: Boolean(s.isFrozenTombEntityBoss),
+      isGrudgeForestBoss: Boolean(s.isGrudgeForestBoss),
+      isVoidCityBoss: Boolean(s.isVoidCityBoss),
+      name: s.name || "",
+      facing: s.facing || 0,
+      attackerFacing: this.player?.facing ?? (s.facing || 0),
+    });
+    s.kind === "boss" && (this.syncMusicState(), this.onStateChange && this.onStateChange());
     if (this.xpOrbs.length >= perfProf.maxXpOrbs && this.xpOrbs.length > 0) {
       let mergeIdx = this.xpOrbs.length - 1;
       this.xpOrbs[mergeIdx].value += s.xpValue;
@@ -4882,7 +4909,9 @@ export class GameEngine {
   triggerBasicAttack() {
     if (this.gameState !== "PLAYING" || this.waitingReward || this.waveCleared || this.player.stunTimer > 0 || this.player.attackTimer > 0 || this.multiplayer.active && this.multiplayer.localDowned) return;
     let s = this.currentHero.stats.range, a = this.findNearestEnemy(s + 24), l = this.player.facing;
-    a && (l = Math.atan2(a.y - this.player.y, a.x - this.player.x), this.player.facing = l), this.player.attackTimer = this.getEffectiveAttackInterval(), this.player.weaponAttackDuration = 0.22, this.player.attackAnimTimer = 0.22, this.player.attackAnimAngle = l, this.player.attackSwingParity = -(this.player.attackSwingParity || 1), (this.currentHero.id === "kin" || this.currentHero.id === "longhoi") && (this.player.bowRecoilTimer = 0.15);
+    a && (l = Math.atan2(a.y - this.player.y, a.x - this.player.x), this.player.facing = l), this.player.attackTimer = this.getEffectiveAttackInterval();
+    let atkAnimDur = Math.min(0.24, Math.max(0.13, (this.player.attackTimer || 0.22) * 0.82));
+    this.player.weaponAttackDuration = atkAnimDur, this.player.attackAnimTimer = atkAnimDur, this.player.attackAnimAngle = l, this.player.attackSwingParity = -(this.player.attackSwingParity || 1), (this.currentHero.id === "kin" || this.currentHero.id === "longhoi") && (this.player.bowRecoilTimer = 0.15);
     let m = this.getEffectiveDamage();
     this.activeMapId === "inferno_ash" && this.damageInfernoWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 54, Math.round(m * 0.48));
     this.activeMapId === "frozen_tomb" && this.damageFrozenTombWallAt(this.player.x + Math.cos(l) * Math.min(95, Math.max(46, s * 0.55)), this.player.y + Math.sin(l) * Math.min(95, Math.max(46, s * 0.55)), 54, Math.round(m * 0.52), this.currentHero.id === "eohyen");
@@ -4930,7 +4959,7 @@ export class GameEngine {
         this.queueVfx("proj_vis", { kind: "tin_slash_wave", x: wx, y: wy, vx: Math.cos(l) * 780, vy: Math.sin(l) * 780, radius: 20, color: "#F43F5E", angle: l, maxDistance: s + 140, pierceLeft: 99 });
         this.addFloatingText(this.player.x, this.player.y - 26, "\u{1FA78} KI\u1EBEM KH\u00CD H\u01AF KH\u00D4NG!", "#FB7185", 14);
       }
-      this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 22, spread: 1.75, color: "#FB7185", life: 0, maxLife: 0.22, crossed: true, kind: "tin_spatial_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 22, spread: 1.75, color: "#FB7185", maxLife: 0.22, crossed: true, kind: "tin_spatial_slash" }), this.spawnParticles(this.player.x + Math.cos(l) * 32, this.player.y + Math.sin(l) * 32, "#FB7185", 6, 55, 165, 2.5, 0.22, "spark"), this.spawnSpatialTear(this.player.x + Math.cos(l - 0.45) * 35, this.player.y + Math.sin(l - 0.45) * 35, this.player.x + Math.cos(l + 0.45) * (s + 38), this.player.y + Math.sin(l + 0.45) * (s + 38), "#F43F5E", 9), this.queueVfx("tear", { x1: this.player.x + Math.cos(l - 0.45) * 35, y1: this.player.y + Math.sin(l - 0.45) * 35, x2: this.player.x + Math.cos(l + 0.45) * (s + 38), y2: this.player.y + Math.sin(l + 0.45) * (s + 38), color: "#F43F5E", width: 9 });
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 22, spread: 1.75, dir: this.player.attackSwingParity, color: "#FB7185", life: 0, maxLife: 0.22, crossed: true, kind: "tin_spatial_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 22, spread: 1.75, dir: this.player.attackSwingParity, color: "#FB7185", maxLife: 0.22, crossed: true, kind: "tin_spatial_slash" }), this.spawnParticles(this.player.x + Math.cos(l) * 32, this.player.y + Math.sin(l) * 32, "#FB7185", 6, 55, 165, 2.5, 0.22, "spark"), this.spawnSpatialTear(this.player.x + Math.cos(l - 0.45) * 35, this.player.y + Math.sin(l - 0.45) * 35, this.player.x + Math.cos(l + 0.45) * (s + 38), this.player.y + Math.sin(l + 0.45) * (s + 38), "#F43F5E", 9), this.queueVfx("tear", { x1: this.player.x + Math.cos(l - 0.45) * 35, y1: this.player.y + Math.sin(l - 0.45) * 35, x2: this.player.x + Math.cos(l + 0.45) * (s + 38), y2: this.player.y + Math.sin(l + 0.45) * (s + 38), color: "#F43F5E", width: 9 });
       let hitAny = false, effScale = m / Math.max(1, this.currentHero.stats.damage);
       for (let c of [...this.enemies]) {
         let g = c.x - this.player.x, p = c.y - this.player.y, h = Math.hypot(g, p) - c.radius;
@@ -4969,13 +4998,16 @@ export class GameEngine {
       let c = false, g = 1, p = 0, h = "#34D399";
       this.player.kin_passive >= 4 && (this.player.kin_passive = 0, g = 99, p = 40, h = "#10B981", c = true, R.playWhirlwind(), this.addFloatingText(this.player.x, this.player.y - 22, "\u{1F32A}\uFE0F L\u1ED0C XO\xC1Y B\xC3O T\u1ED0 (XUY\xCAN T\u1EA4T C\u1EA2)!", "#10B981", 15));
       let f = c ? 780 : 660;
-      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "kin_arrow", isWhirlwindArrow: c, hasHealed: false, x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * f, vy: Math.sin(l) * f, radius: c ? 16 : 8, damage: m + (c ? p : 0), bonusFirstDmg: p, color: h, angle: l, distanceTraveled: 0, maxDistance: s + 110, pierceLeft: g, hitIds: /* @__PURE__ */ new Set() }), this.queueVfx("proj_vis", { kind: "kin_arrow", isWhirlwindArrow: c, x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * f, vy: Math.sin(l) * f, radius: c ? 16 : 8, color: h, angle: l, maxDistance: s + 110, pierceLeft: g }), this.spawnParticles(this.player.x + Math.cos(l) * 24, this.player.y + Math.sin(l) * 24, c ? "#FEF08A" : "#6EE7B7", c ? 8 : 4, 45, 135, 2.3, 0.22, "spark");
+      let msx = this.player.x + Math.cos(l) * 30, msy = this.player.y + Math.sin(l) * 30;
+      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "kin_arrow", isWhirlwindArrow: c, hasHealed: false, x: msx, y: msy, vx: Math.cos(l) * f, vy: Math.sin(l) * f, radius: c ? 16 : 8, damage: m + (c ? p : 0), bonusFirstDmg: p, color: h, angle: l, distanceTraveled: 0, maxDistance: s + 110, pierceLeft: g, hitIds: /* @__PURE__ */ new Set() }), this.queueVfx("proj_vis", { kind: "kin_arrow", isWhirlwindArrow: c, x: msx, y: msy, vx: Math.cos(l) * f, vy: Math.sin(l) * f, radius: c ? 16 : 8, color: h, angle: l, maxDistance: s + 110, pierceLeft: g }), this.slashes.push({ x: msx, y: msy, angle: l, radius: c ? 34 : 26, spread: 0.75, color: h, life: 0, maxLife: 0.14, kind: "cast_muzzle" }), this.queueVfx("slash", { x: msx, y: msy, angle: l, radius: c ? 34 : 26, spread: 0.75, color: h, maxLife: 0.14, kind: "cast_muzzle" }), this.spawnParticles(msx, msy, c ? "#FEF08A" : "#6EE7B7", c ? 8 : 4, 45, 135, 2.3, 0.22, "spark");
       c && (this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: 74, spread: 1.45, color: "#10B981", life: 0, maxLife: 0.22, kind: "kin_gale_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: 74, spread: 1.45, color: "#10B981", maxLife: 0.22, kind: "kin_gale_slash" }));
-    } else if (this.currentHero.id === "trung") R.playOrb(), this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "trung_orb", x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * 480, vy: Math.sin(l) * 480, radius: 11, damage: m, color: "#A5B4FC", angle: l, distanceTraveled: 0, maxDistance: s + 65, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() }), this.queueVfx("proj_vis", { kind: "trung_orb", x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * 480, vy: Math.sin(l) * 480, radius: 11, color: "#A5B4FC", angle: l, maxDistance: s + 65, pierceLeft: 1 }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 2, 20, 50), this.spawnParticles(this.player.x + Math.cos(l) * 22, this.player.y + Math.sin(l) * 22, "#A5B4FC", 5, 35, 115, 2.3, 0.22, "spark");
-    else if (this.currentHero.id === "eohyen") {
+    } else if (this.currentHero.id === "trung") {
+      let msx = this.player.x + Math.cos(l) * 28, msy = this.player.y + Math.sin(l) * 28;
+      R.playOrb(), this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "trung_orb", x: msx, y: msy, vx: Math.cos(l) * 480, vy: Math.sin(l) * 480, radius: 11, damage: m, color: "#A5B4FC", angle: l, distanceTraveled: 0, maxDistance: s + 65, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() }), this.queueVfx("proj_vis", { kind: "trung_orb", x: msx, y: msy, vx: Math.cos(l) * 480, vy: Math.sin(l) * 480, radius: 11, color: "#A5B4FC", angle: l, maxDistance: s + 65, pierceLeft: 1 }), this.slashes.push({ x: msx, y: msy, angle: l, radius: 28, spread: 0.85, color: "#A5B4FC", life: 0, maxLife: 0.14, kind: "cast_muzzle" }), this.queueVfx("slash", { x: msx, y: msy, angle: l, radius: 28, spread: 0.85, color: "#A5B4FC", maxLife: 0.14, kind: "cast_muzzle" }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 2, 20, 50), this.spawnParticles(msx, msy, "#A5B4FC", 5, 35, 115, 2.3, 0.22, "spark");
+    } else if (this.currentHero.id === "eohyen") {
       R.playIceSlash(), this.player.eohyen_passive = (this.player.eohyen_passive || 0) + 1;
       let c = 0, g = false;
-      this.player.eohyen_passive >= 4 && (this.player.eohyen_passive = 0, c = 40, g = true, this.addFloatingText(this.player.x, this.player.y - 20, "H\xC0N NGUY\u1EC6T! +40 PH\xC9P", "#38BDF8", 14), this.activeMapId === "frozen_tomb" && this.handleEohyenFrozenReaction(this.player.x + Math.cos(l) * 75, this.player.y + Math.sin(l) * 75, s + 20, 0)), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, color: "#38BDF8", life: 0, maxLife: 0.2, kind: "eohyen_frost_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, color: "#38BDF8", maxLife: 0.2, kind: "eohyen_frost_slash" }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 3, 30, 80), this.spawnParticles(this.player.x + Math.cos(l) * 28, this.player.y + Math.sin(l) * 28, "#BAE6FD", 5, 45, 130, 2.3, 0.22, "spark");
+      this.player.eohyen_passive >= 4 && (this.player.eohyen_passive = 0, c = 40, g = true, this.addFloatingText(this.player.x, this.player.y - 20, "H\xC0N NGUY\u1EC6T! +40 PH\xC9P", "#38BDF8", 14), this.activeMapId === "frozen_tomb" && this.handleEohyenFrozenReaction(this.player.x + Math.cos(l) * 75, this.player.y + Math.sin(l) * 75, s + 20, 0)), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, dir: this.player.attackSwingParity, color: "#38BDF8", life: 0, maxLife: 0.2, kind: "eohyen_frost_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 15, spread: 1.25, dir: this.player.attackSwingParity, color: "#38BDF8", maxLife: 0.2, kind: "eohyen_frost_slash" }), this.spawnFlameParticles(this.player.x, this.player.y, "blue", 3, 30, 80), this.spawnParticles(this.player.x + Math.cos(l) * 28, this.player.y + Math.sin(l) * 28, "#BAE6FD", 5, 45, 130, 2.3, 0.22, "spark");
       let p = false;
       for (let h of [...this.enemies]) {
         let f = h.x - this.player.x, v = h.y - this.player.y, T = Math.hypot(f, v) - h.radius;
@@ -4989,13 +5021,18 @@ export class GameEngine {
     } else if (this.currentHero.id === "longhoi") {
       R.playFox();
       let c = 0;
-      this.player.longhoi_nextAtkBonus > 0 && (c = this.player.longhoi_nextAtkBonus, this.player.longhoi_nextAtkBonus = 0, this.addFloatingText(this.player.x, this.player.y - 20, `H\u1ED2 B\u1ED8 K\xCDCH +${c}`, "#F97316", 15)), this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "longhoi_arrow", isBurnArrow: true, x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * 740, vy: Math.sin(l) * 740, radius: 8, damage: m + c, color: "#FB923C", angle: l, distanceTraveled: 0, maxDistance: s + 85, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set(), hasLifestolen: false }), this.queueVfx("proj_vis", { kind: "longhoi_arrow", x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * 740, vy: Math.sin(l) * 740, radius: 8, color: "#FB923C", angle: l, maxDistance: s + 85, pierceLeft: 1 }), this.spawnFlameParticles(this.player.x, this.player.y, "red", 4, 30, 80), this.spawnParticles(this.player.x + Math.cos(l) * 24, this.player.y + Math.sin(l) * 24, "#FEF08A", 4, 50, 140, 2.2, 0.2, "spark");
-    } else if (this.currentHero.id === "duccong") R.playCosmic(), this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duccong_orb", x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * 500, vy: Math.sin(l) * 500, radius: 10, damage: m, color: "#A78BFA", angle: l, distanceTraveled: 0, maxDistance: s + 70, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() }), this.queueVfx("proj_vis", { kind: "duccong_orb", x: this.player.x + Math.cos(l) * 20, y: this.player.y + Math.sin(l) * 20, vx: Math.cos(l) * 500, vy: Math.sin(l) * 500, radius: 10, color: "#A78BFA", angle: l, maxDistance: s + 70, pierceLeft: 1 }), this.spawnParticles(this.player.x + Math.cos(l) * 24, this.player.y + Math.sin(l) * 24, "#C084FC", 5, 40, 120, 2.3, 0.22, "spark");
-    else if (this.currentHero.id === "gau") {
+      let msx = this.player.x + Math.cos(l) * 30, msy = this.player.y + Math.sin(l) * 30;
+      this.player.longhoi_nextAtkBonus > 0 && (c = this.player.longhoi_nextAtkBonus, this.player.longhoi_nextAtkBonus = 0, this.addFloatingText(this.player.x, this.player.y - 20, `H\u1ED2 B\u1ED8 K\xCDCH +${c}`, "#F97316", 15)), this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "longhoi_arrow", isBurnArrow: true, x: msx, y: msy, vx: Math.cos(l) * 740, vy: Math.sin(l) * 740, radius: 8, damage: m + c, color: "#FB923C", angle: l, distanceTraveled: 0, maxDistance: s + 85, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set(), hasLifestolen: false }), this.queueVfx("proj_vis", { kind: "longhoi_arrow", x: msx, y: msy, vx: Math.cos(l) * 740, vy: Math.sin(l) * 740, radius: 8, color: "#FB923C", angle: l, maxDistance: s + 85, pierceLeft: 1 }), this.slashes.push({ x: msx, y: msy, angle: l, radius: c > 0 ? 34 : 26, spread: 0.75, color: "#FB923C", life: 0, maxLife: 0.14, kind: "cast_muzzle" }), this.queueVfx("slash", { x: msx, y: msy, angle: l, radius: c > 0 ? 34 : 26, spread: 0.75, color: "#FB923C", maxLife: 0.14, kind: "cast_muzzle" }), this.spawnFlameParticles(this.player.x, this.player.y, "red", 4, 30, 80), this.spawnParticles(msx, msy, "#FEF08A", 4, 50, 140, 2.2, 0.2, "spark");
+    } else if (this.currentHero.id === "duccong") {
+      let msx = this.player.x + Math.cos(l) * 30, msy = this.player.y + Math.sin(l) * 30;
+      R.playCosmic(), this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duccong_orb", x: msx, y: msy, vx: Math.cos(l) * 500, vy: Math.sin(l) * 500, radius: 10, damage: m, color: "#A78BFA", angle: l, distanceTraveled: 0, maxDistance: s + 70, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() }), this.queueVfx("proj_vis", { kind: "duccong_orb", x: msx, y: msy, vx: Math.cos(l) * 500, vy: Math.sin(l) * 500, radius: 10, color: "#A78BFA", angle: l, maxDistance: s + 70, pierceLeft: 1 }), this.slashes.push({ x: msx, y: msy, angle: l, radius: 28, spread: 0.85, color: "#A78BFA", life: 0, maxLife: 0.14, kind: "cast_muzzle" }), this.queueVfx("slash", { x: msx, y: msy, angle: l, radius: 28, spread: 0.85, color: "#A78BFA", maxLife: 0.14, kind: "cast_muzzle" }), this.spawnParticles(msx, msy, "#C084FC", 5, 40, 120, 2.3, 0.22, "spark");
+    } else if (this.currentHero.id === "gau") {
       let c = this.player.gau_cuongHungTimer > 0, g = this.player.gau_basicStep, p = g === 0 ? 1 : g === 1 ? 1.05 : 1.15;
-      this.player.gau_basicStep = (g + 1) % 3, this.player.gau_basicResetTimer = 1.3, this.player.gau_animKind = "basic_" + g, this.player.gau_animDur = 0.22, this.player.gau_animTimer = 0.22, this.player.gau_animAngle = l;
+      let punchDir = g === 1 ? -1 : 1;
+      this.player.attackSwingParity = punchDir;
+      this.player.gau_basicStep = (g + 1) % 3, this.player.gau_basicResetTimer = 1.3, this.player.gau_animKind = "basic_" + g, this.player.gau_animDur = atkAnimDur, this.player.gau_animTimer = atkAnimDur, this.player.gau_animAngle = l;
       let h = this.player.gau_c1_step === 2 && this.player.gau_c1_windowTimer > 0;
-      h && (this.player.gau_c1_basicCancelPrimed = true, this.player.gau_c1_windowTimer = Math.max(this.player.gau_c1_windowTimer, 0.85), this.player.attackTimer = Math.min(this.player.attackTimer, 0.14)), R.playHeavyPunch(g), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + (g === 2 ? 24 : 14), spread: g === 2 ? 1.5 : 1.15, color: c ? "#FBBF24" : "#F59E0B", life: 0, maxLife: 0.22, kind: "gau_punch", step: g, empowered: c }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + (g === 2 ? 24 : 14), spread: g === 2 ? 1.5 : 1.15, color: c ? "#FBBF24" : "#F59E0B", maxLife: 0.22, kind: "gau_punch", step: g, empowered: c }), this.spawnParticles(this.player.x + Math.cos(l) * 34, this.player.y + Math.sin(l) * 34, c ? "#FEF08A" : "#F59E0B", g === 2 ? 8 : 5, 50, 140, 2.8, 0.24);
+      h && (this.player.gau_c1_basicCancelPrimed = true, this.player.gau_c1_windowTimer = Math.max(this.player.gau_c1_windowTimer, 0.85), this.player.attackTimer = Math.min(this.player.attackTimer, 0.14)), R.playHeavyPunch(g), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + (g === 2 ? 24 : 14), spread: g === 2 ? 1.5 : 1.15, dir: punchDir, color: c ? "#FBBF24" : "#F59E0B", life: 0, maxLife: 0.22, kind: "gau_punch", step: g, empowered: c }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + (g === 2 ? 24 : 14), spread: g === 2 ? 1.5 : 1.15, dir: punchDir, color: c ? "#FBBF24" : "#F59E0B", maxLife: 0.22, kind: "gau_punch", step: g, empowered: c }), this.spawnParticles(this.player.x + Math.cos(l) * 34, this.player.y + Math.sin(l) * 34, c ? "#FEF08A" : "#F59E0B", g === 2 ? 8 : 5, 50, 140, 2.8, 0.24);
       let f = Math.round(m * p), v = 0;
       for (let T of [...this.enemies]) {
         let b = T.x - this.player.x, x = T.y - this.player.y, C = Math.hypot(b, x) - T.radius;
@@ -5017,7 +5054,7 @@ export class GameEngine {
         return;
       }
       let c = this.player.bao_basicStep, g = c === 2 ? 1.15 : 1;
-      this.player.bao_basicDir = c === 1 ? -1 : 1, this.player.bao_basicStep = (c + 1) % 3, this.player.bao_basicResetTimer = 1.25, R.playDaggerSlash(c), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 16, spread: c === 2 ? 1.65 : 1.25, dir: this.player.bao_basicDir, color: "#E879F9", life: 0, maxLife: 0.2, crossed: c === 2, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 16, spread: c === 2 ? 1.65 : 1.25, dir: this.player.bao_basicDir, color: "#E879F9", maxLife: 0.2, crossed: c === 2, kind: "bao_slash" }), this.spawnParticles(this.player.x + Math.cos(l) * 28, this.player.y + Math.sin(l) * 28, "#F5D0FE", c === 2 ? 8 : 5, 50, 155, 2.4, 0.2, "spark");
+      this.player.bao_basicDir = c === 1 ? -1 : 1, this.player.attackSwingParity = this.player.bao_basicDir, this.player.bao_basicStep = (c + 1) % 3, this.player.bao_basicResetTimer = 1.25, R.playDaggerSlash(c), this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 16, spread: c === 2 ? 1.65 : 1.25, dir: this.player.bao_basicDir, color: "#E879F9", life: 0, maxLife: 0.2, crossed: c === 2, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 16, spread: c === 2 ? 1.65 : 1.25, dir: this.player.bao_basicDir, color: "#E879F9", maxLife: 0.2, crossed: c === 2, kind: "bao_slash" }), this.spawnParticles(this.player.x + Math.cos(l) * 28, this.player.y + Math.sin(l) * 28, "#F5D0FE", c === 2 ? 8 : 5, 50, 155, 2.4, 0.2, "spark");
       let p = Math.round(m * g), h = 0;
       for (let f of [...this.enemies]) {
         let v = f.x - this.player.x, T = f.y - this.player.y, b = Math.hypot(v, T) - f.radius;
@@ -5026,7 +5063,7 @@ export class GameEngine {
       this.comboManager.record({ heroId: "bao", action: "basic", hitCount: h, damageDealt: p * Math.max(1, h) });
     } else if (this.currentHero.id === "danh") {
       let c = this.player.danh_basicStep, g = c === 0 ? 1 : c === 1 ? 1.08 : 1.22, p = this.player.danh_khaiSonTimer > 0, inDragon = this.player.danh_dragonTimer > 0;
-      p && (this.player.danh_khaiSonTimer = 0), this.player.danh_swingDir = c === 1 ? -1 : 1, this.player.danh_animKind = "basic", this.player.danh_animDur = 0.22, this.player.danh_animTimer = 0.22, this.player.danh_basicStep = (c + 1) % 3, this.player.danh_basicResetTimer = 1.4;
+      p && (this.player.danh_khaiSonTimer = 0), this.player.danh_swingDir = c === 1 ? -1 : 1, this.player.attackSwingParity = this.player.danh_swingDir, this.player.danh_animKind = "basic", this.player.danh_animDur = atkAnimDur, this.player.danh_animTimer = atkAnimDur, this.player.danh_basicStep = (c + 1) % 3, this.player.danh_basicResetTimer = 1.4;
       let reach = inDragon ? s + 95 : s + 18, slashKind = inDragon ? "danh_firebreath" : "danh_slash", slashSpread = inDragon ? 1.62 : (c === 2 ? 1.65 : 1.35);
       inDragon ? (R.playDragonBreath(), this.spawnFlameParticles(this.player.x + Math.cos(l) * 32, this.player.y + Math.sin(l) * 32, "red", 9, 45, 160)) : R.playHeavySword(c);
       this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: inDragon ? reach : s + 22, spread: slashSpread, dir: this.player.danh_swingDir, empowered: p || inDragon, color: inDragon ? "#FB923C" : p ? "#FBBF24" : "#EF4444", life: 0, maxLife: inDragon ? 0.3 : 0.22, kind: slashKind }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: inDragon ? reach : s + 22, spread: slashSpread, dir: this.player.danh_swingDir, empowered: p || inDragon, color: inDragon ? "#FB923C" : p ? "#FBBF24" : "#EF4444", maxLife: inDragon ? 0.3 : 0.22, kind: slashKind });
@@ -5042,10 +5079,12 @@ export class GameEngine {
       }
       f > 0 && !p && (this.player.danh_basicHitCount++, this.player.danh_basicHitCount >= 2 && (this.player.danh_basicHitCount = 0, this.player.danh_khaiSonTimer = 5, this.addFloatingText(this.player.x, this.player.y - 26, "\u2694\uFE0F KHAI S\u01A0N (+30% \xB7 5s)!", "#FBBF24", 14))), this.comboManager.record({ heroId: "danh", action: "basic", hitCount: f, empowered: p || inDragon, damageDealt: h * Math.max(1, f) });
     } else if (this.currentHero.id === "luan") {
-      let ap = this.getEffectiveAP(), dmg = Math.round(m * 0.48 + ap * 0.54), sx = this.player.x + Math.cos(l) * 22, sy = this.player.y + Math.sin(l) * 22;
+      let ap = this.getEffectiveAP(), dmg = Math.round(m * 0.48 + ap * 0.54), sx = this.player.x + Math.cos(l) * 28, sy = this.player.y + Math.sin(l) * 28;
       R.playOrb();
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "luan_orb", x: sx, y: sy, vx: Math.cos(l) * 580, vy: Math.sin(l) * 580, radius: 12, damage: dmg, color: "#C084FC", angle: l, distanceTraveled: 0, maxDistance: s + 95, pierceLeft: 1, portalBoosted: false, passedPortalIds: /* @__PURE__ */ new Set(), hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "luan_orb", x: sx, y: sy, vx: Math.cos(l) * 580, vy: Math.sin(l) * 580, radius: 12, color: "#C084FC", angle: l, maxDistance: s + 95, pierceLeft: 1 });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: 30, spread: 0.85, color: "#C084FC", life: 0, maxLife: 0.14, kind: "cast_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 30, spread: 0.85, color: "#C084FC", maxLife: 0.14, kind: "cast_muzzle" });
       this.spawnParticles(sx, sy, "#E879F9", 5, 25, 80, 2.6, 0.25);
       let rx2 = Math.max(36, Math.min(this.mapWidth - 36, this.player.x + Math.cos(l) * Math.min(210, s * 0.72))), ry2 = Math.max(36, Math.min(this.mapHeight - 36, this.player.y + Math.sin(l) * Math.min(210, s * 0.72)));
       this.carveLuanRift(sx, sy, rx2, ry2, ap, 8);
@@ -5059,6 +5098,8 @@ export class GameEngine {
       isRail ? R.playElectricZap() : R.playTurretShot();
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: pKind, empDur: isRail ? 2.0 : 0, x: sx, y: sy, vx: Math.cos(l) * pSpd, vy: Math.sin(l) * pSpd, radius: pRad, damage: boltDmg, color: pCol, angle: l, distanceTraveled: 0, maxDistance: pMaxDist, pierceLeft: pPierce, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: pKind, x: sx, y: sy, vx: Math.cos(l) * pSpd, vy: Math.sin(l) * pSpd, radius: pRad, color: pCol, angle: l, maxDistance: pMaxDist, pierceLeft: pPierce });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: isRail ? 36 : 26, spread: 0.78, color: pCol, life: 0, maxLife: 0.14, kind: "cast_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: isRail ? 36 : 26, spread: 0.78, color: pCol, maxLife: 0.14, kind: "cast_muzzle" });
       this.spawnParticles(sx, sy, isRail ? "#FACC15" : "#38BDF8", isRail ? 7 : 4, 35, 115, 2.4, 0.22);
       this.comboManager.record({ heroId: "taidu", action: "basic", hitCount: 1, empowered: isRail, damageDealt: boltDmg });
     } else if (this.currentHero.id === "nguyen") {
@@ -5079,9 +5120,11 @@ export class GameEngine {
     } else if (this.currentHero.id === "duy") {
       this.player.duy_idleTime = 0, this.player.duy_quietHealTimer = 0;
       R.playShurikenThrow();
-      let sx = this.player.x + Math.cos(l) * 20, sy = this.player.y + Math.sin(l) * 20, vx = Math.cos(l) * 860, vy = Math.sin(l) * 860;
+      let sx = this.player.x + Math.cos(l) * 28, sy = this.player.y + Math.sin(l) * 28, vx = Math.cos(l) * 860, vy = Math.sin(l) * 860;
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_atk_shuriken", x: sx, y: sy, vx, vy, radius: 11, damage: m, color: "#14B8A6", angle: l, distanceTraveled: 0, maxDistance: s + 85, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "duy_atk_shuriken", x: sx, y: sy, vx, vy, radius: 11, color: "#14B8A6", angle: l, maxDistance: s + 85, pierceLeft: 1 });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: 24, spread: 0.72, color: "#14B8A6", life: 0, maxLife: 0.13, kind: "cast_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 24, spread: 0.72, color: "#14B8A6", maxLife: 0.13, kind: "cast_muzzle" });
       this.spawnParticles(sx, sy, "#2DD4BF", 4, 30, 95, 2.2, 0.22);
       this.comboManager.record({ heroId: "duy", action: "basic", hitCount: 1, damageDealt: m });
     } else if (this.currentHero.id === "phong") {
@@ -5089,6 +5132,7 @@ export class GameEngine {
       this.player.phong_basicStep = (step + 1) % 3;
       R.playPhongDash(step);
       let crossed = step === 2, dir = step === 1 ? -1 : 1, reach = s + (crossed ? 24 : 16);
+      this.player.attackSwingParity = dir;
       this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: reach, spread: crossed ? 1.8 : 1.35, dir, crossed, isCrit: false, color: "#0EA5E9", life: 0, maxLife: 0.2, kind: "phong_slash" });
       this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: reach, spread: crossed ? 1.8 : 1.35, dir, crossed, isCrit: false, color: "#0EA5E9", maxLife: 0.2, kind: "phong_slash" });
       let atkDmg = Math.round(m * (crossed ? 1.12 : 1) + 0.15 * this.getEffectiveAP()), hitCnt = 0;
@@ -5130,6 +5174,7 @@ export class GameEngine {
       } else {
         R.playDangTigerPunch(step);
         let punchDir = step === 0 ? 1 : -1;
+        this.player.attackSwingParity = punchDir;
         this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: s + 20, spread: 1.25, dir: punchDir, color: "#F8FAFC", life: 0, maxLife: 0.2, kind: "dang_punch" });
         this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: s + 20, spread: 1.25, dir: punchDir, color: "#F8FAFC", maxLife: 0.2, kind: "dang_punch" });
         let hitCnt = 0;
@@ -5164,9 +5209,11 @@ export class GameEngine {
       R.playThanhSnakeCast(false);
       let ap = this.getEffectiveAP();
       let dmg = Math.round(m * 0.55 + ap * 0.85);
-      let sx = this.player.x + Math.cos(l) * 18, sy = this.player.y + Math.sin(l) * 18;
+      let sx = this.player.x + Math.cos(l) * 28, sy = this.player.y + Math.sin(l) * 28;
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "thanh_atk", style: "thanh_atk", x: sx, y: sy, vx: Math.cos(l) * 760, vy: Math.sin(l) * 760, radius: 9, damage: dmg, color: "#10B981", angle: l, distanceTraveled: 0, maxDistance: s + 40, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "thanh_atk", style: "thanh_atk", x: sx, y: sy, vx: Math.cos(l) * 760, vy: Math.sin(l) * 760, radius: 9, color: "#10B981", angle: l, maxDistance: s + 40, pierceLeft: 1 });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: 26, spread: 0.8, color: "#10B981", life: 0, maxLife: 0.14, kind: "cast_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 26, spread: 0.8, color: "#10B981", maxLife: 0.14, kind: "cast_muzzle" });
       this.spawnParticles(sx, sy, "#34D399", 4, 28, 90, 2.2, 0.22);
       this.comboManager.record({ heroId: "thanh", action: "basic", hitCount: 1, damageDealt: dmg });
     } else if (this.currentHero.id === "nhi") {
@@ -5175,19 +5222,23 @@ export class GameEngine {
       R.playBow();
       let ap = this.getEffectiveAP();
       let dmg = Math.round((m * 0.96 + ap * 0.36) * prof.dmgMult);
-      let sx = this.player.x + Math.cos(l) * 18, sy = this.player.y + Math.sin(l) * 18;
+      let sx = this.player.x + Math.cos(l) * 28, sy = this.player.y + Math.sin(l) * 28;
       let style = `nhi_arrow_${prof.id}`;
       let lifeBatch = prof.id === "life" ? { healedSoFar: 0, isSkillShot: false } : null;
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: style, style, ammoType: prof.id, lifeBatch, x: sx, y: sy, vx: Math.cos(l) * 860, vy: Math.sin(l) * 860, radius: 9, damage: dmg, color: prof.color, angle: l, distanceTraveled: 0, maxDistance: s + 55, pierceLeft: prof.pierceLeft, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: style, style, x: sx, y: sy, vx: Math.cos(l) * 860, vy: Math.sin(l) * 860, radius: 9, color: prof.color, angle: l, maxDistance: s + 55, pierceLeft: prof.pierceLeft });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: 28, spread: 0.78, color: prof.color, life: 0, maxLife: 0.14, kind: "cast_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 28, spread: 0.78, color: prof.color, maxLife: 0.14, kind: "cast_muzzle" });
       this.spawnParticles(sx, sy, prof.color, 4, 30, 95, 2.2, 0.2);
       this.comboManager.record({ heroId: "nhi", action: "basic", hitCount: 1, damageDealt: dmg });
     } else if (this.currentHero.id === "minh") {
       R.playMinhBasic();
       let ap = this.getEffectiveAP(), dmg = computeMinhBasicDamage({ atk: m, ap });
-      let sx = this.player.x + Math.cos(l) * 20, sy = this.player.y + Math.sin(l) * 20;
+      let sx = this.player.x + Math.cos(l) * 30, sy = this.player.y + Math.sin(l) * 30;
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "minh_orb", style: "minh_orb", x: sx, y: sy, vx: Math.cos(l) * 620, vy: Math.sin(l) * 620, radius: 11, damage: dmg, color: "#38BDF8", angle: l, distanceTraveled: 0, maxDistance: s + 75, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "minh_orb", style: "minh_orb", x: sx, y: sy, vx: Math.cos(l) * 620, vy: Math.sin(l) * 620, radius: 11, color: "#38BDF8", angle: l, maxDistance: s + 75, pierceLeft: 1 });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: 28, spread: 0.85, color: "#38BDF8", life: 0, maxLife: 0.14, kind: "cast_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 28, spread: 0.85, color: "#38BDF8", maxLife: 0.14, kind: "cast_muzzle" });
       this.spawnParticles(sx, sy, "#7DD3FC", 4, 25, 85, 2.2, 0.22);
       this.comboManager.record({ heroId: "minh", action: "basic", hitCount: 1, damageDealt: dmg });
     } else if (this.currentHero.id === "ducanh") {
@@ -5207,6 +5258,7 @@ export class GameEngine {
       this.player.bach_basicStep = (step + 1) % 3;
       R.playDaggerSlash(step === 2 ? 1.2 : step);
       let crossed = step === 2, dir = step === 1 ? -1 : 1, reach = s + (crossed ? 26 : 16);
+      this.player.attackSwingParity = dir;
       this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: reach, spread: crossed ? 1.9 : 1.35, dir, crossed, color: "#06B6D4", accentColor: "#E879F9", life: 0, maxLife: 0.22, kind: "bach_cross_slash" });
       this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: reach, spread: crossed ? 1.9 : 1.35, dir, crossed, color: "#06B6D4", accentColor: "#E879F9", maxLife: 0.22, kind: "bach_cross_slash" });
       let atkDmg = Math.round(m * (crossed ? 1.22 : 1) + 0.15 * this.getEffectiveAP()), hitCnt = 0;
@@ -5231,6 +5283,7 @@ export class GameEngine {
       R.playThaiHalberd();
       let inArena = Boolean(this.player.thai_inArena);
       let reach = s + (inArena ? 36 : 22), dir = step === 1 ? -1 : 1, spread = step === 2 ? 1.75 : 1.38;
+      this.player.attackSwingParity = dir;
       this.slashes.push({ x: this.player.x, y: this.player.y, angle: l, radius: reach, spread, dir, empowered: inArena, color: inArena ? "#FDE047" : "#F59E0B", accentColor: "#EF4444", life: 0, maxLife: 0.23, kind: "thai_arena_cleave" });
       this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: l, radius: reach, spread, dir, empowered: inArena, color: inArena ? "#FDE047" : "#F59E0B", accentColor: "#EF4444", maxLife: 0.23, kind: "thai_arena_cleave" });
       let atkDmg = Math.round(m * (step === 2 ? 1.2 : 1.0) + 0.15 * this.getEffectiveAP()), hitCnt = 0;
@@ -5259,12 +5312,12 @@ export class GameEngine {
       R.playKhairSniperShot();
       let ap = this.getEffectiveAP();
       let dmg = Math.round(m * 1.38 + ap * 0.25);
-      let sx = this.player.x + Math.cos(l) * 26, sy = this.player.y + Math.sin(l) * 26;
+      let sx = this.player.x + Math.cos(l) * 34, sy = this.player.y + Math.sin(l) * 34;
       let bulletBatch = { healedCount: 0, atkSnapshot: m };
       this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "khair_bullet", style: "khair_bullet", bulletBatch, x: sx, y: sy, vx: Math.cos(l) * 1240, vy: Math.sin(l) * 1240, radius: 10, damage: dmg, color: "#4ADE80", angle: l, distanceTraveled: 0, maxDistance: s + 95, pierceLeft: 2, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "khair_bullet", style: "khair_bullet", x: sx, y: sy, vx: Math.cos(l) * 1240, vy: Math.sin(l) * 1240, radius: 10, color: "#4ADE80", angle: l, maxDistance: s + 95, pierceLeft: 2 });
-      this.slashes.push({ x: sx, y: sy, angle: l, radius: 42, spread: 0.85, color: "#4ADE80", life: 0, maxLife: 0.16, kind: "khair_sniper_muzzle" });
-      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 42, spread: 0.85, color: "#4ADE80", maxLife: 0.16, kind: "khair_sniper_muzzle" });
+      this.slashes.push({ x: sx, y: sy, angle: l, radius: 48, spread: 0.85, color: "#4ADE80", life: 0, maxLife: 0.16, kind: "khair_sniper_muzzle" });
+      this.queueVfx("slash", { x: sx, y: sy, angle: l, radius: 48, spread: 0.85, color: "#4ADE80", maxLife: 0.16, kind: "khair_sniper_muzzle" });
       this.spawnParticles(sx, sy, "#FDE047", 7, 45, 155, 2.5, 0.22, "spark");
       this.comboManager.record({ heroId: "khair", action: "basic", hitCount: 1, damageDealt: dmg });
     }
@@ -6221,12 +6274,12 @@ export class GameEngine {
       } else if (s === 3) {
         R.playThienSunUlt();
         this.addShake(16, 0.5);
-        this.screenFlashWhite = Math.max(this.screenFlashWhite || 0, 0.14);
+        this.screenFlashWhite = Math.max(this.screenFlashWhite || 0, 0.06);
         let jx = this.player.x, jy = this.player.y, jRad = g.radius || 340;
-        this.thienSunJudgements.push({ id: this.nextEntityId++, x: jx, y: jy, radius: jRad, life: 1.65, maxLife: 1.65, visualOnly: false });
+        this.thienSunJudgements.push({ id: this.nextEntityId++, x: jx, y: jy, radius: jRad, life: 2.45, maxLife: 2.45, visualOnly: false });
         this.slashes.push({ x: jx, y: jy, angle: 0, radius: jRad, spread: Math.PI * 2, color: "#FACC15", accentColor: "#FFFFFF", life: 0, maxLife: 0.45, kind: "shockwave" });
-        this.spawnUltimateSequence("thien", jx, jy, a, jRad, 1.65);
-        this.queueVfx("thien_sun_vis", { x: jx, y: jy, radius: jRad, maxLife: 1.65 });
+        this.spawnUltimateSequence("thien", jx, jy, a, jRad, 2.45);
+        this.queueVfx("thien_sun_vis", { x: jx, y: jy, radius: jRad, maxLife: 2.45 });
         let hits = 0, totDmg = 0;
         for (let e of [...this.enemies]) {
           if (e.hp > 0 && Math.hypot(e.x - jx, e.y - jy) <= jRad + e.radius) {
@@ -9556,15 +9609,15 @@ export class GameEngine {
     while (this.afterimages.length > prof.maxAfterimages) swapRemoveAt(this.afterimages, 0);
     for (let a = this.redCrystals.length - 1; a >= 0; a--) {
       let l = this.redCrystals[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.92, l.vy *= 0.92, l.rot += l.rotSpd * s, l.life >= l.maxLife && this._releaseVfxObj(this.redCrystals, a, "redCrystals");
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.92, l.vy *= 0.92, l.rot += (l.rotSpd || l.vRot || 0) * s, l.life >= l.maxLife && this._releaseVfxObj(this.redCrystals, a, "redCrystals");
     }
     for (let a = this.flameParticles.length - 1; a >= 0; a--) {
       let l = this.flameParticles[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius *= 0.96, l.life >= l.maxLife && this._releaseVfxObj(this.flameParticles, a, "flameParticles");
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius *= 0.978, l.life >= l.maxLife && this._releaseVfxObj(this.flameParticles, a, "flameParticles");
     }
     for (let a = this.smokePuffs.length - 1; a >= 0; a--) {
       let l = this.smokePuffs[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.radius += 18 * s, l.life >= l.maxLife && this._releaseVfxObj(this.smokePuffs, a, "smokePuffs");
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vx *= 0.96, l.vy *= 0.96, l.radius += 9 * s, l.life >= l.maxLife && this._releaseVfxObj(this.smokePuffs, a, "smokePuffs");
     }
     for (let a = this.scorchMarks.length - 1; a >= 0; a--) this.scorchMarks[a].life += s, this.scorchMarks[a].life >= this.scorchMarks[a].maxLife && swapRemoveAt(this.scorchMarks, a);
     for (let a = this.frostTracks.length - 1; a >= 0; a--) this.frostTracks[a].life += s, this.frostTracks[a].life >= this.frostTracks[a].maxLife && swapRemoveAt(this.frostTracks, a);
@@ -9783,11 +9836,12 @@ export class GameEngine {
     for (let a = this.deadCorpses.length - 1; a >= 0; a--) this.deadCorpses[a].timer += s, this.deadCorpses[a].timer >= this.deadCorpses[a].maxLife && swapRemoveAt(this.deadCorpses, a);
     for (let a = this.bloodParticles.length - 1; a >= 0; a--) {
       let l = this.bloodParticles[a];
-      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vy += l.gravity * s, l.vx *= 0.92, l.vy *= 0.92, l.life >= l.maxLife && swapRemoveAt(this.bloodParticles, a);
+      let drag = l.life > l.maxLife * 0.45 ? 0.84 : 0.92;
+      l.life += s, l.x += l.vx * s, l.y += l.vy * s, l.vy += (l.gravity ?? 140) * s, l.vx *= drag, l.vy *= drag, l.life >= l.maxLife && swapRemoveAt(this.bloodParticles, a);
     }
-    for (let a = this.afterimages.length - 1; a >= 0; a--) this.afterimages[a].life += s, this.afterimages[a].life >= this.afterimages[a].maxLife && swapRemoveAt(this.afterimages, a);
+    for (let a = this.afterimages.length - 1; a >= 0; a--) this.afterimages[a].life += s * 0.56, this.afterimages[a].life >= this.afterimages[a].maxLife && swapRemoveAt(this.afterimages, a);
     for (let a = this.lightnings.length - 1; a >= 0; a--) this.lightnings[a].life += s, this.lightnings[a].life >= this.lightnings[a].maxLife && swapRemoveAt(this.lightnings, a);
-    for (let a = this.slashes.length - 1; a >= 0; a--) this.slashes[a].life += s, this.slashes[a].life >= this.slashes[a].maxLife && swapRemoveAt(this.slashes, a);
+    for (let a = this.slashes.length - 1; a >= 0; a--) this.slashes[a].life += s * 0.5, this.slashes[a].life >= this.slashes[a].maxLife && swapRemoveAt(this.slashes, a);
     for (let a = this.impactBursts.length - 1; a >= 0; a--) this.impactBursts[a].life += s, this.impactBursts[a].life >= this.impactBursts[a].maxLife && swapRemoveAt(this.impactBursts, a);
     for (let a = (this.windRibbons?.length || 0) - 1; a >= 0; a--) this.windRibbons[a].life += s, this.windRibbons[a].life >= this.windRibbons[a].maxLife && swapRemoveAt(this.windRibbons, a);
     for (let a = (this.warpRings?.length || 0) - 1; a >= 0; a--) this.warpRings[a].life += s, this.warpRings[a].life >= this.warpRings[a].maxLife && swapRemoveAt(this.warpRings, a);
@@ -9796,7 +9850,7 @@ export class GameEngine {
       seq.life += s;
       if (!seq.s3Done && seq.life / Math.max(0.2, seq.maxLife) >= 0.36) {
         seq.s3Done = true;
-        this.spawnWarpRing(seq.x, seq.y, (seq.radius || 210) * 0.92, seq.color, seq.accentColor, 0.38, seq.angle, 0.72);
+        this.spawnWarpRing(seq.x, seq.y, (seq.radius || 210) * 0.92, seq.color, seq.accentColor, 0.68, seq.angle, 0.72);
       }
       seq.life >= seq.maxLife && swapRemoveAt(this.ultimateSequences, a);
     }
@@ -9834,9 +9888,10 @@ export class GameEngine {
       beamGrad.addColorStop(1, "rgba(74, 222, 128, 0.04)");
       c.fillStyle = beamGrad;
       c.beginPath(), c.moveTo(26, -spreadOffset), c.lineTo(maxLen, -3), c.lineTo(maxLen, 3), c.lineTo(26, spreadOffset), c.closePath(), c.fill();
-      c.strokeStyle = scopeCol, c.lineWidth = chg >= 0.85 ? 2.6 : 1.9, c.setLineDash([14, 8]);
+      c.strokeStyle = "#052E16", c.lineWidth = chg >= 0.85 ? 4.2 : 3.2, c.lineCap = "round";
       c.beginPath(), c.moveTo(26, -spreadOffset), c.lineTo(maxLen, -2), c.moveTo(26, spreadOffset), c.lineTo(maxLen, 2), c.stroke();
-      c.setLineDash([]);
+      c.strokeStyle = scopeCol, c.lineWidth = chg >= 0.85 ? 2.4 : 1.7;
+      c.beginPath(), c.moveTo(26, -spreadOffset), c.lineTo(maxLen, -2), c.moveTo(26, spreadOffset), c.lineTo(maxLen, 2), c.stroke();
       c.strokeStyle = chg >= 0.85 ? "#FFFFFF" : scopeCol, c.lineWidth = chg >= 0.85 ? 2.4 : 1.4;
       c.beginPath(), c.moveTo(24, 0), c.lineTo(maxLen, 0), c.stroke();
       for (let distTick = 240; distTick <= maxLen; distTick += 240) {
@@ -9862,24 +9917,47 @@ export class GameEngine {
       h.addColorStop(0, "rgba(15, 23, 42, 0.1)"), h.addColorStop(0.55, m), h.addColorStop(1, a ? "rgba(245, 158, 11, 0.4)" : "rgba(56, 189, 248, 0.35)");
       c.fillStyle = h, c.fillRect(0, -halfW, g, halfW * 2);
       c.strokeStyle = l, c.lineWidth = 3, c.strokeRect(0, -halfW, g, halfW * 2);
-      c.save(), c.setLineDash([10, 8]), c.strokeStyle = s ? "rgba(252, 165, 165, 0.6)" : a ? "rgba(254, 240, 138, 0.65)" : "rgba(125, 211, 252, 0.55)", c.lineWidth = 1.8;
+      // Solid tactical sightline rails + animated directional guide chevrons (zero setLineDash)
+      c.save();
+      c.strokeStyle = s ? "rgba(252, 165, 165, 0.36)" : a ? "rgba(254, 240, 138, 0.42)" : "rgba(125, 211, 252, 0.34)";
+      c.lineWidth = 1.6;
       for (let i = -2; i <= 2; i++) {
         let ly = (i / 2) * (halfW * 0.8);
-        c.beginPath(), c.moveTo(12, ly), c.lineTo(g - 12, ly), c.stroke();
+        c.beginPath(), c.moveTo(14, ly), c.lineTo(g - 14, ly), c.stroke();
       }
       c.restore();
       let f = Math.max(3, Math.floor(g / 72)), v = this.elapsedTime * 3.5 % 1;
       for (let T = 1; T <= f; T++) {
         let b = (T + v) % (f + 1) * (g / f);
-        b > 16 && b < g - 12 && (c.beginPath(), c.moveTo(b - 12, -halfW * 0.5), c.lineTo(b + 8, 0), c.lineTo(b - 12, halfW * 0.5), c.strokeStyle = s ? "rgba(239, 68, 68, 0.65)" : a ? "rgba(254, 240, 138, 0.72)" : "rgba(255, 255, 255, 0.55)", c.lineWidth = 2.4, c.stroke());
+        b > 16 && b < g - 12 && (c.beginPath(), c.moveTo(b - 12, -halfW * 0.5), c.lineTo(b + 8, 0), c.lineTo(b - 12, halfW * 0.5), c.strokeStyle = s ? "rgba(239, 68, 68, 0.72)" : a ? "rgba(254, 240, 138, 0.78)" : "rgba(255, 255, 255, 0.65)", c.lineWidth = 2.6, c.stroke());
       }
     } else if (this.aimState.aimType === "CONE") {
       c.translate(this.player.x, this.player.y), c.beginPath(), c.moveTo(0, 0), c.arc(0, 0, this.aimState.range, this.aimState.angle - 0.85, this.aimState.angle + 0.85), c.closePath(), c.fillStyle = m, c.fill(), c.strokeStyle = l, c.lineWidth = 3, c.stroke(), c.beginPath();
       let g = this.aimState.angle, p = this.aimState.range * 0.85;
       c.arc(0, 0, p, g - 0.5, g + 0.5), c.strokeStyle = a ? "#FEF08A" : "rgba(255, 255, 255, 0.6)", c.lineWidth = 2.5, c.stroke();
     } else if (this.aimState.aimType === "CIRCLE_SELF") c.beginPath(), c.arc(this.player.x, this.player.y, this.aimState.radius, 0, Math.PI * 2), c.fillStyle = m, c.fill(), c.strokeStyle = l, c.lineWidth = 3, c.stroke();
-    else if (this.aimState.aimType === "CIRCLE_FREE") c.setLineDash([8, 6]), c.strokeStyle = l, c.lineWidth = 2, c.beginPath(), c.moveTo(this.player.x, this.player.y), c.lineTo(this.aimState.targetX, this.aimState.targetY), c.stroke(), c.setLineDash([]), c.beginPath(), c.arc(this.aimState.targetX, this.aimState.targetY, this.aimState.radius, 0, Math.PI * 2), c.fillStyle = m, c.fill(), c.strokeStyle = l, c.lineWidth = 3, c.stroke(), c.strokeStyle = s ? "#EF4444" : a ? "#FEF08A" : "#FFFFFF", c.lineWidth = 1.8, c.beginPath(), c.moveTo(this.aimState.targetX - 18, this.aimState.targetY), c.lineTo(this.aimState.targetX + 18, this.aimState.targetY), c.moveTo(this.aimState.targetX, this.aimState.targetY - 18), c.lineTo(this.aimState.targetX, this.aimState.targetY + 18), c.stroke(), c.beginPath(), c.arc(this.aimState.targetX, this.aimState.targetY, 12, 0, Math.PI * 2), c.stroke();
-    else if (this.aimState.aimType === "TARGET") {
+    else if (this.aimState.aimType === "CIRCLE_FREE") {
+      // Tactical targeting tether + dual-bezel impact reticle (zero setLineDash)
+      let angT = Math.atan2(this.aimState.targetY - this.player.y, this.aimState.targetX - this.player.x);
+      let distT = Math.hypot(this.aimState.targetX - this.player.x, this.aimState.targetY - this.player.y);
+      c.strokeStyle = "rgba(15, 23, 42, 0.55)", c.lineWidth = 4.2, c.lineCap = "round";
+      c.beginPath(), c.moveTo(this.player.x, this.player.y), c.lineTo(this.aimState.targetX, this.aimState.targetY), c.stroke();
+      c.strokeStyle = l, c.lineWidth = 1.8;
+      c.beginPath(), c.moveTo(this.player.x, this.player.y), c.lineTo(this.aimState.targetX, this.aimState.targetY), c.stroke();
+      if (distT > 42) {
+        let pips = Math.min(6, Math.floor(distT / 52)), flow = (this.elapsedTime * 2.8) % 1;
+        c.fillStyle = s ? "#FCA5A5" : a ? "#FEF08A" : "#E0F2FE";
+        for (let pi = 0; pi < pips; pi++) {
+          let pd = ((pi + flow) / pips) * distT;
+          let pxT = this.player.x + Math.cos(angT) * pd, pyT = this.player.y + Math.sin(angT) * pd;
+          c.beginPath(), c.arc(pxT, pyT, 2.4, 0, Math.PI * 2), c.fill();
+        }
+      }
+      c.beginPath(), c.arc(this.aimState.targetX, this.aimState.targetY, this.aimState.radius, 0, Math.PI * 2), c.fillStyle = m, c.fill(), c.strokeStyle = l, c.lineWidth = 3, c.stroke();
+      c.strokeStyle = s ? "#EF4444" : a ? "#FEF08A" : "#FFFFFF", c.lineWidth = 1.8;
+      c.beginPath(), c.moveTo(this.aimState.targetX - 18, this.aimState.targetY), c.lineTo(this.aimState.targetX + 18, this.aimState.targetY), c.moveTo(this.aimState.targetX, this.aimState.targetY - 18), c.lineTo(this.aimState.targetX, this.aimState.targetY + 18), c.stroke();
+      c.beginPath(), c.arc(this.aimState.targetX, this.aimState.targetY, 12, 0, Math.PI * 2), c.stroke();
+    } else if (this.aimState.aimType === "TARGET") {
       c.beginPath(), c.arc(this.player.x, this.player.y, this.aimState.range, 0, Math.PI * 2), c.strokeStyle = "rgba(244, 63, 94, 0.35)", c.lineWidth = 2, c.stroke();
       let g = this.findTargetForTinC3(this.aimState.angle, this.aimState.range);
       if (g) {
@@ -9901,10 +9979,17 @@ export class GameEngine {
     let a = this.ctx, isMono = Boolean(this.player && this.player.tin_monochrome_realm_timer > 0);
     a.save(), a.translate(s.x, s.y);
     let l = s.hitFlash > 0, m = this.elapsedTime, p2 = (s.phase || 1) >= 2, p3 = (s.phase || 1) >= 3;
-    a.save(), a.rotate(m * (p2 ? 0.85 : 0.45)), a.beginPath(), a.arc(0, 0, safeR * 1.55, 0, Math.PI * 2), a.strokeStyle = isMono ? "rgba(255, 255, 255, 0.55)" : p3 ? "rgba(251, 191, 36, 0.65)" : "rgba(239, 68, 68, 0.52)", a.lineWidth = 2.6, a.setLineDash([14, 8, 4, 8]), a.stroke(), a.setLineDash([]);
+    a.save(), a.rotate(m * (p2 ? 0.85 : 0.45));
+    let outerCol = isMono ? "rgba(255, 255, 255, 0.65)" : p3 ? "rgba(251, 191, 36, 0.78)" : "rgba(239, 68, 68, 0.64)";
+    for (let seg = 0; seg < 4; seg++) {
+      let a0 = (Math.PI * 0.5) * seg + 0.14, a1 = (Math.PI * 0.5) * (seg + 1) - 0.14;
+      a.beginPath(), a.arc(0, 0, safeR * 1.55, a0, a1);
+      a.strokeStyle = "#090D16", a.lineWidth = 5.2, a.lineCap = "round", a.stroke();
+      a.strokeStyle = outerCol, a.lineWidth = 2.6, a.stroke();
+    }
     for (let c = 0; c < 8; c++) {
       let g = Math.PI * 2 / 8 * c, p = Math.cos(g) * (safeR * 1.55), h = Math.sin(g) * (safeR * 1.55);
-      a.beginPath(), a.arc(p, h, 4.2, 0, Math.PI * 2), a.fillStyle = isMono ? "#FFFFFF" : c % 2 === 0 ? "#FEF08A" : "#EF4444", a.fill();
+      drawFacetedShard(a, { x: p, y: h, size: 5.2, rot: g + Math.PI * 0.5, shape: "crystal", primary: c % 2 === 0 ? "#FBBF24" : "#EF4444", highlight: "#FFFFFF", shadow: "#1E1B4B", rim: "#FEF08A", isMono });
     }
     if (a.restore(), a.beginPath(), a.ellipse(0, safeR * 0.78, safeR * 1.05, safeR * 0.45, 0, 0, Math.PI * 2), a.fillStyle = "rgba(0, 0, 0, 0.55)", a.fill(), s.bossWave === 3) {
       let c = s.radius, sg = a.createRadialGradient(-c * 0.25, -c * 0.25, 4, 0, 0, c * 1.1);
@@ -10011,15 +10096,7 @@ export class GameEngine {
     } else if (this.activeMapId === "void_city") {
       this.renderVoidCityFloor(a, viewBounds);
     } else {
-      let gs = prof.gridStepPx || 100;
-      let gxStart = Math.max(0, Math.floor(viewBounds.minX / gs) * gs), gxEnd = Math.min(this.mapWidth, Math.ceil(viewBounds.maxX / gs) * gs);
-      let gyStart = Math.max(0, Math.floor(viewBounds.minY / gs) * gs), gyEnd = Math.min(this.mapHeight, Math.ceil(viewBounds.maxY / gs) * gs);
-      a.fillStyle = c ? "#1C2331" : "#0F172A", a.fillRect(0, 0, this.mapWidth, this.mapHeight), a.strokeStyle = c ? "rgba(226, 232, 240, 0.18)" : "rgba(148, 163, 184, 0.07)", a.lineWidth = 1, a.beginPath();
-      for (let h = gxStart; h <= gxEnd; h += gs) a.moveTo(h, gyStart), a.lineTo(h, gyEnd);
-      for (let h = gyStart; h <= gyEnd; h += gs) a.moveTo(gxStart, h), a.lineTo(gxEnd, h);
-      a.stroke();
-      let g = this.mapWidth / 2, p = this.mapHeight / 2;
-      a.strokeStyle = c ? "rgba(226, 232, 240, 0.38)" : "rgba(245, 158, 11, 0.18)", a.lineWidth = 2, a.beginPath(), a.arc(g, p, 240, 0, Math.PI * 2), a.stroke(), a.strokeStyle = c ? "#CBD5E1" : "#F59E0B", a.lineWidth = 4, a.strokeRect(8, 8, this.mapWidth - 16, this.mapHeight - 16);
+      drawClassicArenaFloor(a, this.mapWidth, this.mapHeight, viewBounds, this.elapsedTime, c, prof);
     }
     for (let h of this.scorchMarks) {
       if (!isCircleInViewBounds(h.x, h.y, (h.len || 100) + 30, viewBounds)) continue;
@@ -10041,25 +10118,38 @@ export class GameEngine {
       if (!isCircleInViewBounds(h.x, h.y, h.radius + 20, viewBounds)) continue;
       let fade = Math.min(1, (h.duration - h.timer) / 0.5);
       let pulse = 0.88 + 0.12 * Math.sin(this.elapsedTime * 7 + h.x * 0.05);
-      a.save(), a.globalAlpha = fade, a.translate(h.x, h.y);
+      a.save(), a.globalAlpha = fade;
+      drawImpactCraterDecal(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.radius * 1.05,
+        alpha: 0.92,
+        tiltY: 0.74,
+        seed: (h.x || 0) * 0.09 + (h.y || 0) * 0.05,
+        debrisShape: "rock",
+        primary: "#EA580C",
+        highlight: "#FEF08A",
+        shadow: "#1C0A00",
+        rim: "#F97316",
+        isMono: c,
+      });
+      a.translate(h.x, h.y);
+      a.scale(1, 0.74);
       if (prof.enableRadialGlows) {
-        let f = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-        c ? (f.addColorStop(0, "rgba(255,255,255,0.45)"), f.addColorStop(0.55, "rgba(148,163,184,0.28)"), f.addColorStop(1, "rgba(0,0,0,0)")) : (f.addColorStop(0, "#FEF08A"), f.addColorStop(0.32, "#F97316"), f.addColorStop(0.72, "#DC2626"), f.addColorStop(1, "rgba(69, 26, 3, 0)"));
+        let f = a.createRadialGradient(0, 0, 8, 0, 0, h.radius * 0.92);
+        c ? (f.addColorStop(0, "rgba(255,255,255,0.45)"), f.addColorStop(0.55, "rgba(148,163,184,0.28)"), f.addColorStop(1, "rgba(0,0,0,0)")) : (f.addColorStop(0, "rgba(254, 240, 138, 0.88)"), f.addColorStop(0.35, "rgba(249, 115, 22, 0.72)"), f.addColorStop(0.75, "rgba(220, 38, 38, 0.48)"), f.addColorStop(1, "rgba(69, 26, 3, 0)"));
         a.fillStyle = f;
       } else {
-        a.fillStyle = c ? "rgba(255,255,255,0.25)" : "rgba(220, 38, 38, 0.35)";
+        a.fillStyle = c ? "rgba(255,255,255,0.25)" : "rgba(220, 38, 38, 0.4)";
       }
-      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-      a.strokeStyle = c ? "#FFFFFF" : "#EA580C", a.lineWidth = 2.8, a.stroke();
-      // Jagged volcanic basalt crust cracks & glowing magma seams
-      a.strokeStyle = c ? "rgba(255,255,255,0.72)" : "rgba(254, 240, 138, 0.72)", a.lineWidth = 1.8;
-      for (let ci = 0; ci < 6; ci++) {
-        let ca = (Math.PI / 3) * ci + h.x * 0.02 + this.elapsedTime * 0.15;
-        let r1 = h.radius * 0.22, r2 = h.radius * 0.58, r3 = h.radius * 0.88;
-        a.beginPath(), a.moveTo(Math.cos(ca) * r1, Math.sin(ca) * r1), a.lineTo(Math.cos(ca + 0.14) * r2, Math.sin(ca + 0.14) * r2), a.lineTo(Math.cos(ca - 0.05) * r3, Math.sin(ca - 0.05) * r3), a.stroke();
+      a.beginPath(), a.arc(0, 0, h.radius * 0.92, 0, Math.PI * 2), a.fill();
+      a.strokeStyle = c ? "#FFFFFF" : "#EA580C", a.lineWidth = 3.0, a.stroke();
+      // Rotating volcanic magma crust arc segments (zero setLineDash)
+      for (let seg = 0; seg < 4; seg++) {
+        let sAng = this.elapsedTime * 0.7 + (Math.PI * 0.5) * seg;
+        a.beginPath(), a.arc(0, 0, Math.max(4, h.radius * 0.64 * pulse), sAng, sAng + 0.92);
+        a.strokeStyle = c ? "#CBD5E1" : "rgba(254, 240, 138, 0.65)", a.lineWidth = 2.0, a.lineCap = "round", a.stroke();
       }
-      a.strokeStyle = c ? "#CBD5E1" : "rgba(254, 240, 138, 0.5)", a.lineWidth = 1.6, a.setLineDash([10, 8]);
-      a.beginPath(), a.arc(0, 0, h.radius * 0.65 * pulse, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
       if (prof.effectiveTier !== "saver") {
         for (let bi = 0; bi < 5; bi++) {
           let ba = this.elapsedTime * 1.4 + (Math.PI * 2 / 5) * bi + h.y * 0.03;
@@ -10091,7 +10181,16 @@ export class GameEngine {
       else if (h.state === "launching") {
         let x = a.createLinearGradient(0, 0, 0, h.size * 3.8);
         x.addColorStop(0, c ? "rgba(255,255,255,0.85)" : "rgba(56, 189, 248, 0.88)"), x.addColorStop(1, "rgba(255, 255, 255, 0)"), a.fillStyle = x, a.beginPath(), a.moveTo(-h.size * 0.45, 0), a.lineTo(h.size * 0.45, 0), a.lineTo(0, h.size * 3.8), a.closePath(), a.fill();
-      } else h.state === "levitating" && (a.save(), a.rotate(this.elapsedTime * 5), a.strokeStyle = c ? "#FFFFFF" : "#BAE6FD", a.lineWidth = 2.2, a.beginPath(), a.arc(0, -h.size * 0.5, h.size * 1.25, 0, Math.PI * 2), a.setLineDash([4, 4]), a.stroke(), a.restore());
+      } else if (h.state === "levitating") {
+        a.save(), a.rotate(this.elapsedTime * 5);
+        for (let lb = 0; lb < 3; lb++) {
+          let la = (Math.PI * 2 / 3) * lb;
+          a.beginPath(), a.arc(0, -h.size * 0.5, h.size * 1.25, la, la + 1.15);
+          a.strokeStyle = "#082F49", a.lineWidth = 3.8, a.lineCap = "round", a.stroke();
+          a.strokeStyle = c ? "#FFFFFF" : "#BAE6FD", a.lineWidth = 2.0, a.stroke();
+        }
+        a.restore();
+      }
       if (prof?.enableRadialGlows) {
         let ig = a.createRadialGradient(0, -h.size * 0.7, 2, 0, -h.size * 0.7, h.size * 1.7);
         ig.addColorStop(0, c ? "rgba(255,255,255,0.34)" : "rgba(186, 230, 253, 0.42)"), ig.addColorStop(1, "rgba(56, 189, 248, 0)");
@@ -10106,18 +10205,21 @@ export class GameEngine {
     }
     for (let h of this.luanRifts) if (isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, 40, viewBounds)) drawLuanRift(a, h, c);
     if (this.luanPortals.length > 1) {
-      a.save();
-      a.strokeStyle = c ? "rgba(0,0,0,0.45)" : "rgba(192, 132, 252, 0.35)";
-      a.lineWidth = 2;
-      a.setLineDash([10, 8]);
-      a.beginPath();
       for (let i = 0; i < this.luanPortals.length; i++) {
         let p1 = this.luanPortals[i], p2 = this.luanPortals[(i + 1) % this.luanPortals.length];
-        a.moveTo(p1.x, p1.y), a.lineTo(p2.x, p2.y);
+        if (!isSegmentInViewBounds(p1.x, p1.y, p2.x, p2.y, 40, viewBounds)) continue;
+        drawBranchingArc(a, {
+          x1: p1.x,
+          y1: p1.y,
+          x2: p2.x,
+          y2: p2.y,
+          seed: this.elapsedTime * 14 + i * 3.1,
+          width: 2.4,
+          color: "#C084FC",
+          coreColor: "#F5D0FE",
+          isMono: c,
+        });
       }
-      a.stroke();
-      a.setLineDash([]);
-      a.restore();
     }
     for (let h of this.luanPortals) if (isCircleInViewBounds(h.x, h.y, (h.radius || 54) + 30, viewBounds)) drawLuanPortal(a, h, this.elapsedTime, c);
     for (let h of this.tinCrystals) {
@@ -10131,8 +10233,14 @@ export class GameEngine {
         a.fillStyle = c ? "rgba(0,0,0,0.18)" : "rgba(225, 29, 72, 0.24)";
       }
       a.beginPath(), a.arc(0, 0, T, 0, Math.PI * 2), a.fill();
-      a.save(), a.rotate(this.elapsedTime * 1.6), a.strokeStyle = c ? "#000000" : "rgba(251, 113, 133, 0.85)", a.lineWidth = 2, a.setLineDash([7, 5]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-      a.strokeStyle = c ? "#444444" : "rgba(254, 205, 211, 0.45)", a.lineWidth = 1.4, a.beginPath();
+      a.save(), a.rotate(this.elapsedTime * 1.6);
+      for (let ts = 0; ts < 6; ts++) {
+        let ta = (Math.PI / 3) * ts;
+        a.beginPath(), a.arc(0, 0, h.radius, ta + 0.08, ta + 0.72);
+        a.strokeStyle = c ? "#FFFFFF" : "#1F040C", a.lineWidth = 3.8, a.lineCap = "round", a.stroke();
+        a.strokeStyle = c ? "#000000" : "rgba(251, 113, 133, 0.9)", a.lineWidth = 2.0, a.stroke();
+      }
+      a.strokeStyle = c ? "#444444" : "rgba(254, 205, 211, 0.55)", a.lineWidth = 1.6, a.beginPath();
       for (let hi = 0; hi < 6; hi++) {
         let ha = (Math.PI / 3) * hi, hx = Math.cos(ha) * h.radius * 0.68, hy = Math.sin(ha) * h.radius * 0.68;
         hi === 0 ? a.moveTo(hx, hy) : a.lineTo(hx, hy);
@@ -10151,22 +10259,25 @@ export class GameEngine {
     for (let h of this.frostBarrages) {
       if (!isCircleInViewBounds(h.x, h.y, h.radius + 20, viewBounds)) continue;
       let alpha = Math.min(1, (h.duration - h.timer) / 0.5), et = this.elapsedTime;
-      a.save(), a.globalAlpha = alpha, a.translate(h.x, h.y);
-      if (prof.enableRadialGlows) {
-        let fg = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (fg.addColorStop(0, "rgba(255,255,255,0.34)"), fg.addColorStop(0.6, "rgba(180,180,180,0.18)"), fg.addColorStop(1, "rgba(0,0,0,0)")) : (fg.addColorStop(0, "rgba(224, 242, 254, 0.38)"), fg.addColorStop(0.55, "rgba(56, 189, 248, 0.28)"), fg.addColorStop(1, "rgba(14, 165, 233, 0)"));
-        a.fillStyle = fg;
-      } else {
-        a.fillStyle = c ? "rgba(255,255,255,0.18)" : "rgba(56, 189, 248, 0.22)";
-      }
-      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-      a.save(), a.rotate(et * 2.4), a.strokeStyle = c ? "#FFFFFF" : "#38BDF8", a.lineWidth = 2.8, a.setLineDash([10, 7]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-      a.strokeStyle = c ? "rgba(255,255,255,0.6)" : "rgba(186, 230, 253, 0.7)", a.lineWidth = 1.8;
-      for (let si = 0; si < 6; si++) {
-        let sa = (Math.PI / 3) * si;
-        a.beginPath(), a.moveTo(0, 0), a.lineTo(Math.cos(sa) * h.radius * 0.78, Math.sin(sa) * h.radius * 0.78), a.stroke();
-      }
-      a.restore();
+      a.save(), a.globalAlpha = alpha;
+      drawArcaneMagicCircle(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.radius,
+        tiltY: 0.74,
+        rot: et * 2.4,
+        sides: 6,
+        starMode: true,
+        nodeShape: "crystal",
+        primary: "#38BDF8",
+        highlight: "#F0F9FF",
+        darkRim: "#082F49",
+        rim: "#BAE6FD",
+        coreWash: "rgba(224, 242, 254, 0.34)",
+        midWash: "rgba(14, 165, 233, 0.18)",
+        isMono: c,
+      });
+      a.translate(h.x, h.y);
       let step = Math.floor(et * 18);
       for (let ii = 0; ii < (prof.effectiveTier === "saver" ? 5 : 10); ii++) {
         let ix = Math.sin(step + ii * 31) * 0.78 * h.radius, iy = Math.cos(step * 1.3 + ii * 19) * 0.78 * h.radius;
@@ -10183,23 +10294,44 @@ export class GameEngine {
     }
     this.tapRipple && (a.save(), a.beginPath(), a.arc(this.tapRipple.x, this.tapRipple.y, this.tapRipple.radius, 0, Math.PI * 2), a.strokeStyle = `rgba(52, 211, 153, ${Math.max(0, this.tapRipple.alpha)})`, a.lineWidth = 2.5, a.stroke(), a.restore(), this.tapRipple.radius += 2.2, this.tapRipple.alpha -= 0.04, this.tapRipple.alpha <= 0 && (this.tapRipple = null));
     for (let h of this.deadCorpses) {
-      if (!isCircleInViewBounds(h.x, h.y, (h.splatRadius || h.radius || 24) * 1.5, viewBounds)) continue;
-      let f = Math.min(1, h.timer / 0.2), v = Math.max(0, 1 - h.timer / h.maxLife);
-      a.save(), a.translate(h.x, h.y), a.globalAlpha = v, a.beginPath(), a.ellipse(0, 3, h.splatRadius * (0.6 + f * 0.65), h.splatRadius * (0.28 + f * 0.32), 0, 0, Math.PI * 2), a.fillStyle = c ? "#000000" : h.splatColor, a.fill(), a.scale(1 + f * 0.58, Math.max(0.14, 1 - f * 0.86)), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "#111111" : h.color, a.fill(), a.strokeStyle = "#000000", a.lineWidth = 2.5, a.stroke(), a.restore();
+      if (!isCircleInViewBounds(h.x, h.y, (h.splatRadius || h.radius || 24) * 1.6, viewBounds)) continue;
+      renderDeadCorpse(a, h, c);
     }
     if (this.bloodParticles.length > 0) {
       for (let h of this.bloodParticles) {
-        if (!isCircleInViewBounds(h.x, h.y, (h.radius || 4) + 10, viewBounds)) continue;
-        a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife);
-        a.fillStyle = c ? "#000000" : h.color;
-        a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fill();
+        if (!isCircleInViewBounds(h.x, h.y, (h.radius || 4) + 12, viewBounds)) continue;
+        drawViscousDroplet(a, {
+          x: h.x,
+          y: h.y,
+          vx: h.vx,
+          vy: h.vy,
+          radius: h.radius,
+          color: h.color,
+          rimColor: h.rimColor,
+          isMono: c,
+          alpha: Math.max(0, 1 - h.life / Math.max(0.05, h.maxLife)),
+        });
       }
       a.globalAlpha = 1;
     }
     for (let h of this.redCrystals) {
-      if (!isCircleInViewBounds(h.x, h.y, (h.size || 8) * 2, viewBounds)) continue;
-      let f = Math.max(0, 1 - h.life / h.maxLife);
-      a.save(), a.translate(h.x, h.y), a.rotate(h.rot), a.globalAlpha = f, a.beginPath(), a.moveTo(0, -h.size), a.lineTo(h.size * 0.7, 0), a.lineTo(0, h.size * 1.3), a.lineTo(-h.size * 0.7, 0), a.closePath(), a.fillStyle = c ? "#000000" : "#EF4444", a.fill(), a.strokeStyle = c ? "#333333" : "#FCA5A5", a.lineWidth = 1.2, a.stroke(), a.restore();
+      if (!isCircleInViewBounds(h.x, h.y, (h.size || 8) * 2.2, viewBounds)) continue;
+      let f = Math.max(0, 1 - h.life / Math.max(0.05, h.maxLife));
+      a.save();
+      a.globalAlpha = f;
+      drawFacetedShard(a, {
+        x: h.x,
+        y: h.y,
+        size: h.size || 5,
+        rot: h.rot || 0,
+        shape: h.shape || "crystal",
+        primary: h.primary || "#EF4444",
+        highlight: h.highlight || "#FCA5A5",
+        shadow: h.shadow || "#7F1D1D",
+        rim: h.rim || "#FCA5A5",
+        isMono: c,
+      });
+      a.restore();
     }
     for (let h of this.flameParticles) {
       if (!isCircleInViewBounds(h.x, h.y, (h.radius || 6) + 14, viewBounds)) continue;
@@ -10235,22 +10367,56 @@ export class GameEngine {
       a.restore();
     }
     for (let h of this.smokePuffs) {
-      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 16) + 10, viewBounds)) continue;
-      let f = Math.max(0, 0.4 * (1 - h.life / h.maxLife));
-      a.save(), a.globalAlpha = f, a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = h.color, a.fill(), a.restore();
+      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 16) + 12, viewBounds)) continue;
+      drawVolumetricSmokeLobe(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.radius || 12,
+        seed: h.seed ?? (h.x || 0) * 0.1,
+        lifeRatio: h.life / Math.max(0.05, h.maxLife),
+        color: h.color,
+        shadowColor: h.shadowColor,
+        rimColor: h.rimColor,
+        isMono: c,
+      });
     }
     for (let h of this.galaxyVortices) {
       if (!isCircleInViewBounds(h.x, h.y, h.radius + 30, viewBounds)) continue;
-      a.save(), a.translate(h.x, h.y), a.rotate(h.rotation);
-      if (prof.enableRadialGlows) {
-        let f = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (f.addColorStop(0, "rgba(0,0,0,0.92)"), f.addColorStop(0.5, "rgba(148,163,184,0.34)"), f.addColorStop(1, "rgba(0,0,0,0)")) : (f.addColorStop(0, "rgba(15, 23, 42, 0.96)"), f.addColorStop(0.28, h.isGalaxy ? "rgba(192, 132, 252, 0.45)" : "rgba(147, 51, 234, 0.4)"), f.addColorStop(0.68, h.isGalaxy ? "rgba(56, 189, 248, 0.32)" : "rgba(88, 28, 135, 0.28)"), f.addColorStop(1, "rgba(15, 23, 42, 0)"));
-        a.fillStyle = f;
-      } else {
-        a.fillStyle = c ? "rgba(255,255,255,0.22)" : h.isGalaxy ? "rgba(147, 51, 234, 0.26)" : "rgba(88, 28, 135, 0.24)";
-      }
-      a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-      a.strokeStyle = c ? "#FFFFFF" : h.isGalaxy ? "rgba(244, 114, 182, 0.72)" : "rgba(192, 132, 252, 0.62)", a.lineWidth = 2.4, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.92, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      let gxPrimary = h.isGalaxy ? "#F472B6" : "#C084FC";
+      let gxRim = h.isGalaxy ? "#67E8F9" : "#E9D5FF";
+      a.save();
+      drawArcaneMagicCircle(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.radius,
+        tiltY: 0.78,
+        rot: h.rotation,
+        sides: h.isGalaxy ? 6 : 5,
+        starMode: true,
+        nodeShape: "crystal",
+        primary: gxPrimary,
+        highlight: "#FFFFFF",
+        darkRim: "#0F172A",
+        rim: gxRim,
+        coreWash: h.isGalaxy ? "rgba(192, 132, 252, 0.42)" : "rgba(147, 51, 234, 0.36)",
+        midWash: "rgba(15, 23, 42, 0.45)",
+        isMono: c,
+      });
+      drawEnergyVortexPillar(a, {
+        x: h.x,
+        y: h.y,
+        radius: Math.max(24, h.radius * 0.34),
+        height: h.isGalaxy ? 150 : 105,
+        progress: Math.min(0.7, Math.max(0.25, (h.timer || 0.3) / Math.max(0.5, h.duration || 2.5))),
+        phase: h.rotation * 2.2,
+        debrisShape: "crystal",
+        primary: gxPrimary,
+        highlight: "#FFFFFF",
+        shadow: "#090D16",
+        rim: gxRim,
+        isMono: c,
+      });
+      a.translate(h.x, h.y), a.rotate(h.rotation);
       let v = h.isGalaxy ? 5 : 3;
       for (let T = 0; T < v; T++) a.save(), a.rotate(Math.PI * 2 / v * T), a.beginPath(), a.moveTo(0, 0), a.bezierCurveTo(h.radius * 0.4, h.radius * 0.32, h.radius * 0.72, -h.radius * 0.22, h.radius * 0.96, h.radius * 0.12), a.strokeStyle = c ? (T % 2 === 0 ? "#FFFFFF" : "#94A3B8") : T % 2 == 0 ? "#E9D5FF" : "#38BDF8", a.lineWidth = h.isGalaxy ? 3.8 : 2.8, a.stroke(), a.restore();
       let starStep = prof.effectiveTier === "saver" ? 2 : 1;
@@ -10263,286 +10429,104 @@ export class GameEngine {
     }
     for (let h of this.zones) {
       if (!isCircleInViewBounds(h.x, h.y, (h.radius || 140) + 40, viewBounds)) continue;
-      if (a.save(), a.globalAlpha = Math.min(1, (h.duration - h.timer) / 0.5), h.kind === "arrow_rain") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 15, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.18)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(52, 211, 153, 0.48)"), v.addColorStop(0.35, "rgba(16, 185, 129, 0.28)"), v.addColorStop(0.7, "rgba(5, 150, 105, 0.16)"), v.addColorStop(1, "rgba(6, 78, 59, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        let T = [{ r: h.radius * 0.95, spd: 3.5, dash: [14, 10], col: c ? "#FFFFFF" : "rgba(52, 211, 153, 0.72)", w: 3 }, { r: h.radius * 0.72, spd: -4.8, dash: [18, 12], col: c ? "#CBD5E1" : "rgba(110, 231, 183, 0.85)", w: 3.5 }, { r: h.radius * 0.48, spd: 6.2, dash: [10, 8], col: c ? "#FFFFFF" : "rgba(167, 243, 208, 0.9)", w: 4 }, { r: h.radius * 0.28, spd: -8, dash: [8, 6], col: "#FFFFFF", w: 3 }];
-        for (let H of T) a.save(), a.rotate(f * H.spd), a.strokeStyle = H.col, a.lineWidth = H.w, a.setLineDash(H.dash), a.beginPath(), a.arc(0, 0, H.r, 0, Math.PI * 2), a.stroke(), a.restore();
+      let f = this.elapsedTime;
+      let zr = h.radius || 140;
+      a.save();
+      a.globalAlpha = Math.min(1, ((h.duration || 3) - (h.timer || 0)) / 0.45);
+      if (h.kind === "arrow_rain") {
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * 1.8, primary: "#34D399", secondary: "#FEF08A", darkRim: "#064E3B", coreWash: "rgba(52, 211, 153, 0.32)", midWash: "rgba(16, 185, 129, 0.16)", segments: 4, isMono: c });
         for (let H = 0; H < 4; H++) {
-          let D = Math.PI * 2 / 4 * H + h.rotation * 1.8;
-          a.beginPath();
-          for (let P = 0; P <= 25; P++) {
-            let N = P / 25, W = h.radius * (1 - N * 0.88), V = D + N * 3.8, oe = Math.cos(V) * W, ye = Math.sin(V) * W;
-            P === 0 ? a.moveTo(oe, ye) : a.lineTo(oe, ye);
-          }
-          a.strokeStyle = c ? "#FFFFFF" : H % 2 == 0 ? "rgba(110, 231, 183, 0.85)" : "rgba(209, 250, 229, 0.95)", a.lineWidth = 3.2, a.stroke();
+          let ang = (Math.PI * 0.5) * H + h.rotation * 1.6;
+          drawWindStreamRibbon(a, { x: h.x + Math.cos(ang) * zr * 0.52, y: h.y + Math.sin(ang) * zr * 0.38, angle: ang + Math.PI * 0.5, length: zr * 0.44, width: 4.5, phase: f * 10 + H, color: "#34D399", coreColor: "#ECFDF5", isMono: c });
         }
+        let b = Math.floor(f * 22);
         for (let H = 0; H < 12; H++) {
-          let D = (f * 0.6 + H * 0.08) % 1, P = h.radius * (1 - D * 0.85), N = f * (4 + H * 0.5) + Math.PI * 2 / 12 * H, W = Math.cos(N) * P, V = Math.sin(N) * P;
-          a.save(), a.translate(W, V), a.rotate(N + Math.PI / 2), a.fillStyle = c ? "#FFFFFF" : "#ECFDF5", a.beginPath(), a.ellipse(0, 0, 7, 2.5, 0, 0, Math.PI * 2), a.fill(), a.restore();
+          let dx = Math.sin(b + H * 41) * 0.78 * zr, dy = Math.cos(b * 1.4 + H * 29) * 0.56 * zr;
+          let ax = h.x + dx, ay = h.y + dy;
+          a.strokeStyle = c ? "#FFFFFF" : "#FDE68A", a.lineWidth = 2.4, a.beginPath(), a.moveTo(ax - 12, ay - 38), a.lineTo(ax, ay), a.stroke();
+          drawFacetedShard(a, { x: ax, y: ay, size: 5.2, rot: 0.25, aspect: 1.5, primary: "#10B981", highlight: "#FEF08A", shadow: "#064E3B", rim: "#ECFDF5", isMono: c });
         }
-        let b = Math.floor(f * 24);
-        for (let H = 0; H < 16; H++) {
-          let D = Math.sin(b + H * 41) * 0.82 * h.radius, P = Math.cos(b * 1.4 + H * 29) * 0.82 * h.radius, N = 1.35, sx = D - Math.cos(N) * 40, sy = P - Math.sin(N) * 40;
-          a.strokeStyle = c ? "#FFFFFF" : "#FDE68A", a.lineWidth = 2.6, a.beginPath(), a.moveTo(sx, sy), a.lineTo(D, P), a.stroke();
-          a.fillStyle = c ? "#E2E8F0" : "#6EE7B7", a.beginPath(), a.moveTo(sx - 3, sy - 2), a.lineTo(sx + 4, sy - 6), a.lineTo(sx + 1, sy + 2), a.closePath(), a.fill();
-          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(D, P, 3.5, 0, Math.PI * 2), a.fill(), a.strokeStyle = c ? "rgba(255,255,255,0.65)" : "rgba(52, 211, 153, 0.72)", a.lineWidth = 1.8, a.beginPath(), a.ellipse(D, P, 9.5, 4.5, 0, 0, Math.PI * 2), a.stroke();
-        }
-        let x = 18 + Math.sin(f * 12) * 5, C = a.createRadialGradient(0, 0, 2, 0, 0, x);
-        C.addColorStop(0, "#FFFFFF"), C.addColorStop(0.5, c ? "#CBD5E1" : "#6EE7B7"), C.addColorStop(1, "rgba(52, 211, 153, 0)"), a.fillStyle = C, a.beginPath(), a.arc(0, 0, x, 0, Math.PI * 2), a.fill(), a.restore();
       } else if (h.kind === "fox_king_rain") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let fg = a.createRadialGradient(0, 0, 12, 0, 0, h.radius);
-        c ? (fg.addColorStop(0, "rgba(255,255,255,0.34)"), fg.addColorStop(0.55, "rgba(180,180,180,0.2)"), fg.addColorStop(1, "rgba(0,0,0,0)")) : (fg.addColorStop(0, "rgba(254, 240, 138, 0.42)"), fg.addColorStop(0.55, "rgba(249, 115, 22, 0.28)"), fg.addColorStop(1, "rgba(194, 65, 12, 0)"));
-        a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fillStyle = fg, a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#FB923C", a.lineWidth = 3, a.stroke();
-        a.save(), a.rotate(f * 2.2), a.strokeStyle = c ? "#CBD5E1" : "rgba(254, 240, 138, 0.68)", a.lineWidth = 1.8, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.72, 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.restore();
-        for (let T = 0; T < 9; T++) {
-          let b = f * 3.5 + Math.PI * 2 / 9 * T, x = h.radius * (0.48 + 0.36 * Math.sin(f * 2 + T));
-          let fx = Math.cos(b) * x, fy = Math.sin(b) * x, tx = Math.cos(b - 0.38) * x * 0.9, ty = Math.sin(b - 0.38) * x * 0.9;
-          a.strokeStyle = c ? "rgba(255,255,255,0.68)" : "rgba(251, 146, 60, 0.72)", a.lineWidth = 3.2, a.beginPath(), a.moveTo(tx, ty), a.quadraticCurveTo((fx + tx) * 0.52, (fy + ty) * 0.48 - 10, fx, fy), a.stroke();
-          a.fillStyle = c ? "#FFFFFF" : T % 2 == 0 ? "#F97316" : "#FEF08A", a.beginPath(), a.arc(fx, fy, 6.8, 0, Math.PI * 2), a.fill();
-          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(fx, fy, 2.8, 0, Math.PI * 2), a.fill();
-        }
-        let v = Math.floor(f * 22);
-        for (let T = 0; T < 16; T++) {
-          let b = Math.sin(v + T * 37) * 0.85 * h.radius, x = Math.cos(v * 1.5 + T * 23) * 0.85 * h.radius;
-          a.strokeStyle = c ? "#FFFFFF" : "#FDE68A", a.lineWidth = 2.8, a.beginPath(), a.moveTo(b + 12, x - 36), a.lineTo(b, x), a.stroke();
-          a.fillStyle = c ? "#CBD5E1" : "#F97316", a.beginPath(), a.arc(b, x, 5.2, 0, Math.PI * 2), a.fill();
-          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(b, x, 2.6, 0, Math.PI * 2), a.fill();
-        }
-        a.restore();
-      } else if (h.kind === "blizzard_vortex") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.48)"), v.addColorStop(0.55, "rgba(180,180,180,0.22)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(224, 242, 254, 0.58)"), v.addColorStop(0.5, "rgba(56, 189, 248, 0.34)"), v.addColorStop(1, "rgba(14, 165, 233, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#38BDF8", a.lineWidth = 2.4, a.setLineDash([14, 8]), a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * 1.6, primary: "#F97316", secondary: "#FEF08A", darkRim: "#431407", coreWash: "rgba(249, 115, 22, 0.34)", midWash: "rgba(194, 65, 12, 0.16)", segments: 4, isMono: c });
         for (let T = 0; T < 6; T++) {
-          a.save(), a.rotate(f * 4.2 + Math.PI / 3 * T), a.strokeStyle = c ? "#FFFFFF" : "#BAE6FD", a.lineWidth = 2.8, a.beginPath(), a.moveTo(0, 0), a.lineTo(h.radius * 0.9, 0), a.stroke();
-          for (let b = 1; b <= 3; b++) {
-            let x = h.radius * 0.9 / 4 * b;
-            a.beginPath(), a.moveTo(x, 0), a.lineTo(x + 12, 12), a.moveTo(x, 0), a.lineTo(x + 12, -12), a.stroke();
-          }
-          a.restore();
+          let b = f * 3.2 + (Math.PI * 2 / 6) * T, d = zr * (0.36 + 0.38 * Math.sin(f * 2 + T));
+          drawWindStreamRibbon(a, { x: h.x + Math.cos(b) * d, y: h.y + Math.sin(b) * d * 0.72, angle: b + Math.PI * 0.5, length: 34, width: 5.5, phase: f * 12 + T, color: "#F97316", coreColor: "#FEF08A", isMono: c });
         }
+        let v = Math.floor(f * 20);
         for (let T = 0; T < 12; T++) {
-          let b = f * 6 + Math.PI * 2 / 12 * T, x = h.radius * (0.25 + 0.65 * ((f + T * 0.13) % 1));
-          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(Math.cos(b) * x, Math.sin(b) * x, 3.6, 0, Math.PI * 2), a.fill();
+          let bx = h.x + Math.sin(v + T * 37) * 0.78 * zr, by = h.y + Math.cos(v * 1.5 + T * 23) * 0.56 * zr;
+          a.strokeStyle = c ? "#FFFFFF" : "#FDE68A", a.lineWidth = 2.6, a.beginPath(), a.moveTo(bx + 10, by - 36), a.lineTo(bx, by), a.stroke();
+          drawFacetedShard(a, { x: bx, y: by, size: 5.5, rot: f * 3 + T, shape: "rock", primary: "#EA580C", highlight: "#FEF08A", shadow: "#431407", rim: "#FB923C", isMono: c });
         }
-        a.restore();
+      } else if (h.kind === "blizzard_vortex") {
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * 2.4, primary: "#38BDF8", secondary: "#E0F2FE", darkRim: "#082F49", coreWash: "rgba(186, 230, 253, 0.34)", midWash: "rgba(14, 165, 233, 0.16)", segments: 5, isMono: c });
+        for (let T = 0; T < 6; T++) {
+          let ang = f * 3.6 + (Math.PI / 3) * T;
+          drawWindStreamRibbon(a, { x: h.x + Math.cos(ang) * zr * 0.56, y: h.y + Math.sin(ang) * zr * 0.4, angle: ang + Math.PI * 0.45, length: zr * 0.42, width: 4.8, phase: f * 11 + T, color: "#38BDF8", coreColor: "#F0F9FF", isMono: c });
+          drawFacetedShard(a, { x: h.x + Math.cos(ang + 0.3) * zr * 0.72, y: h.y + Math.sin(ang + 0.3) * zr * 0.52 - 8, size: 6.2, rot: ang, primary: "#0EA5E9", highlight: "#F0F9FF", shadow: "#082F49", rim: "#BAE6FD", isMono: c });
+        }
       } else if (h.kind === "gau_tremor") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 12, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.2)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(254, 240, 138, 0.42)"), v.addColorStop(0.55, "rgba(217, 119, 6, 0.28)"), v.addColorStop(1, "rgba(180, 83, 9, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "rgba(251, 191, 36, 0.85)", a.lineWidth = 2.8, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.85 + 0.1 * Math.sin(f * 8)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        // Expanding concentric ground shockwave ripple
-        let swR = ((f * 1.4) % 1) * h.radius;
-        a.strokeStyle = c ? `rgba(255,255,255,${1 - swR / h.radius})` : `rgba(254, 240, 138, ${1 - swR / h.radius})`;
-        a.lineWidth = 2.2, a.beginPath(), a.arc(0, 0, swR, 0, Math.PI * 2), a.stroke();
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: h.x * 0.02, primary: "#F59E0B", secondary: "#FEF08A", darkRim: "#451A03", coreWash: "rgba(245, 158, 11, 0.32)", midWash: "rgba(180, 83, 9, 0.16)", segments: 3, isMono: c });
         for (let ci = 0; ci < 6; ci++) {
           let ca = (Math.PI / 3) * ci + h.x * 0.02;
-          a.strokeStyle = c ? "#E2E8F0" : "rgba(254, 240, 138, 0.78)", a.lineWidth = 2.2, a.beginPath(), a.moveTo(Math.cos(ca) * 14, Math.sin(ca) * 14), a.lineTo(Math.cos(ca + 0.14) * h.radius * 0.48, Math.sin(ca + 0.14) * h.radius * 0.48), a.lineTo(Math.cos(ca - 0.06) * h.radius * 0.86, Math.sin(ca - 0.06) * h.radius * 0.86), a.stroke();
-          // Levitating shattered rock shards along seismic fault lines
-          let rx = Math.cos(ca) * h.radius * 0.62, ry = Math.sin(ca) * h.radius * 0.62 - Math.abs(Math.sin(f * 6 + ci)) * 10;
-          a.fillStyle = c ? "#475569" : "#78350F", a.strokeStyle = c ? "#FFFFFF" : "#FDE047", a.lineWidth = 1.2;
-          a.beginPath(), a.moveTo(rx, ry - 6), a.lineTo(rx + 6, ry), a.lineTo(rx + 2, ry + 5), a.lineTo(rx - 5, ry + 2), a.closePath(), a.fill(), a.stroke();
+          a.strokeStyle = c ? "#E2E8F0" : "rgba(254, 240, 138, 0.78)", a.lineWidth = 2.2;
+          a.beginPath(), a.moveTo(h.x + Math.cos(ca) * 14, h.y + Math.sin(ca) * 10), a.lineTo(h.x + Math.cos(ca + 0.14) * zr * 0.5, h.y + Math.sin(ca + 0.14) * zr * 0.36), a.lineTo(h.x + Math.cos(ca - 0.06) * zr * 0.86, h.y + Math.sin(ca - 0.06) * zr * 0.62), a.stroke();
+          drawFacetedShard(a, { x: h.x + Math.cos(ca) * zr * 0.62, y: h.y + Math.sin(ca) * zr * 0.44 - Math.abs(Math.sin(f * 6 + ci)) * 11, size: 7.2, rot: ca + ci, shape: "rock", primary: "#92400E", highlight: "#FEF08A", shadow: "#1C1917", rim: "#F59E0B", isMono: c });
         }
-        a.restore();
       } else if (h.kind === "danh_dragon_fire") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.5, "rgba(180,180,180,0.2)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(254, 240, 138, 0.4)"), v.addColorStop(0.45, "rgba(239, 68, 68, 0.34)"), v.addColorStop(1, "rgba(153, 27, 27, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#F59E0B", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        // Scorched dragon-fire floor fissures
-        a.strokeStyle = c ? "rgba(255,255,255,0.58)" : "rgba(254, 240, 138, 0.58)", a.lineWidth = 1.6;
-        for (let ci = 0; ci < 5; ci++) {
-          let ca = (Math.PI * 2 / 5) * ci + 0.3;
-          a.beginPath(), a.moveTo(Math.cos(ca) * 14, Math.sin(ca) * 14), a.lineTo(Math.cos(ca + 0.16) * h.radius * 0.52, Math.sin(ca + 0.16) * h.radius * 0.52), a.lineTo(Math.cos(ca - 0.06) * h.radius * 0.85, Math.sin(ca - 0.06) * h.radius * 0.85), a.stroke();
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: -f * 1.4, primary: "#EF4444", secondary: "#FEF08A", darkRim: "#450A0A", coreWash: "rgba(239, 68, 68, 0.38)", midWash: "rgba(153, 27, 27, 0.2)", segments: 4, isMono: c });
+        for (let cl = 0; cl < 3; cl++) {
+          let ca = -0.35 + cl * 0.35;
+          drawTaperedArc(a, h.x, h.y + (cl - 1) * 8, Math.max(12, zr * 0.58), ca - 0.55, ca + 0.55, 5.0, "#F97316", "#FEF08A", c);
         }
-        a.save(), a.rotate(-f * 2.4), a.strokeStyle = c ? "#CBD5E1" : "rgba(254, 240, 138, 0.62)", a.lineWidth = 1.8, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.7, 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.restore();
-        for (let T = 0; T < 10; T++) {
-          let b = f * 3.2 + Math.PI * 2 / 10 * T, x = h.radius * (0.28 + 0.56 * ((f * 0.75 + T * 0.14) % 1));
-          let fx = Math.cos(b) * x, fy = Math.sin(b) * x;
-          let sway = Math.sin(f * 11 + T) * 3.5;
-          a.fillStyle = c ? "#94A3B8" : "#EA580C", a.beginPath(), a.moveTo(fx - 5, fy + 2), a.bezierCurveTo(fx - 5.5, fy - 6, fx + sway, fy - 14, fx + sway, fy - 17), a.bezierCurveTo(fx + 3.5, fy - 10, fx + 5.5, fy - 4, fx + 5, fy + 2), a.closePath(), a.fill();
-          a.fillStyle = c ? "#FFFFFF" : "#FEF08A", a.beginPath(), a.moveTo(fx - 2.2, fy + 1), a.quadraticCurveTo(fx + sway * 0.5, fy - 9, fx + 2.2, fy + 1), a.closePath(), a.fill();
+        for (let T = 0; T < 8; T++) {
+          let b = f * 2.8 + (Math.PI * 2 / 8) * T, d = zr * (0.28 + 0.56 * ((f * 0.75 + T * 0.14) % 1));
+          let fx = h.x + Math.cos(b) * d, fy = h.y + Math.sin(b) * d * 0.72, sway = Math.sin(f * 11 + T) * 4.2;
+          a.fillStyle = c ? "#94A3B8" : "#EA580C", a.beginPath(), a.moveTo(fx - 6, fy + 2), a.bezierCurveTo(fx - 6.5, fy - 8, fx + sway, fy - 18, fx + sway, fy - 22), a.bezierCurveTo(fx + 4, fy - 12, fx + 6.5, fy - 5, fx + 6, fy + 2), a.closePath(), a.fill();
+          a.fillStyle = c ? "#FFFFFF" : "#FEF08A", a.beginPath(), a.moveTo(fx - 2.4, fy + 1), a.quadraticCurveTo(fx + sway * 0.5, fy - 13, fx + 2.4, fy + 1), a.closePath(), a.fill();
+          if (T % 2 === 0) {
+            drawFacetedShard(a, { x: fx, y: fy - 14 - ((f * 18 + T * 5) % 12), size: 3.8, rot: b, shape: "crystal", primary: "#EF4444", highlight: "#FEF08A", shadow: "#450A0A", rim: "#FACC15", isMono: c });
+          }
         }
-        a.restore();
-      } else if (h.kind === "trung_thunder_zone") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.22)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(254, 240, 138, 0.34)"), v.addColorStop(0.55, "rgba(129, 140, 248, 0.28)"), v.addColorStop(1, "rgba(79, 70, 229, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#818CF8", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        a.save(), a.rotate(f * 2.2), a.strokeStyle = c ? "#E2E8F0" : "#FDE047", a.lineWidth = 2.1, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.72 + 0.08 * Math.sin(f * 10)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        a.strokeStyle = c ? "rgba(255,255,255,0.5)" : "rgba(199, 210, 254, 0.62)", a.lineWidth = 1.6, a.beginPath();
-        for (let hi = 0; hi < 6; hi++) {
-          let ha = (Math.PI / 3) * hi, hx = Math.cos(ha) * h.radius * 0.56, hy = Math.sin(ha) * h.radius * 0.56;
-          hi === 0 ? a.moveTo(hx, hy) : a.lineTo(hx, hy);
-        }
-        a.closePath(), a.stroke(), a.restore();
-        // Multi-segment forked crackling lightning bolts from core to perimeter
+      } else if (h.kind === "trung_thunder_zone" || h.kind === "boss_storm_field" || h.kind === "boss_emp_field") {
+        let isGold = h.kind === "boss_storm_field", isEmp = h.kind === "boss_emp_field";
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * 2.1, primary: isGold ? "#FACC15" : isEmp ? "#38BDF8" : "#818CF8", secondary: "#FEF08A", darkRim: "#1E1B4B", coreWash: isEmp ? "rgba(56, 189, 248, 0.28)" : "rgba(129, 140, 248, 0.28)", midWash: "rgba(30, 27, 75, 0.16)", segments: 4, isMono: c });
         for (let T = 0; T < 5; T++) {
-          let b = f * 4.2 + Math.PI * 2 / 5 * T, x = h.radius * 0.88;
-          let p1x = Math.cos(b + 0.24) * x * 0.34, p1y = Math.sin(b + 0.24) * x * 0.34;
-          let p2x = Math.cos(b - 0.18) * x * 0.66, p2y = Math.sin(b - 0.18) * x * 0.66;
-          let p3x = Math.cos(b + 0.06) * x, p3y = Math.sin(b + 0.06) * x;
-          a.strokeStyle = c ? "rgba(255,255,255,0.45)" : "rgba(129, 140, 248, 0.55)", a.lineWidth = 4.6, a.beginPath(), a.moveTo(0, 0), a.lineTo(p1x, p1y), a.lineTo(p2x, p2y), a.lineTo(p3x, p3y), a.stroke();
-          a.strokeStyle = c ? "#CBD5E1" : "#FDE047", a.lineWidth = 2.0, a.stroke();
-          a.strokeStyle = "#FFFFFF", a.lineWidth = 0.95, a.stroke();
-          // Forked offshoot
-          a.strokeStyle = c ? "#FFFFFF" : "#FDE047", a.lineWidth = 1.3, a.beginPath(), a.moveTo(p2x, p2y), a.lineTo(p2x + Math.cos(b + 0.65) * 19, p2y + Math.sin(b + 0.65) * 19), a.stroke();
+          let ang = f * 3.4 + (Math.PI * 2 / 5) * T;
+          drawBranchingArc(a, { x1: h.x, y1: h.y, x2: h.x + Math.cos(ang) * zr * 0.88, y2: h.y + Math.sin(ang) * zr * 0.64, seed: f * 22 + T, width: 2.2, color: isGold ? "#FDE047" : isEmp ? "#38BDF8" : "#818CF8", coreColor: "#FFFFFF", isMono: c });
         }
-        a.fillStyle = "#FFFBEB", a.beginPath(), a.arc(0, 0, 6.2 + Math.sin(f * 14) * 1.5, 0, Math.PI * 2), a.fill();
-        a.restore();
-      } else if (h.kind === "acid_pool") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.36)"), v.addColorStop(0.55, "rgba(180,180,180,0.22)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(190, 242, 100, 0.52)"), v.addColorStop(0.55, "rgba(34, 197, 94, 0.34)"), v.addColorStop(1, "rgba(20, 83, 45, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#A3E635", a.lineWidth = 2.6, a.stroke();
-        a.save(), a.rotate(f * 1.4), a.strokeStyle = c ? "#CBD5E1" : "rgba(190, 242, 100, 0.58)", a.lineWidth = 1.6, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.72, 0, Math.PI * 2), a.stroke(), a.setLineDash([]), a.restore();
-        for (let T = 0; T < 9; T++) {
-          let phase = (f * 0.65 + T * 0.19) % 1;
-          let b = f * 1.6 + Math.PI * 2 / 9 * T, x = h.radius * (0.2 + 0.65 * phase), bx = Math.cos(b) * x, by = Math.sin(b) * x, br = 3 + Math.sin(phase * Math.PI) * 3.5;
-          a.fillStyle = c ? "#FFFFFF" : T % 2 === 0 ? "#BEF264" : "#4ADE80", a.beginPath(), a.arc(bx, by, br, 0, Math.PI * 2), a.fill();
-          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(bx - br * 0.3, by - br * 0.3, 1.1, 0, Math.PI * 2), a.fill();
+      } else if (h.kind === "acid_pool" || h.kind === "thanh_poison_zone" || h.kind === "nhi_poison_zone") {
+        let isNhi = h.kind === "nhi_poison_zone", isThanh = h.kind === "thanh_poison_zone";
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * (isThanh ? 1.4 : -1.2), primary: isNhi ? "#C084FC" : "#4ADE80", secondary: isNhi ? "#4ADE80" : "#BEF264", darkRim: "#052E16", coreWash: isNhi ? "rgba(192, 132, 252, 0.3)" : "rgba(34, 197, 94, 0.32)", midWash: "rgba(20, 83, 45, 0.18)", segments: 4, isMono: c });
+        for (let bi = 0; bi < 7; bi++) {
+          let ba = f * 1.2 + (Math.PI * 2 / 7) * bi, phase = (bi * 0.31 + f * 0.5) % 1;
+          let bx = h.x + Math.cos(ba) * zr * (0.24 + 0.56 * phase), by = h.y + Math.sin(ba) * zr * 0.72 * (0.24 + 0.56 * phase) - phase * 10;
+          drawViscousDroplet(a, { x: bx, y: by, vx: 0, vy: -14, radius: 3.4 + Math.sin(f * 5 + bi) * 1.1, color: isNhi && bi % 2 === 0 ? "#E879F9" : "#4ADE80", rimColor: "#ECFCCB", isMono: c });
         }
-        a.restore();
       } else if (h.kind === "blood_sanctuary") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.2)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(251, 113, 133, 0.46)"), v.addColorStop(0.55, "rgba(190, 18, 60, 0.3)"), v.addColorStop(1, "rgba(76, 5, 25, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#FB7185", a.lineWidth = 3, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        a.save(), a.rotate(-f * 1.8), a.strokeStyle = c ? "#CBD5E1" : "#F43F5E", a.lineWidth = 2, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.72 + 0.06 * Math.sin(f * 8)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: -f * 1.7, primary: "#FB7185", secondary: "#FFE4E6", darkRim: "#4C0519", coreWash: "rgba(225, 29, 72, 0.32)", midWash: "rgba(76, 5, 25, 0.2)", segments: 4, isMono: c });
         for (let ri = 0; ri < 6; ri++) {
-          let ra = (Math.PI / 3) * ri;
-          a.fillStyle = c ? "#FFFFFF" : "#FDA4AF", a.beginPath(), a.arc(Math.cos(ra) * h.radius * 0.86, Math.sin(ra) * h.radius * 0.86, 4.5, 0, Math.PI * 2), a.fill();
+          let ra = (Math.PI / 3) * ri - f * 1.4;
+          drawViscousDroplet(a, { x: h.x + Math.cos(ra) * zr * 0.82, y: h.y + Math.sin(ra) * zr * 0.58, vx: -Math.sin(ra) * 10, vy: Math.cos(ra) * 10, radius: 4.0, color: "#E11D48", rimColor: "#FFE4E6", isMono: c });
         }
-        a.restore();
-        a.restore();
-        // Visible blood-siphon tether from sanctuary/player back toward Blood Sovereign boss
         let bossRef = this.enemies.find((em) => em.kind === "boss" && em.bossWave === 24 && em.hp > 0);
         if (bossRef) {
-          let inZone = Math.hypot(this.player.x - h.x, this.player.y - h.y) <= h.radius + this.player.radius;
+          let inZone = Math.hypot(this.player.x - h.x, this.player.y - h.y) <= zr + this.player.radius;
           let sx = inZone ? this.player.x : h.x, sy = inZone ? this.player.y : h.y;
-          a.save(), a.strokeStyle = c ? "rgba(255,255,255,0.65)" : inZone ? "rgba(251, 113, 133, 0.85)" : "rgba(225, 29, 72, 0.42)", a.lineWidth = inZone ? 3.4 : 2.2, a.setLineDash([10, 6]), a.beginPath(), a.moveTo(sx, sy), a.lineTo(bossRef.x, bossRef.y), a.stroke(), a.setLineDash([]), a.restore();
+          drawBranchingArc(a, { x1: sx, y1: sy, x2: bossRef.x, y2: bossRef.y, seed: f * 14, width: inZone ? 2.8 : 1.8, color: "#FB7185", coreColor: "#FFE4E6", isMono: c });
         }
-      } else if (h.kind === "boss_emp_field") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.2)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(56, 189, 248, 0.38)"), v.addColorStop(0.55, "rgba(14, 165, 233, 0.24)"), v.addColorStop(1, "rgba(2, 132, 199, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#38BDF8", a.lineWidth = 2.6, a.stroke();
-        a.save(), a.rotate(f * 2.2), a.strokeStyle = c ? "#E2E8F0" : "#FEF08A", a.lineWidth = 1.8, a.setLineDash([10, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.72, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        for (let hi = 0; hi < 6; hi++) {
-          let ha = (Math.PI / 3) * hi;
-          a.strokeStyle = c ? "rgba(255,255,255,0.55)" : "rgba(56, 189, 248, 0.65)", a.lineWidth = 1.6, a.beginPath(), a.moveTo(0, 0), a.lineTo(Math.cos(ha) * h.radius * 0.86, Math.sin(ha) * h.radius * 0.86), a.stroke();
-        }
-        a.restore(), a.restore();
-      } else if (h.kind === "boss_storm_field") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.2)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(253, 224, 71, 0.36)"), v.addColorStop(0.55, "rgba(2, 132, 199, 0.28)"), v.addColorStop(1, "rgba(12, 74, 110, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#FDE047", a.lineWidth = 2.6, a.stroke();
-        for (let zi = 0; zi < 5; zi++) {
-          let za = f * 3.8 + Math.PI * 2 / 5 * zi;
-          a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 2.1, a.beginPath(), a.moveTo(0, 0), a.lineTo(Math.cos(za + 0.2) * h.radius * 0.45, Math.sin(za + 0.2) * h.radius * 0.45), a.lineTo(Math.cos(za) * h.radius * 0.88, Math.sin(za) * h.radius * 0.88), a.stroke();
-        }
-        a.restore();
       } else if (h.kind === "taidu_plasma_zone") {
-        let f = this.elapsedTime;
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.55, "rgba(180,180,180,0.2)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, "rgba(56, 189, 248, 0.4)"), v.addColorStop(0.5, "rgba(249, 115, 22, 0.28)"), v.addColorStop(1, "rgba(14, 165, 233, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#38BDF8", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        a.save(), a.rotate(f * 1.9);
-        a.strokeStyle = c ? "#E2E8F0" : "#FACC15", a.lineWidth = 2.0, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.68 + 0.08 * Math.sin(f * 10)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        // Rotating orbital plasma hexagram lattice & ionized arc nodes
-        a.strokeStyle = c ? "rgba(255,255,255,0.52)" : "rgba(103, 232, 249, 0.62)", a.lineWidth = 1.6, a.beginPath();
-        for (let hi = 0; hi < 6; hi++) {
-          let ha = (Math.PI / 3) * hi, hx = Math.cos(ha) * h.radius * 0.56, hy = Math.sin(ha) * h.radius * 0.56;
-          hi === 0 ? a.moveTo(hx, hy) : a.lineTo(hx, hy);
-        }
-        a.closePath(), a.stroke();
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * 1.8, primary: "#38BDF8", secondary: "#F97316", darkRim: "#0C4A6E", coreWash: "rgba(56, 189, 248, 0.28)", midWash: "rgba(249, 115, 22, 0.14)", segments: 6, isMono: c });
         for (let ai = 0; ai < 4; ai++) {
-          let aa = (Math.PI / 2) * ai;
-          a.fillStyle = c ? "#FFFFFF" : ai % 2 === 0 ? "#38BDF8" : "#F97316";
-          a.beginPath(), a.arc(Math.cos(aa) * h.radius * 0.84, Math.sin(aa) * h.radius * 0.84, 3.6, 0, Math.PI * 2), a.fill();
+          let aa = (Math.PI / 2) * ai + f * 1.8;
+          drawFacetedShard(a, { x: h.x + Math.cos(aa) * zr * 0.8, y: h.y + Math.sin(aa) * zr * 0.58, size: 5.5, rot: aa, shape: "plate", primary: ai % 2 === 0 ? "#38BDF8" : "#F97316", highlight: "#FEF08A", shadow: "#0F172A", rim: "#BAE6FD", isMono: c });
         }
-        a.restore(), a.restore();
-      } else if (h.kind === "thanh_poison_zone" || h.kind === "nhi_poison_zone") {
-        let f = this.elapsedTime, isThanh = h.kind === "thanh_poison_zone";
-        a.save(), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 8, 0, 0, h.radius);
-        c ? (v.addColorStop(0, "rgba(255,255,255,0.34)"), v.addColorStop(0.58, "rgba(180,180,180,0.22)"), v.addColorStop(1, "rgba(0,0,0,0)")) : (v.addColorStop(0, isThanh ? "rgba(52, 211, 153, 0.4)" : "rgba(192, 132, 252, 0.38)"), v.addColorStop(0.58, isThanh ? "rgba(6, 78, 59, 0.36)" : "rgba(34, 197, 94, 0.28)"), v.addColorStop(1, "rgba(16, 185, 129, 0)"));
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : isThanh ? "#34D399" : "#C084FC", a.lineWidth = 2.6, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        // Inner counter-rotating sigil ring
-        a.save(), a.rotate(f * (isThanh ? 1.4 : -1.2));
-        a.strokeStyle = c ? "#CBD5E1" : isThanh ? "#A78BFA" : "#4ADE80", a.lineWidth = 1.9, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.72 + 0.05 * Math.sin(f * 6)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        if (isThanh) {
-          // Serpent fang notches around perimeter
-          a.fillStyle = c ? "#FFFFFF" : "#6EE7B7";
-          for (let ti = 0; ti < 6; ti++) {
-            let ta = (Math.PI * 2 / 6) * ti;
-            a.save(), a.rotate(ta), a.beginPath(), a.moveTo(h.radius - 8, 0), a.lineTo(h.radius + 3, -3), a.lineTo(h.radius + 3, 3), a.closePath(), a.fill(), a.restore();
-          }
-        } else {
-          // Alchemical hexagon core ring
-          a.strokeStyle = c ? "rgba(255,255,255,0.52)" : "rgba(232, 121, 249, 0.52)", a.lineWidth = 1.6, a.beginPath();
-          for (let hi = 0; hi < 6; hi++) {
-            let ha = (Math.PI * 2 / 6) * hi;
-            hi === 0 ? a.moveTo(Math.cos(ha) * h.radius * 0.48, Math.sin(ha) * h.radius * 0.48) : a.lineTo(Math.cos(ha) * h.radius * 0.48, Math.sin(ha) * h.radius * 0.48);
-          }
-          a.closePath(), a.stroke();
-        }
-        a.restore();
-        // Bubbling venom / potion orbs with specular glints
-        for (let bi = 0; bi < 6; bi++) {
-          let ba = f * 1.1 + bi * (Math.PI * 2 / 6);
-          let br = h.radius * (0.26 + 0.52 * ((bi * 0.37 + f * 0.4) % 1));
-          let bx = Math.cos(ba) * br, by = Math.sin(ba) * br;
-          let radOrb = 2.8 + Math.sin(f * 5 + bi) * 1.2;
-          a.fillStyle = c ? "#E2E8F0" : isThanh ? (bi % 2 === 0 ? "#6EE7B7" : "#C084FC") : (bi % 2 === 0 ? "#4ADE80" : "#E879F9");
-          a.beginPath(), a.arc(bx, by, radOrb, 0, Math.PI * 2), a.fill();
-          a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(bx - radOrb * 0.3, by - radOrb * 0.3, 1.0, 0, Math.PI * 2), a.fill();
-        }
-        a.restore();
       } else if (h.kind === "khair_ion_crater") {
-        let f = this.elapsedTime, fade = Math.min(1, ((h.duration || 3.2) - (h.timer || 0)) / 0.35);
-        a.save(), a.globalAlpha = Math.max(0.15, fade), a.translate(h.x, h.y);
-        let v = a.createRadialGradient(0, 0, 10, 0, 0, h.radius);
-        v.addColorStop(0, c ? "rgba(255,255,255,0.32)" : "rgba(250, 204, 21, 0.38)"), v.addColorStop(0.55, c ? "rgba(255,255,255,0.16)" : "rgba(74, 222, 128, 0.28)"), v.addColorStop(1, "rgba(16, 185, 129, 0)");
-        a.fillStyle = v, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.fill();
-        a.strokeStyle = c ? "#FFFFFF" : "#4ADE80", a.lineWidth = 2.8, a.beginPath(), a.arc(0, 0, h.radius, 0, Math.PI * 2), a.stroke();
-        a.save(), a.rotate(f * 1.4), a.strokeStyle = c ? "#CCCCCC" : "#FACC15", a.lineWidth = 2.0, a.setLineDash([12, 8]), a.beginPath(), a.arc(0, 0, h.radius * (0.66 + 0.06 * Math.sin(f * 8)), 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        drawPerspectiveZoneBase(a, { x: h.x, y: h.y, radius: zr, tiltY: 0.72, rot: f * 1.4, primary: "#4ADE80", secondary: "#FACC15", darkRim: "#052E16", coreWash: "rgba(250, 204, 21, 0.26)", midWash: "rgba(74, 222, 128, 0.16)", segments: 4, isMono: c });
         for (let ci = 0; ci < 4; ci++) {
-          let ca = (Math.PI / 2) * ci;
-          a.beginPath(), a.moveTo(Math.cos(ca) * h.radius * 0.24, Math.sin(ca) * h.radius * 0.24), a.lineTo(Math.cos(ca) * h.radius * 0.9, Math.sin(ca) * h.radius * 0.9), a.stroke();
+          let ca = (Math.PI / 2) * ci + f * 1.4;
+          drawBranchingArc(a, { x1: h.x + Math.cos(ca) * zr * 0.2, y1: h.y + Math.sin(ca) * zr * 0.14, x2: h.x + Math.cos(ca) * zr * 0.85, y2: h.y + Math.sin(ca) * zr * 0.62, seed: f * 16 + ci, width: 1.8, color: "#4ADE80", coreColor: "#FDE047", isMono: c });
         }
-        a.restore();
-        for (let pi = 0; pi < 6; pi++) {
-          let pa = f * 1.6 + pi * (Math.PI * 2 / 6), pr = h.radius * (0.3 + 0.48 * ((pi * 0.31 + f * 0.4) % 1));
-          a.fillStyle = c ? "#FFFFFF" : pi % 2 === 0 ? "#FDE047" : "#4ADE80";
-          a.beginPath(), a.arc(Math.cos(pa) * pr, Math.sin(pa) * pr, 3.0, 0, Math.PI * 2), a.fill();
-        }
-        a.restore();
       }
       a.restore();
     }
@@ -10564,82 +10548,136 @@ export class GameEngine {
       let pad = this.duccong_pads[m];
       if (!pad) continue;
       let ready = pad.teleportCd <= 0, pulse = 1 + 0.1 * Math.sin(this.elapsedTime * 7), pr = pad.radius * pulse;
-      a.save(), a.translate(pad.x, pad.y);
-      if (prof?.enableRadialGlows) {
-        let pg = a.createRadialGradient(0, 0, pr * 0.15, 0, 0, pr * 1.18);
-        pg.addColorStop(0, c ? "rgba(255,255,255,0.28)" : ready ? "rgba(232, 121, 249, 0.42)" : "rgba(148, 163, 184, 0.22)");
-        pg.addColorStop(0.65, c ? "rgba(180,180,180,0.12)" : ready ? "rgba(56, 189, 248, 0.18)" : "rgba(71, 85, 105, 0.08)");
-        pg.addColorStop(1, "rgba(0,0,0,0)");
-        a.fillStyle = pg, a.beginPath(), a.arc(0, 0, pr * 1.18, 0, Math.PI * 2), a.fill();
-      } else {
-        a.beginPath(), a.arc(0, 0, pr, 0, Math.PI * 2), a.fillStyle = c ? "rgba(255,255,255,0.18)" : ready ? "rgba(168, 85, 247, 0.26)" : "rgba(148, 163, 184, 0.14)", a.fill();
-      }
-      a.save(), a.rotate(this.elapsedTime * (ready ? 2.4 : 0.6));
-      a.strokeStyle = c ? "#FFFFFF" : ready ? "#E879F9" : "#94A3B8", a.lineWidth = 2.6, a.setLineDash([7, 5]), a.beginPath(), a.arc(0, 0, pr, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+      a.save();
+      drawPerspectiveZoneBase(a, {
+        x: pad.x,
+        y: pad.y,
+        radius: pr,
+        tiltY: 0.78,
+        rot: this.elapsedTime * (ready ? 2.4 : 0.6),
+        primary: ready ? "#E879F9" : "#94A3B8",
+        secondary: ready ? "#38BDF8" : "#CBD5E1",
+        darkRim: "#1E1B4B",
+        coreWash: ready ? "rgba(232, 121, 249, 0.36)" : "rgba(148, 163, 184, 0.18)",
+        midWash: ready ? "rgba(56, 189, 248, 0.16)" : "rgba(71, 85, 105, 0.08)",
+        segments: 4,
+        isMono: c,
+      });
+      a.translate(pad.x, pad.y);
       if (ready) {
-        a.strokeStyle = c ? "#E2E8F0" : "rgba(56, 189, 248, 0.72)", a.lineWidth = 1.6, a.beginPath();
+        a.save(), a.rotate(this.elapsedTime * 2.4);
+        a.strokeStyle = c ? "#E2E8F0" : "rgba(56, 189, 248, 0.78)", a.lineWidth = 1.8, a.beginPath();
         for (let ri = 0; ri < 4; ri++) {
           let ra = (Math.PI / 2) * ri, rx = Math.cos(ra) * pad.radius * 0.72, ry = Math.sin(ra) * pad.radius * 0.72;
           ri === 0 ? a.moveTo(rx, ry) : a.lineTo(rx, ry);
         }
         a.closePath(), a.stroke();
         a.rotate(-this.elapsedTime * 3.8);
-        a.strokeStyle = c ? "#000000" : "rgba(244, 114, 182, 0.78)", a.lineWidth = 1.4, a.beginPath();
+        a.strokeStyle = c ? "#000000" : "rgba(244, 114, 182, 0.85)", a.lineWidth = 1.6, a.beginPath();
         for (let ti = 0; ti < 3; ti++) {
           let ta = (Math.PI * 2 / 3) * ti, tx = Math.cos(ta) * pad.radius * 0.52, ty = Math.sin(ta) * pad.radius * 0.52;
           ti === 0 ? a.moveTo(tx, ty) : a.lineTo(tx, ty);
         }
-        a.closePath(), a.stroke();
+        a.closePath(), a.stroke(), a.restore();
       }
-      a.restore();
       a.beginPath(), a.arc(0, 0, 12, 0, Math.PI * 2), a.fillStyle = c ? "#0F172A" : ready ? "#090418" : "#475569", a.fill(), a.strokeStyle = c ? "#FFFFFF" : ready ? "#67E8F9" : "#94A3B8", a.lineWidth = 2, a.stroke();
       a.font = '800 10px "JetBrains Mono", monospace', a.textAlign = "center", a.fillStyle = c ? "#FFFFFF" : "#F5D0FE", a.fillText(ready ? `D\u1ECACH C${m + 1}` : `${pad.teleportCd.toFixed(1)}s`, 0, -pad.radius - 6), a.restore();
     }
     for (let h of this.bossWarnings) {
       if (!isCircleInViewBounds(h.x, h.y, (h.radius || 80) + 30, viewBounds)) continue;
-      let f = Math.min(1, h.timer / h.duration), v = 0.55 + 0.35 * Math.sin(h.timer * 20), T = h.color || "#EF4444";
+      let f = Math.min(1, h.timer / Math.max(0.05, h.duration || 1)), v = 0.55 + 0.35 * Math.sin(h.timer * 20), T = h.color || "#EF4444";
+      let isIce = h.kind === "ice_prison", isVenom = h.kind === "venom_meteor", isApoc = h.kind === "apocalypse";
       a.save();
-      a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
-      a.fillStyle = h.kind === "ice_prison" ? `rgba(56, 189, 248, ${0.2 * v})` : h.kind === "venom_meteor" ? `rgba(34, 197, 94, ${0.2 * v})` : `rgba(239, 68, 68, ${0.2 * v})`, a.fill();
-      a.strokeStyle = T, a.globalAlpha = 0.88 * v, a.lineWidth = 3, a.stroke();
-      a.globalAlpha = 0.95, a.beginPath(), a.arc(h.x, h.y, Math.max(4, h.radius * (1 - f)), 0, Math.PI * 2), a.strokeStyle = "#FEF08A", a.lineWidth = 3, a.stroke();
-      a.beginPath(), a.arc(h.x, h.y, Math.max(6, h.radius * 0.52), 0, Math.PI * 2), a.strokeStyle = T, a.globalAlpha = 0.45 * v, a.lineWidth = 1.4, a.setLineDash([6, 5]), a.stroke(), a.setLineDash([]);
+      drawArcaneMagicCircle(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.radius,
+        tiltY: 0.78,
+        rot: h.timer * (isApoc ? 2.5 : 1.4),
+        sides: isApoc ? 6 : 4,
+        starMode: isApoc || isIce || isVenom,
+        nodeShape: isIce ? "crystal" : "rock",
+        primary: T,
+        highlight: "#FEF08A",
+        darkRim: "#090D16",
+        rim: isIce ? "#BAE6FD" : isVenom ? "#86EFAC" : "#FCA5A5",
+        coreWash: isIce ? `rgba(56, 189, 248, ${0.24 * v})` : isVenom ? `rgba(34, 197, 94, ${0.24 * v})` : `rgba(239, 68, 68, ${0.24 * v})`,
+        midWash: "rgba(9, 13, 22, 0.28)",
+        isMono: c,
+      });
+      // Contracting impact countdown ring + inner segmented telegraph brackets (zero setLineDash)
       a.globalAlpha = 0.95;
-      if (h.kind === "apocalypse") {
-        a.save(), a.translate(h.x, h.y), a.rotate(h.timer * 2.5), a.strokeStyle = "#FBBF24", a.lineWidth = 2;
-        for (let ai = 0; ai < 6; ai++) {
-          let aa = Math.PI / 3 * ai;
-          a.beginPath(), a.moveTo(Math.cos(aa) * h.radius * 0.35, Math.sin(aa) * h.radius * 0.35), a.lineTo(Math.cos(aa) * h.radius * 0.92, Math.sin(aa) * h.radius * 0.92), a.stroke();
-        }
-        a.restore();
-      } else if (h.kind === "sword_strike") {
-        a.strokeStyle = "rgba(253, 224, 71, 0.55)", a.lineWidth = 3, a.beginPath(), a.moveTo(h.x, h.y - h.radius * 2.2 * (1 - f * 0.4)), a.lineTo(h.x, h.y), a.stroke();
+      a.beginPath(), a.ellipse(h.x, h.y, Math.max(4, h.radius * (1 - f)), Math.max(3, h.radius * (1 - f) * 0.78), 0, 0, Math.PI * 2), a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 3.2, a.stroke();
+      for (let seg = 0; seg < 4; seg++) {
+        let sa = (Math.PI * 0.5) * seg - h.timer * 2.2;
+        a.beginPath(), a.arc(h.x, h.y, Math.max(6, h.radius * 0.52), sa, sa + 0.95);
+        a.strokeStyle = c ? "#CBD5E1" : T, a.globalAlpha = 0.65 * v, a.lineWidth = 2.0, a.stroke();
       }
-      a.strokeStyle = T, a.lineWidth = 1.6, a.beginPath(), a.moveTo(h.x - 16, h.y), a.lineTo(h.x + 16, h.y), a.moveTo(h.x, h.y - 16), a.lineTo(h.x, h.y + 16), a.stroke(), a.restore();
+      a.globalAlpha = 0.95;
+      if (h.kind === "sword_strike") {
+        a.strokeStyle = c ? "#FFFFFF" : "rgba(253, 224, 71, 0.65)", a.lineWidth = 3.4, a.beginPath(), a.moveTo(h.x, h.y - h.radius * 2.2 * (1 - f * 0.4)), a.lineTo(h.x, h.y), a.stroke();
+      }
+      a.strokeStyle = c ? "#FFFFFF" : T, a.lineWidth = 1.6, a.beginPath(), a.moveTo(h.x - 16, h.y), a.lineTo(h.x + 16, h.y), a.moveTo(h.x, h.y - 16), a.lineTo(h.x, h.y + 16), a.stroke(), a.restore();
     }
     for (let h of this.bossShockRings) {
       if (!isCircleInViewBounds(h.x, h.y, (h.currentRadius || 60) + 30, viewBounds)) continue;
-      let f = Math.max(0.15, 1 - h.currentRadius / h.maxRadius);
-      a.save(), a.globalAlpha = f * 0.35, a.beginPath(), a.arc(h.x, h.y, h.currentRadius, 0, Math.PI * 2), a.strokeStyle = h.color, a.lineWidth = h.ringWidth * 1.3, a.stroke();
-      a.globalAlpha = f, a.beginPath(), a.arc(h.x, h.y, h.currentRadius, 0, Math.PI * 2), a.strokeStyle = h.color, a.lineWidth = h.ringWidth * 0.75, a.stroke(), a.beginPath(), a.arc(h.x, h.y, Math.max(4, h.currentRadius - 6), 0, Math.PI * 2), a.strokeStyle = h.accentColor, a.lineWidth = 3.5, a.stroke(), a.beginPath(), a.arc(h.x, h.y, Math.max(2, h.currentRadius - 3), 0, Math.PI * 2), a.strokeStyle = "#FFFFFF", a.lineWidth = 1.2, a.stroke(), a.restore();
+      let f = Math.max(0.15, 1 - h.currentRadius / Math.max(1, h.maxRadius || 100));
+      let sr = Math.max(6, h.currentRadius || 12);
+      a.save();
+      a.translate(h.x, h.y);
+      a.scale(1, 0.76);
+      // Dark contrast outer shock band
+      a.globalAlpha = f * 0.55;
+      a.beginPath(), a.arc(0, 0, sr, 0, Math.PI * 2), a.strokeStyle = c ? "#000000" : "#090D16", a.lineWidth = (h.ringWidth || 10) * 1.45, a.stroke();
+      // Main elemental pressure band
+      a.globalAlpha = f * 0.85;
+      a.beginPath(), a.arc(0, 0, sr, 0, Math.PI * 2), a.strokeStyle = c ? "#94A3B8" : h.color, a.lineWidth = (h.ringWidth || 10) * 0.85, a.stroke();
+      // Asymmetric leading crest & specular highlight crescent
+      a.globalAlpha = f;
+      a.beginPath(), a.arc(0, 0, Math.max(4, sr - 5), -0.6, Math.PI + 0.4);
+      a.strokeStyle = c ? "#FFFFFF" : h.accentColor, a.lineWidth = 4.2, a.lineCap = "round", a.stroke();
+      a.beginPath(), a.arc(0, 0, Math.max(2, sr - 3), 0.2, Math.PI * 1.35);
+      a.strokeStyle = "#FFFFFF", a.lineWidth = 1.6, a.stroke();
+      a.restore();
     }
     for (let h of this.bossBeams) {
       if (!isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, (h.width || 30) + 20, viewBounds)) continue;
       if (a.save(), h.triggered) {
         let f = Math.max(0, h.fadeTimer / 0.38);
-        a.globalAlpha = f * 0.42, a.lineCap = "round", a.strokeStyle = h.color, a.lineWidth = h.width * (1.25 + 0.4 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
-        a.globalAlpha = f, a.strokeStyle = h.color, a.lineWidth = h.width * (0.85 + 0.45 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke(), a.strokeStyle = h.glowColor, a.lineWidth = h.width * 0.55 * f, a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke(), a.strokeStyle = "#FFFFFF", a.lineWidth = Math.max(3, h.width * 0.24 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        a.lineCap = "round";
+        a.globalAlpha = f * 0.58, a.strokeStyle = "#090D16", a.lineWidth = h.width * (1.38 + 0.4 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        a.globalAlpha = f * 0.9, a.strokeStyle = h.color, a.lineWidth = h.width * (0.9 + 0.45 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        a.strokeStyle = h.glowColor, a.lineWidth = h.width * 0.55 * f, a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        a.strokeStyle = "#FFFFFF", a.lineWidth = Math.max(3, h.width * 0.24 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
       } else {
-        let f = Math.min(1, h.timer / h.duration), v = 0.45 + 0.45 * Math.sin(h.timer * 24);
-        a.strokeStyle = h.color, a.globalAlpha = 0.25 * v, a.lineWidth = h.width, a.lineCap = "round", a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke(), a.globalAlpha = 0.85, a.strokeStyle = h.glowColor, a.lineWidth = Math.max(2, h.width * 0.25 * f), a.setLineDash([14, 10]), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke(), a.setLineDash([]);
+        // Dark-backed beam telegraph corridor + animated danger chevrons (zero setLineDash)
+        let f = Math.min(1, h.timer / Math.max(0.05, h.duration || 1)), v = 0.45 + 0.45 * Math.sin(h.timer * 24);
+        let bdx = h.x2 - h.x1, bdy = h.y2 - h.y1, bLen = Math.hypot(bdx, bdy) || 1, bAng = Math.atan2(bdy, bdx);
+        a.lineCap = "round";
+        a.strokeStyle = "#090D16", a.globalAlpha = 0.42, a.lineWidth = h.width * 1.08, a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        a.strokeStyle = h.color, a.globalAlpha = 0.28 * v, a.lineWidth = h.width * 0.92, a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        a.globalAlpha = 0.88, a.strokeStyle = h.glowColor, a.lineWidth = Math.max(2, h.width * 0.24 * f), a.beginPath(), a.moveTo(h.x1, h.y1), a.lineTo(h.x2, h.y2), a.stroke();
+        let chevCount = Math.min(10, Math.max(3, Math.floor(bLen / 75))), chevW = Math.max(6, h.width * 0.34);
+        a.save(), a.translate(h.x1, h.y1), a.rotate(bAng), a.strokeStyle = c ? "#FFFFFF" : h.glowColor, a.lineWidth = 2.2;
+        for (let ci = 0; ci < chevCount; ci++) {
+          let cx = ((ci + (this.elapsedTime * 3.5) % 1) / chevCount) * bLen;
+          if (cx > 12 && cx < bLen - 12) {
+            a.beginPath(), a.moveTo(cx - 8, -chevW), a.lineTo(cx + 6, 0), a.lineTo(cx - 8, chevW), a.stroke();
+          }
+        }
+        a.restore();
       }
       a.restore();
     }
     if (this.xpOrbs.length > 0) {
-      a.fillStyle = "#2DD4BF", a.strokeStyle = "#CCFBF1", a.lineWidth = 1.5;
       for (let h of this.xpOrbs) {
         if (!isCircleInViewBounds(h.x, h.y, (h.radius || 8) + 12, viewBounds)) continue;
-        a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fill(), a.stroke();
+        let xr = Math.max(4, h.radius || 6);
+        a.save(), a.translate(h.x, h.y);
+        a.fillStyle = c ? "#0F172A" : "#0D9488", a.strokeStyle = c ? "#FFFFFF" : "#CCFBF1", a.lineWidth = 1.4;
+        a.beginPath(), a.moveTo(0, -xr * 1.25), a.lineTo(xr * 0.95, 0), a.lineTo(0, xr * 1.25), a.lineTo(-xr * 0.95, 0), a.closePath(), a.fill(), a.stroke();
+        a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(0, -xr * 0.22, Math.max(1.2, xr * 0.28), 0, Math.PI * 2), a.fill();
+        a.restore();
       }
     }
     this.activeMapId === "blood_citadel" && this.renderBloodCitadelStructuresAndProps(a, c, viewBounds);
@@ -10725,10 +10763,20 @@ export class GameEngine {
         a.restore();
       }
       if ((h.rootTimer || 0) > 0) {
-        a.save(), a.translate(h.x, h.y);
-        a.strokeStyle = c ? "#FFFFFF" : "#FACC15", a.lineWidth = 2.6, a.setLineDash([7, 5]);
-        a.beginPath(), a.ellipse(0, h.radius * 0.55, h.radius * 1.25, h.radius * 0.48, 0, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-        a.restore();
+        drawPerspectiveZoneBase(a, {
+          x: h.x,
+          y: h.y + h.radius * 0.45,
+          radius: h.radius * 1.25,
+          tiltY: 0.42,
+          rot: this.elapsedTime * 1.8,
+          primary: "#FACC15",
+          secondary: "#FFFFFF",
+          darkRim: "#422006",
+          coreWash: "rgba(250, 204, 21, 0.14)",
+          midWash: "rgba(0,0,0,0)",
+          segments: 4,
+          isMono: c,
+        });
       }
       if ((h.sealTimer || 0) > 0) {
         a.save(), a.translate(h.x, h.y);
@@ -10748,9 +10796,13 @@ export class GameEngine {
         a.restore();
       }
       if (h.kind === "boss" && (h.bossCcImmunityTimer || 0) > 0) {
-        a.save(), a.translate(h.x, h.y), a.globalAlpha = 0.55;
-        a.strokeStyle = "#FDE047", a.lineWidth = 2, a.setLineDash([6, 6]);
-        a.beginPath(), a.arc(0, 0, h.radius + 14, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
+        a.save(), a.translate(h.x, h.y), a.rotate(-this.elapsedTime * 2.2), a.globalAlpha = 0.72;
+        for (let ws = 0; ws < 4; ws++) {
+          let wa = (Math.PI * 0.5) * ws;
+          a.beginPath(), a.arc(0, 0, h.radius + 14, wa + 0.1, wa + 1.1);
+          a.strokeStyle = "#422006", a.lineWidth = 3.6, a.lineCap = "round", a.stroke();
+          a.strokeStyle = c ? "#FFFFFF" : "#FDE047", a.lineWidth = 2.0, a.stroke();
+        }
         a.restore();
       }
       if ((h.hp < h.maxHp || h.isMiniBoss || h.elite) && h.kind !== "boss") {
@@ -10791,114 +10843,223 @@ export class GameEngine {
       drawDungCerberusUlt(a, this.cerberusUltWaves.filter((cb) => isCircleInViewBounds(cb.x, cb.y, (cb.radius || 185) + 120, viewBounds)), this.elapsedTime, c);
     }
     for (let h of this.dragonWaves) {
-      if (!isCircleInViewBounds(h.x, h.y, 160, viewBounds)) continue;
+      if (!isCircleInViewBounds(h.x, h.y, 185, viewBounds)) continue;
       a.save(), a.translate(h.x, h.y), a.rotate(h.angle);
-      let f = h.empowered ? 1.38 : 1.05;
+      let f = h.empowered ? 1.42 : 1.08;
       a.scale(f, f);
       if (prof?.enableRadialGlows) {
-        let dg = a.createRadialGradient(-10, 0, 4, -10, 0, 56);
-        dg.addColorStop(0, c ? "rgba(255,255,255,0.42)" : h.empowered ? "rgba(254, 240, 138, 0.52)" : "rgba(249, 115, 22, 0.45)");
+        let dg = a.createRadialGradient(-10, 0, 4, -10, 0, 62);
+        dg.addColorStop(0, c ? "rgba(255,255,255,0.44)" : h.empowered ? "rgba(254, 240, 138, 0.55)" : "rgba(249, 115, 22, 0.48)");
         dg.addColorStop(1, "rgba(220, 38, 38, 0)");
-        a.fillStyle = dg, a.beginPath(), a.arc(-10, 0, 56, 0, Math.PI * 2), a.fill();
+        a.fillStyle = dg, a.beginPath(), a.arc(-10, 0, 62, 0, Math.PI * 2), a.fill();
       }
+      // Sculpted tapering sinuous dragon body ribbon (11 segments + tail spade fin)
+      let spinePts = [];
+      for (let v = 0; v <= 10; v++) {
+        let sxp = -v * 14, syp = v === 0 ? 0 : Math.sin(this.elapsedTime * 20 - v * 0.78) * (4.5 + v * 1.45);
+        spinePts.push({ x: sxp, y: syp, halfW: Math.max(2.2, 16.5 - v * 1.38) });
+      }
+      // Flapping bone-ribbed Dragon Wings trailing along flanks
+      let dwFlap = Math.sin(this.elapsedTime * 16) * 0.24;
+      for (let ws of [-1, 1]) {
+        a.save(), a.translate(-6, ws * 10), a.rotate(ws * (0.25 + dwFlap));
+        a.fillStyle = c ? "rgba(82, 82, 82, 0.85)" : "rgba(153, 27, 27, 0.88)";
+        a.strokeStyle = c ? "#FFFFFF" : h.empowered ? "#FEF08A" : "#F59E0B";
+        a.lineWidth = 1.9;
+        a.beginPath();
+        a.moveTo(6, 0);
+        a.lineTo(-10, ws * 32);
+        a.lineTo(-28, ws * 52);
+        a.quadraticCurveTo(-24, ws * 26, -38, ws * 34);
+        a.quadraticCurveTo(-30, ws * 16, -46, ws * 20);
+        a.lineTo(-16, -ws * 2);
+        a.closePath(), a.fill(), a.stroke();
+        a.strokeStyle = "#FEF08A", a.lineWidth = 1.6;
+        a.beginPath(), a.moveTo(4, 0), a.lineTo(-10, ws * 32), a.lineTo(-28, ws * 52), a.stroke();
+        a.restore();
+      }
+      // Scaled ember body polygon + spade tail
+      let dTip = spinePts[spinePts.length - 1];
       a.beginPath();
-      for (let v = 8; v >= 0; v--) {
-        let T = -v * 14, b = v === 0 ? 0 : Math.sin(this.elapsedTime * 20 - v * 0.85) * (5 + v * 1.4);
-        v === 8 ? a.moveTo(T, b) : a.lineTo(T, b);
+      for (let i = 0; i < spinePts.length; i++) {
+        let pt = spinePts[i];
+        i === 0 ? a.moveTo(pt.x, pt.y - pt.halfW) : a.lineTo(pt.x, pt.y - pt.halfW);
       }
-      a.strokeStyle = c ? "rgba(255,255,255,0.42)" : h.empowered ? "rgba(251, 191, 36, 0.52)" : "rgba(239, 68, 68, 0.48)", a.lineWidth = 18, a.lineCap = "round", a.lineJoin = "round", a.stroke();
-      for (let v = 7; v >= 1; v--) {
-        let T = Math.sin(this.elapsedTime * 20 - v * 0.85) * (5 + v * 1.4), b = Math.max(4, 16 - v * 1.55);
-        a.beginPath(), a.arc(-v * 14, T, b, 0, Math.PI * 2), a.fillStyle = c ? (v % 2 === 0 ? "#0F172A" : "#94A3B8") : v % 2 === 0 ? "#DC2626" : h.empowered ? "#FBBF24" : "#F97316", a.fill();
-        a.beginPath(), a.arc(-v * 14, T, b * 0.48, 0, Math.PI * 2), a.fillStyle = c ? "#FFFFFF" : "#FEF08A", a.fill();
+      a.lineTo(dTip.x - 10, dTip.y - 8);
+      a.lineTo(dTip.x - 22, dTip.y);
+      a.lineTo(dTip.x - 10, dTip.y + 8);
+      for (let i = spinePts.length - 1; i >= 0; i--) {
+        let pt = spinePts[i];
+        a.lineTo(pt.x, pt.y + pt.halfW);
       }
-      // Flanking flame heat streaks & ember sparks
-      a.strokeStyle = c ? "#FFFFFF" : "rgba(254, 240, 138, 0.8)", a.lineWidth = 2.2, a.lineCap = "round";
-      for (let es of [-1, 1]) {
-        a.beginPath(), a.moveTo(6, es * 15), a.lineTo(-22, es * 23), a.stroke();
+      a.closePath();
+      a.fillStyle = c ? "#1E293B" : "#7C2D12", a.fill();
+      a.strokeStyle = c ? "#FFFFFF" : h.empowered ? "#FEF08A" : "#F97316", a.lineWidth = 2.4, a.stroke();
+      // Glowing dorsal scales & inner fire core spinal curve
+      a.beginPath();
+      for (let i = 0; i < spinePts.length; i++) {
+        let pt = spinePts[i];
+        i === 0 ? a.moveTo(pt.x, pt.y) : a.lineTo(pt.x, pt.y);
       }
-      a.fillStyle = c ? "#FFFFFF" : h.empowered ? "#FEF08A" : "#EF4444", a.beginPath(), a.moveTo(32, 0), a.lineTo(4, -19), a.lineTo(-10, -10), a.lineTo(-10, 10), a.lineTo(4, 19), a.closePath(), a.fill(), a.strokeStyle = c ? "#000000" : "#FBBF24", a.lineWidth = 2.6, a.stroke();
-      a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 3.2, a.beginPath(), a.moveTo(-4, -13), a.lineTo(-24, -27), a.moveTo(-4, 13), a.lineTo(-24, 27), a.moveTo(14, -7), a.lineTo(-2, -22), a.moveTo(14, 7), a.lineTo(-2, 22), a.stroke();
-      a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(13, -6, 3.2, 0, Math.PI * 2), a.arc(13, 6, 3.2, 0, Math.PI * 2), a.fill(), a.restore();
+      a.strokeStyle = c ? "#FFFFFF" : h.empowered ? "#FEF08A" : "#FB923C", a.lineWidth = 6.8, a.lineCap = "round", a.lineJoin = "round", a.stroke();
+      a.strokeStyle = "#FFFFFF", a.lineWidth = 2.4, a.stroke();
+      for (let i = 1; i < spinePts.length; i += 2) {
+        let pt = spinePts[i];
+        a.fillStyle = c ? "#FFFFFF" : "#FACC15";
+        a.beginPath(), a.moveTo(pt.x + 4, pt.y), a.lineTo(pt.x - 4, pt.y - pt.halfW * 0.6), a.lineTo(pt.x - 6, pt.y), a.lineTo(pt.x - 4, pt.y + pt.halfW * 0.6), a.closePath(), a.fill();
+      }
+      for (let ei = 1; ei <= 3; ei++) {
+        let pt = spinePts[ei * 2];
+        drawFacetedShard(a, { x: pt.x - 4, y: pt.y + (ei % 2 === 0 ? -15 : 15), size: 4.6, rot: this.elapsedTime * 4 + ei, shape: "crystal", primary: "#F97316", highlight: "#FEF08A", shadow: "#431407", rim: "#FDE047", isMono: c });
+      }
+      // Forward molten breath cone ahead of jaws
+      let jetG = a.createLinearGradient(20, 0, 56, 0);
+      jetG.addColorStop(0, c ? "#FFFFFF" : "#FEF08A");
+      jetG.addColorStop(1, "rgba(239, 68, 68, 0)");
+      a.fillStyle = jetG;
+      a.beginPath(), a.moveTo(22, -6), a.lineTo(58, -14), a.lineTo(58, 14), a.lineTo(22, 6), a.closePath(), a.fill();
+      // Articulated Dragon Skull, Roaring Jaws, Whiskers & Crown Antlers
+      a.fillStyle = c ? "#FFFFFF" : h.empowered ? "#FEF08A" : "#DC2626";
+      a.beginPath(), a.moveTo(35, 0), a.lineTo(14, -13), a.lineTo(-2, -17), a.lineTo(-12, -9), a.lineTo(-12, 9), a.lineTo(-2, 17), a.lineTo(14, 13), a.closePath(), a.fill();
+      a.strokeStyle = c ? "#000000" : "#FDE047", a.lineWidth = 2.4, a.stroke();
+      // Snout nose ridge & roaring fangs
+      a.fillStyle = c ? "#000000" : "#FEF08A";
+      a.beginPath(), a.moveTo(34, 0), a.lineTo(15, -4), a.lineTo(10, 0), a.lineTo(15, 4), a.closePath(), a.fill();
+      // Sweeping antlers & glowing draconic whiskers
+      a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 3.0, a.beginPath();
+      for (let hs of [-1, 1]) {
+        a.moveTo(-2, hs * 12), a.quadraticCurveTo(-14, hs * 24, -30, hs * 22);
+        a.moveTo(-10, hs * 19), a.lineTo(-18, hs * 30);
+        a.moveTo(22, hs * 6), a.quadraticCurveTo(10, hs * 18, -12, hs * 22);
+      }
+      a.stroke();
+      a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(14, -6.5, 3.0, 0, Math.PI * 2), a.arc(14, 6.5, 3.0, 0, Math.PI * 2), a.fill(), a.restore();
     }
     for (let h of this.skyDragons) {
       if (!isCircleInViewBounds(h.x, h.y, (h.radius || 90) + 120, viewBounds)) continue;
-      let f = Math.min(1, h.timer / h.duration), v = h.y - Math.pow(1 - f, 1.4) * 420, T = c ? "#FFFFFF" : h.empowered ? "#FBBF24" : "#EF4444", b = Math.max(0, 1 - Math.max(0, h.timer - h.duration) / 0.45);
+      let f = Math.min(1, h.timer / Math.max(0.05, h.duration || 1)), v = h.y - Math.pow(1 - f, 1.4) * 420, b = Math.max(0, 1 - Math.max(0, h.timer - h.duration) / 0.45);
       a.save(), a.globalAlpha = b;
-      if (prof?.enableRadialGlows) {
-        let sg = a.createRadialGradient(h.x, h.y, h.radius * 0.15, h.x, h.y, h.radius * 1.08);
-        sg.addColorStop(0, c ? "rgba(255,255,255,0.28)" : h.empowered ? "rgba(254, 240, 138, 0.34)" : "rgba(239, 68, 68, 0.32)");
-        sg.addColorStop(1, "rgba(0,0,0,0)");
-        a.fillStyle = sg, a.beginPath(), a.arc(h.x, h.y, h.radius * 1.08, 0, Math.PI * 2), a.fill();
-      } else {
-        a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fillStyle = c ? "rgba(255,255,255,0.16)" : h.empowered ? "rgba(251, 191, 36, 0.2)" : "rgba(220, 38, 38, 0.18)", a.fill();
+      drawArcaneMagicCircle(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.radius,
+        tiltY: 0.76,
+        rot: this.elapsedTime * 2.2,
+        sides: 6,
+        starMode: true,
+        nodeShape: "crystal",
+        primary: h.empowered ? "#FBBF24" : "#EF4444",
+        highlight: "#FEF08A",
+        darkRim: "#450A0A",
+        rim: h.empowered ? "#FEF08A" : "#FB923C",
+        coreWash: h.empowered ? "rgba(254, 240, 138, 0.34)" : "rgba(239, 68, 68, 0.3)",
+        midWash: "rgba(69, 10, 10, 0.25)",
+        isMono: c,
+      });
+      if (h.impacted || f > 0.85) {
+        let impP = h.impacted ? Math.min(1, (h.timer - h.duration) / 0.45) : (f - 0.85) / 0.15 * 0.2;
+        drawImpactCraterDecal(a, {
+          x: h.x,
+          y: h.y,
+          radius: h.radius * 0.92,
+          alpha: 0.85 * b,
+          tiltY: 0.74,
+          seed: (h.x || 0) * 0.13,
+          debrisShape: "rock",
+          primary: h.empowered ? "#FBBF24" : "#EA580C",
+          highlight: "#FEF08A",
+          shadow: "#1C0A00",
+          rim: "#F97316",
+          isMono: c,
+        });
+        drawEnergyVortexPillar(a, {
+          x: h.x,
+          y: h.y,
+          radius: h.radius * 0.45,
+          height: h.empowered ? 210 : 165,
+          progress: Math.max(0.15, Math.min(0.95, impP)),
+          phase: this.elapsedTime * 8,
+          debrisShape: "rock",
+          primary: h.empowered ? "#FBBF24" : "#EF4444",
+          highlight: "#FEF08A",
+          shadow: "#450A0A",
+          rim: "#FB923C",
+          isMono: c,
+        });
       }
-      a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.strokeStyle = T, a.lineWidth = 3, a.stroke();
-      a.save(), a.translate(h.x, h.y), a.rotate(this.elapsedTime * 2.2), a.strokeStyle = c ? "#CBD5E1" : h.empowered ? "#FEF08A" : "#FB923C", a.lineWidth = 2, a.setLineDash([14, 8]), a.beginPath(), a.arc(0, 0, h.radius * 0.78, 0, Math.PI * 2), a.stroke(), a.setLineDash([]);
-      a.beginPath();
-      for (let x = 0; x < 6; x++) {
-        let C = Math.PI / 3 * x, H = Math.cos(C) * h.radius * 0.56, D = Math.sin(C) * h.radius * 0.56;
-        x === 0 ? a.moveTo(H, D) : a.lineTo(H, D);
-      }
-      a.closePath(), a.strokeStyle = c ? "rgba(255,255,255,0.5)" : "rgba(254, 240, 138, 0.55)", a.lineWidth = 1.8, a.stroke(), a.restore();
       if (!h.impacted) {
-        // Vertical comet descent trail behind plunging sky dragon
-        a.strokeStyle = c ? "rgba(255,255,255,0.45)" : "rgba(254, 240, 138, 0.55)", a.lineWidth = 3.2, a.lineCap = "round";
-        for (let ci = -1; ci <= 1; ci++) {
-          a.beginPath(), a.moveTo(h.x + ci * 18, v - 140), a.lineTo(h.x + ci * 10, v - 10), a.stroke();
-        }
+        // Tapered comet descent sheath & sculpted diving Imperial Wyrm-Dragon
+        let cometGrad = a.createLinearGradient(h.x, v - 175, h.x, v);
+        cometGrad.addColorStop(0, "rgba(249, 115, 22, 0)");
+        cometGrad.addColorStop(0.7, c ? "rgba(255,255,255,0.48)" : "rgba(249, 115, 22, 0.68)");
+        cometGrad.addColorStop(1, c ? "#FFFFFF" : "#FEF08A");
+        a.fillStyle = cometGrad, a.beginPath(), a.moveTo(h.x, v - 175), a.lineTo(h.x - 32, v - 6), a.lineTo(h.x + 32, v - 6), a.closePath(), a.fill();
         a.save(), a.translate(h.x, v);
-        let x = h.empowered ? 1.75 : 1.35;
+        let x = h.empowered ? 1.85 : 1.42;
         a.scale(x, x);
-        for (let C = 4; C >= 1; C--) {
-          let H = Math.sin(this.elapsedTime * 18 + C) * (4 + C * 1.5);
-          a.beginPath(), a.arc(H, -C * 16 - 14, Math.max(5, 16 - C * 2.5), 0, Math.PI * 2), a.fillStyle = c ? (C % 2 === 0 ? "#0F172A" : "#CBD5E1") : C % 2 === 0 ? "#DC2626" : "#F97316", a.fill();
+        // Sinuous coiled tail & flame mantle behind diving dragon
+        let wSway = Math.sin(this.elapsedTime * 18) * 7;
+        a.fillStyle = c ? "#94A3B8" : "#9A3412", a.beginPath(), a.moveTo(0, -82), a.quadraticCurveTo(-20 + wSway, -42, -11, -10), a.lineTo(11, -10), a.quadraticCurveTo(20 + wSway, -42, 0, -82), a.closePath(), a.fill();
+        a.fillStyle = c ? "#FFFFFF" : "#FEF08A", a.beginPath(), a.moveTo(0, -66), a.quadraticCurveTo(-8 + wSway * 0.5, -36, -5, -12), a.lineTo(5, -12), a.quadraticCurveTo(8 + wSway * 0.5, -36, 0, -66), a.closePath(), a.fill();
+        // Broad webbed dragon wings spread wide while diving
+        for (let ws of [-1, 1]) {
+          a.fillStyle = c ? "rgba(64,64,64,0.88)" : "rgba(185, 28, 28, 0.9)";
+          a.strokeStyle = c ? "#FFFFFF" : "#FACC15";
+          a.lineWidth = 2.2;
+          a.beginPath(), a.moveTo(ws * 9, -12), a.lineTo(ws * 48, -38), a.lineTo(ws * 38, -14), a.lineTo(ws * 42, -2), a.lineTo(ws * 14, -4), a.closePath(), a.fill(), a.stroke();
         }
-        a.strokeStyle = c ? "#FFFFFF" : h.empowered ? "#FEF08A" : "#F59E0B", a.lineWidth = 3, a.beginPath(), a.moveTo(-12, -16), a.lineTo(-42, -34), a.lineTo(-26, -6), a.moveTo(12, -16), a.lineTo(42, -34), a.lineTo(26, -6), a.stroke();
-        a.fillStyle = c ? "#0F172A" : "#DC2626", a.beginPath(), a.moveTo(0, 36), a.lineTo(-22, -10), a.lineTo(-10, -28), a.lineTo(10, -28), a.lineTo(22, -10), a.closePath(), a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 2.8, a.stroke();
-        a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(-7, 6, 2.8, 0, Math.PI * 2), a.arc(7, 6, 2.8, 0, Math.PI * 2), a.fill(), a.restore();
+        // Diving horned dragon skull & blazing open maw
+        a.fillStyle = c ? "#0F172A" : "#DC2626", a.beginPath(), a.moveTo(0, 42), a.lineTo(-18, 8), a.lineTo(-23, -12), a.lineTo(-10, -28), a.lineTo(10, -28), a.lineTo(23, -12), a.lineTo(18, 8), a.closePath(), a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 2.8, a.stroke();
+        // Sweeping crown antlers
+        a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 3.0, a.beginPath(), a.moveTo(-11, -24), a.quadraticCurveTo(-28, -42, -24, -56), a.moveTo(11, -24), a.quadraticCurveTo(28, -42, 24, -56), a.stroke();
+        // Snout ridge + molten throat maw + eyes
+        a.fillStyle = "#FEF08A", a.beginPath(), a.moveTo(0, 38), a.lineTo(-6, 20), a.lineTo(0, 14), a.lineTo(6, 20), a.closePath(), a.fill();
+        a.fillStyle = "#FFFFFF", a.beginPath(), a.arc(-7.5, 6, 3.0, 0, Math.PI * 2), a.arc(7.5, 6, 3.0, 0, Math.PI * 2), a.fill(), a.restore();
       }
       a.restore();
     }
     for (let h of this.rocketProjectiles) if (isCircleInViewBounds(h.x, h.y, 40, viewBounds)) a.save(), a.translate(h.x, h.y), a.rotate(h.angle), a.fillStyle = c ? "#0F172A" : "#1E293B", a.strokeStyle = c ? "#FFFFFF" : "#94A3B8", a.lineWidth = 1.2, a.beginPath(), a.roundRect(-12, -4, 20, 8, 2), a.fill(), a.stroke(), a.fillStyle = c ? "#E2E8F0" : h.color, a.beginPath(), a.moveTo(8, -4.5), a.lineTo(17, 0), a.lineTo(8, 4.5), a.closePath(), a.fill(), a.fillStyle = c ? "#CBD5E1" : "#F97316", a.beginPath(), a.moveTo(-12, -3.5), a.lineTo(-24, 0), a.lineTo(-12, 3.5), a.closePath(), a.fill(), a.fillStyle = "#FEF08A", a.beginPath(), a.moveTo(-12, -1.8), a.lineTo(-18, 0), a.lineTo(-12, 1.8), a.closePath(), a.fill(), a.restore();
     for (let h of this.giantMeteors) {
       if (!isCircleInViewBounds(h.currentX, h.currentY, (h.meteorSize || 50) + 180, viewBounds)) continue;
+      let ms = Math.max(12, h.meteorSize || 42);
       a.save(), a.translate(h.currentX, h.currentY);
       let f = Math.atan2(h.targetY - h.startY, h.targetX - h.startX);
       a.rotate(f);
       if (prof?.enableRadialGlows) {
-        let mh = a.createRadialGradient(0, 0, h.meteorSize * 0.4, 0, 0, h.meteorSize * 2.1);
+        let mh = a.createRadialGradient(0, 0, ms * 0.4, 0, 0, ms * 2.1);
         mh.addColorStop(0, c ? "rgba(255,255,255,0.42)" : "rgba(249, 115, 22, 0.5)");
         mh.addColorStop(1, "rgba(234, 88, 12, 0)");
-        a.fillStyle = mh, a.beginPath(), a.arc(0, 0, h.meteorSize * 2.1, 0, Math.PI * 2), a.fill();
+        a.fillStyle = mh, a.beginPath(), a.arc(0, 0, ms * 2.1, 0, Math.PI * 2), a.fill();
       }
       let v = a.createLinearGradient(-180, 0, 0, 0);
-      v.addColorStop(0, "rgba(249, 115, 22, 0)"), v.addColorStop(0.6, c ? "rgba(255,255,255,0.35)" : "rgba(239, 68, 68, 0.45)"), v.addColorStop(1, c ? "#FFFFFF" : "#FEF08A"), a.fillStyle = v, a.beginPath(), a.moveTo(0, -h.meteorSize * 0.72), a.lineTo(-220, 0), a.lineTo(0, h.meteorSize * 0.72), a.closePath(), a.fill();
-      let mg = a.createRadialGradient(-h.meteorSize * 0.25, -h.meteorSize * 0.25, 3, 0, 0, h.meteorSize);
+      v.addColorStop(0, "rgba(249, 115, 22, 0)"), v.addColorStop(0.6, c ? "rgba(255,255,255,0.35)" : "rgba(239, 68, 68, 0.45)"), v.addColorStop(1, c ? "#FFFFFF" : "#FEF08A"), a.fillStyle = v, a.beginPath(), a.moveTo(0, -ms * 0.72), a.lineTo(-220, 0), a.lineTo(0, ms * 0.72), a.closePath(), a.fill();
+      // Atmospheric Mach shock-cone chevron around meteor nose
+      a.beginPath(), a.moveTo(-ms * 0.85, -ms * 1.18), a.quadraticCurveTo(ms * 1.35, 0, -ms * 0.85, ms * 1.18);
+      a.strokeStyle = c ? "#FFFFFF" : "rgba(254, 240, 138, 0.88)", a.lineWidth = 3.2, a.lineCap = "round", a.stroke();
+      // Trailing faceted magma debris shards
+      for (let mi = 0; mi < 3; mi++) {
+        drawFacetedShard(a, { x: -ms * (1.2 + mi * 0.8), y: Math.sin(this.elapsedTime * 12 + mi * 2.1) * ms * 0.35, size: Math.max(4, ms * 0.16), rot: this.elapsedTime * 5 + mi, shape: "rock", primary: "#EA580C", highlight: "#FEF08A", shadow: "#1C0A00", rim: "#F97316", isMono: c });
+      }
+      let mg = a.createRadialGradient(-ms * 0.25, -ms * 0.25, 3, 0, 0, ms);
       c ? (mg.addColorStop(0, "#E2E8F0"), mg.addColorStop(0.6, "#334155"), mg.addColorStop(1, "#000000")) : (mg.addColorStop(0, "#9A3412"), mg.addColorStop(0.6, "#451A03"), mg.addColorStop(1, "#1C0A00"));
-      a.beginPath(), a.arc(0, 0, h.meteorSize, 0, Math.PI * 2), a.fillStyle = mg, a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#F97316", a.lineWidth = 4, a.stroke();
-      a.strokeStyle = c ? "#FFFFFF" : "#FDE047", a.lineWidth = 2, a.beginPath(), a.moveTo(-h.meteorSize * 0.55, -h.meteorSize * 0.2), a.lineTo(0, 0), a.lineTo(h.meteorSize * 0.45, h.meteorSize * 0.35), a.stroke(), a.restore();
+      a.beginPath(), a.arc(0, 0, ms, 0, Math.PI * 2), a.fillStyle = mg, a.fill(), a.strokeStyle = c ? "#FFFFFF" : "#F97316", a.lineWidth = 4, a.stroke();
+      a.strokeStyle = c ? "#FFFFFF" : "#FDE047", a.lineWidth = 2, a.beginPath(), a.moveTo(-ms * 0.55, -ms * 0.2), a.lineTo(0, 0), a.lineTo(ms * 0.45, ms * 0.35), a.stroke(), a.restore();
     }
     for (let h of this.cataclysmicExplosions) {
-      if (!isCircleInViewBounds(h.x, h.y, (h.radius || 90) + 20, viewBounds)) continue;
-      let f = h.life / h.maxLife, inv = Math.max(0, 1 - f);
-      a.save(), a.globalAlpha = inv * 0.86;
-      if (prof?.enableRadialGlows) {
-        let eg = a.createRadialGradient(h.x, h.y, h.radius * 0.1, h.x, h.y, h.radius);
-        eg.addColorStop(0, c ? "rgba(255,255,255,0.55)" : f < 0.35 ? "rgba(254, 240, 138, 0.7)" : "rgba(249, 115, 22, 0.48)");
-        eg.addColorStop(0.65, c ? "rgba(180,180,180,0.22)" : `${h.color || "#EA580C"}44`);
-        eg.addColorStop(1, "rgba(0,0,0,0)");
-        a.fillStyle = eg, a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.fill();
-      }
-      a.beginPath(), a.arc(h.x, h.y, h.radius, 0, Math.PI * 2), a.strokeStyle = c ? "#FFFFFF" : h.color, a.lineWidth = 4.6 * inv + 1, a.stroke();
-      a.beginPath(), a.arc(h.x, h.y, h.radius * 0.84, 0, Math.PI * 2), a.strokeStyle = c ? "#CBD5E1" : "#FEF08A", a.lineWidth = 2.4, a.stroke();
-      a.beginPath(), a.arc(h.x, h.y, h.radius * 0.62, 0, Math.PI * 2), a.fillStyle = c ? (f < 0.3 ? "#F8FAFC" : "#334155") : f < 0.3 ? "#FDBA74" : f < 0.6 ? "#EA580C" : "#7F1D1D", a.fill();
-      a.strokeStyle = c ? "#FFFFFF" : "#FEF08A", a.lineWidth = 2.2 * inv + 0.6, a.lineCap = "round";
-      for (let ri = 0; ri < 10; ri++) {
-        let ra = (Math.PI / 5) * ri + 0.2, r1 = h.radius * (0.42 + 0.25 * f), r2 = h.radius * (0.88 + 0.26 * f);
-        a.beginPath(), a.moveTo(h.x + Math.cos(ra) * r1, h.y + Math.sin(ra) * r1), a.lineTo(h.x + Math.cos(ra) * r2, h.y + Math.sin(ra) * r2), a.stroke();
-      }
-      a.restore();
+      if (!isCircleInViewBounds(h.x, h.y, (h.maxRadius || h.radius || 140) + 30, viewBounds)) continue;
+      let f = h.life / Math.max(0.05, h.maxLife);
+      let col = String(h.color || "#EF4444").toUpperCase();
+      let el = h.element || (col === "#38BDF8" || col === "#0EA5E9" ? "frost" : col === "#C084FC" || col === "#7C3AED" || col === "#9333EA" ? "void" : col === "#14B8A6" || col === "#10B981" ? "teal" : col === "#FACC15" || col === "#FDE047" ? "gold" : "fire");
+      drawStructuralExplosion(a, {
+        x: h.x,
+        y: h.y,
+        radius: h.maxRadius || h.radius || 140,
+        progress: f,
+        element: el,
+        color: h.color || "#EF4444",
+        isMono: c,
+        seed: (h.x || 0) * 0.1 + (h.y || 0) * 0.05,
+      });
     }
     for (let h of this.luanBeams) if (isSegmentInViewBounds(h.x1, h.y1, h.x2, h.y2, (h.width || 52) + 40, viewBounds)) drawLuanBeam(a, h, c);
     for (let h of this.nguyenSanctuaryWaves) if (isCircleInViewBounds(h.x, h.y, (h.maxRadius || 210) + 30, viewBounds)) drawNguyenSanctuaryWave(a, h, c);
@@ -10908,13 +11069,24 @@ export class GameEngine {
       let ex = this.player.x + Math.cos(ch.angle) * bLen, ey = this.player.y + Math.sin(ch.angle) * bLen;
       let mx = this.player.x + Math.cos(ch.angle) * 24, my = this.player.y + Math.sin(ch.angle) * 24;
       a.save();
-      a.strokeStyle = c ? "rgba(0,0,0,0.58)" : "rgba(192, 132, 252, 0.58)", a.lineWidth = 6 + prog * 16, a.lineCap = "round";
+      a.strokeStyle = c ? "rgba(0,0,0,0.68)" : "rgba(30, 10, 60, 0.72)", a.lineWidth = 10 + prog * 18, a.lineCap = "round";
       a.beginPath(), a.moveTo(this.player.x, this.player.y), a.lineTo(ex, ey), a.stroke();
-      a.strokeStyle = c ? "#FFFFFF" : "#67E8F9", a.lineWidth = 2.4 + prog * 3.2, a.setLineDash([12, 8]);
-      a.beginPath(), a.moveTo(this.player.x, this.player.y), a.lineTo(ex, ey), a.stroke();
-      a.setLineDash([]);
+      drawBranchingArc(a, {
+        x1: mx,
+        y1: my,
+        x2: ex,
+        y2: ey,
+        seed: this.elapsedTime * 22,
+        width: 2.6 + prog * 3.4,
+        color: "#C084FC",
+        coreColor: "#67E8F9",
+        isMono: c,
+      });
       a.save(), a.translate(mx, my), a.rotate(this.elapsedTime * 6);
-      a.strokeStyle = c ? "#FFFFFF" : "#E879F9", a.lineWidth = 2.2, a.beginPath(), a.arc(0, 0, 14 + prog * 12, 0, Math.PI * 1.4), a.stroke();
+      for (let rs = 0; rs < 3; rs++) {
+        let ra = (Math.PI * 2 / 3) * rs;
+        a.strokeStyle = c ? "#FFFFFF" : "#E879F9", a.lineWidth = 2.4, a.beginPath(), a.arc(0, 0, 14 + prog * 12, ra, ra + 1.25), a.stroke();
+      }
       a.restore();
       a.fillStyle = c ? "#FFFFFF" : "#F5D0FE", a.beginPath(), a.arc(mx, my, 8 + prog * 10, 0, Math.PI * 2), a.fill();
       a.restore();
@@ -10931,7 +11103,8 @@ export class GameEngine {
     for (let h of this.slashes) {
       if (!isCircleInViewBounds(h.x, h.y, (h.radius || 140) + 30, viewBounds)) continue;
       let f = h.life / h.maxLife;
-      a.save(), a.globalAlpha = Math.max(0, 1 - f);
+      let slashA = f < 0.28 ? 1 : Math.pow(Math.max(0, (1 - f) / 0.72), 1.15);
+      a.save(), a.globalAlpha = slashA;
       drawUpgradedSlash(a, h, f, c, enableAdd);
       a.restore();
     }
@@ -10946,7 +11119,7 @@ export class GameEngine {
     if (this.particles.length > 0) {
       for (let h of this.particles) {
         if (!isCircleInViewBounds(h.x, h.y, (h.radius || 6) + 20, viewBounds)) continue;
-        let alpha = Math.max(0, 1 - h.life / h.maxLife);
+        let alpha = Math.min(1, Math.max(0, (1 - h.life / h.maxLife) * 1.4));
         let col = c ? "#E2E8F0" : h.color;
         if (h.shape === "circle" && !h.additive) {
           a.globalAlpha = alpha;
@@ -11007,16 +11180,20 @@ export class GameEngine {
       a.globalAlpha = 1;
     }
     if (this.floatingTexts.length > 0) {
-      a.textAlign = "center", a.textBaseline = "middle";
+      a.textAlign = "center", a.textBaseline = "middle", a.lineJoin = "round";
       let lastFontSize = -1;
       for (let h of this.floatingTexts) {
-        if (!isCircleInViewBounds(h.x, h.y, 110, viewBounds)) continue;
+        if (!isCircleInViewBounds(h.x, h.y, 140, viewBounds)) continue;
         a.globalAlpha = Math.max(0, 1 - h.life / h.maxLife);
         if (h.size !== lastFontSize) {
           lastFontSize = h.size;
           a.font = `800 ${h.size}px "JetBrains Mono", monospace`;
         }
-        a.fillStyle = "#070B14", a.fillText(h.text, h.x + 1, h.y + 1);
+        if (typeof a.strokeText === "function") {
+          a.strokeStyle = "rgba(5, 8, 17, 0.92)", a.lineWidth = Math.max(2.8, h.size * 0.22), a.strokeText(h.text, h.x, h.y);
+        } else {
+          a.fillStyle = "#070B14", a.fillText(h.text, h.x + 1, h.y + 1);
+        }
         a.fillStyle = c ? "#F8FAFC" : h.color, a.fillText(h.text, h.x, h.y);
       }
       a.globalAlpha = 1;
@@ -11026,6 +11203,9 @@ export class GameEngine {
     this.activeMapId === "frozen_tomb" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawFrozenTombAtmosphereScene(a, this, this.elapsedTime, this.viewW, this.viewH), a.restore());
     this.activeMapId === "grudge_forest" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawGrudgeForestAtmosphereScene(a, this, this.elapsedTime, this.viewW, this.viewH), a.restore());
     this.activeMapId === "void_city" && (a.save(), a.setTransform(s, 0, 0, s, 0, 0), renderVoidCityAtmosphere(a, this, this.elapsedTime, this.viewW, this.viewH), a.restore());
+    if (!["blood_citadel", "inferno_ash", "frozen_tomb", "grudge_forest", "void_city"].includes(this.activeMapId)) {
+      a.save(), a.setTransform(s, 0, 0, s, 0, 0), drawClassicArenaAtmosphereScene(a, this, c, prof), a.restore();
+    }
     if (this.screenFlashWhite > 0) {
       a.save();
       a.setTransform(1, 0, 0, 1, 0, 0);
@@ -11033,7 +11213,7 @@ export class GameEngine {
       let edgeAlpha = Math.min(0.085, this.screenFlashWhite * 0.45);
       if (prof?.enableRadialGlows) {
         let rad = Math.max(fw, fh) * 0.72;
-        let fg = a.createRadialGradient(fw * 0.5, fh * 0.5, rad * 0.42, fw * 0.5, fh * 0.5, rad);
+        let fg = a.createRadialGradient(fw * 0.5, fh * 0.5, rad * 0.44, fw * 0.5, fh * 0.5, rad);
         fg.addColorStop(0, "rgba(226, 232, 240, 0)");
         fg.addColorStop(0.68, `rgba(226, 232, 240, ${edgeAlpha * 0.35})`);
         fg.addColorStop(1, `rgba(226, 232, 240, ${edgeAlpha})`);
@@ -11042,6 +11222,20 @@ export class GameEngine {
         a.fillStyle = `rgba(226, 232, 240, ${Math.min(0.04, this.screenFlashWhite * 0.22)})`;
       }
       a.fillRect(0, 0, fw, fh);
+      // Perimeter kinetic anime-impact speedlines framing edges without obscuring center combat
+      let cx = fw * 0.5, cy = fh * 0.5, outerR = Math.hypot(cx, cy) * 1.04, innerR = Math.min(fw, fh) * 0.41;
+      a.globalAlpha = Math.min(0.28, this.screenFlashWhite * 0.9);
+      a.fillStyle = "#F8FAFC";
+      for (let li = 0; li < 12; li++) {
+        let la = (Math.PI * 2 / 12) * li + (li % 2) * 0.14;
+        let perp = la + Math.PI * 0.5, tipW = 3.2 + (li % 3) * 1.8;
+        a.beginPath();
+        a.moveTo(cx + Math.cos(la) * innerR, cy + Math.sin(la) * innerR);
+        a.lineTo(cx + Math.cos(la) * outerR + Math.cos(perp) * tipW, cy + Math.sin(la) * outerR + Math.sin(perp) * tipW);
+        a.lineTo(cx + Math.cos(la) * outerR - Math.cos(perp) * tipW, cy + Math.sin(la) * outerR - Math.sin(perp) * tipW);
+        a.closePath();
+        a.fill();
+      }
       a.restore();
     }
     if (this.gameState === "PLAYING") {
@@ -11209,9 +11403,18 @@ export class GameEngine {
         sx *= 1 + gp * 0.12, sy *= 1 - gp * 0.08;
       }
     }
-    if (s.beginPath(), s.ellipse(this.player.x, this.player.y + this.player.radius * 0.72, this.player.radius * 1.15 * shadowScale, this.player.radius * 0.52 * shadowScale, 0, 0, Math.PI * 2), s.fillStyle = "rgba(0, 0, 0, 0.55)", s.fill(), s.beginPath(), s.arc(vx, vy, (this.player.radius + 7) * l, 0, Math.PI * 2), s.strokeStyle = hid === "gau" && this.player.gau_cuongHungTimer > 0 ? "#F97316" : ringStroke, s.lineWidth = 2.6, s.stroke(), s.beginPath(), s.arc(vx, vy, (this.player.radius + 10) * l, 0, Math.PI * 2), s.strokeStyle = "rgba(255, 255, 255, 0.2)", s.lineWidth = 1.2, s.stroke(), drawHeroPassiveAura(s, { heroId: hid, x: vx, y: vy, radius: this.player.radius, facing: this.player.facing, elapsedTime: this.elapsedTime, isMono: a, enableAdditive: this.getPerformanceProfile().enableAdditiveVfx !== false, player: this.player }), hid === "trung" && this.player.trung_orbs && this.player.trung_orbs.active) {
+    if (!a && this.getPerformanceProfile().enableRadialGlows) {
+      let auraPool = s.createRadialGradient(this.player.x, this.player.y + this.player.radius * 0.48, 2, this.player.x, this.player.y + this.player.radius * 0.48, (this.player.radius + 18) * l);
+      auraPool.addColorStop(0, "rgba(2, 6, 23, 0.45)"), auraPool.addColorStop(0.62, "rgba(2, 6, 23, 0.22)"), auraPool.addColorStop(1, "rgba(2, 6, 23, 0)");
+      s.fillStyle = auraPool, s.beginPath(), s.ellipse(this.player.x, this.player.y + this.player.radius * 0.65, (this.player.radius + 18) * shadowScale, (this.player.radius * 0.72) * shadowScale, 0, 0, Math.PI * 2), s.fill();
+    }
+    if (s.beginPath(), s.ellipse(this.player.x + 2, this.player.y + this.player.radius * 0.74, this.player.radius * 1.18 * shadowScale, this.player.radius * 0.54 * shadowScale, 0, 0, Math.PI * 2), s.fillStyle = "rgba(0, 0, 0, 0.58)", s.fill(), s.beginPath(), s.arc(vx, vy, (this.player.radius + 7) * l, 0, Math.PI * 2), s.strokeStyle = hid === "gau" && this.player.gau_cuongHungTimer > 0 ? "#F97316" : ringStroke, s.lineWidth = 2.6, s.stroke(), s.beginPath(), s.arc(vx, vy, (this.player.radius + 10) * l, 0, Math.PI * 2), s.strokeStyle = "rgba(255, 255, 255, 0.2)", s.lineWidth = 1.2, s.stroke(), drawHeroPassiveAura(s, { heroId: hid, x: vx, y: vy, radius: this.player.radius, facing: this.player.facing, elapsedTime: this.elapsedTime, isMono: a, enableAdditive: this.getPerformanceProfile().enableAdditiveVfx !== false, player: this.player }), hid === "trung" && this.player.trung_orbs && this.player.trung_orbs.active) {
       s.save();
-      s.strokeStyle = a ? "rgba(255, 255, 255, 0.35)" : "rgba(129, 140, 248, 0.38)", s.lineWidth = 2, s.setLineDash([8, 6]), s.beginPath(), s.arc(this.player.x, this.player.y, this.player.trung_orbs.radius, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+      for (let os = 0; os < 4; os++) {
+        let oa = (Math.PI * 0.5) * os + (this.player.trung_orbs.rot || 0) * 0.5;
+        s.beginPath(), s.arc(this.player.x, this.player.y, this.player.trung_orbs.radius, oa + 0.1, oa + 1.18);
+        s.strokeStyle = a ? "rgba(255, 255, 255, 0.38)" : "rgba(129, 140, 248, 0.48)", s.lineWidth = 2.2, s.lineCap = "round", s.stroke();
+      }
       let orbPts = [];
       for (let f = 0; f < this.player.trung_orbs.count; f++) {
         let v = this.player.trung_orbs.rot + Math.PI * 2 / this.player.trung_orbs.count * f;
@@ -11232,25 +11435,12 @@ export class GameEngine {
       s.restore();
     }
     if (hid === "gau" && this.player.gau_cuongHungTimer > 0) {
-      s.save();
-      let pulse = 0.85 + 0.15 * Math.sin(this.elapsedTime * 10), behindA = this.player.facing + Math.PI;
-      s.translate(vx + Math.cos(behindA) * 14, vy + Math.sin(behindA) * 14);
-      s.rotate(this.player.facing);
-      s.globalAlpha = 0.42 * pulse;
-      s.fillStyle = "#EA580C", s.strokeStyle = "#FDE047", s.lineWidth = 2;
-      s.beginPath(), s.arc(-4, 0, this.player.radius * 1.18, 0, Math.PI * 2), s.fill(), s.stroke();
-      for (let ear of [-1, 1]) s.beginPath(), s.arc(-10, ear * (this.player.radius * 0.95), 9, 0, Math.PI * 2), s.fill(), s.stroke();
-      s.restore();
-      s.save(), s.translate(vx, vy), s.rotate(this.elapsedTime * 3.2), s.strokeStyle = "#FB923C", s.lineWidth = 3, s.setLineDash([12, 8]), s.beginPath(), s.arc(0, 0, this.player.radius + 15 + Math.sin(this.elapsedTime * 12) * 2.5, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+      drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 19 + Math.sin(this.elapsedTime * 10) * 2, tiltY: 0.74, rot: this.elapsedTime * 3.2, primary: "#FB923C", secondary: "#FDE047", darkRim: "#431407", coreWash: "rgba(234, 88, 12, 0.2)", midWash: "rgba(253, 224, 71, 0.08)", segments: 4, isMono: a });
     }
     if (hid === "danh" && this.player.chargeState.active) {
-      s.save();
-      let cp = Math.min(1, this.player.chargeState.elapsed / Math.max(0.1, this.player.chargeState.maxDur)), cc = cp >= 1 ? "#FBBF24" : cp >= 0.6 ? "#F97316" : "#EF4444", cr = this.player.radius + 14 + cp * 10;
-      s.translate(vx, vy), s.rotate(-this.elapsedTime * (2.5 + cp * 3));
-      s.fillStyle = cp >= 1 ? "rgba(251, 191, 36, 0.16)" : "rgba(239, 68, 68, 0.12)", s.beginPath(), s.arc(0, 0, cr, 0, Math.PI * 2), s.fill();
-      s.strokeStyle = cc, s.lineWidth = 2.6, s.setLineDash([10, 6]), s.beginPath(), s.arc(0, 0, cr, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-      s.strokeStyle = "#FEF08A", s.lineWidth = 3.2, s.beginPath(), s.arc(0, 0, cr - 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * cp), s.stroke();
-      s.restore();
+      let cp = Math.min(1, this.player.chargeState.elapsed / Math.max(0.1, this.player.chargeState.maxDur)), cc = cp >= 1 ? "#FBBF24" : cp >= 0.6 ? "#F97316" : "#EF4444", cr = this.player.radius + 16 + cp * 10;
+      drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: cr, tiltY: 0.76, rot: -this.elapsedTime * (2.5 + cp * 3), primary: cc, secondary: "#FEF08A", darkRim: "#450A0A", coreWash: cp >= 1 ? "rgba(251, 191, 36, 0.18)" : "rgba(239, 68, 68, 0.14)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
+      s.save(), s.translate(vx, vy), s.strokeStyle = a ? "#FFFFFF" : "#FEF08A", s.lineWidth = 3.2, s.beginPath(), s.arc(0, 0, cr - 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * cp), s.stroke(), s.restore();
     }
     if (hid === "dung" && this.player.dung_c3_buff_timer > 0) {
       drawDungCerberusForm(s, vx, vy, this.player.radius, this.player.facing, this.elapsedTime, {
@@ -11269,140 +11459,121 @@ export class GameEngine {
         s.fillStyle = "rgba(56, 189, 248, 0.065)";
       }
       s.beginPath(), s.arc(this.player.x, this.player.y, 260, 0, Math.PI * 2), s.fill();
-      s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 1.1);
-      s.strokeStyle = "rgba(125, 211, 252, 0.25)", s.lineWidth = 1.6, s.setLineDash([12, 10]), s.beginPath(), s.arc(0, 0, 56, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+      drawPerspectiveZoneBase(s, { x: this.player.x, y: this.player.y, radius: 56, tiltY: 0.74, rot: this.elapsedTime * 1.1, primary: "#7DD3FC", secondary: "#E0F2FE", darkRim: "#082F49", coreWash: "rgba(56, 189, 248, 0.06)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
       s.restore();
     }
     if (hid === "duy") {
       let idleT = this.player.duy_idleTime || 0, ratio = Math.min(1, idleT / DUY_PASSIVE_RAMP_SEC), quiet = idleT >= DUY_QUIET_REGEN_DELAY;
       if (ratio > 0.03) {
         s.save(), s.translate(vx, vy);
-        s.strokeStyle = ratio >= 1 ? "#F43F5E" : "#14B8A6", s.lineWidth = ratio >= 1 ? 3.6 : 2.6;
+        s.strokeStyle = a ? "#FFFFFF" : ratio >= 1 ? "#F43F5E" : "#14B8A6", s.lineWidth = ratio >= 1 ? 3.6 : 2.6;
         s.beginPath(), s.arc(0, 0, this.player.radius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio), s.stroke();
-        if (quiet) {
-          s.strokeStyle = "rgba(52, 211, 153, 0.45)", s.lineWidth = 2, s.setLineDash([7, 5]);
-          s.beginPath(), s.arc(0, 0, this.player.radius + 17 + Math.sin(this.elapsedTime * 6) * 2, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-        }
         s.restore();
+        if (quiet) {
+          drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 18 + Math.sin(this.elapsedTime * 6) * 1.8, tiltY: 0.74, rot: this.elapsedTime * 2.2, primary: "#34D399", secondary: "#F43F5E", darkRim: "#064E3B", coreWash: "rgba(52, 211, 153, 0.12)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
+        }
       }
     }
     if (hid === "phong" && ((this.player.phong_dashProtectTimer || 0) > 0 || (this.player.phong_c3_flurryTimer || 0) > 0)) {
-      s.save(), s.translate(vx, vy), s.rotate(this.elapsedTime * 5.2);
-      s.strokeStyle = (this.player.phong_c3_flurryTimer || 0) > 0 ? "#22D3EE" : "#0EA5E9", s.lineWidth = 2.4, s.setLineDash([10, 6]);
-      s.beginPath(), s.arc(0, 0, this.player.radius + 15, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-      s.restore();
+      let flurry = (this.player.phong_c3_flurryTimer || 0) > 0;
+      for (let wi = 0; wi < 2; wi++) {
+        let wa = this.elapsedTime * 5.4 + wi * Math.PI;
+        drawWindStreamRibbon(s, { x: vx + Math.cos(wa) * (this.player.radius + 15), y: vy + Math.sin(wa) * (this.player.radius + 15) * 0.78, angle: wa + Math.PI * 0.5, length: 20, width: 3.8, phase: this.elapsedTime * 14 + wi, color: flurry ? "#22D3EE" : "#0EA5E9", coreColor: "#FFFFFF", isMono: a });
+      }
     }
     if (hid === "dang") {
       if ((this.player.dang_rage || 0) > 0 && !this.player.dang_rageReady) {
         let rageProg = Math.min(1, this.player.dang_rage / DANG_RAGE_MAX);
         s.save(), s.translate(vx, vy);
-        s.strokeStyle = a ? "#333333" : "rgba(248, 250, 252, 0.25)", s.lineWidth = 2.4;
-        s.beginPath(), s.arc(0, 0, this.player.radius + 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * rageProg), s.stroke();
         s.strokeStyle = a ? "#FFFFFF" : "#F8FAFC", s.lineWidth = 2.6;
         s.beginPath(), s.arc(0, 0, this.player.radius + 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * rageProg), s.stroke();
         s.restore();
       }
       if (this.player.dang_c2_timer > 0) {
-        s.save(), s.translate(vx, vy);
-        s.fillStyle = "rgba(24, 24, 27, 0.24)", s.strokeStyle = "#F8FAFC", s.lineWidth = 3;
-        s.beginPath(), s.arc(0, 0, this.player.radius + 16, 0, Math.PI * 2), s.fill(), s.stroke();
-        s.rotate(this.elapsedTime * 3.2), s.strokeStyle = "#18181B", s.lineWidth = 3.5, s.setLineDash([12, 10]);
-        s.beginPath(), s.arc(0, 0, this.player.radius + 20, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+        drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 20, tiltY: 0.76, rot: this.elapsedTime * 3.2, primary: "#F8FAFC", secondary: "#F59E0B", darkRim: "#18181B", coreWash: "rgba(24, 24, 27, 0.24)", midWash: "rgba(248, 250, 252, 0.08)", segments: 4, isMono: a });
         for (let fi = 0; fi < 4; fi++) {
-          let fa = fi * (Math.PI / 2);
-          s.fillStyle = fi % 2 === 0 ? "#F8FAFC" : "#18181B", s.strokeStyle = fi % 2 === 0 ? "#18181B" : "#F8FAFC", s.lineWidth = 1.4;
-          s.beginPath(), s.arc(Math.cos(fa) * (this.player.radius + 18), Math.sin(fa) * (this.player.radius + 18), 3.6, 0, Math.PI * 2), s.fill(), s.stroke();
+          let fa = this.elapsedTime * 3.2 + fi * (Math.PI / 2);
+          drawFacetedShard(s, { x: vx + Math.cos(fa) * (this.player.radius + 18), y: vy + Math.sin(fa) * (this.player.radius + 18) * 0.76, size: 5.2, rot: fa, shape: "plate", primary: fi % 2 === 0 ? "#F8FAFC" : "#18181B", highlight: "#FDE047", shadow: "#09090B", rim: "#94A3B8", isMono: a });
         }
-        s.restore();
       }
       if (this.player.dang_rageReady) {
-        s.save(), s.translate(vx, vy), s.rotate(-this.elapsedTime * 4.2);
-        s.strokeStyle = "#F8FAFC", s.lineWidth = 2.6, s.setLineDash([8, 6]);
-        s.beginPath(), s.arc(0, 0, this.player.radius + 13 + Math.sin(this.elapsedTime * 12) * 2, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-        s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 15 + Math.sin(this.elapsedTime * 12) * 2, tiltY: 0.76, rot: -this.elapsedTime * 4.2, primary: "#F8FAFC", secondary: "#F59E0B", darkRim: "#18181B", coreWash: "rgba(248, 250, 252, 0.1)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
       }
       if ((this.player.dang_c3_asTimer || 0) > 0) {
         s.save(), s.translate(vx, vy), s.rotate(this.elapsedTime * 6.5);
-        s.strokeStyle = "#F8FAFC", s.lineWidth = 1.8;
-        s.beginPath(), s.arc(0, 0, this.player.radius + 24, 0, 1.4), s.stroke();
-        s.strokeStyle = "#18181B", s.lineWidth = 2.2;
-        s.beginPath(), s.arc(0, 0, this.player.radius + 24, Math.PI, Math.PI + 1.4), s.stroke();
+        s.strokeStyle = "#F8FAFC", s.lineWidth = 2.0, s.beginPath(), s.arc(0, 0, this.player.radius + 24, 0, 1.4), s.stroke();
+        s.strokeStyle = "#18181B", s.lineWidth = 2.4, s.beginPath(), s.arc(0, 0, this.player.radius + 24, Math.PI, Math.PI + 1.4), s.stroke();
         s.restore();
       }
     }
     if (hid === "bach" && ((this.player.bach_dashProtectTimer || 0) > 0 || (this.player.bach_c3Timer || 0) > 0)) {
       let isUlt = (this.player.bach_c3Timer || 0) > 0;
-      s.save(), s.translate(vx, vy), s.rotate(this.elapsedTime * (isUlt ? 7.2 : 4.8));
-      s.strokeStyle = isUlt ? "#E879F9" : "#22D3EE", s.lineWidth = isUlt ? 3 : 2.2, s.setLineDash([11, 6]);
-      s.beginPath(), s.arc(0, 0, this.player.radius + (isUlt ? 19 : 14), 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-      s.restore();
+      for (let bi = 0; bi < (isUlt ? 3 : 2); bi++) {
+        let ba = this.elapsedTime * (isUlt ? 7.2 : 4.8) + (Math.PI * 2 * bi) / (isUlt ? 3 : 2);
+        drawWindStreamRibbon(s, { x: vx + Math.cos(ba) * (this.player.radius + 16), y: vy + Math.sin(ba) * (this.player.radius + 16) * 0.78, angle: ba + Math.PI * 0.5, length: isUlt ? 24 : 18, width: isUlt ? 4.4 : 3.4, phase: this.elapsedTime * 15 + bi, color: isUlt ? "#E879F9" : "#22D3EE", coreColor: "#FFFFFF", isMono: a });
+      }
     }
     if (hid === "thai" && (this.player.thai_inArena || (this.player.thai_c2DrTimer || 0) > 0)) {
       let inA = Boolean(this.player.thai_inArena);
-      s.save(), s.translate(vx, vy), s.rotate(-this.elapsedTime * 3.0);
-      s.strokeStyle = inA ? "#FDE047" : "#F59E0B", s.lineWidth = inA ? 3.2 : 2.4, s.setLineDash([12, 6]);
-      s.beginPath(), s.arc(0, 0, this.player.radius + 17, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-      if (inA) {
-        s.strokeStyle = "rgba(239, 68, 68, 0.75)", s.lineWidth = 1.8;
-        s.beginPath(), s.arc(0, 0, this.player.radius + 22 + Math.sin(this.elapsedTime * 8) * 1.8, 0, Math.PI * 2), s.stroke();
-      }
-      s.restore();
+      drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 19, tiltY: 0.74, rot: -this.elapsedTime * 3.0, primary: inA ? "#FDE047" : "#F59E0B", secondary: "#EF4444", darkRim: "#450A0A", coreWash: inA ? "rgba(253, 224, 71, 0.14)" : "rgba(245, 158, 11, 0.1)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
     }
     if (hid === "khair" && ((this.player.khair_aimZoomBlend || 0) > 0.05 || (this.player.khair_c3ImmuneTimer || 0) > 0 || this.player.khair_inBeacon)) {
       let aim = (this.player.khair_aimZoomBlend || 0) > 0.05;
-      s.save(), s.translate(vx, vy), s.rotate(this.elapsedTime * 2.6);
-      s.strokeStyle = aim ? "#FACC15" : "#4ADE80", s.lineWidth = aim ? 2.8 : 2.1, s.setLineDash([8, 6]);
-      s.beginPath(), s.arc(0, 0, this.player.radius + (aim ? 18 : 13), 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-      s.restore();
+      drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + (aim ? 19 : 14), tiltY: 0.76, rot: this.elapsedTime * 2.6, primary: aim ? "#FACC15" : "#4ADE80", secondary: "#FFFFFF", darkRim: "#052E16", coreWash: "rgba(74, 222, 128, 0.1)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
     }
     if (this.player.shield > 0) {
       if (hid === "nguyen") {
         drawNguyenBastionAura(s, vx, vy, this.player.radius, this.elapsedTime, this.player.shield / Math.max(1, this.player.maxHp), this.player.nguyen_rescueFlashTimer > 0, a);
       } else {
         if (s.save(), s.beginPath(), s.arc(vx, vy, this.player.radius + 12, 0, Math.PI * 2), s.fillStyle = "rgba(56, 189, 248, 0.18)", s.fill(), s.strokeStyle = "#38BDF8", s.lineWidth = 2, s.stroke(), hid === "eohyen") {
-          s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 2);
           for (let f = 0; f < 6; f++) {
-            let v = Math.PI * 2 / 6 * f;
-            s.fillStyle = "#BAE6FD", s.beginPath(), s.arc(Math.cos(v) * (this.player.radius + 12), Math.sin(v) * (this.player.radius + 12), 3, 0, Math.PI * 2), s.fill();
+            let v = this.elapsedTime * 2 + (Math.PI * 2 / 6) * f;
+            drawFacetedShard(s, { x: vx + Math.cos(v) * (this.player.radius + 13), y: vy + Math.sin(v) * (this.player.radius + 13), size: 4.5, rot: v, primary: "#38BDF8", highlight: "#FFFFFF", shadow: "#082F49", rim: "#BAE6FD", isMono: a });
           }
         }
         s.restore();
       }
     }
     if (this.isEasterEggInvulnerable()) {
-      let pulse = 0.72 + Math.sin(this.elapsedTime * 7) * 0.25;
-      s.save(), s.translate(vx, vy);
-      s.fillStyle = `rgba(34, 211, 238, ${0.14 * pulse})`;
-      s.beginPath(), s.arc(0, 0, this.player.radius + 17, 0, Math.PI * 2), s.fill();
-      s.rotate(this.elapsedTime * 2.4);
-      s.strokeStyle = "#67E8F9", s.lineWidth = 2.4, s.setLineDash([10, 6]);
-      s.beginPath(), s.arc(0, 0, this.player.radius + 17, 0, Math.PI * 2), s.stroke();
-      s.rotate(-this.elapsedTime * 4.2);
-      s.strokeStyle = "#FDE047", s.lineWidth = 1.6, s.setLineDash([6, 8]);
-      s.beginPath(), s.arc(0, 0, this.player.radius + 22, 0, Math.PI * 2), s.stroke();
-      s.setLineDash([]), s.restore();
+      drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 20, tiltY: 0.76, rot: this.elapsedTime * 2.4, primary: "#67E8F9", secondary: "#FDE047", darkRim: "#082F49", coreWash: "rgba(34, 211, 238, 0.16)", midWash: "rgba(253, 224, 71, 0.08)", segments: 4, isMono: a });
     }
     if (hid === "nguyen" && this.player.nguyen_satellitesTimer > 0) {
       drawNguyenSatellites(s, vx, vy, this.player.nguyen_satellitesRot || 0, this.elapsedTime, 56, a);
     }
     this.player.bachDashing = hid === "bach" && ((this.player.dashActive && String(this.player.dashKind || "").startsWith("bach")) || (this.player.bach_dashProtectTimer || 0) > 0 || (this.player.bach_c3Timer || 0) > 0);
-    s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, vy);
+    let isDanhDragon = hid === "danh" && this.player.danh_dragonTimer > 0;
     let m = this.player.attackAnimTimer > 0 ? this.player.attackAnimAngle : this.player.facing;
-    s.rotate(m);
-    drawHeroWeapon(s, hid, this.player, this.elapsedTime, a);
-    s.restore();
+    if (!isDanhDragon) {
+      s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, vy);
+      s.rotate(m);
+      drawHeroWeapon(s, hid, this.player, this.elapsedTime, a);
+      s.restore();
+    }
     if (hid === "taidu" && this.player.hp > 0) {
       let drX = Number.isFinite(this.player.taidu_droneX) ? this.player.taidu_droneX : vx - 42;
       let drY = Number.isFinite(this.player.taidu_droneY) ? this.player.taidu_droneY : vy - 30;
       drawTaiDuDrone(s, drX, drY, this.player.taidu_droneMode || "attack", Number.isFinite(this.player.taidu_droneFacing) ? this.player.taidu_droneFacing : m, this.elapsedTime, (this.player.taidu_droneShieldAccum || 0) / 160, a, { playerX: vx, playerY: vy, targetX: this.player.taidu_droneTargetX, targetY: this.player.taidu_droneTargetY, muzzleTimer: this.player.taidu_droneMuzzleTimer || 0, overdrive: this.player.taidu_droneOverdriveTimer || 0 });
     }
     if (hid === "gau" && this.player.gau_c2_guardTimer > 0) {
-      s.save(), s.translate(vx, vy), s.fillStyle = "rgba(245, 158, 11, 0.2)", s.strokeStyle = "#FBBF24", s.lineWidth = 3, s.beginPath(), s.arc(0, 0, this.player.radius + 16, 0, Math.PI * 2), s.fill(), s.stroke();
-      s.rotate(this.elapsedTime * 2.8), s.strokeStyle = "#FEF08A", s.lineWidth = 3.2, s.setLineDash([14, 10]), s.beginPath(), s.arc(0, 0, this.player.radius + 20, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+      drawPerspectiveZoneBase(s, {
+        x: vx,
+        y: vy,
+        radius: this.player.radius + 20,
+        tiltY: 0.78,
+        rot: this.elapsedTime * 2.8,
+        primary: "#FBBF24",
+        secondary: "#FEF08A",
+        darkRim: "#451A03",
+        coreWash: "rgba(245, 158, 11, 0.22)",
+        midWash: "rgba(0,0,0,0)",
+        segments: 4,
+        isMono: a,
+      });
+      s.save(), s.translate(vx, vy);
       let stacks = Math.min(4, this.player.gau_c2_stacks || 0);
       for (let i = 0; i < stacks; i++) {
-        let sa = Math.PI * 2 / 4 * i;
-        s.fillStyle = "#FDE047", s.beginPath(), s.arc(Math.cos(sa) * (this.player.radius + 20), Math.sin(sa) * (this.player.radius + 20), 4, 0, Math.PI * 2), s.fill();
+        let sa = Math.PI * 2 / 4 * i + this.elapsedTime * 2.8;
+        drawFacetedShard(s, { x: Math.cos(sa) * (this.player.radius + 20), y: Math.sin(sa) * (this.player.radius + 20) * 0.78, size: 4.8, rot: sa, shape: "crystal", primary: "#F59E0B", highlight: "#FEF08A", shadow: "#451A03", rim: "#FDE047", isMono: a });
       }
       s.restore();
     }
@@ -11414,19 +11585,16 @@ export class GameEngine {
       let ep = 1 - this.player.bao_emergeTimer / 0.24;
       s.save(), s.globalAlpha = 1 - ep, s.strokeStyle = "#F5D0FE", s.lineWidth = 3.5 * (1 - ep) + 1, s.beginPath(), s.arc(vx, vy, this.player.radius + 6 + ep * 26, 0, Math.PI * 2), s.stroke(), s.restore();
     }
-    if (hid === "danh" && this.player.danh_dragonTimer > 0) drawDanhDragonForm(s, vx, vy, this.player.radius, this.player.facing, this.elapsedTime, a);
     let g = hid === "bao" && (this.player.bao_stealthTimer > 0 || (this.player.bao_stealthFade || 0) > 0.05), p = Math.hypot(this.moveInput.x, this.moveInput.y) > 0.1 || this.tapDestination ? 1 + Math.sin(this.elapsedTime * 14) * 0.04 : 1 + Math.sin(this.elapsedTime * 3) * 0.02;
     if (hid === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 || this.player.thien_godMode || (this.player.thien_energy || 0) > 0)) {
       let isDiv = (this.player.thien_ascendedTimer || 0) > 0 || this.player.thien_godMode;
-      s.save(), s.translate(vx, vy);
       if (isDiv) {
-        s.save(), s.rotate(this.elapsedTime * 2.2), s.strokeStyle = this.player.thien_godMode ? "#FACC15" : "#38BDF8", s.lineWidth = 2.6, s.setLineDash([12, 7]), s.beginPath(), s.arc(0, 0, this.player.radius + 18, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: vy, radius: this.player.radius + 20, tiltY: 0.74, rot: this.elapsedTime * 2.2, primary: this.player.thien_godMode ? "#FACC15" : "#38BDF8", secondary: "#FFFFFF", darkRim: "#1E1B4B", coreWash: "rgba(250, 204, 21, 0.14)", midWash: "rgba(56, 189, 248, 0.06)", segments: 4, isMono: a });
       }
       if ((this.player.thien_energy || 0) > 0 && !isDiv) {
         let eProg = Math.min(1, (this.player.thien_energy || 0) / THIEN_ENERGY_MAX);
-        s.strokeStyle = "#FACC15", s.lineWidth = 2.6, s.beginPath(), s.arc(0, 0, this.player.radius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * eProg), s.stroke();
+        s.save(), s.translate(vx, vy), s.strokeStyle = a ? "#FFFFFF" : "#FACC15", s.lineWidth = 2.6, s.beginPath(), s.arc(0, 0, this.player.radius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * eProg), s.stroke(), s.restore();
       }
-      s.restore();
     }
     if (hid === "thanh") {
       let ca = this.player.thanh_companionAngle || 0;
@@ -11436,7 +11604,23 @@ export class GameEngine {
     let isBachDash = hid === "bach" && Boolean(this.player.bachDashing);
     let isThaiArena = hid === "thai" && Boolean(this.player.thai_inArena);
     let isKhairAim = hid === "khair" && ((this.player.khair_aimZoomBlend || 0) > 0.1 || Boolean(this.player.chargeState?.active && this.player.chargeState.kind === "khair_c2"));
-    if (s.save(), (bodyAlpha < 1 || (this.multiplayer.active && this.multiplayer.localDowned)) && (s.globalAlpha = this.multiplayer.active && this.multiplayer.localDowned ? 0.36 : bodyAlpha), s.translate(vx, vy), s.scale(sx, sy), drawHeroBody(s, { heroId: hid, elapsedTime: this.elapsedTime, radius: this.player.radius * p, facing: this.player.facing, color: this.currentHero.color, accentColor: this.currentHero.accentColor, nhiAmmoType: this.player.nhi_ammoType, ducanhRolling: hid === "ducanh" && (this.player.ducanh_c1Timer || 0) > 0, ducanhFortress: hid === "ducanh" && (this.player.ducanh_c2Timer || 0) > 0, bachDashing: isBachDash, thaiInArena: isThaiArena, khairAiming: isKhairAim, isMono: a, hitFlash: this.player.hitFlash, moveSpeedFactor: this.player.moveSpeedFactor, walkCyclePhase: this.player.walkCyclePhase, attackAnimTimer: this.player.attackAnimTimer, weaponAttackDuration: this.player.weaponAttackDuration, weaponSkillTimer: this.player.weaponSkillTimer, weaponSkillDur: this.player.weaponSkillDur, isUlt: hid === "dung" ? this.player.dung_c3_buff_timer > 0 : hid === "gau" ? this.player.gau_cuongHungTimer > 0 : hid === "danh" ? this.player.danh_dragonTimer > 0 || this.player.danh_thienPhatTimer > 0 : hid === "phong" ? (this.player.phong_c3_flurryTimer || 0) > 0 || (this.player.phong_dashProtectTimer || 0) > 0 : hid === "dang" ? Boolean(this.player.dang_rageReady || (this.player.dang_c2_timer || 0) > 0 || (this.player.dang_c3_asTimer || 0) > 0 || (this.player.dang_c3_flurryTimer || 0) > 0) : hid === "thien" ? (this.player.thien_ascendedTimer || 0) > 0 || Boolean(this.player.thien_godMode) : hid === "thanh" ? (this.player.thanh_c3Timer || 0) > 0 : hid === "ducanh" ? (this.player.ducanh_c1Timer || 0) > 0 || (this.player.ducanh_c2Timer || 0) > 0 : hid === "bach" ? (this.player.bach_c3Timer || 0) > 0 || isBachDash : hid === "thai" ? isThaiArena : hid === "khair" ? isKhairAim || (this.player.khair_c3ImmuneTimer || 0) > 0 : false, isStealth: g, isDowned: Boolean(this.multiplayer.active && this.multiplayer.localDowned), borderColor: a ? "#333333" : hid === "gau" && this.player.gau_cuongHungTimer > 0 ? "#FBBF24" : hid === "danh" && this.player.danh_dragonTimer > 0 ? "#FEF08A" : hid === "phong" && ((this.player.phong_c3_flurryTimer || 0) > 0 || (this.player.phong_dashProtectTimer || 0) > 0) ? "#22D3EE" : hid === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 || this.player.thien_godMode) ? "#FACC15" : hid === "thanh" && (this.player.thanh_c3Timer || 0) > 0 ? "#34D399" : hid === "ducanh" && ((this.player.ducanh_c1Timer || 0) > 0 || (this.player.ducanh_c2Timer || 0) > 0) ? "#F59E0B" : isBachDash ? "#22D3EE" : isThaiArena ? "#FDE047" : isKhairAim ? "#4ADE80" : g ? "#E879F9" : "#FFFFFF" }), s.restore(), hid === "danh") {
+    if (isDanhDragon) {
+      let dragonAtkProg = this.player.attackAnimTimer > 0 ? Math.max(0, Math.min(1, 1 - this.player.attackAnimTimer / Math.max(0.06, this.player.weaponAttackDuration || 0.22))) : 0;
+      s.save();
+      s.globalAlpha = this.multiplayer.active && this.multiplayer.localDowned ? 0.36 : bodyAlpha;
+      drawDanhDragonForm(s, vx, vy, this.player.radius * p, m, this.elapsedTime, a, {
+        isAttacking: this.player.attackAnimTimer > 0,
+        atkProg: dragonAtkProg,
+        atkParity: this.player.attackSwingParity || 1,
+        isMoving: p > 1.005 || Math.hypot(this.moveInput.x, this.moveInput.y) > 0.1 || Boolean(this.tapDestination),
+        hitFlash: Boolean(this.player.hitFlash),
+        isDowned: Boolean(this.multiplayer.active && this.multiplayer.localDowned),
+      });
+      s.restore();
+    } else {
+      s.save(), (bodyAlpha < 1 || (this.multiplayer.active && this.multiplayer.localDowned)) && (s.globalAlpha = this.multiplayer.active && this.multiplayer.localDowned ? 0.36 : bodyAlpha), s.translate(vx, vy), s.scale(sx, sy), drawHeroBody(s, { heroId: hid, elapsedTime: this.elapsedTime, radius: this.player.radius * p, facing: this.player.facing, color: this.currentHero.color, accentColor: this.currentHero.accentColor, nhiAmmoType: this.player.nhi_ammoType, ducanhRolling: hid === "ducanh" && (this.player.ducanh_c1Timer || 0) > 0, ducanhFortress: hid === "ducanh" && (this.player.ducanh_c2Timer || 0) > 0, bachDashing: isBachDash, thaiInArena: isThaiArena, khairAiming: isKhairAim, isMono: a, hitFlash: this.player.hitFlash, moveSpeedFactor: this.player.moveSpeedFactor, walkCyclePhase: this.player.walkCyclePhase, attackAnimTimer: this.player.attackAnimTimer, weaponAttackDuration: this.player.weaponAttackDuration, weaponSkillTimer: this.player.weaponSkillTimer, weaponSkillDur: this.player.weaponSkillDur, isUlt: hid === "dung" ? this.player.dung_c3_buff_timer > 0 : hid === "gau" ? this.player.gau_cuongHungTimer > 0 : hid === "danh" ? this.player.danh_dragonTimer > 0 || this.player.danh_thienPhatTimer > 0 : hid === "phong" ? (this.player.phong_c3_flurryTimer || 0) > 0 || (this.player.phong_dashProtectTimer || 0) > 0 : hid === "dang" ? Boolean(this.player.dang_rageReady || (this.player.dang_c2_timer || 0) > 0 || (this.player.dang_c3_asTimer || 0) > 0 || (this.player.dang_c3_flurryTimer || 0) > 0) : hid === "thien" ? (this.player.thien_ascendedTimer || 0) > 0 || Boolean(this.player.thien_godMode) : hid === "thanh" ? (this.player.thanh_c3Timer || 0) > 0 : hid === "ducanh" ? (this.player.ducanh_c1Timer || 0) > 0 || (this.player.ducanh_c2Timer || 0) > 0 : hid === "bach" ? (this.player.bach_c3Timer || 0) > 0 || isBachDash : hid === "thai" ? isThaiArena : hid === "khair" ? isKhairAim || (this.player.khair_c3ImmuneTimer || 0) > 0 : false, isStealth: g, isDowned: Boolean(this.multiplayer.active && this.multiplayer.localDowned), borderColor: a ? "#333333" : hid === "gau" && this.player.gau_cuongHungTimer > 0 ? "#FBBF24" : hid === "danh" && this.player.danh_dragonTimer > 0 ? "#FEF08A" : hid === "phong" && ((this.player.phong_c3_flurryTimer || 0) > 0 || (this.player.phong_dashProtectTimer || 0) > 0) ? "#22D3EE" : hid === "thien" && ((this.player.thien_ascendedTimer || 0) > 0 || this.player.thien_godMode) ? "#FACC15" : hid === "thanh" && (this.player.thanh_c3Timer || 0) > 0 ? "#34D399" : hid === "ducanh" && ((this.player.ducanh_c1Timer || 0) > 0 || (this.player.ducanh_c2Timer || 0) > 0) ? "#F59E0B" : isBachDash ? "#22D3EE" : isThaiArena ? "#FDE047" : isKhairAim ? "#4ADE80" : g ? "#E879F9" : "#FFFFFF" }), s.restore();
+    }
+    if (hid === "danh") {
       let stances = [
         { active: this.player.danh_khaiSonTimer > 0, color: "#F59E0B", rim: "#FEF08A" },
         { active: this.player.danh_longNgamTimer > 0, color: "#EF4444", rim: "#FB923C" },
@@ -11462,13 +11646,12 @@ export class GameEngine {
       s.fillStyle = "rgba(15, 23, 42, 0.92)", s.fillRect(v - 1, T - 1, 64, 8), s.fillStyle = isSniper ? (f >= 0.85 ? "#FACC15" : "#4ADE80") : (f >= 1 ? "#FBBF24" : f >= 0.6 ? "#F97316" : "#EF4444"), s.fillRect(v, T, 62 * f, 6);
       s.fillStyle = "rgba(255, 255, 255, 0.45)", s.fillRect(v + 62 * 0.2, T, 1, 6), s.fillRect(v + 62 * 0.6, T, 1, 6);
     }
-    if (this.player.slowTimer > 0 && (s.save(), s.strokeStyle = "rgba(56, 189, 248, 0.75)", s.lineWidth = 2.5, s.setLineDash([6, 4]), s.beginPath(), s.ellipse(this.player.x, this.player.y + this.player.radius * 0.65, this.player.radius * 1.35, this.player.radius * 0.58, 0, 0, Math.PI * 2), s.stroke(), s.restore()), this.player.rootTimer > 0) {
-      s.save(), s.translate(this.player.x, this.player.y), s.rotate(this.elapsedTime * 2.5), s.strokeStyle = "#C084FC", s.lineWidth = 3, s.beginPath(), s.arc(0, 0, this.player.radius + 9, 0, Math.PI * 2), s.stroke();
+    if (this.player.slowTimer > 0 && (drawPerspectiveZoneBase(s, { x: this.player.x, y: this.player.y + this.player.radius * 0.45, radius: this.player.radius * 1.35, tiltY: 0.48, rot: this.elapsedTime * 1.6, primary: "#38BDF8", secondary: "#BAE6FD", darkRim: "#082F49", coreWash: "rgba(56, 189, 248, 0.14)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a })), this.player.rootTimer > 0) {
+      drawPerspectiveZoneBase(s, { x: this.player.x, y: this.player.y, radius: this.player.radius + 12, tiltY: 0.72, rot: this.elapsedTime * 2.5, primary: "#C084FC", secondary: "#F5D0FE", darkRim: "#3B0764", coreWash: "rgba(192, 132, 252, 0.18)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
       for (let f = 0; f < 4; f++) {
-        let v = Math.PI / 2 * f;
-        s.beginPath(), s.moveTo(Math.cos(v) * (this.player.radius + 2), Math.sin(v) * (this.player.radius + 2)), s.lineTo(Math.cos(v) * (this.player.radius + 16), Math.sin(v) * (this.player.radius + 16)), s.stroke();
+        let v = this.elapsedTime * 2.5 + (Math.PI / 2) * f;
+        drawFacetedShard(s, { x: this.player.x + Math.cos(v) * (this.player.radius + 11), y: this.player.y + Math.sin(v) * (this.player.radius + 11) * 0.72, size: 5.5, rot: v + Math.PI * 0.5, primary: "#9333EA", highlight: "#F5D0FE", shadow: "#3B0764", rim: "#C084FC", isMono: a });
       }
-      s.restore();
     }
     if (this.player.stunTimer > 0) {
       s.save();
@@ -11541,11 +11724,28 @@ export class GameEngine {
         for (let pad of rp.buffs.duccong_pads) {
           if (!pad) continue;
           let pulse = 1 + 0.08 * Math.sin(this.elapsedTime * 7);
-          s.save(), s.translate(pad.x, pad.y), s.beginPath(), s.arc(0, 0, (pad.radius || 46) * pulse, 0, Math.PI * 2), s.fillStyle = pad.ready ? "rgba(168, 85, 247, 0.22)" : "rgba(148, 163, 184, 0.12)", s.fill(), s.strokeStyle = pad.ready ? "#E879F9" : "#94A3B8", s.lineWidth = 2.2, s.setLineDash([7, 5]), s.stroke(), s.setLineDash([]), s.restore();
+          drawPerspectiveZoneBase(s, {
+            x: pad.x,
+            y: pad.y,
+            radius: (pad.radius || 46) * pulse,
+            tiltY: 0.78,
+            rot: this.elapsedTime * (pad.ready ? 2.2 : 0.6),
+            primary: pad.ready ? "#E879F9" : "#94A3B8",
+            secondary: pad.ready ? "#38BDF8" : "#CBD5E1",
+            darkRim: "#1E1B4B",
+            coreWash: pad.ready ? "rgba(168, 85, 247, 0.22)" : "rgba(148, 163, 184, 0.12)",
+            midWash: "rgba(0,0,0,0)",
+            segments: 4,
+            isMono: a,
+          });
         }
       }
       s.beginPath(), s.ellipse(vx, vy + radius * 0.72, radius * 1.15, radius * 0.52, 0, 0, Math.PI * 2), s.fillStyle = "rgba(0, 0, 0, 0.48)", s.fill();
-      s.beginPath(), s.arc(vx, drawY, radius + 7, 0, Math.PI * 2), s.strokeStyle = downed ? "rgba(248, 113, 113, 0.55)" : heroObj.id === "gau" && rp.buffs?.gau_cuong ? "#F97316" : "#38BDF8", s.lineWidth = 2.2, s.setLineDash([7, 4]), s.stroke(), s.setLineDash([]);
+      for (let rs = 0; rs < 4; rs++) {
+        let ra = (Math.PI * 0.5) * rs + this.elapsedTime * 1.2;
+        s.beginPath(), s.arc(vx, drawY, radius + 7, ra + 0.08, ra + 1.24);
+        s.strokeStyle = downed ? "rgba(248, 113, 113, 0.65)" : heroObj.id === "gau" && rp.buffs?.gau_cuong ? "#F97316" : "#38BDF8", s.lineWidth = 2.4, s.lineCap = "round", s.stroke();
+      }
       s.beginPath(), s.arc(vx, drawY, radius + 10, 0, Math.PI * 2), s.strokeStyle = "rgba(255, 255, 255, 0.16)", s.lineWidth = 1, s.stroke();
       if (!downed) {
         drawHeroPassiveAura(s, { heroId: heroObj.id, x: vx, y: drawY, radius, facing: rp.facing || 0, elapsedTime: this.elapsedTime, isMono: a, enableAdditive: activeProf.enableAdditiveVfx !== false, buffs: rp.buffs });
@@ -11559,10 +11759,11 @@ export class GameEngine {
           s.fillStyle = "rgba(56, 189, 248, 0.06)";
         }
         s.beginPath(), s.arc(vx, drawY, 260, 0, Math.PI * 2), s.fill();
-        s.translate(vx, drawY), s.rotate(this.elapsedTime * 1.1), s.strokeStyle = "rgba(125, 211, 252, 0.24)", s.lineWidth = 1.5, s.setLineDash([12, 10]), s.beginPath(), s.arc(0, 0, 56, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+        s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: 56, tiltY: 0.74, rot: this.elapsedTime * 1.1, primary: "#7DD3FC", secondary: "#E0F2FE", darkRim: "#082F49", coreWash: "rgba(56, 189, 248, 0.05)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
       }
       if (!downed && rp.buffs?.dung_berserk) {
-        s.save(), s.translate(vx, drawY), s.rotate(-this.elapsedTime * 4), s.strokeStyle = "#F97316", s.lineWidth = 2.4, s.setLineDash([8, 6]), s.beginPath(), s.arc(0, 0, radius + 12, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 12, tiltY: 0.78, rot: -this.elapsedTime * 4, primary: "#F97316", secondary: "#FEF08A", darkRim: "#431407", coreWash: "rgba(249, 115, 22, 0.12)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
       }
       if (!downed && heroObj.id === "dung" && rp.buffs?.dung_c3) {
         drawDungCerberusForm(s, vx, drawY, radius, rp.facing || 0, this.elapsedTime, {
@@ -11577,7 +11778,11 @@ export class GameEngine {
       }
       if (!downed && heroObj.id === "trung" && rp.buffs?.trung_orbs) {
         s.save();
-        s.strokeStyle = "rgba(129, 140, 248, 0.35)", s.lineWidth = 1.8, s.setLineDash([8, 6]), s.beginPath(), s.arc(vx, drawY, 76, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
+        for (let os = 0; os < 4; os++) {
+          let oa = (Math.PI * 0.5) * os + this.elapsedTime * 1.6;
+          s.beginPath(), s.arc(vx, drawY, 76, oa + 0.1, oa + 1.18);
+          s.strokeStyle = "rgba(129, 140, 248, 0.42)", s.lineWidth = 2.0, s.lineCap = "round", s.stroke();
+        }
         for (let oi = 0; oi < 6; oi++) {
           let oAng = this.elapsedTime * (Math.PI * 2 / 0.75) + Math.PI * 2 / 6 * oi, ox = vx + Math.cos(oAng) * 76, oy = drawY + Math.sin(oAng) * 76;
           let tx = vx + Math.cos(oAng - 0.35) * 76, ty = drawY + Math.sin(oAng - 0.35) * 76;
@@ -11587,18 +11792,17 @@ export class GameEngine {
         s.restore();
       }
       if (!downed && heroObj.id === "gau" && rp.buffs?.gau_cuong) {
-        s.save(), s.translate(vx, drawY), s.rotate(this.elapsedTime * 3.2), s.strokeStyle = "#FB923C", s.lineWidth = 2.8, s.setLineDash([12, 8]), s.beginPath(), s.arc(0, 0, radius + 15 + Math.sin(this.elapsedTime * 12) * 2.5, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 16 + Math.sin(this.elapsedTime * 12) * 2.5, tiltY: 0.76, rot: this.elapsedTime * 3.2, primary: "#FB923C", secondary: "#FDE047", darkRim: "#431407", coreWash: "rgba(234, 88, 12, 0.14)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
       }
       if (!downed && heroObj.id === "duy" && (rp.buffs?.duy_idleRatio || 0) > 0.03) {
         let dr = Math.min(1, rp.buffs.duy_idleRatio);
         s.save(), s.translate(vx, drawY);
         s.strokeStyle = dr >= 1 ? "#F43F5E" : "#14B8A6", s.lineWidth = dr >= 1 ? 3.4 : 2.4;
         s.beginPath(), s.arc(0, 0, radius + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * dr), s.stroke();
-        if (rp.buffs?.duy_quiet) {
-          s.strokeStyle = "rgba(52, 211, 153, 0.42)", s.lineWidth = 1.8, s.setLineDash([7, 5]);
-          s.beginPath(), s.arc(0, 0, radius + 17 + Math.sin(this.elapsedTime * 6) * 2, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-        }
         s.restore();
+        if (rp.buffs?.duy_quiet) {
+          drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 17 + Math.sin(this.elapsedTime * 6) * 2, tiltY: 0.76, rot: this.elapsedTime * 2.2, primary: "#34D399", secondary: "#F43F5E", darkRim: "#064E3B", coreWash: "rgba(52, 211, 153, 0.1)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
+        }
       }
       if (!downed && rp.shield > 0) {
         if (heroObj.id === "nguyen") drawNguyenBastionAura(s, vx, drawY, radius, this.elapsedTime, rp.shield / Math.max(1, rp.maxHp || 1500), Boolean(rp.buffs?.nguyen_rescue), a);
@@ -11614,6 +11818,7 @@ export class GameEngine {
           s.restore();
         }
       }
+      let isRemoteDanhDragon = !downed && heroObj.id === "danh" && Boolean(rp.buffs?.danh_dragon);
       if (!downed) {
         let rpState = {
           facing: rp.facing || 0,
@@ -11651,12 +11856,15 @@ export class GameEngine {
           chargeState: rp.buffs?.danh_charge > 0 ? { active: true, elapsed: rp.buffs.danh_charge, maxDur: 1 } : { active: false }
         };
         if (heroObj.id === "nguyen" && rp.buffs?.nguyen_satellites) drawNguyenSatellites(s, vx, drawY, this.elapsedTime * 3.2, this.elapsedTime, 56, a);
-        if (heroObj.id === "danh" && rp.buffs?.danh_dragon) drawDanhDragonForm(s, vx, drawY, radius, rp.facing || 0, this.elapsedTime, a);
         if (heroObj.id === "luan" && rp.buffs?.luan_c3_charge > 0) {
           let lAng = typeof rp.buffs.luan_c3_angle == "number" ? rp.buffs.luan_c3_angle : (rp.facing || 0), bLen = 520;
-          s.save(), s.strokeStyle = "rgba(192, 132, 252, 0.55)", s.lineWidth = 6 + rp.buffs.luan_c3_charge * 12, s.lineCap = "round", s.beginPath(), s.moveTo(vx, drawY), s.lineTo(vx + Math.cos(lAng) * bLen, drawY + Math.sin(lAng) * bLen), s.stroke(), s.strokeStyle = "#67E8F9", s.lineWidth = 2.5, s.setLineDash([12, 8]), s.beginPath(), s.moveTo(vx, drawY), s.lineTo(vx + Math.cos(lAng) * bLen, drawY + Math.sin(lAng) * bLen), s.stroke(), s.setLineDash([]), s.restore();
+          let ex = vx + Math.cos(lAng) * bLen, ey = drawY + Math.sin(lAng) * bLen;
+          s.save(), s.strokeStyle = "rgba(30, 10, 60, 0.68)", s.lineWidth = 8 + rp.buffs.luan_c3_charge * 14, s.lineCap = "round", s.beginPath(), s.moveTo(vx, drawY), s.lineTo(ex, ey), s.stroke(), s.restore();
+          drawBranchingArc(s, { x1: vx, y1: drawY, x2: ex, y2: ey, seed: this.elapsedTime * 20, width: 2.6, color: "#C084FC", coreColor: "#67E8F9", isMono: a });
         }
-        s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, drawY), s.rotate(rpState.attackAnimTimer > 0 ? rpState.attackAnimAngle : rpState.facing), drawHeroWeapon(s, heroObj.id, rpState, this.elapsedTime, a), s.restore();
+        if (!isRemoteDanhDragon) {
+          s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, drawY), s.rotate(rpState.attackAnimTimer > 0 ? rpState.attackAnimAngle : rpState.facing), drawHeroWeapon(s, heroObj.id, rpState, this.elapsedTime, a), s.restore();
+        }
         if (heroObj.id === "taidu") {
           let drMode = rp.buffs?.taidu_droneMode || "attack", prof = getTaiDuDroneProfile(drMode), drAng = this.elapsedTime * 2.2, drOrbit = prof.orbitDist ?? prof.orbitRadius ?? 56;
           drawTaiDuDrone(s, vx + Math.cos(drAng) * drOrbit, drawY + Math.sin(drAng) * drOrbit, drMode, rpState.facing, this.elapsedTime, 0, a, { playerX: vx, playerY: drawY, overdrive: rp.buffs?.taidu_droneOverdrive ? 1 : 0 });
@@ -11680,10 +11888,10 @@ export class GameEngine {
           s.save(), s.translate(vx, drawY), s.fillStyle = "rgba(24, 24, 27, 0.22)", s.strokeStyle = "#F8FAFC", s.lineWidth = 2.8, s.beginPath(), s.arc(0, 0, radius + 16, 0, Math.PI * 2), s.fill(), s.stroke(), s.restore();
         }
         if (heroObj.id === "dang" && rp.buffs?.dang_rageReady) {
-          s.save(), s.translate(vx, drawY), s.rotate(-this.elapsedTime * 4.2), s.strokeStyle = "#F8FAFC", s.lineWidth = 2.4, s.setLineDash([8, 6]), s.beginPath(), s.arc(0, 0, radius + 13, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+          drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 15, tiltY: 0.76, rot: -this.elapsedTime * 4.2, primary: "#F8FAFC", secondary: "#F59E0B", darkRim: "#18181B", coreWash: "rgba(248, 250, 252, 0.1)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
         }
         if (heroObj.id === "phong" && rp.buffs?.phong_ult) {
-          s.save(), s.translate(vx, drawY), s.rotate(this.elapsedTime * 5.2), s.strokeStyle = "#22D3EE", s.lineWidth = 2.4, s.setLineDash([10, 6]), s.beginPath(), s.arc(0, 0, radius + 15, 0, Math.PI * 2), s.stroke(), s.setLineDash([]), s.restore();
+          drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 16, tiltY: 0.78, rot: this.elapsedTime * 5.2, primary: "#22D3EE", secondary: "#FFFFFF", darkRim: "#082F49", coreWash: "rgba(34, 211, 238, 0.12)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
         }
       }
       if (!downed && heroObj.id === "thanh") {
@@ -11699,24 +11907,30 @@ export class GameEngine {
         }
       }
       if (!downed && heroObj.id === "bach" && (rp.buffs?.bach_dash || rp.buffs?.bach_c3)) {
-        s.save(), s.translate(vx, drawY), s.rotate(this.elapsedTime * 5.2);
-        s.strokeStyle = rp.buffs?.bach_c3 ? "#E879F9" : "#22D3EE", s.lineWidth = 2.4, s.setLineDash([10, 6]);
-        s.beginPath(), s.arc(0, 0, radius + 15, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-        s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 16, tiltY: 0.78, rot: this.elapsedTime * 5.2, primary: rp.buffs?.bach_c3 ? "#E879F9" : "#22D3EE", secondary: "#FFFFFF", darkRim: "#082F49", coreWash: "rgba(34, 211, 238, 0.12)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
       }
       if (!downed && heroObj.id === "thai" && rp.buffs?.thai_arena) {
-        s.save(), s.translate(vx, drawY), s.rotate(-this.elapsedTime * 3.0);
-        s.strokeStyle = "#FDE047", s.lineWidth = 2.8, s.setLineDash([12, 6]);
-        s.beginPath(), s.arc(0, 0, radius + 16, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-        s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 17, tiltY: 0.74, rot: -this.elapsedTime * 3.0, primary: "#FDE047", secondary: "#EF4444", darkRim: "#450A0A", coreWash: "rgba(253, 224, 71, 0.14)", midWash: "rgba(0,0,0,0)", segments: 4, isMono: a });
       }
       if (!downed && heroObj.id === "khair" && (rp.buffs?.khair_aim || rp.buffs?.khair_c3)) {
-        s.save(), s.translate(vx, drawY), s.rotate(this.elapsedTime * 2.6);
-        s.strokeStyle = rp.buffs?.khair_aim ? "#FACC15" : "#4ADE80", s.lineWidth = 2.4, s.setLineDash([8, 6]);
-        s.beginPath(), s.arc(0, 0, radius + 16, 0, Math.PI * 2), s.stroke(), s.setLineDash([]);
-        s.restore();
+        drawPerspectiveZoneBase(s, { x: vx, y: drawY, radius: radius + 17, tiltY: 0.76, rot: this.elapsedTime * 2.6, primary: rp.buffs?.khair_aim ? "#FACC15" : "#4ADE80", secondary: "#FFFFFF", darkRim: "#052E16", coreWash: "rgba(74, 222, 128, 0.1)", midWash: "rgba(0,0,0,0)", segments: 3, isMono: a });
       }
-      s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, drawY), drawHeroBody(s, { heroId: heroObj.id, elapsedTime: this.elapsedTime, radius, facing: rp.facing || 0, color: heroObj.color, accentColor: heroObj.accentColor, nhiAmmoType: rp.buffs?.nhi_ammo || "purple", ducanhRolling: heroObj.id === "ducanh" && Boolean(rp.buffs?.ducanh_rolling), ducanhFortress: heroObj.id === "ducanh" && Boolean(rp.buffs?.ducanh_fortress), bachDashing: heroObj.id === "bach" && Boolean(rp.buffs?.bach_dash || rp.buffs?.bach_c3), thaiInArena: heroObj.id === "thai" && Boolean(rp.buffs?.thai_arena), khairAiming: heroObj.id === "khair" && Boolean(rp.buffs?.khair_aim), isMono: a, hitFlash: 0, moveSpeedFactor: rp.moveSpeedFactor || 0, walkCyclePhase: rp.walkCyclePhase || 0, isUlt: Boolean(rp.buffs?.dung_c3 || rp.buffs?.gau_cuong || rp.buffs?.danh_dragon || rp.buffs?.danh_thienPhat || rp.buffs?.phong_ult || rp.buffs?.dang_c2 || rp.buffs?.dang_rageReady || rp.buffs?.dang_c3 || rp.buffs?.thien_ascended || rp.buffs?.thien_godMode || rp.buffs?.thanh_c3 || rp.buffs?.ducanh_rolling || rp.buffs?.ducanh_fortress || rp.buffs?.bach_c3 || rp.buffs?.thai_arena || rp.buffs?.khair_aim), isStealth: Boolean(rp.buffs?.bao_stealth), isDowned: downed, borderColor: downed ? "#F87171" : rp.buffs?.thien_ascended || rp.buffs?.thien_godMode ? "#FACC15" : rp.buffs?.ducanh_rolling || rp.buffs?.ducanh_fortress ? "#F59E0B" : rp.buffs?.bach_dash || rp.buffs?.bach_c3 ? "#22D3EE" : rp.buffs?.thai_arena ? "#FDE047" : rp.buffs?.khair_aim ? "#4ADE80" : "#38BDF8" }), s.restore();
+      if (isRemoteDanhDragon) {
+        let rAtkProg = (rp.attackAnimTimer || 0) > 0 ? Math.max(0, Math.min(1, 1 - (rp.attackAnimTimer || 0) / 0.22)) : 0;
+        let rFacing = (rp.attackAnimTimer || 0) > 0 ? (rp.attackAnimAngle || rp.facing || 0) : (rp.facing || 0);
+        s.save();
+        s.globalAlpha = bodyAlpha;
+        drawDanhDragonForm(s, vx, drawY, radius, rFacing, this.elapsedTime, a, {
+          isAttacking: (rp.attackAnimTimer || 0) > 0,
+          atkProg: rAtkProg,
+          atkParity: rp.attackSwingParity || 1,
+          isMoving: (rp.moveSpeedFactor || 0) > 0.05,
+          isDowned: downed,
+        });
+        s.restore();
+      } else {
+        s.save(), s.globalAlpha = bodyAlpha, s.translate(vx, drawY), drawHeroBody(s, { heroId: heroObj.id, elapsedTime: this.elapsedTime, radius, facing: rp.facing || 0, color: heroObj.color, accentColor: heroObj.accentColor, nhiAmmoType: rp.buffs?.nhi_ammo || "purple", ducanhRolling: heroObj.id === "ducanh" && Boolean(rp.buffs?.ducanh_rolling), ducanhFortress: heroObj.id === "ducanh" && Boolean(rp.buffs?.ducanh_fortress), bachDashing: heroObj.id === "bach" && Boolean(rp.buffs?.bach_dash || rp.buffs?.bach_c3), thaiInArena: heroObj.id === "thai" && Boolean(rp.buffs?.thai_arena), khairAiming: heroObj.id === "khair" && Boolean(rp.buffs?.khair_aim), isMono: a, hitFlash: 0, moveSpeedFactor: rp.moveSpeedFactor || 0, walkCyclePhase: rp.walkCyclePhase || 0, isUlt: Boolean(rp.buffs?.dung_c3 || rp.buffs?.gau_cuong || rp.buffs?.danh_dragon || rp.buffs?.danh_thienPhat || rp.buffs?.phong_ult || rp.buffs?.dang_c2 || rp.buffs?.dang_rageReady || rp.buffs?.dang_c3 || rp.buffs?.thien_ascended || rp.buffs?.thien_godMode || rp.buffs?.thanh_c3 || rp.buffs?.ducanh_rolling || rp.buffs?.ducanh_fortress || rp.buffs?.bach_c3 || rp.buffs?.thai_arena || rp.buffs?.khair_aim), isStealth: Boolean(rp.buffs?.bao_stealth), isDowned: downed, borderColor: downed ? "#F87171" : rp.buffs?.thien_ascended || rp.buffs?.thien_godMode ? "#FACC15" : rp.buffs?.ducanh_rolling || rp.buffs?.ducanh_fortress ? "#F59E0B" : rp.buffs?.bach_dash || rp.buffs?.bach_c3 ? "#22D3EE" : rp.buffs?.thai_arena ? "#FDE047" : rp.buffs?.khair_aim ? "#4ADE80" : "#38BDF8" }), s.restore();
+      }
       if (!downed && heroObj.id === "danh") {
         let stances = [
           { active: Boolean(rp.buffs?.danh_khaiSon), color: "#F59E0B", rim: "#FEF08A" },
@@ -12676,13 +12890,15 @@ export class GameEngine {
           }
         }
       } else if (ev.type === "wind_ribbon") {
-        this.spawnWindRibbon(ev.sx, ev.sy, ev.tx, ev.ty, ev.color || "#67E8F9", ev.accentColor || "#F8FAFC", ev.width || 10, ev.maxLife || 0.4, ev.side || 1, false);
+        this.spawnWindRibbon(ev.sx, ev.sy, ev.tx, ev.ty, ev.color || "#67E8F9", ev.accentColor || "#F8FAFC", ev.width || 10, ev.maxLife || 0.78, ev.side || 1, false);
       } else if (ev.type === "warp_ring") {
-        this.spawnWarpRing(ev.x, ev.y, ev.maxRadius || 110, ev.color || "#38BDF8", ev.accentColor || "#E879F9", ev.maxLife || 0.32, ev.angle || 0, ev.tiltY || 0.72);
+        this.spawnWarpRing(ev.x, ev.y, ev.maxRadius || 110, ev.color || "#38BDF8", ev.accentColor || "#E879F9", ev.maxLife || 0.62, ev.angle || 0, ev.tiltY || 0.72);
       } else if (ev.type === "ult_seq") {
-        this.spawnUltimateSequence(ev.heroId || heroId, ev.x, ev.y, ev.angle || 0, ev.radius || 210, ev.maxLife || 1.35, false);
+        this.spawnUltimateSequence(ev.heroId || heroId, ev.x, ev.y, ev.angle || 0, ev.radius || 210, ev.maxLife || 2.45, false);
       } else if (ev.type === "impact_tier") {
         this.spawnImpactBurst(ev.x, ev.y, ev.color || "#38BDF8", ev.tier || "light", ev.angle || 0);
+      } else if (ev.type === "enemy_death") {
+        spawnEnemyDeathVfx(this, ev, { attackerFacing: ev.attackerFacing });
       }
     }
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { drawHeroBody, drawHeroWeapon, drawDungCerberusForm } from "./weaponRenderer.js";
+import { drawHeroBody, drawHeroWeapon, drawDungCerberusForm, drawDanhDragonForm, drawUpgradedSlash } from "./weaponRenderer.js";
 import { R } from "./soundEngine.js";
 
 function hexToRgba(hex, alpha) {
@@ -20,11 +20,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(t * 0.8 * activeBoost);
     ctx.strokeStyle = "#FACC15";
     ctx.lineWidth = 2.0;
-    ctx.setLineDash([8, 5]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.12, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 6; seg++) {
+      const a0 = (Math.PI * 2 * seg) / 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.12, a0, a0 + 0.65);
+      ctx.stroke();
+    }
 
     ctx.rotate(-t * 1.7 * activeBoost);
     ctx.strokeStyle = "#38BDF8";
@@ -64,11 +66,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.translate(-Math.cos(idleFacing) * 9, -Math.sin(idleFacing) * 9);
     ctx.strokeStyle = "#22D3EE";
     ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 5; seg++) {
+      const a0 = t * 2.2 + (Math.PI * 2 * seg) / 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR, a0, a0 + 0.72);
+      ctx.stroke();
+    }
     ctx.restore();
     return;
   }
@@ -199,11 +203,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(-t * 1.3 * activeBoost);
     ctx.strokeStyle = "rgba(251, 191, 36, 0.72)";
     ctx.lineWidth = 1.6;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.08, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 6; seg++) {
+      const a0 = (Math.PI * 2 * seg) / 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.08, a0, a0 + 0.52);
+      ctx.stroke();
+    }
     for (let i = 0; i < 3; i++) {
       const a = (Math.PI * 2 * i) / 3;
       ctx.fillStyle = "#FDE047";
@@ -343,11 +349,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     // Tri-elixir orbiting reagent ring + corked mini-flasks
     ctx.strokeStyle = "rgba(192, 132, 252, 0.4)";
     ctx.lineWidth = 1.4;
-    ctx.setLineDash([6, 5]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.06, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 6; seg++) {
+      const a0 = t * 0.9 + (Math.PI * 2 * seg) / 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.06, a0, a0 + 0.56);
+      ctx.stroke();
+    }
 
     const cols = ["#E879F9", "#4ADE80", "#2DD4BF"];
     for (let i = 0; i < 3; i++) {
@@ -375,11 +383,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(t * 1.25 * activeBoost);
     ctx.strokeStyle = "#FACC15";
     ctx.lineWidth = 2.0;
-    ctx.setLineDash([8, 5]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.12, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 4; seg++) {
+      const a0 = (Math.PI * 0.5) * seg + 0.12;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.12, a0, a0 + 1.1);
+      ctx.stroke();
+    }
     for (let i = 0; i < 4; i++) {
       const a = (Math.PI / 2) * i;
       const sx = Math.cos(a) * auraR * 1.12;
@@ -413,11 +423,12 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(-t * 1.55 * activeBoost);
     ctx.strokeStyle = "rgba(245, 158, 11, 0.55)";
     ctx.lineWidth = 1.8;
-    ctx.setLineDash([10, 6]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.05, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    for (let seg = 0; seg < 4; seg++) {
+      const a0 = (Math.PI * 0.5) * seg + 0.18;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.05, a0, a0 + 1.05);
+      ctx.stroke();
+    }
 
     for (let i = 0; i < 4; i++) {
       const a = (Math.PI / 2) * i;
@@ -446,11 +457,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(t * 2.5 * activeBoost);
     ctx.strokeStyle = "rgba(34, 211, 238, 0.58)";
     ctx.lineWidth = 1.7;
-    ctx.setLineDash([11, 7]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.08, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 3; seg++) {
+      const a0 = (Math.PI * 2 * seg) / 3 + 0.18;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.08, a0, a0 + 1.35);
+      ctx.stroke();
+    }
 
     for (let i = 0; i < 3; i++) {
       const a = (Math.PI * 2 * i) / 3;
@@ -474,11 +487,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(t * 1.05 * activeBoost);
     ctx.strokeStyle = "rgba(245, 158, 11, 0.72)";
     ctx.lineWidth = 2.1;
-    ctx.setLineDash([12, 5]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.12, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 6; seg++) {
+      const a0 = (Math.PI / 3) * seg + 0.14;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.12, a0, a0 + 0.72);
+      ctx.stroke();
+    }
 
     for (let i = 0; i < 6; i++) {
       const a = (Math.PI / 3) * i;
@@ -506,11 +521,13 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
     ctx.rotate(-t * 1.3 * activeBoost);
     ctx.strokeStyle = "rgba(250, 204, 21, 0.65)";
     ctx.lineWidth = 1.6;
-    ctx.setLineDash([10, 8]);
-    ctx.beginPath();
-    ctx.arc(0, 0, auraR * 1.1, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 4; seg++) {
+      const a0 = (Math.PI * 0.5) * seg + 0.22;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.1, a0, a0 + 1.0);
+      ctx.stroke();
+    }
 
     for (let i = 0; i < 4; i++) {
       const a = (Math.PI / 2) * i;
@@ -653,57 +670,114 @@ export default function HeroPreviewCanvas({
       const minDim = Math.min(w, h);
       const baseRadius = compact ? minDim * 0.22 : Math.min(34, Math.max(22, minDim * 0.145));
       const scaleFactor = compact
-        ? Math.max(0.58, Math.min(1.05, minDim / 78))
-        : Math.max(1.0, Math.min(1.68, minDim / 165));
+        ? Math.max(0.52, Math.min(0.95, minDim / 84))
+        : Math.max(0.96, Math.min(1.52, minDim / 172));
 
       const mainCol = hero.color || "#38BDF8";
       const accentCol = hero.accentColor || "#BAE6FD";
       const t = st.elapsed;
 
-      // 1. Tactical MOBA Pedestal Glow (gentle breathing pulse)
+      // 1. Overhead MOBA Stage Spotlight Beam (non-compact hero showcase)
+      if (!compact) {
+        const beamGrad = ctx.createLinearGradient(cx, 0, cx, cy + minDim * 0.28);
+        beamGrad.addColorStop(0, hexToRgba(accentCol, 0.18));
+        beamGrad.addColorStop(0.55, hexToRgba(mainCol, 0.08));
+        beamGrad.addColorStop(1, "rgba(7, 11, 20, 0)");
+        ctx.fillStyle = beamGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx - minDim * 0.14, 0);
+        ctx.lineTo(cx + minDim * 0.14, 0);
+        ctx.lineTo(cx + minDim * 0.36, cy + minDim * 0.26);
+        ctx.lineTo(cx - minDim * 0.36, cy + minDim * 0.26);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 2. Tactical MOBA Pedestal Glow (gentle breathing pulse)
       const glowPulse = 1 + Math.sin(t * 2.5) * 0.06;
       const bgGlow = ctx.createRadialGradient(
         cx,
-        cy + minDim * 0.04,
+        cy + minDim * 0.06,
         2,
         cx,
-        cy + minDim * 0.04,
+        cy + minDim * 0.06,
         minDim * 0.48 * glowPulse
       );
-      bgGlow.addColorStop(0, hexToRgba(mainCol, compact ? 0.28 : 0.38));
-      bgGlow.addColorStop(0.55, hexToRgba(accentCol, 0.13));
+      bgGlow.addColorStop(0, hexToRgba(mainCol, compact ? 0.28 : 0.42));
+      bgGlow.addColorStop(0.55, hexToRgba(accentCol, 0.15));
       bgGlow.addColorStop(1, "rgba(7, 11, 20, 0)");
       ctx.fillStyle = bgGlow;
       ctx.beginPath();
-      ctx.arc(cx, cy + minDim * 0.04, minDim * 0.48 * glowPulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy + minDim * 0.06, minDim * 0.48 * glowPulse, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Pedestal Ring & Rotating Arcane Sigil
+      // 3. 3D Perspective Stone-and-Gold MOBA Dais + Rotating Arcane Sigil
       ctx.save();
-      ctx.translate(cx, cy + (compact ? 4 : 12));
-      ctx.scale(1, compact ? 0.54 : 0.52);
+      ctx.translate(cx, cy + (compact ? 6 : 22));
+      ctx.scale(1, compact ? 0.54 : 0.48);
 
-      const ringR = minDim * (compact ? 0.37 : 0.34);
-      ctx.strokeStyle = hexToRgba(accentCol, 0.38);
-      ctx.lineWidth = compact ? 1.1 : 1.8;
+      const ringR = minDim * (compact ? 0.38 : 0.36);
+
+      if (!compact) {
+        // Stepped obsidian stone dais plinth beneath sigil
+        ctx.fillStyle = "rgba(2, 6, 23, 0.72)";
+        ctx.beginPath();
+        ctx.arc(0, 10, ringR * 1.08, 0, Math.PI * 2);
+        ctx.fill();
+
+        const daisGrad = ctx.createRadialGradient(-ringR * 0.2, -ringR * 0.2, 4, 0, 0, ringR * 1.04);
+        daisGrad.addColorStop(0, "#1E293B");
+        daisGrad.addColorStop(0.7, "#0F172A");
+        daisGrad.addColorStop(1, "#020617");
+        ctx.fillStyle = daisGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, ringR * 1.04, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = hexToRgba(mainCol, 0.5);
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+
+        // Carved octagonal gold-accent inlay on plinth
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.34)";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const oa = (Math.PI / 4) * i + Math.PI / 8;
+          const ox = Math.cos(oa) * ringR * 0.92;
+          const oy = Math.sin(oa) * ringR * 0.92;
+          if (i === 0) ctx.moveTo(ox, oy);
+          else ctx.lineTo(ox, oy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = hexToRgba(accentCol, 0.44);
+      ctx.lineWidth = compact ? 1.1 : 1.9;
       ctx.beginPath();
       ctx.arc(0, 0, ringR, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.save();
       ctx.rotate(t * 0.72);
-      ctx.strokeStyle = hexToRgba(mainCol, 0.62);
-      ctx.lineWidth = compact ? 1.2 : 2.1;
+      ctx.strokeStyle = hexToRgba(mainCol, 0.68);
+      ctx.lineWidth = compact ? 1.2 : 2.3;
       for (let i = 0; i < 4; i++) {
         const a0 = Math.PI * 0.5 * i + 0.15;
         ctx.beginPath();
-        ctx.arc(0, 0, ringR * 0.82, a0, a0 + 0.72);
+        ctx.arc(0, 0, ringR * 0.8, a0, a0 + 0.72);
         ctx.stroke();
       }
       ctx.restore();
+
+      // Grounded cast shadow right under hero feet on top of dais
+      ctx.fillStyle = "rgba(2, 6, 23, 0.62)";
+      ctx.beginPath();
+      ctx.arc(0, 0, ringR * (compact ? 0.44 : 0.4), 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
 
-      // 3. Drifting Elemental Sparks
+      // 4. Drifting Elemental Sparks
       for (const sp of st.sparks) {
         const ang = sp.angle + t * sp.speed;
         const orbit = minDim * 0.38 * sp.dist;
@@ -716,23 +790,7 @@ export default function HeroPreviewCanvas({
         ctx.fill();
       }
 
-      // 4. Interactive / Showcase Attack Shockwave Arc
-      if (st.atkTimer > 0) {
-        const prog = 1 - st.atkTimer / 0.3;
-        const arcR = minDim * (0.28 + prog * 0.16);
-        const facing = st.pointerAngle ?? -0.25;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.strokeStyle = hexToRgba(accentCol, Math.max(0, 1 - prog) * 0.85);
-        ctx.lineWidth = compact ? 2.4 : 4.5 * (1 - prog * 0.5);
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.arc(0, 0, arcR, facing - 1.15, facing + 1.15);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // 5. Render Hero Signature Aura + Body + Weapon with dynamic breathing & stance
+      // 4. Render Hero Signature Aura + Body + Weapon + Archetype-Specific Attack VFX
       const idleFacing =
         st.pointerAngle !== null ? st.pointerAngle : -0.22 + Math.sin(t * 1.45) * 0.24;
       const hoverBob = Math.sin(t * 2.9) * (compact ? 1.8 : 3.5);
@@ -744,14 +802,14 @@ export default function HeroPreviewCanvas({
         radius: 22,
         facing: idleFacing,
         attackAnimTimer: st.atkTimer,
-        weaponAttackDuration: 0.3,
+        weaponAttackDuration: 0.58,
         attackSwingParity: st.parity,
         weaponSkillTimer: st.skillTimer,
-        weaponSkillDur: 0.46,
-        weaponCritTimer: st.skillTimer > 0.16 ? st.skillTimer : 0,
+        weaponSkillDur: 0.88,
+        weaponCritTimer: st.skillTimer > 0.25 ? st.skillTimer : 0,
         moveSpeedFactor: 0.36,
         walkCyclePhase: t * 3.8,
-        bowRecoilTimer: st.atkTimer > 0.1 ? st.atkTimer - 0.1 : 0,
+        bowRecoilTimer: st.atkTimer > 0.18 ? st.atkTimer - 0.18 : 0,
         phong_basicStep: st.parity > 0 ? 0 : 1,
         dang_basicStep: st.parity > 0 ? 0 : 1,
         dang_rageReady: hero.id === "dang" && st.skillTimer > 0,
@@ -765,19 +823,82 @@ export default function HeroPreviewCanvas({
         khair_aimZoomBlend: hero.id === "khair" && st.skillTimer > 0 ? 1 : 0,
       };
 
+      if (st.atkTimer > 0) {
+        const prog = Math.max(0, Math.min(1, 1 - st.atkTimer / 0.58));
+        const previewSlashMap = {
+          dung: "spear",
+          gau: "gau_punch",
+          dang: "dang_punch",
+          ducanh: "ducanh_hammer_cleave",
+          thai: "thai_arena_cleave",
+          danh: !compact && st.skillTimer > 0 ? "danh_firebreath" : "danh_slash",
+          tin: "tin_spatial_slash",
+          eohyen: "eohyen_frost_slash",
+          bao: "bao_slash",
+          phong: "phong_slash",
+          nguyen: "nguyen_wave",
+          thien: "thien_sword_slash",
+          bach: "bach_cross_slash",
+          khair: "khair_sniper_muzzle",
+        };
+        const slashKind = previewSlashMap[hero.id] || "cast_muzzle";
+        const isMuzzleKind = slashKind === "cast_muzzle" || slashKind === "khair_sniper_muzzle";
+        const muzzleDist = slashKind === "khair_sniper_muzzle" ? 34 : 28;
+        const slashX = isMuzzleKind ? Math.cos(idleFacing) * muzzleDist : 0;
+        const slashY = isMuzzleKind ? Math.sin(idleFacing) * muzzleDist : 0;
+        const slashRadius =
+          slashKind === "khair_sniper_muzzle"
+            ? 42
+            : slashKind === "cast_muzzle"
+            ? 28
+            : slashKind === "ducanh_hammer_cleave"
+            ? Math.min(102, Math.max(88, ((minDim * 0.46) / scaleFactor)))
+            : Math.min(72, Math.max(46, (minDim * 0.36) / scaleFactor));
+        ctx.save();
+        ctx.translate(cx, cy + hoverBob);
+        ctx.scale(scaleFactor * breatheScale, scaleFactor * breatheScale);
+        ctx.globalAlpha = prog < 0.28 ? 1 : Math.pow(Math.max(0, (1 - prog) / 0.72), 1.1);
+        drawUpgradedSlash(
+          ctx,
+          {
+            kind: slashKind,
+            x: slashX,
+            y: slashY,
+            angle: idleFacing,
+            radius: slashRadius,
+            spread: 1.45,
+            dir: st.parity,
+            step: st.parity > 0 ? 0 : 1,
+            empowered: st.skillTimer > 0,
+            color: mainCol,
+            accentColor: accentCol,
+            life: prog * 0.58,
+            maxLife: 0.58,
+          },
+          prog,
+          false,
+          true
+        );
+        ctx.restore();
+      }
+
       ctx.save();
       ctx.translate(cx, cy + hoverBob);
       ctx.scale(scaleFactor * breatheScale, scaleFactor * breatheScale);
 
       try {
         const auraRadius = Math.min(31, baseRadius / scaleFactor + 12);
-        drawHeroSignatureAura(ctx, hero.id, t, auraRadius, idleFacing, st);
+        const bodyRadius = Math.min(24, baseRadius / scaleFactor + 8);
+        const isDanhDragonPreview = !compact && hero.id === "danh" && st.skillTimer > 0;
+        if (!isDanhDragonPreview) {
+          drawHeroSignatureAura(ctx, hero.id, t, auraRadius, idleFacing, st);
+        }
         if (!compact && hero.id === "dung" && st.skillTimer > 0) {
           drawDungCerberusForm(
             ctx,
             0,
             0,
-            Math.min(24, baseRadius / scaleFactor + 8),
+            bodyRadius,
             idleFacing,
             t,
             { atkActive: st.atkTimer > 0, skillActive: true, berserkActive: false, ratio: Math.min(1, st.skillTimer / 0.15) },
@@ -785,28 +906,37 @@ export default function HeroPreviewCanvas({
           );
         }
 
-        drawHeroBody(ctx, {
-          heroId: hero.id,
-          radius: Math.min(24, baseRadius / scaleFactor + 8),
-          facing: idleFacing,
-          color: mainCol,
-          accentColor: accentCol,
-          nhiAmmoType: previewNhiAmmo,
-          bachDashing: hero.id === "bach" && st.skillTimer > 0,
-          thaiInArena: hero.id === "thai" && st.skillTimer > 0,
-          khairAiming: hero.id === "khair" && st.skillTimer > 0,
-          isMono: false,
-          hitFlash: false,
-          isUlt: hero.id === "thien" || st.skillTimer > 0,
-          isStealth: false,
-          isDowned: false,
-          elapsedTime: t,
-          moveSpeedFactor: 0.34,
-          walkCyclePhase: t * 3.8,
-        });
+        if (isDanhDragonPreview) {
+          drawDanhDragonForm(ctx, 0, 0, bodyRadius, idleFacing, t, false, {
+            isAttacking: st.atkTimer > 0,
+            atkProg: st.atkTimer > 0 ? 1 - st.atkTimer / 0.58 : 0,
+            atkParity: st.parity,
+            isMoving: true,
+          });
+        } else {
+          drawHeroBody(ctx, {
+            heroId: hero.id,
+            radius: bodyRadius,
+            facing: idleFacing,
+            color: mainCol,
+            accentColor: accentCol,
+            nhiAmmoType: previewNhiAmmo,
+            bachDashing: hero.id === "bach" && st.skillTimer > 0,
+            thaiInArena: hero.id === "thai" && st.skillTimer > 0,
+            khairAiming: hero.id === "khair" && st.skillTimer > 0,
+            isMono: false,
+            hitFlash: false,
+            isUlt: hero.id === "thien" || st.skillTimer > 0,
+            isStealth: false,
+            isDowned: false,
+            elapsedTime: t,
+            moveSpeedFactor: 0.34,
+            walkCyclePhase: t * 3.8,
+          });
 
-        ctx.rotate(idleFacing);
-        drawHeroWeapon(ctx, hero.id, fakePlayer, t, false);
+          ctx.rotate(idleFacing);
+          drawHeroWeapon(ctx, hero.id, fakePlayer, t, false);
+        }
       } catch (err) {
         if (typeof console !== "undefined") {
           console.warn("HeroPreviewCanvas render fallback:", hero.id, err);
@@ -866,9 +996,9 @@ export default function HeroPreviewCanvas({
       if (!compact && !locked) {
         st.autoFlourishTimer -= dt;
         if (st.autoFlourishTimer <= 0) {
-          st.autoFlourishTimer = 3.2;
-          st.atkTimer = 0.3;
-          st.skillTimer = 0.46;
+          st.autoFlourishTimer = 3.6;
+          st.atkTimer = 0.58;
+          st.skillTimer = 0.88;
           st.parity = -st.parity;
         }
       }
@@ -958,11 +1088,11 @@ export default function HeroPreviewCanvas({
   const handleStrike = () => {
     if (!interactive || !hero) return;
     const st = stateRef.current;
-    st.atkTimer = 0.3;
-    st.skillTimer = 0.46;
-    st.autoFlourishTimer = 3.2;
+    st.atkTimer = 0.58;
+    st.skillTimer = 0.88;
+    st.autoFlourishTimer = 3.6;
     st.parity = -st.parity;
-    canvasRef.current?.__arenaWakePreview?.(700);
+    canvasRef.current?.__arenaWakePreview?.(1100);
     R.playHeroSkillPreview(hero.id, "atk");
     onPreviewStrike?.(hero);
   };

@@ -3,24 +3,43 @@
 
 import { DUY_DECOY_REFLECT_RATIO } from "./combatLogic";
 import { drawVoidCityEnemySprite } from "./voidCityRenderer";
+import {
+  colorWithAlpha,
+  drawSculptedBladeSlash,
+  drawStructuralExplosion,
+  drawFacetedShard,
+  drawBranchingArc,
+  drawWindStreamRibbon,
+  drawPerspectiveZoneBase,
+  drawViscousDroplet,
+  drawArcaneMagicCircle,
+  drawEnergyVortexPillar,
+  drawImpactCraterDecal,
+} from "./vfxMaterials";
 
 function clamp(v, min, max) {
   return v < min ? min : v > max ? max : v;
 }
 
 function drawHandGrip(ctx, x, y, color, rim, radius = 4.2, isMono = false) {
+  const r = Math.max(1.6, radius);
   ctx.save();
   ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = isMono ? "#111111" : color;
   ctx.fill();
   ctx.strokeStyle = isMono ? "#FFFFFF" : rim;
   ctx.lineWidth = 1.4;
   ctx.stroke();
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.5)";
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(0.8, r * 0.65), -2.4, -0.7);
+  ctx.stroke();
   ctx.restore();
 }
 
-function drawTaperedArc(ctx, cx, cy, r, startAng, endAng, maxWidth, color, coreColor, isMono = false) {
+export function drawTaperedArc(ctx, cx, cy, r, startAng, endAng, maxWidth, color, coreColor, isMono = false) {
   let steps = 12;
   let dir = endAng >= startAng ? 1 : -1;
   let span = endAng - startAng;
@@ -259,7 +278,7 @@ function drawCosmicSlashLayer(ctx, opts) {
   ctx.fillStyle = isMono ? "#020617" : "#060414";
   ctx.fill();
 
-  // Twinkling cosmic micro-stars suspended inside the torn void cavity
+  // Twinkling cosmic micro-stars & 3D faceted spatial splinters inside the torn void cavity
   ctx.globalAlpha = alpha * 0.95;
   for (let si = 1; si <= 5; si++) {
     let u = si / 6;
@@ -270,28 +289,14 @@ function drawCosmicSlashLayer(ctx, opts) {
     drawFourPointStar(ctx, px, py, (2.4 + (si % 2) * 1.4) * alpha + 0.8, 0.8, "#FFFFFF", isMono ? "#94A3B8" : accentColor);
   }
 
-  // 2. Layered Additive Neon Edge Rim & Hot White Core
+  // 2. Sculpted Asymmetric Blade Crescent Rim & Razor Specular Bevel (zero flat uniform lines)
+  drawTaperedArc(ctx, cx, cy, radius, startAng, endAng, (8.5 + 3.5 * crackStrength) * alpha + 2.2, color, "#FFFFFF", isMono);
+  drawTaperedArc(ctx, cx, cy, radius * 0.94, startAng + span * 0.12, endAng, (4.2 + 1.6 * crackStrength) * alpha + 1.2, accentColor, "#FFFFFF", isMono);
   ctx.save();
   if (!isMono && enableAdditive) {
     ctx.globalCompositeOperation = "lighter";
   }
   ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, Math.min(startAng, endAng), Math.max(startAng, endAng));
-  ctx.globalAlpha = alpha * 0.42;
-  ctx.strokeStyle = isMono ? "#CBD5E1" : color;
-  ctx.lineWidth = (12 + 4 * crackStrength) * alpha + 2;
-  ctx.stroke();
-
-  ctx.globalAlpha = alpha * 0.78;
-  ctx.strokeStyle = isMono ? "#FFFFFF" : accentColor;
-  ctx.lineWidth = (5.2 + 2 * crackStrength) * alpha + 1.2;
-  ctx.stroke();
-
-  ctx.globalAlpha = alpha;
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = Math.max(1.4, 2.5 * alpha);
-  ctx.stroke();
 
   // 3. Trailing Energy Wake Ribbon behind outer rim
   ctx.globalAlpha = alpha * 0.58;
@@ -338,8 +343,8 @@ function drawCosmicSlashLayer(ctx, opts) {
 }
 
 export function drawWindRibbon(ctx, r, elapsedTime, isMono, enableAdditive = true) {
-  let f = clamp((r.life || 0) / Math.max(0.08, r.maxLife || 0.42), 0, 1);
-  let alpha = (1 - f) * (r.alpha || 0.85);
+  let f = clamp((r.life || 0) / Math.max(0.08, r.maxLife || 0.78), 0, 1);
+  let alpha = (f < 0.25 ? 1 : Math.pow((1 - f) / 0.75, 1.15)) * (r.alpha || 0.85);
   if (alpha <= 0.02) return;
 
   let sx = r.sx ?? r.x ?? 0;
@@ -355,20 +360,24 @@ export function drawWindRibbon(ctx, r, elapsedTime, isMono, enableAdditive = tru
   let waveAmp = (12 + Math.min(18, len * 0.14)) * (0.45 + 0.55 * Math.sin(f * Math.PI));
 
   ctx.save();
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
   ctx.lineCap = "round";
 
-  // 3 layered sinuous Bezier wind filaments
   for (let layer = 0; layer < 3; layer++) {
     let shift = (layer - 1) * 7 * waveSign;
     let c1x = sx + dx * 0.32 + nx * (waveAmp * waveSign + shift);
     let c1y = sy + dy * 0.32 + ny * (waveAmp * waveSign + shift);
     let c2x = sx + dx * 0.68 - nx * (waveAmp * 0.72 * waveSign - shift);
     let c2y = sy + dy * 0.68 - ny * (waveAmp * 0.72 * waveSign - shift);
-
-    ctx.globalAlpha = alpha * (layer === 1 ? 0.86 : 0.48);
+    if (layer === 1) {
+      ctx.globalAlpha = alpha * 0.38;
+      ctx.strokeStyle = "#060911";
+      ctx.lineWidth = 5.4 * (1 - f * 0.6) + 1.1;
+      ctx.beginPath();
+      ctx.moveTo(sx + nx * shift * 0.5, sy + ny * shift * 0.5);
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx + nx * shift * 0.25, ty + ny * shift * 0.25);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = alpha * (layer === 1 ? 0.84 : 0.46);
     ctx.strokeStyle = layer === 1 ? accentCol : mainCol;
     ctx.lineWidth = (layer === 1 ? 3.2 : 1.9) * (1 - f * 0.65) + 0.6;
     ctx.beginPath();
@@ -468,56 +477,57 @@ export function drawStylizedAfterimage(ctx, img, isMono, enableAdditive = true) 
 }
 
 export function drawWarpRing(ctx, ring, isMono, enableAdditive = true) {
-  let f = clamp((ring.life || 0) / Math.max(0.08, ring.maxLife || 0.32), 0, 1);
-  let alpha = (1 - f) * (ring.alpha || 0.85);
+  let f = clamp((ring.life || 0) / Math.max(0.08, ring.maxLife || 0.62), 0, 1);
+  let alpha = (f < 0.25 ? 1 : Math.pow((1 - f) / 0.75, 1.1)) * (ring.alpha || 0.85);
   if (alpha <= 0.02) return;
 
-  let maxR = ring.maxRadius || ring.radius || 110;
-  let r = maxR * (0.24 + 0.76 * Math.pow(f, 0.55));
-  let tilt = ring.tiltY || 0.72;
+  let maxR = Math.max(8, ring.maxRadius || ring.radius || 110);
+  let r = Math.max(4, maxR * (0.24 + 0.76 * Math.pow(f, 0.55)));
+  let tilt = clamp(ring.tiltY || 0.72, 0.45, 1.0);
   let col1 = isMono ? "#FFFFFF" : (ring.color || "#38BDF8");
   let col2 = isMono ? "#94A3B8" : (ring.accentColor || "#E879F9");
+  let baseRot = (ring.angle || 0) + f * 1.15;
 
   ctx.save();
-  ctx.translate(ring.x, ring.y);
-  ctx.rotate(ring.angle || 0);
+  ctx.translate(ring.x || 0, ring.y || 0);
+  ctx.rotate(baseRot);
   ctx.scale(1, tilt);
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
+
+  // Layer 0: Grounded dark contrast wake so warp arcs pop over bright terrain
+  ctx.globalAlpha = alpha * 0.52;
+  ctx.strokeStyle = "#060911";
+  ctx.lineWidth = Math.max(3, 8.5 * (1 - f));
+  for (let s = 0; s < 3; s++) {
+    let a0 = (Math.PI * 2 * s) / 3 + 0.12;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, a0, a0 + 1.48);
+    ctx.stroke();
   }
 
-  // Chromatic aberration outer & inner spatial distortion ellipses
-  ctx.globalAlpha = alpha * 0.62;
-  ctx.strokeStyle = col2;
-  ctx.lineWidth = (4.5 * (1 - f)) + 1.2;
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 1.04, 0, Math.PI * 2);
-  ctx.stroke();
+  // Layer 1: Tapered chromatic outer & inner asymmetric distortion crescents
+  for (let s = 0; s < 3; s++) {
+    let a0 = (Math.PI * 2 * s) / 3;
+    ctx.globalAlpha = alpha * 0.88;
+    drawTaperedArc(ctx, 0, 0, r * 1.04, a0 + 0.08, a0 + 1.56, Math.max(2.2, 8.5 * (1 - f)), col2, "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, r * 0.94, a0 + 0.22, a0 + 1.42, Math.max(1.8, 6.2 * (1 - f)), col1, "#FFFFFF", isMono);
+  }
 
-  ctx.globalAlpha = alpha * 0.88;
-  ctx.strokeStyle = col1;
-  ctx.lineWidth = (3.4 * (1 - f)) + 1.0;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.globalAlpha = alpha * 0.92;
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = Math.max(1.0, 2.0 * (1 - f));
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Radial spatial shear tick marks
-  ctx.globalAlpha = alpha * 0.7;
-  ctx.strokeStyle = col1;
-  ctx.lineWidth = 1.4;
-  for (let i = 0; i < 8; i++) {
-    let ang = (Math.PI / 4) * i + f * 0.9;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(ang) * r * 0.86, Math.sin(ang) * r * 0.86);
-    ctx.lineTo(Math.cos(ang) * r * 1.12, Math.sin(ang) * r * 1.12);
-    ctx.stroke();
+  // Layer 2: Faceted spatial shear crystals around rim
+  ctx.globalAlpha = alpha * 0.9;
+  for (let i = 0; i < 6; i++) {
+    let ang = (Math.PI / 3) * i + f * 0.9;
+    drawFacetedShard(ctx, {
+      x: Math.cos(ang) * r * 1.04,
+      y: Math.sin(ang) * r * 1.04,
+      size: Math.max(2.5, (5.2 - f * 2.5)),
+      rot: ang + Math.PI * 0.5,
+      aspect: 1.8,
+      primary: i % 2 === 0 ? col1 : col2,
+      highlight: "#FFFFFF",
+      shadow: "#090D16",
+      rim: col2,
+      isMono,
+    });
   }
 
   ctx.restore();
@@ -593,930 +603,504 @@ function drawUltJaggedBolt(ctx, x1, y1, x2, y2, amp, segs, seed, strokeCol, widt
 
 export function drawUltimateSequence(ctx, seq, elapsedTime, isMono, enableAdditive = true) {
   let f = clamp((seq.life || 0) / Math.max(0.2, seq.maxLife || 1.35), 0, 1);
-  let r = seq.radius || 210;
+  let r = Math.max(40, seq.radius || 210);
   let heroId = seq.heroId || "dung";
   let mainCol = isMono ? "#FFFFFF" : (seq.color || "#FACC15");
-  let accentCol = isMono ? "#94A3B8" : (seq.accentColor || "#38BDF8");
+  let accentCol = isMono ? "#CBD5E1" : (seq.accentColor || "#38BDF8");
   let hotCol = isMono ? "#FFFFFF" : "#FEF9C3";
 
   // 5-Stage Progression Envelopes:
-  // 1. Awakening (0.00..0.18), 2. Gathering (0.10..0.34), 3. Release (0.26..0.54),
-  // 4. Impact (0.42..0.78), 5. Aftermath (0.68..1.00)
+  // 1. Awakening (0.00..0.18), 2. Gathering (0.08..0.36), 3. Release (0.24..0.56),
+  // 4. Impact (0.38..0.82), 5. Aftermath (0.64..1.00)
   let wakeW = f < 0.18 ? Math.sin(clamp(f / 0.18, 0, 1) * Math.PI) : 0;
-  let gatherW = f >= 0.08 && f <= 0.36 ? Math.sin(clamp((f - 0.08) / 0.28, 0, 1) * Math.PI) : 0;
-  let releaseW = f >= 0.24 && f <= 0.56 ? Math.sin(clamp((f - 0.24) / 0.32, 0, 1) * Math.PI) : 0;
-  let impactW = f >= 0.4 && f <= 0.8 ? Math.sin(clamp((f - 0.4) / 0.4, 0, 1) * Math.PI) : 0;
-  let afterW = f >= 0.66 ? clamp((f - 0.66) / 0.14, 0, 1) * clamp(1 - (f - 0.72) / 0.28, 0, 1) : 0;
-  let fadeOut = f > 0.72 ? clamp(1 - (f - 0.72) / 0.28, 0, 1) : 1;
-  let domainAlpha = (f < 0.12 ? f / 0.12 : fadeOut) * 0.85;
+  let gatherW = f >= 0.08 && f <= 0.38 ? Math.sin(clamp((f - 0.08) / 0.3, 0, 1) * Math.PI) : 0;
+  let releaseW = f >= 0.22 && f <= 0.58 ? Math.sin(clamp((f - 0.22) / 0.36, 0, 1) * Math.PI) : 0;
+  let impactW = f >= 0.36 && f <= 0.84 ? Math.sin(clamp((f - 0.36) / 0.48, 0, 1) * Math.PI) : 0;
+  let afterW = f >= 0.6 ? clamp((f - 0.6) / 0.14, 0, 1) * clamp(1 - (f - 0.64) / 0.36, 0, 1) : 0;
+  let fadeOut = f > 0.64 ? clamp(1 - (f - 0.64) / 0.36, 0, 1) : 1;
+  let domainAlpha = clamp((f < 0.12 ? f / 0.12 : fadeOut) * 0.92, 0.01, 1);
   let baseAngle = seq.angle || 0;
+  let burstProg = clamp((f - 0.14) / 0.86, 0, 1);
+  let slashProg = clamp(f * 2.05, 0.04, 1);
 
   ctx.save();
-  ctx.translate(seq.x, seq.y);
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
+  ctx.translate(seq.x || 0, seq.y || 0);
+
+  // Stage 0: Universal grounded dark figure-ground contrast bed & crater/runic array foundation
+  ctx.globalAlpha = domainAlpha;
 
   switch (heroId) {
     case "dung": {
-      // Tam Đầu Khuyển · Chiến Thần: Triple Cerberus fang jaws, chained storm spears & crackling arcs
-      let sr = r * (0.65 + 0.35 * Math.min(1, f * 2.2));
-      ctx.globalAlpha = domainAlpha * 0.75;
-      ctx.save();
-      ctx.rotate(elapsedTime * 1.8);
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 3;
-      ctx.setLineDash([18, 8]);
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.88, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-
-      // 3 hound head lightning crest chevrons (120 deg apart)
+      // Tam Đầu Khuyển · Chiến Thần: Grounded Storm Crater + Arcane War-Seal + Triple Cerberus Claw Slashes + Storm Vortex Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.92, alpha: domainAlpha * 0.82, primary: "#38BDF8", highlight: "#FEF08A", shadow: "#082F49", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * (0.72 + 0.24 * Math.min(1, f * 2.2)), tiltY: 0.72, rot: elapsedTime * 1.9, sides: 6, primary: mainCol, highlight: "#FFFFFF", rim: accentCol, coreWash: "rgba(56, 189, 248, 0.22)", isMono });
       for (let hi = 0; hi < 3; hi++) {
-        let ha = baseAngle + (Math.PI * 2 * hi) / 3 + (gatherW * 0.35);
-        let reach = sr * (0.48 + 0.54 * clamp(f * 1.8, 0, 1));
-        ctx.save();
-        ctx.rotate(ha);
-        ctx.globalAlpha = domainAlpha * 0.9;
-        ctx.fillStyle = isMono ? "#CBD5E1" : hi === 0 ? "#FDE047" : mainCol;
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(reach * 0.96, 0);
-        ctx.lineTo(reach * 0.42, -22 * (0.7 + releaseW * 0.6));
-        ctx.lineTo(reach * 0.56, 0);
-        ctx.lineTo(reach * 0.42, 22 * (0.7 + releaseW * 0.6));
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        if (gatherW > 0.05 || impactW > 0.05) {
-          drawUltJaggedBolt(ctx, 16, 0, reach * 0.95, 0, 14, 5, elapsedTime * 18 + hi * 3, accentCol, 2.6 * (gatherW + impactW));
-        }
-        ctx.restore();
+        let ha = baseAngle + (Math.PI * 2 * hi) / 3 + gatherW * 0.35;
+        let reach = r * (0.48 + 0.48 * clamp(f * 1.6, 0, 1));
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: ha, radius: reach, spread: 1.55, progress: slashProg, style: "plasma_cyan", primary: hi === 0 ? "#FDE047" : mainCol, highlight: "#FFFFFF", shadow: "#082F49", rim: accentCol, tiltY: 0.82, isMono });
       }
-      if (releaseW > 0.05 || impactW > 0.05) {
-        let wave = Math.max(releaseW, impactW);
-        ctx.globalAlpha = wave * 0.9;
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 4.2 * wave;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.35 + f * 0.72), 0, Math.PI * 2);
-        ctx.stroke();
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.34, height: r * 1.28, progress: f, phase: elapsedTime * 7, primary: accentCol, highlight: "#FEF08A", shadow: "#0C4A6E", rim: mainCol, isMono });
+      for (let hi = 0; hi < 3; hi++) {
+        let ha = baseAngle + (Math.PI * 2 * hi) / 3 + gatherW * 0.35;
+        let reach = r * (0.48 + 0.48 * clamp(f * 1.6, 0, 1));
+        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(ha) * reach * 0.95, y2: Math.sin(ha) * reach * 0.95, seed: elapsedTime * 16 + hi * 3.1, width: 2.2, color: accentCol, coreColor: "#FFFFFF", isMono });
       }
-      if (afterW > 0.05) {
-        ctx.globalAlpha = afterW * 0.85;
-        for (let si = 0; si < 6; si++) {
-          let sa = (Math.PI / 3) * si + elapsedTime * 3;
-          drawUltJaggedBolt(ctx, Math.cos(sa) * r * 0.25, Math.sin(sa) * r * 0.25, Math.cos(sa) * r * 0.85, Math.sin(sa) * r * 0.85, 11, 4, elapsedTime * 20 + si, mainCol, 1.8 * afterW);
-        }
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.84, progress: burstProg, element: "plasma", color: mainCol, isMono, seed: 11 });
       }
       break;
     }
 
     case "tin": {
-      // Lãnh Địa Trắng Đen: Vạn Trảm — Crimson-obsidian X spatial fissure & shattered Ma Thạch shards
-      let tearLen = r * (0.55 + clamp(f * 2.1, 0, 1) * 0.62);
-      ctx.globalAlpha = domainAlpha * 0.82;
-      ctx.save();
-      ctx.rotate(-elapsedTime * 1.4);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
-      ctx.lineWidth = 2.2;
-      drawUltPolygon(ctx, 0, 0, 4, r * 0.76, Math.PI / 4);
-      ctx.stroke();
-      ctx.restore();
-
-      // Twin crossed dimensional slash tears
+      // Lãnh Địa Trắng Đen: Vạn Trảm — Obsidian Spatial Domain + Twin Dimensional Rift Cleaves + Shattering Ruby Crystals
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.95, alpha: domainAlpha * 0.88, primary: "#E11D48", highlight: "#FFE4E6", shadow: "#09040A", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: -elapsedTime * 1.6, sides: 4, starMode: true, primary: isMono ? "#FFFFFF" : "#F43F5E", highlight: "#FFFFFF", darkRim: "#020617", rim: "#FDA4AF", coreWash: "rgba(225, 29, 72, 0.24)", isMono });
       for (let xi = 0; xi < 2; xi++) {
         let xa = baseAngle + (xi === 0 ? 0.62 : -0.62);
-        let openW = (8 + 20 * Math.max(releaseW, impactW)) * fadeOut;
-        ctx.save();
-        ctx.rotate(xa);
-        ctx.globalAlpha = domainAlpha;
-        ctx.fillStyle = isMono ? "#0F172A" : "#31102F";
-        ctx.strokeStyle = isMono ? "#FFFFFF" : "#F43F5E";
-        ctx.lineWidth = 2.6;
-        ctx.beginPath();
-        ctx.moveTo(-tearLen, 0);
-        ctx.quadraticCurveTo(0, -openW, tearLen, 0);
-        ctx.quadraticCurveTo(0, openW, -tearLen, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(-tearLen * 0.92, 0);
-        ctx.lineTo(tearLen * 0.92, 0);
-        ctx.stroke();
-        ctx.restore();
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: xa, radius: r * 0.92, spread: 2.05, dir: xi === 0 ? 1 : -1, progress: slashProg, style: "blood_crystal", primary: "#E11D48", highlight: "#FFFFFF", shadow: "#09040A", rim: "#FDA4AF", tiltY: 0.84, isMono });
       }
-
-      // Orbiting / shattering Ma Thạch shards
-      let shardCount = 8;
-      ctx.globalAlpha = domainAlpha * 0.92;
-      for (let si = 0; si < shardCount; si++) {
-        let sa = (Math.PI * 2 * si) / shardCount + elapsedTime * 2.6;
-        let dist = gatherW > 0.1
-          ? r * (0.95 - gatherW * 0.6)
-          : r * (0.35 + f * 0.72);
-        drawUltDiamondShard(
-          ctx,
-          Math.cos(sa) * dist,
-          Math.sin(sa) * dist,
-          14 * fadeOut + 4,
-          5.5 * fadeOut + 1.5,
-          sa + f * 3,
-          si % 2 === 0 ? mainCol : "#FFFFFF",
-          isMono ? "#0F172A" : "#9F1239"
-        );
-      }
-      if (wakeW > 0.05 || releaseW > 0.05) {
-        drawFourPointStar(ctx, 0, 0, r * 0.36 * (wakeW + releaseW) + 10, 4.5, "#FFFFFF", mainCol);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.3, height: r * 1.32, progress: f, phase: elapsedTime * 8, primary: "#E11D48", highlight: "#FFFFFF", shadow: "#4C0519", rim: "#FB7185", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.24) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.78, progress: burstProg, element: "blood", color: "#E11D48", isMono, seed: 17 });
       }
       break;
     }
 
     case "kin": {
-      // Vạn Tiễn Thiên Không — Triple spiral emerald gale compass, crescent wind blades & arrow fan
-      ctx.globalAlpha = domainAlpha * 0.85;
-      for (let ring = 0; ring < 3; ring++) {
-        let rr = r * (0.36 + ring * 0.28) * (0.7 + 0.3 * clamp(f * 2, 0, 1));
-        let dir = ring % 2 === 0 ? 1 : -1;
-        ctx.save();
-        ctx.rotate(elapsedTime * (2.6 + ring * 1.1) * dir);
-        ctx.strokeStyle = ring === 1 ? accentCol : mainCol;
-        ctx.lineWidth = (3.4 - ring * 0.6) * fadeOut + 0.8;
-        for (let arc = 0; arc < 3; arc++) {
-          let a0 = (Math.PI * 2 * arc) / 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, rr, a0, a0 + 1.25);
-          ctx.stroke();
-        }
-        ctx.restore();
+      // Vạn Tiễn Thiên Không — Emerald Gale Runic Compass + Sculpted Cyclone Wind Ribbons + Arrow Fan Cleaves
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * (0.65 + 0.3 * Math.min(1, f * 2)), tiltY: 0.72, rot: elapsedTime * 3.1, sides: 6, primary: mainCol, highlight: "#FEF08A", rim: "#6EE7B7", coreWash: "rgba(16, 185, 129, 0.24)", isMono });
+      for (let wi = 0; wi < 4; wi++) {
+        let wa = baseAngle + (Math.PI * 0.5) * wi + f * 2.6;
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: wa, radius: r * 0.88, spread: 1.5, progress: slashProg, style: "wind_gale", primary: "#10B981", highlight: "#FEF08A", shadow: "#064E3B", rim: "#6EE7B7", tiltY: 0.76, isMono });
       }
-      // 8 Emerald Feather / Arrow Blades radiating in cyclone fan
-      for (let fi = 0; fi < 8; fi++) {
-        let fa = baseAngle + (Math.PI * 2 * fi) / 8 + f * 2.2;
-        let fr = r * (0.25 + clamp(f * 1.5, 0, 1) * 0.72);
-        ctx.save();
-        ctx.translate(Math.cos(fa) * fr, Math.sin(fa) * fr);
-        ctx.rotate(fa + 0.35);
-        ctx.globalAlpha = domainAlpha * 0.92;
-        ctx.fillStyle = fi % 2 === 0 ? mainCol : "#FFFFFF";
-        ctx.beginPath();
-        ctx.moveTo(18, 0);
-        ctx.lineTo(-8, -5.5);
-        ctx.lineTo(-3, 0);
-        ctx.lineTo(-8, 5.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.25, progress: f, phase: elapsedTime * 9, primary: "#10B981", highlight: "#FEF08A", shadow: "#064E3B", rim: "#34D399", isMono });
+      for (let wi = 0; wi < 4; wi++) {
+        let wa = baseAngle + (Math.PI * 0.5) * wi + f * 2.6;
+        drawWindStreamRibbon(ctx, { x: Math.cos(wa) * r * 0.3, y: Math.sin(wa) * r * 0.24, angle: wa + 0.9, length: r * 0.75, width: 8 * fadeOut + 2, phase: elapsedTime * 11 + wi, color: mainCol, coreColor: "#FEF08A", isMono });
       }
-      if (impactW > 0.05) {
-        drawFourPointStar(ctx, 0, 0, r * 0.3 * impactW + 10, 3.5, "#FFFFFF", mainCol);
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.25) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.76, progress: burstProg, element: "teal", color: mainCol, isMono, seed: 23 });
       }
       break;
     }
 
     case "trung": {
-      // Đại Thiên Thạch Hủy Diệt — Tilted 3D Orbital Astrolabe + 6 Astral Planets + Supernova Core
-      ctx.globalAlpha = domainAlpha * 0.88;
-      for (let orbit = 0; orbit < 2; orbit++) {
-        ctx.save();
-        ctx.rotate(baseAngle + (orbit === 0 ? 0.42 : -0.42) + elapsedTime * (orbit === 0 ? 1.3 : -1.1));
-        ctx.scale(1, 0.56);
-        ctx.strokeStyle = orbit === 0 ? mainCol : accentCol;
-        ctx.lineWidth = 2.8 * fadeOut + 0.8;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.86 - orbit * 0.14), 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-      // 6 Orbiting Astral Spheres collapsing then bursting outward
-      let orbitScale = gatherW > 0.05 ? 1 - gatherW * 0.55 : releaseW > 0.05 ? 0.45 + releaseW * 0.65 : 0.92 + afterW * 0.2;
+      // Đại Thiên Thạch Hủy Diệt — Tilted 3D Orbital Astrolabe + Meteor Impact Crater + Supernova Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.94, alpha: domainAlpha * 0.85, primary: accentCol, highlight: "#FEF08A", shadow: "#1E1B4B", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.86, tiltY: 0.64, rot: elapsedTime * 1.4, sides: 8, primary: mainCol, highlight: "#FFFFFF", darkRim: "#0F172A", rim: accentCol, coreWash: "rgba(99, 102, 241, 0.24)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.38, height: r * 1.4, progress: f, phase: elapsedTime * 6, primary: mainCol, highlight: "#FFFFFF", shadow: "#1E1B4B", rim: accentCol, isMono });
+      ctx.globalCompositeOperation = "source-over";
+      let orbitScale = gatherW > 0.05 ? 1 - gatherW * 0.5 : 0.72 + releaseW * 0.3;
       for (let pi = 0; pi < 6; pi++) {
         let pa = elapsedTime * 3.4 + (Math.PI * 2 * pi) / 6;
-        let px = Math.cos(pa) * r * 0.62 * orbitScale;
-        let py = Math.sin(pa) * r * 0.62 * orbitScale;
-        ctx.fillStyle = pi % 2 === 0 ? mainCol : accentCol;
-        ctx.beginPath();
-        ctx.arc(px, py, 8 * fadeOut + 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#FFFFFF";
-        ctx.beginPath();
-        ctx.arc(px, py, 3.5 * fadeOut + 1, 0, Math.PI * 2);
-        ctx.fill();
+        drawFacetedShard(ctx, { x: Math.cos(pa) * r * 0.62 * orbitScale, y: Math.sin(pa) * r * 0.44 * orbitScale, size: 7.5 * fadeOut + 2.5, rot: pa + elapsedTime * 2, shape: "crystal", primary: pi % 2 === 0 ? mainCol : accentCol, highlight: "#FFFFFF", shadow: "#1E1B4B", rim: accentCol, isMono });
       }
-      // Impact supernova meteor ring
-      if (impactW > 0.05 || releaseW > 0.05) {
-        let p = Math.max(impactW, releaseW);
-        ctx.globalAlpha = p * 0.92;
-        drawFourPointStar(ctx, 0, 0, r * 0.42 * p + 12, r * 0.1 * p + 3, "#FFFFFF", accentCol);
-        ctx.strokeStyle = accentCol;
-        ctx.lineWidth = 4.2 * p;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.28 + f * 0.78), 0, Math.PI * 2);
-        ctx.stroke();
+      if (f > 0.24) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.9, progress: burstProg, element: "arcane", color: accentCol, isMono, seed: 29 });
       }
       break;
     }
 
     case "eohyen": {
-      // Bão Băng Oanh Tạc — 6-branch Crystal Snowflake Mandala + Frost Shatter Hail
-      let sr = r * (0.48 + 0.52 * clamp(f * 1.9, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.9;
-      ctx.save();
-      ctx.rotate(elapsedTime * 0.9);
-      // 6 Glacial Crystal Branches with sub-twigs
-      for (let b = 0; b < 6; b++) {
-        let ba = (Math.PI / 3) * b;
-        ctx.save();
-        ctx.rotate(ba);
-        ctx.strokeStyle = b % 2 === 0 ? "#E0F2FE" : mainCol;
-        ctx.lineWidth = 2.8 * fadeOut + 0.8;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(sr * 0.94, 0);
-        ctx.moveTo(sr * 0.46, 0);
-        ctx.lineTo(sr * 0.64, -sr * 0.16);
-        ctx.moveTo(sr * 0.46, 0);
-        ctx.lineTo(sr * 0.64, sr * 0.16);
-        ctx.moveTo(sr * 0.7, 0);
-        ctx.lineTo(sr * 0.84, -sr * 0.11);
-        ctx.moveTo(sr * 0.7, 0);
-        ctx.lineTo(sr * 0.84, sr * 0.11);
-        ctx.stroke();
-        drawUltDiamondShard(ctx, sr * 0.96, 0, 10 * fadeOut + 3, 4.5, 0, "#FFFFFF", mainCol);
-        ctx.restore();
+      // Bão Băng Oanh Tạc — Glacial Frost Mandala + Ice Crystal Shatter Crater + Blizzard Vortex Column
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.92, alpha: domainAlpha * 0.84, primary: "#0284C7", highlight: "#E0F2FE", shadow: "#082F49", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * (0.64 + 0.34 * Math.min(1, f * 1.9)), tiltY: 0.72, rot: elapsedTime * 1.1, sides: 6, primary: "#38BDF8", highlight: "#FFFFFF", darkRim: "#0C4A6E", rim: "#BAE6FD", coreWash: "rgba(56, 189, 248, 0.22)", isMono });
+      for (let b = 0; b < 3; b++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + (Math.PI * 2 * b) / 3, radius: r * 0.84, spread: 1.5, progress: slashProg, style: "frost", primary: "#0284C7", highlight: "#FFFFFF", shadow: "#082F49", rim: "#BAE6FD", tiltY: 0.78, isMono });
       }
-      drawUltPolygon(ctx, 0, 0, 6, sr * 0.52, 0);
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-      ctx.restore();
-
-      if (impactW > 0.05) {
-        ctx.globalAlpha = impactW * 0.85;
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 4 * impactW;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.4 + f * 0.65), 0, Math.PI * 2);
-        ctx.stroke();
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.28, progress: f, phase: elapsedTime * 7, primary: "#0EA5E9", highlight: "#F0F9FF", shadow: "#0C4A6E", rim: "#BAE6FD", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.84, progress: burstProg, element: "frost", color: mainCol, isMono, seed: 31 });
       }
       break;
     }
 
     case "longhoi": {
-      // Hỏa Hồ Liệt Diễm — 9-Tail Fox-Fire Lotus Petals unfurling + Swirling Solar Embers
-      ctx.globalAlpha = domainAlpha * 0.9;
-      let petalReach = r * (0.5 + 0.54 * clamp(f * 1.75, 0, 1));
-      ctx.save();
-      ctx.rotate(elapsedTime * 1.6);
-      for (let ti = 0; ti < 9; ti++) {
-        let ta = (Math.PI * 2 * ti) / 9 + Math.sin(elapsedTime * 5 + ti) * 0.08;
-        drawUltPetal(
-          ctx,
-          ta,
-          r * 0.16,
-          petalReach,
-          20 * (0.65 + releaseW * 0.55),
-          isMono ? "rgba(255,255,255,0.45)" : ti % 2 === 0 ? "rgba(249, 115, 22, 0.55)" : "rgba(239, 68, 68, 0.48)",
-          ti % 3 === 0 ? "#FFFFFF" : accentCol
-        );
+      // Hỏa Hồ Liệt Diễm — Nine-Tail Fox-Fire Crater + Blazing Runic Wheel + Swirling Dragonfire Slashes + Solar Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.95, alpha: domainAlpha * 0.88, primary: "#EA580C", highlight: "#FEF08A", shadow: "#431407", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: elapsedTime * 1.8, sides: 5, primary: "#F97316", highlight: "#FEF08A", darkRim: "#431407", rim: "#FB923C", coreWash: "rgba(249, 115, 22, 0.26)", isMono });
+      for (let fi = 0; fi < 3; fi++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + (Math.PI * 2 * fi) / 3 + elapsedTime * 0.8, radius: r * 0.88, spread: 1.7, progress: slashProg, style: "fire_dragon", primary: "#F97316", highlight: "#FEF08A", shadow: "#7C2D12", rim: "#EF4444", tiltY: 0.78, isMono });
       }
-      ctx.restore();
-      // Blazing wildfire shock ring
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = (4.5 * Math.max(releaseW, impactW)) + 1.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, r * (0.34 + f * 0.72), 0, Math.PI * 2);
-      ctx.stroke();
-      drawFourPointStar(ctx, 0, 0, r * 0.24 * (0.5 + impactW) + 8, 4, "#FFFFFF", mainCol);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.36, height: r * 1.38, progress: f, phase: elapsedTime * 8.5, primary: "#EA580C", highlight: "#FEF08A", shadow: "#7C2D12", rim: "#FB923C", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.88, progress: burstProg, element: "fire", color: "#EA580C", isMono, seed: 37 });
+      }
       break;
     }
 
     case "duccong": {
-      // Thiên Hà Sụp Đổ — Dark Singularity Event Horizon + Tilted Accretion Disk + Inward Gravity Streaks
-      let pullR = r * (f < 0.45 ? 1.0 - f * 1.15 : 0.48 + (f - 0.45) * 1.1);
-      ctx.globalAlpha = domainAlpha * 0.92;
-      // Dark singularity pit (even in additive, crisp dark-violet ring contrast)
+      // Thiên Hà Sụp Đổ — Dark Event Horizon Singularity Well + Tilted Accretion Rings + Void Pillar + Implosion Dome
+      let pullR = r * (f < 0.45 ? 1.0 - f * 1.05 : 0.52 + (f - 0.45) * 1.0);
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: Math.max(36, pullR * 0.94), tiltY: 0.64, rot: -elapsedTime * 2.5, sides: 6, primary: "#A855F7", highlight: "#F5D0FE", darkRim: "#090414", rim: "#38BDF8", coreWash: "rgba(126, 34, 206, 0.3)", isMono });
       ctx.save();
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = isMono ? "rgba(15, 23, 42, 0.62)" : "rgba(24, 6, 46, 0.65)";
+      ctx.fillStyle = isMono ? "rgba(15, 23, 42, 0.78)" : "rgba(12, 4, 28, 0.82)";
       ctx.beginPath();
-      ctx.arc(0, 0, Math.max(18, r * 0.34 * (1 - gatherW * 0.35)), 0, Math.PI * 2);
+      ctx.ellipse(0, 0, Math.max(20, r * 0.32 * (1 - gatherW * 0.3)), Math.max(14, r * 0.22 * (1 - gatherW * 0.3)), 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-
-      // Tilted twin accretion disks
-      for (let di = 0; di < 2; di++) {
-        ctx.save();
-        ctx.rotate(baseAngle + (di === 0 ? 0.3 : -0.55) + elapsedTime * (di === 0 ? 2.4 : -1.9));
-        ctx.scale(1.15, 0.42);
-        ctx.strokeStyle = di === 0 ? mainCol : accentCol;
-        ctx.lineWidth = (3.8 - di) * fadeOut + 1.1;
-        ctx.beginPath();
-        ctx.arc(0, 0, Math.max(24, pullR * 0.85), 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.3, height: r * 1.35, progress: f, phase: -elapsedTime * 8, primary: "#9333EA", highlight: "#F5D0FE", shadow: "#1E1B4B", rim: "#38BDF8", isMono });
+      for (let gi = 0; gi < 4; gi++) {
+        let ga = (Math.PI * 0.5) * gi - elapsedTime * 3.2;
+        drawWindStreamRibbon(ctx, { x: Math.cos(ga) * r * 0.5, y: Math.sin(ga) * r * 0.38, angle: ga + Math.PI * 0.65, length: r * 0.72, width: 9 * fadeOut + 2, phase: elapsedTime * 10 + gi, color: "#A855F7", coreColor: "#38BDF8", isMono });
       }
-      // Swirling spiral gravity threads
-      for (let gi = 0; gi < 8; gi++) {
-        let ga = (Math.PI * 2 * gi) / 8 - elapsedTime * 3.8;
-        ctx.strokeStyle = gi % 2 === 0 ? accentCol : "#FFFFFF";
-        ctx.lineWidth = 2 * fadeOut + 0.5;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(ga) * r * 0.96, Math.sin(ga) * r * 0.96);
-        ctx.quadraticCurveTo(Math.cos(ga + 0.65) * r * 0.45, Math.sin(ga + 0.65) * r * 0.45, Math.cos(ga + 1.2) * 18, Math.sin(ga + 1.2) * 18);
-        ctx.stroke();
-      }
-      if (impactW > 0.05) {
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 4.5 * impactW;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.2 + (f - 0.4) * 1.45), 0, Math.PI * 2);
-        ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.28) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.86, progress: burstProg, element: "void", color: "#A855F7", isMono, seed: 41 });
       }
       break;
     }
 
     case "gau": {
-      // Cuồng Hùng Giáng Lâm — Triple Amber Bear-Claw Tears + Seismic Anvil Impact Ring
-      ctx.globalAlpha = domainAlpha * 0.92;
-      let slamScale = f < 0.35 ? 1.25 - f * 1.4 : 0.76 + (f - 0.35) * 0.45;
-      ctx.save();
-      ctx.rotate(baseAngle);
-      // 3 deep parallel claw gouges
+      // Cuồng Hùng Giáng Lâm — Seismic Earth Anvil Crater + Triple Heavy Claw Cleaves + Earthshock Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.98, alpha: domainAlpha * 0.92, primary: "#D97706", highlight: "#FEF3C7", shadow: "#1C1917", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.82, tiltY: 0.72, rot: elapsedTime * 0.9, sides: 8, starMode: false, primary: "#EA580C", highlight: "#FEF08A", darkRim: "#292524", rim: "#F59E0B", coreWash: "rgba(217, 119, 6, 0.24)", isMono });
       for (let ci = -1; ci <= 1; ci++) {
-        let oy = ci * 28;
-        let clen = r * (0.72 + clamp(f * 2.1, 0, 1) * 0.32);
-        ctx.strokeStyle = ci === 0 ? "#FFFFFF" : mainCol;
-        ctx.lineWidth = (ci === 0 ? 7.5 : 5.5) * fadeOut + 1.4;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(-clen * 0.62, oy - 16);
-        ctx.quadraticCurveTo(0, oy + 6, clen * 0.72, oy - 6);
-        ctx.stroke();
+        drawSculptedBladeSlash(ctx, { x: Math.cos(baseAngle + Math.PI / 2) * ci * 18, y: Math.sin(baseAngle + Math.PI / 2) * ci * 18, angle: baseAngle, radius: r * (ci === 0 ? 0.94 : 0.78), spread: 1.45, progress: slashProg, style: "heavy_earth", primary: ci === 0 ? "#F59E0B" : "#EA580C", highlight: "#FEF3C7", shadow: "#292524", rim: "#FBBF24", tiltY: 0.84, isMono });
       }
-      ctx.restore();
-      // Jagged seismic anvil fracture ring
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 3.4 * fadeOut + 1;
-      ctx.beginPath();
-      for (let si = 0; si <= 16; si++) {
-        let sa = (Math.PI * 2 * si) / 16;
-        let sr = r * (si % 2 === 0 ? 0.88 : 0.72) * slamScale;
-        let sx = Math.cos(sa) * sr;
-        let sy = Math.sin(sa) * sr;
-        if (si === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.36, height: r * 1.24, progress: f, phase: elapsedTime * 6, primary: "#D97706", highlight: "#FEF3C7", shadow: "#292524", rim: "#F59E0B", debrisShape: "rock", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.2) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.9, progress: burstProg, element: "earth", color: "#EA580C", isMono, seed: 43 });
       }
-      ctx.closePath();
-      ctx.stroke();
       break;
     }
 
     case "bao": {
-      // Vạn Ảnh Tàn Sát — Shattered Violet-Magenta Prism Mirrors + 6 Converging Phantom Daggers
-      ctx.globalAlpha = domainAlpha * 0.9;
-      for (let mi = 0; mi < 6; mi++) {
-        let ma = baseAngle + (Math.PI * 2 * mi) / 6 + elapsedTime * 1.4;
-        let rad = f < 0.4 ? r * (0.92 - f * 1.35) : r * (0.38 + (f - 0.4) * 1.05);
-        ctx.save();
-        ctx.translate(Math.cos(ma) * rad, Math.sin(ma) * rad);
-        ctx.rotate(ma + Math.PI);
-        // Mirror shard triangle + phantom dagger
-        ctx.fillStyle = isMono ? "rgba(255,255,255,0.45)" : mi % 2 === 0 ? "rgba(168, 85, 247, 0.55)" : "rgba(244, 63, 94, 0.5)";
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(22, 0);
-        ctx.lineTo(-10, -11);
-        ctx.lineTo(-4, 0);
-        ctx.lineTo(-10, 11);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
+      // Vạn Ảnh Tàn Sát — Shattered Violet-Magenta Mirror Domain + Phantom Crossed Blade Slashes + Void Burst
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.9, alpha: domainAlpha * 0.82, primary: "#9333EA", highlight: "#F5D0FE", shadow: "#1E1B4B", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.82, tiltY: 0.72, rot: elapsedTime * 1.6, sides: 6, primary: "#A855F7", highlight: "#FFFFFF", darkRim: "#1E1B4B", rim: "#F43F5E", coreWash: "rgba(168, 85, 247, 0.24)", isMono });
+      for (let bi = 0; bi < 3; bi++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + (Math.PI * 2 * bi) / 3, radius: r * 0.9, spread: 1.7, dir: bi % 2 === 0 ? 1 : -1, progress: slashProg, style: "shadow_blade", primary: bi % 2 === 0 ? "#9333EA" : "#E11D48", highlight: "#F5D0FE", shadow: "#090414", rim: "#E879F9", tiltY: 0.8, isMono });
       }
-      // Prism web connections
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 1.8 * fadeOut + 0.5;
-      drawUltPolygon(ctx, 0, 0, 6, r * (0.68 + releaseW * 0.22), elapsedTime * 1.2);
-      ctx.stroke();
-      if (impactW > 0.05) {
-        drawFourPointStar(ctx, 0, 0, r * 0.34 * impactW + 10, 3.2, "#FFFFFF", mainCol);
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.82, progress: burstProg, element: "void", color: "#9333EA", isMono, seed: 47 });
       }
       break;
     }
 
     case "danh": {
-      // Hóa Rồng · Chân Long Giáng Thế — Coiling Imperial Crimson-Gold Dragon Rune Wheel & Twin Crescent Claws
-      let sr = r * (0.58 + 0.42 * clamp(f * 1.8, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      ctx.save();
-      ctx.rotate(elapsedTime * 2.1);
-      // Coiling double-helix dragon energy arcs
-      for (let arc = 0; arc < 2; arc++) {
+      // Hóa Rồng · Chân Long Giáng Thế — Imperial Dragon Rune Wheel + Claw Gouge Cleaves + Rising Fire Dragons
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.98, alpha: domainAlpha * 0.9, primary: "#EF4444", highlight: "#FEF08A", shadow: "#450A0A", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.9, tiltY: 0.72, rot: elapsedTime * 2.1, sides: 8, primary: "#EF4444", highlight: "#FEF08A", darkRim: "#450A0A", rim: "#F59E0B", coreWash: "rgba(239, 68, 68, 0.28)", isMono });
+      for (let di = 0; di < 2; di++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + di * Math.PI, radius: r * 0.94, thickness: r * 0.20, spread: 2.1, dir: di === 0 ? 1 : -1, progress: slashProg, style: "fire_dragon", primary: "#EF4444", highlight: "#FEF08A", shadow: "#450A0A", rim: "#FBBF24", tiltY: 0.78, isMono });
+      }
+      // Tri-Spiraling Articulated Imperial Fire Dragons bursting outward
+      for (let dri = 0; dri < 3; dri++) {
+        let dAng = baseAngle + (Math.PI * 2 / 3) * dri + f * 2.4;
+        let dDist = r * (0.42 + 0.48 * Math.sin(Math.min(1, f * 1.15) * Math.PI * 0.5));
         ctx.save();
-        ctx.rotate(arc * Math.PI);
-        ctx.strokeStyle = arc === 0 ? accentCol : mainCol;
-        ctx.lineWidth = 5.5 * fadeOut + 1.5;
+        ctx.globalAlpha = 0.78 * domainAlpha;
+        ctx.translate(Math.cos(dAng) * dDist, Math.sin(dAng) * dDist * 0.78);
+        ctx.rotate(dAng + 0.45);
+        ctx.scale(0.68, 0.68);
+        // Sinuous dragon spine + flame wings + roaring horned head
+        ctx.strokeStyle = isMono ? "#000000" : "#450A0A";
+        ctx.lineWidth = 10;
+        ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.arc(0, 0, sr * 0.82, 0.15, Math.PI * 0.85);
+        ctx.moveTo(-48, Math.sin(elapsedTime * 16 + dri) * 8);
+        ctx.quadraticCurveTo(-22, -Math.sin(elapsedTime * 16 + dri) * 10, 6, 0);
         ctx.stroke();
-        // Dragon head chevron at leading edge
-        let hx = Math.cos(0.15) * sr * 0.82;
-        let hy = Math.sin(0.15) * sr * 0.82;
-        drawUltDiamondShard(ctx, hx, hy, 16, 7, 0.15 - Math.PI / 2, "#FFFFFF", accentCol);
+        ctx.strokeStyle = isMono ? "#FFFFFF" : "#F97316";
+        ctx.lineWidth = 5.6;
+        ctx.stroke();
+        ctx.strokeStyle = "#FEF08A";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        for (let ws of [-1, 1]) {
+          ctx.fillStyle = isMono ? "rgba(255,255,255,0.75)" : "rgba(220, 38, 38, 0.88)";
+          ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(-4, ws * 4);
+          ctx.lineTo(-20, ws * 26);
+          ctx.lineTo(-28, ws * 11);
+          ctx.lineTo(-40, ws * 19);
+          ctx.lineTo(-18, ws * 3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = isMono ? "#FFFFFF" : "#EF4444";
+        ctx.strokeStyle = isMono ? "#000000" : "#FEF08A";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(28, 0);
+        ctx.lineTo(10, -10);
+        ctx.lineTo(-6, -7);
+        ctx.lineTo(-6, 7);
+        ctx.lineTo(10, 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = "#FEF08A";
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(4, -7);
+        ctx.lineTo(-14, -18);
+        ctx.moveTo(4, 7);
+        ctx.lineTo(-14, 18);
+        ctx.stroke();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(14, -3.5, 2.2, 0, Math.PI * 2);
+        ctx.arc(14, 3.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
       }
-      drawUltPolygon(ctx, 0, 0, 8, sr * 0.56, 0);
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      // non-additive pillar contrast
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.28, height: r * 1.28, progress: f, phase: elapsedTime * 7.5, primary: "#EF4444", highlight: "#FEF08A", shadow: "#450A0A", rim: "#F59E0B", isMono });
       ctx.restore();
-      if (releaseW > 0.05 || impactW > 0.05) {
-        let p = Math.max(releaseW, impactW);
-        drawFourPointStar(ctx, 0, 0, r * 0.42 * p + 12, 5, "#FFFFFF", mainCol);
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.25) {
+        ctx.save();
+        ctx.globalAlpha = 0.52;
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.88, progress: burstProg, element: "fire", color: "#EF4444", isMono, seed: 53 });
+        ctx.restore();
       }
       break;
     }
 
     case "luan": {
-      // Tia Hủy Diệt Phân Nhánh — Asymmetrical Fractured Dimensional Mirror Web + Prism Convergence Beams
-      ctx.globalAlpha = domainAlpha * 0.9;
-      let shardAngles = [0.2, 0.95, 1.85, 2.7, 3.55, 4.45, 5.3];
-      for (let i = 0; i < shardAngles.length; i++) {
-        let a1 = shardAngles[i] + baseAngle;
-        let a2 = shardAngles[(i + 1) % shardAngles.length] + baseAngle;
-        let r1 = r * (0.58 + (i % 3) * 0.14);
-        let r2 = r * (0.58 + ((i + 1) % 3) * 0.14);
-        ctx.strokeStyle = i % 2 === 0 ? mainCol : accentCol;
-        ctx.lineWidth = 2.2 * fadeOut + 0.6;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a1) * r1, Math.sin(a1) * r1);
-        ctx.lineTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
-        ctx.stroke();
-      }
-      // Primary directional laser split flash
-      ctx.save();
-      ctx.rotate(baseAngle);
+      // Tia Hủy Diệt Phân Nhánh — Dimensional Mirror Hex Web + Tri-Split Branching Laser Pillar + Void Fracture
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.7, rot: elapsedTime * 1.5, sides: 5, primary: mainCol, highlight: "#FFFFFF", darkRim: "#1E1B4B", rim: accentCol, coreWash: "rgba(56, 189, 248, 0.22)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.36, progress: f, phase: elapsedTime * 9, primary: mainCol, highlight: "#FFFFFF", shadow: "#1E1B4B", rim: accentCol, isMono });
       for (let branch of [-0.42, 0, 0.42]) {
-        ctx.strokeStyle = branch === 0 ? "#FFFFFF" : accentCol;
-        ctx.lineWidth = (branch === 0 ? 5.5 : 3) * (0.4 + Math.max(releaseW, impactW));
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(branch) * r * 1.08, Math.sin(branch) * r * 1.08);
-        ctx.stroke();
+        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(baseAngle + branch) * r * 1.04, y2: Math.sin(baseAngle + branch) * r * 0.88, seed: elapsedTime * 15 + branch * 8, width: branch === 0 ? 4.2 : 2.6, color: branch === 0 ? mainCol : accentCol, coreColor: "#FFFFFF", isMono });
       }
-      ctx.restore();
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.24) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.8, progress: burstProg, element: "plasma", color: mainCol, isMono, seed: 59 });
+      }
       break;
     }
 
     case "taidu": {
-      // Oanh Tạc Vệ Tinh — Tactical Hex Grid + Lock-On Crosshairs + Orbital Carpet Shock Rings
-      ctx.globalAlpha = domainAlpha * 0.9;
-      let sr = r * (0.64 + 0.36 * clamp(f * 2, 0, 1));
-      ctx.save();
-      ctx.rotate(elapsedTime * 1.2);
-      drawUltPolygon(ctx, 0, 0, 6, sr * 0.88, 0);
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 2.6;
-      ctx.stroke();
-      drawUltPolygon(ctx, 0, 0, 6, sr * 0.56, Math.PI / 6);
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-      // 4 Tactical Target Brackets
-      for (let bi = 0; bi < 4; bi++) {
-        let ba = (Math.PI / 2) * bi + Math.PI / 4;
-        ctx.save();
-        ctx.rotate(ba);
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2.5 * fadeOut + 0.8;
-        ctx.beginPath();
-        ctx.moveTo(sr * 0.35, 0);
-        ctx.lineTo(sr * 1.02, 0);
-        ctx.moveTo(sr * 0.72, -12);
-        ctx.lineTo(sr * 0.82, 0);
-        ctx.lineTo(sr * 0.72, 12);
-        ctx.stroke();
-        ctx.restore();
-      }
-      if (impactW > 0.05) {
-        ctx.strokeStyle = accentCol;
-        ctx.lineWidth = 4.4 * impactW;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.25 + f * 0.8), 0, Math.PI * 2);
-        ctx.stroke();
+      // Oanh Tạc Vệ Tinh — Tactical Orbital Strike Array + Ionized Beam Pillar + Scorched Carpet Blast
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.94, alpha: domainAlpha * 0.88, primary: mainCol, highlight: "#FEF08A", shadow: "#0F172A", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.88, tiltY: 0.72, rot: elapsedTime * 1.3, sides: 6, primary: mainCol, highlight: "#FFFFFF", darkRim: "#0F172A", rim: accentCol, coreWash: "rgba(249, 115, 22, 0.22)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.38, height: r * 1.44, progress: f, phase: elapsedTime * 10, primary: accentCol, highlight: "#FFFFFF", shadow: "#0C4A6E", rim: mainCol, isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.9, progress: burstProg, element: "fire", color: mainCol, isMono, seed: 61 });
       }
       break;
     }
 
     case "nguyen": {
-      // Đại Hồi Phục — 8-Petal Emerald-Gold Sanctuary Lotus unfolding + Floating Life Seed Motes
-      ctx.globalAlpha = domainAlpha * 0.9;
-      let petalR = r * (0.45 + 0.52 * clamp(f * 1.7, 0, 1));
+      // Đại Hồi Phục — Sacred Emerald-Gold Sanctuary Array + Blossom Light Pillar + Ascending Spirit Ribbons
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.88, tiltY: 0.74, rot: elapsedTime * 0.9, sides: 8, primary: "#10B981", highlight: "#FEF08A", darkRim: "#064E3B", rim: "#34D399", coreWash: "rgba(16, 185, 129, 0.24)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.36, height: r * 1.32, progress: f, phase: elapsedTime * 6.5, primary: "#10B981", highlight: "#FEF08A", shadow: "#064E3B", rim: "#FDE047", isMono });
+      let petalR = r * (0.48 + 0.42 * Math.min(1, f * 1.6));
       ctx.save();
-      ctx.rotate(elapsedTime * 0.8);
+      ctx.scale(1, 0.76);
+      ctx.rotate(elapsedTime * 0.85);
       for (let pi = 0; pi < 8; pi++) {
-        let pa = (Math.PI / 4) * pi;
-        drawUltPetal(
-          ctx,
-          pa,
-          r * 0.14,
-          petalR,
-          24 * (0.7 + impactW * 0.4),
-          isMono ? "rgba(255,255,255,0.4)" : pi % 2 === 0 ? "rgba(16, 185, 129, 0.48)" : "rgba(250, 204, 21, 0.42)",
-          pi % 2 === 0 ? mainCol : accentCol
-        );
+        drawUltPetal(ctx, (Math.PI / 4) * pi, r * 0.16, petalR, 22 * fadeOut + 4, isMono ? "rgba(255,255,255,0.42)" : pi % 2 === 0 ? "rgba(16, 185, 129, 0.52)" : "rgba(250, 204, 21, 0.48)", pi % 2 === 0 ? "#6EE7B7" : "#FEF08A");
       }
       ctx.restore();
-      // Concentric protective sanctuary dome rings
-      for (let ri = 0; ri < 2; ri++) {
-        ctx.strokeStyle = ri === 0 ? mainCol : accentCol;
-        ctx.lineWidth = (3.2 - ri) * fadeOut + 0.8;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.58 + ri * 0.34) * (0.85 + Math.sin(f * Math.PI) * 0.15), 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      drawFourPointStar(ctx, 0, 0, 18 * fadeOut + 6, 5, "#FFFFFF", mainCol);
       break;
     }
 
     case "duy": {
-      // Bão Tiêu Diệt Thế — Spinning 8-Blade Jade-Crimson Shuriken Wheel & Blood-Seal Crosshairs
-      let spin = elapsedTime * 6.8;
-      let sr = r * (0.45 + 0.55 * clamp(f * 2, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      ctx.save();
-      ctx.rotate(spin);
-      for (let bi = 0; bi < 8; bi++) {
-        let ba = (Math.PI / 4) * bi;
-        ctx.save();
-        ctx.rotate(ba);
-        ctx.fillStyle = bi % 2 === 0 ? mainCol : accentCol;
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(sr * 0.96, 0);
-        ctx.lineTo(sr * 0.38, -14);
-        ctx.lineTo(sr * 0.52, 0);
-        ctx.lineTo(sr * 0.32, 8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
+      // Bão Tiêu Diệt Thế — Spinning Jade-Crimson Cyclone Cleaves + Blood-Seal Array + Gale Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.88, alpha: domainAlpha * 0.82, primary: "#14B8A6", highlight: "#FDE047", shadow: "#042F2E", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.82, tiltY: 0.72, rot: elapsedTime * 4.2, sides: 4, primary: "#14B8A6", highlight: "#FFFFFF", darkRim: "#042F2E", rim: "#F43F5E", coreWash: "rgba(20, 184, 166, 0.22)", isMono });
+      for (let si = 0; si < 4; si++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: elapsedTime * 5.2 + (Math.PI * 0.5) * si, radius: r * 0.88, spread: 1.5, progress: slashProg, style: si % 2 === 0 ? "wind_gale" : "blood_crystal", primary: si % 2 === 0 ? "#14B8A6" : "#F43F5E", highlight: "#FFFFFF", shadow: "#090D16", rim: "#FDE047", tiltY: 0.78, isMono });
       }
-      ctx.restore();
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 2.6 * fadeOut + 0.6;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.42, 0, Math.PI * 2);
-      ctx.stroke();
+      if (f > 0.24) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.78, progress: burstProg, element: "teal", color: "#14B8A6", isMono, seed: 67 });
+      }
       break;
     }
 
     case "phong": {
-      // Tử Thần Giáng Lâm — Twin Opposing Cyan-Crimson Crescent Blades forming Razor X-Cut
-      let sr = r * (0.52 + 0.52 * clamp(f * 1.9, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
+      // Tử Thần Giáng Lâm — Twin Opposing Cyan-Crimson Razor X-Cut + Shadow Death Seal + Soul Explosion
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.92, alpha: domainAlpha * 0.86, primary: "#F43F5E", highlight: "#E0F2FE", shadow: "#090D16", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: -elapsedTime * 2.2, sides: 4, primary: "#0EA5E9", highlight: "#FFFFFF", darkRim: "#082F49", rim: "#F43F5E", coreWash: "rgba(14, 165, 233, 0.22)", isMono });
       for (let ci = 0; ci < 2; ci++) {
-        let ca = baseAngle + (ci === 0 ? 0.55 : -0.55) + f * 0.8 * (ci === 0 ? 1 : -1);
-        ctx.save();
-        ctx.rotate(ca);
-        ctx.strokeStyle = ci === 0 ? mainCol : accentCol;
-        ctx.lineWidth = 6.5 * fadeOut + 1.5;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.arc(0, 0, sr * 0.78, -0.95, 0.95);
-        ctx.stroke();
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2.4 * fadeOut + 0.6;
-        ctx.beginPath();
-        ctx.arc(0, 0, sr * 0.78, -0.75, 0.75);
-        ctx.stroke();
-        ctx.restore();
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + (ci === 0 ? 0.6 : -0.6), radius: r * 0.94, spread: 2.0, dir: ci === 0 ? 1 : -1, progress: slashProg, style: ci === 0 ? "plasma_cyan" : "blood_crystal", primary: ci === 0 ? "#0EA5E9" : "#F43F5E", highlight: "#FFFFFF", shadow: "#090D16", rim: "#67E8F9", tiltY: 0.8, isMono });
       }
-      if (releaseW > 0.05 || impactW > 0.05) {
-        drawFourPointStar(ctx, 0, 0, r * 0.36 * Math.max(releaseW, impactW) + 8, 3.8, "#FFFFFF", accentCol);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.3, height: r * 1.32, progress: f, phase: elapsedTime * 8.5, primary: "#0EA5E9", highlight: "#FFFFFF", shadow: "#082F49", rim: "#F43F5E", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.82, progress: burstProg, element: "plasma", color: "#22D3EE", isMono, seed: 71 });
       }
       break;
     }
 
     case "dang": {
-      // Hổ Quyền Diệt Thế — Rotating Yin-Yang Taiji Ring + Opposing White & Black Tiger Fang Shockwaves
-      let sr = r * (0.52 + 0.48 * clamp(f * 1.85, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      ctx.save();
-      ctx.rotate(elapsedTime * 3.4);
-      // White Yang half-arc + Black Yin half-arc
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 6.2 * fadeOut + 1.6;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.82, 0, Math.PI);
-      ctx.stroke();
-      ctx.strokeStyle = isMono ? "#475569" : "#18181B";
-      ctx.lineWidth = 7.2 * fadeOut + 1.8;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.82, Math.PI, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = "#CBD5E1";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.82, Math.PI, Math.PI * 2);
-      ctx.stroke();
-      // Yin-Yang focus orbs
-      ctx.fillStyle = "#FFFFFF";
-      ctx.beginPath();
-      ctx.arc(sr * 0.42, 0, 9 * fadeOut + 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = isMono ? "#1E293B" : "#090D16";
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(-sr * 0.42, 0, 9 * fadeOut + 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-      if (impactW > 0.05) {
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 4 * impactW;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * (0.3 + f * 0.72), 0, Math.PI * 2);
-        ctx.stroke();
+      // Hổ Quyền Diệt Thế — Yin-Yang Martial Crater + Black & White Sculpted Tiger Cleaves + Taiji Shock Dome
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.95, alpha: domainAlpha * 0.9, primary: "#CBD5E1", highlight: "#FFFFFF", shadow: "#09090B", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: elapsedTime * 3.1, sides: 6, primary: "#F8FAFC", highlight: "#FFFFFF", darkRim: "#09090B", rim: "#94A3B8", coreWash: "rgba(248, 250, 252, 0.16)", isMono });
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle, radius: r * 0.9, spread: 2.2, dir: 1, progress: slashProg, style: "steel", primary: "#F8FAFC", highlight: "#FFFFFF", shadow: "#09090B", rim: "#CBD5E1", tiltY: 0.78, isMono });
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + Math.PI, radius: r * 0.9, spread: 2.2, dir: -1, progress: slashProg, style: "shadow_blade", primary: "#18181B", highlight: "#F8FAFC", shadow: "#000000", rim: "#94A3B8", tiltY: 0.78, isMono });
+      if (f > 0.2) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.86, progress: burstProg, element: "earth", color: "#F8FAFC", isMono, seed: 73 });
       }
       break;
     }
 
     case "thanh": {
-      // Xà Linh Hộ Thể — Ouroboros Twin Emerald-Violet Serpent Coils + Venom Fang Core
-      let sr = r * (0.55 + 0.45 * clamp(f * 1.9, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.9;
-      ctx.save();
-      ctx.rotate(elapsedTime * 2.8);
+      // Xà Linh Hộ Thể — Ouroboros Twin Serpent Coils + Venomous Alchemical Circle + Toxic Eruption Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.9, alpha: domainAlpha * 0.84, primary: "#10B981", highlight: "#ECFCCB", shadow: "#064E3B", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: elapsedTime * 2.5, sides: 6, primary: mainCol, highlight: "#ECFCCB", darkRim: "#064E3B", rim: accentCol, coreWash: "rgba(16, 185, 129, 0.22)", isMono });
       for (let si = 0; si < 2; si++) {
-        ctx.save();
-        ctx.rotate(si * Math.PI);
-        ctx.strokeStyle = si === 0 ? mainCol : accentCol;
-        ctx.lineWidth = 5.2 * fadeOut + 1.4;
-        ctx.beginPath();
-        ctx.arc(0, 0, sr * 0.78, 0.12, Math.PI * 0.92);
-        ctx.stroke();
-        // Serpent head fang silhouette
-        drawUltDiamondShard(ctx, Math.cos(0.12) * sr * 0.78, Math.sin(0.12) * sr * 0.78, 15, 6.5, 0.12 - Math.PI / 2, "#FFFFFF", mainCol);
-        ctx.restore();
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: elapsedTime * 2.8 + si * Math.PI, radius: r * 0.86, spread: 2.3, dir: 1, progress: slashProg, style: "venom_serpent", primary: si === 0 ? mainCol : accentCol, highlight: "#ECFCCB", shadow: "#064E3B", rim: "#A3E635", tiltY: 0.76, isMono });
       }
-      ctx.restore();
-      // Venom ripple ring
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 2.2 * fadeOut + 0.6;
-      ctx.setLineDash([10, 7]);
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.48, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.28, progress: f, phase: elapsedTime * 7, primary: mainCol, highlight: "#ECFCCB", shadow: "#064E3B", rim: accentCol, isMono });
       break;
     }
 
     case "nhi": {
-      // Độc Tiễn Truy Sát — Tri-Elixir Alchemy Transmutation Circle (Purple/Green/Rose nodes at 120 deg)
-      let sr = r * (0.54 + 0.46 * clamp(f * 1.9, 0, 1));
-      let elixirCols = isMono ? ["#FFFFFF", "#CBD5E1", "#94A3B8"] : ["#C084FC", "#4ADE80", "#FB7185"];
-      ctx.globalAlpha = domainAlpha * 0.92;
-      ctx.save();
-      ctx.rotate(elapsedTime * 2.2);
-      drawUltPolygon(ctx, 0, 0, 3, sr * 0.82, 0);
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 2.8;
-      ctx.stroke();
-      drawUltPolygon(ctx, 0, 0, 3, sr * 0.82, Math.PI);
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-      for (let ei = 0; ei < 3; ei++) {
-        let ea = (Math.PI * 2 * ei) / 3;
-        let ex = Math.cos(ea) * sr * 0.82;
-        let ey = Math.sin(ea) * sr * 0.82;
-        ctx.fillStyle = elixirCols[ei];
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.arc(ex, ey, 9 * fadeOut + 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.restore();
-      if (impactW > 0.05) {
-        drawFourPointStar(ctx, 0, 0, r * 0.28 * impactW + 8, 4, "#FFFFFF", elixirCols[1]);
+      // Độc Tiễn Truy Sát — Tri-Elixir Alchemy Transmutation Circle + Venomous Vapor Explosion + Droplet Surge
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.9, alpha: domainAlpha * 0.82, primary: "#C084FC", highlight: "#ECFCCB", shadow: "#2E1065", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: elapsedTime * 2.1, sides: 3, starMode: true, primary: "#C084FC", highlight: "#FFFFFF", darkRim: "#2E1065", rim: "#4ADE80", coreWash: "rgba(192, 132, 252, 0.24)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.28, progress: f, phase: elapsedTime * 7.5, primary: "#4ADE80", highlight: "#ECFCCB", shadow: "#14532D", rim: "#FB7185", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.82, progress: burstProg, element: "venom", color: "#4ADE80", isMono, seed: 79 });
       }
       break;
     }
 
     case "thien": {
-      // Vạn Giới Du Hành / Phán Quyết Sáng Thế — 12-Sword Celestial Sundial Halo + Golden Crown
-      let sr = r * (0.58 + 0.42 * clamp(f * 1.85, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.94;
-      ctx.save();
-      ctx.rotate(elapsedTime * 1.1);
-      for (let sw = 0; sw < 12; sw++) {
-        let sa = (Math.PI / 6) * sw;
-        let reach = sr * (sw % 2 === 0 ? 0.98 : 0.76);
-        drawUltDiamondShard(
-          ctx,
-          Math.cos(sa) * reach,
-          Math.sin(sa) * reach,
-          (sw % 2 === 0 ? 16 : 11) * fadeOut + 4,
-          4.2,
-          sa,
-          sw % 2 === 0 ? mainCol : accentCol,
-          "#FFFFFF"
-        );
+      // Vạn Giới Du Hành / Phán Quyết Sáng Thế — Celestial Sundial Runic Crown + Judgement Light Pillar + Golden Blade Slashes
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.98, alpha: domainAlpha * 0.88, primary: "#FACC15", highlight: "#FFFFFF", shadow: "#422006", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.92, tiltY: 0.72, rot: elapsedTime * 1.4, sides: 8, primary: "#FACC15", highlight: "#FFFFFF", darkRim: "#422006", rim: "#38BDF8", coreWash: "rgba(250, 204, 21, 0.28)", isMono });
+      for (let sw = 0; sw < 3; sw++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + (Math.PI * 2 * sw) / 3, radius: r * 0.94, spread: 1.85, progress: slashProg, style: "celestial_gold", primary: sw === 0 ? "#FACC15" : "#38BDF8", highlight: "#FFFFFF", shadow: "#422006", rim: "#FEF08A", tiltY: 0.8, isMono });
       }
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 3 * fadeOut + 1;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.64, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      drawFourPointStar(ctx, 0, 0, r * 0.32 * (0.55 + Math.max(releaseW, impactW)) + 10, 5, "#FFFFFF", mainCol);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.4, height: r * 1.5, progress: f, phase: elapsedTime * 8.5, primary: "#FACC15", highlight: "#FFFFFF", shadow: "#422006", rim: "#38BDF8", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.2) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.92, progress: burstProg, element: "gold", color: "#FACC15", isMono, seed: 83 });
+      }
       break;
     }
 
     case "minh": {
-      // Thiên Lao Giáng Lâm — Heavenly Golden Lock Chains crisscrossing Sacred Bell Sigil + 6 Decree Pillars
-      let sr = r * (0.56 + 0.44 * clamp(f * 1.9, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      // 3 crisscrossing lock chains
+      // Thiên Lao Giáng Lâm — Heavenly Decree Runic Prison + Branching Golden Lightning Chains + Judgment Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.94, alpha: domainAlpha * 0.86, primary: "#FACC15", highlight: "#FEF08A", shadow: "#422006", debrisShape: "crystal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.88, tiltY: 0.72, rot: elapsedTime * 0.9, sides: 6, primary: mainCol, highlight: "#FFFFFF", darkRim: "#422006", rim: accentCol, coreWash: "rgba(250, 204, 21, 0.22)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.36, height: r * 1.4, progress: f, phase: elapsedTime * 7.2, primary: "#FACC15", highlight: "#FFFFFF", shadow: "#422006", rim: "#38BDF8", isMono });
       for (let ci = 0; ci < 3; ci++) {
         let ca = baseAngle + (Math.PI / 3) * ci;
-        ctx.save();
-        ctx.rotate(ca);
-        ctx.strokeStyle = ci === 0 ? mainCol : accentCol;
-        ctx.lineWidth = 3.2 * fadeOut + 0.8;
-        ctx.setLineDash([12, 6]);
-        ctx.beginPath();
-        ctx.moveTo(-sr, 0);
-        ctx.lineTo(sr, 0);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
+        drawBranchingArc(ctx, { x1: -Math.cos(ca) * r * 0.92, y1: -Math.sin(ca) * r * 0.68, x2: Math.cos(ca) * r * 0.92, y2: Math.sin(ca) * r * 0.68, seed: elapsedTime * 12 + ci * 4, width: 2.8, color: ci === 0 ? mainCol : accentCol, coreColor: "#FFFFFF", isMono });
       }
-      // 6 Sacred Decree Pillars
-      for (let pi = 0; pi < 6; pi++) {
-        let pa = (Math.PI / 3) * pi + elapsedTime * 0.7;
-        let px = Math.cos(pa) * sr * 0.85;
-        let py = Math.sin(pa) * sr * 0.85;
-        drawUltDiamondShard(ctx, px, py, 11 * fadeOut + 3, 5, pa + Math.PI / 2, mainCol, "#FFFFFF");
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.24) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.86, progress: burstProg, element: "gold", color: mainCol, isMono, seed: 89 });
       }
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 2.8 * fadeOut + 0.8;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.85, 0, Math.PI * 2);
-      ctx.stroke();
       break;
     }
 
     case "ducanh": {
-      // Thiên Thạch Lăn Cuồng Nộ — Interlocking Golden Siege-Gear Fortress Rings & Meteor Anvil Crosshair
-      let sr = r * (0.55 + 0.45 * clamp(f * 2, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      ctx.save();
-      ctx.rotate(elapsedTime * 2.2);
-      // Outer notched siege gear teeth
-      let teeth = 12;
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 4.2 * fadeOut + 1.2;
-      ctx.beginPath();
-      for (let ti = 0; ti <= teeth * 2; ti++) {
-        let ta = (Math.PI * ti) / teeth;
-        let tr = ti % 2 === 0 ? sr * 0.92 : sr * 0.78;
-        let tx = Math.cos(ta) * tr;
-        let ty = Math.sin(ta) * tr;
-        if (ti === 0) ctx.moveTo(tx, ty);
-        else ctx.lineTo(tx, ty);
-      }
-      ctx.closePath();
-      ctx.stroke();
-      ctx.restore();
-      // Inner molten anvil impact burst
-      if (impactW > 0.05 || releaseW > 0.05) {
-        let p = Math.max(impactW, releaseW);
-        ctx.strokeStyle = accentCol;
-        ctx.lineWidth = 4.6 * p;
-        ctx.beginPath();
-        ctx.arc(0, 0, sr * (0.28 + f * 0.68), 0, Math.PI * 2);
-        ctx.stroke();
+      // Thiên Thạch Lăn Cuồng Nộ — Forged Bronze Fortress Seal + Molten Siege Crater + Heavy Hammer Shock Dome
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.98, alpha: domainAlpha * 0.92, primary: "#F97316", highlight: "#FEF08A", shadow: "#1C1917", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.86, tiltY: 0.72, rot: elapsedTime * 2.0, sides: 8, primary: "#D97706", highlight: "#FEF08A", darkRim: "#1C1917", rim: "#F59E0B", coreWash: "rgba(245, 158, 11, 0.24)", isMono });
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle, radius: r * 0.9, spread: 2.35, progress: slashProg, style: "heavy_earth", primary: "#D97706", highlight: "#FEF08A", shadow: "#1C1917", rim: "#F97316", tiltY: 0.76, isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.36, height: r * 1.32, progress: f, phase: elapsedTime * 6.5, primary: "#EA580C", highlight: "#FEF08A", shadow: "#292524", rim: "#FBBF24", debrisShape: "rock", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.2) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.92, progress: burstProg, element: "fire", color: "#EA580C", isMono, seed: 97 });
       }
       break;
     }
 
     case "bach": {
-      // Vạn Ảnh Tuyệt Diệt — 4 Gale-Petal Wind Talisman Seals rotating in opposing layers + Razor Slipstreams
-      let sr = r * (0.54 + 0.46 * clamp(f * 2, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      for (let layer = 0; layer < 2; layer++) {
-        ctx.save();
-        ctx.rotate(elapsedTime * (layer === 0 ? 4.2 : -3.4));
-        for (let si = 0; si < 4; si++) {
-          let sa = (Math.PI / 2) * si;
-          ctx.save();
-          ctx.rotate(sa);
-          ctx.strokeStyle = layer === 0 ? mainCol : accentCol;
-          ctx.lineWidth = (layer === 0 ? 4.4 : 3.2) * fadeOut + 0.8;
-          ctx.beginPath();
-          ctx.arc(0, 0, sr * (layer === 0 ? 0.86 : 0.56), 0.1, 1.12);
-          ctx.stroke();
-          ctx.restore();
-        }
-        ctx.restore();
+      // Vạn Ảnh Tuyệt Diệt — Counter-Rotating Wind Talisman Array + 4 Sculpted Gale Cleaves + Cyclone Pillar
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.86, tiltY: 0.72, rot: elapsedTime * 3.8, sides: 4, primary: "#22D3EE", highlight: "#FFFFFF", darkRim: "#083344", rim: "#E879F9", coreWash: "rgba(34, 211, 238, 0.24)", isMono });
+      for (let si = 0; si < 3; si++) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle + (Math.PI * 2 * si) / 3 + elapsedTime * 2.2, radius: r * 0.9, spread: 1.75, progress: slashProg, style: "wind_gale", primary: si % 2 === 0 ? "#22D3EE" : "#E879F9", highlight: "#FFFFFF", shadow: "#083344", rim: "#A5F3FC", tiltY: 0.8, isMono });
       }
-      drawFourPointStar(ctx, 0, 0, r * 0.34 * (0.5 + Math.max(releaseW, impactW)) + 8, 4.2, "#FFFFFF", accentCol);
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.34, height: r * 1.34, progress: f, phase: elapsedTime * 9.5, primary: "#22D3EE", highlight: "#FFFFFF", shadow: "#083344", rim: "#E879F9", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.24) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.84, progress: burstProg, element: "plasma", color: "#22D3EE", isMono, seed: 101 });
+      }
       break;
     }
 
     case "thai": {
-      // Đấu Trường Sinh Tử — Octagonal Gladiator Colosseum Ring + 8 War-Banners + Champion Crown
-      let sr = r * (0.68 + 0.32 * clamp(f * 2.2, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      drawUltPolygon(ctx, 0, 0, 8, sr * 0.92, Math.PI / 8);
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 4 * fadeOut + 1.2;
-      ctx.stroke();
-      drawUltPolygon(ctx, 0, 0, 8, sr * 0.72, 0);
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 2.4 * fadeOut + 0.8;
-      ctx.stroke();
-      for (let bi = 0; bi < 8; bi++) {
-        let ba = (Math.PI / 4) * bi + Math.PI / 8;
-        drawUltDiamondShard(ctx, Math.cos(ba) * sr * 0.92, Math.sin(ba) * sr * 0.92, 12 * fadeOut + 3, 5, ba, accentCol, mainCol);
-      }
-      if (impactW > 0.05) {
-        drawFourPointStar(ctx, 0, 0, r * 0.36 * impactW + 10, 5, "#FFFFFF", accentCol);
+      // Đấu Trường Sinh Tử — Octagonal Gladiator Colosseum Arena + Crimson-Gold Cleaves + War-Cry Pillar
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.96, alpha: domainAlpha * 0.9, primary: "#EF4444", highlight: "#FDE047", shadow: "#450A0A", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.9, tiltY: 0.72, rot: elapsedTime * 0.8, sides: 8, primary: "#EF4444", highlight: "#FDE047", darkRim: "#450A0A", rim: "#FACC15", coreWash: "rgba(239, 68, 68, 0.24)", isMono });
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle, radius: r * 0.92, spread: 2.35, progress: slashProg, style: "fire_dragon", primary: "#EF4444", highlight: "#FEF08A", shadow: "#450A0A", rim: "#FACC15", tiltY: 0.8, isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.36, height: r * 1.36, progress: f, phase: elapsedTime * 7, primary: "#EF4444", highlight: "#FDE047", shadow: "#450A0A", rim: "#F59E0B", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.22) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.88, progress: burstProg, element: "fire", color: "#EF4444", isMono, seed: 107 });
       }
       break;
     }
 
     case "khair":
     default: {
-      // Pháo Kích Giật Lùi — Precision Emerald-Gold Sniper Rangefinder Dial + Mach-Cone Shock Diamonds
-      let sr = r * (0.55 + 0.45 * clamp(f * 2, 0, 1));
-      ctx.globalAlpha = domainAlpha * 0.92;
-      ctx.save();
-      ctx.rotate(baseAngle);
-      // Sniper mil-dot reticle arcs
-      ctx.strokeStyle = mainCol;
-      ctx.lineWidth = 2.8 * fadeOut + 0.8;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.82, -0.7, 0.7);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 0.82, Math.PI - 0.7, Math.PI + 0.7);
-      ctx.stroke();
-      // Directional railgun cone & shock diamonds
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 3.2 * fadeOut + 0.8;
-      ctx.beginPath();
-      ctx.moveTo(-sr * 0.95, 0);
-      ctx.lineTo(sr * 1.05, 0);
-      ctx.moveTo(0, -sr * 0.75);
-      ctx.lineTo(0, sr * 0.75);
-      ctx.stroke();
-      drawUltDiamondShard(ctx, sr * 0.45, 0, 14 * fadeOut + 3, 5.5, 0, "#FFFFFF", accentCol);
-      drawUltDiamondShard(ctx, sr * 0.82, 0, 11 * fadeOut + 3, 4.2, 0, accentCol, mainCol);
-      ctx.restore();
-      if (impactW > 0.05) {
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 3.6 * impactW;
-        ctx.beginPath();
-        ctx.arc(0, 0, sr * (0.3 + f * 0.65), 0, Math.PI * 2);
-        ctx.stroke();
+      // Pháo Kích Giật Lùi — Precision Emerald-Gold Sniper Dial + Orbital Beam Pillar + Mach Shock Explosion
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.9, alpha: domainAlpha * 0.84, primary: "#4ADE80", highlight: "#FEF08A", shadow: "#052E16", debrisShape: "rock", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.84, tiltY: 0.72, rot: baseAngle + elapsedTime * 1.2, sides: 4, primary: "#4ADE80", highlight: "#FEF08A", darkRim: "#052E16", rim: "#FACC15", coreWash: "rgba(74, 222, 128, 0.22)", isMono });
+      // non-additive pillar contrast
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.36, progress: f, phase: elapsedTime * 9, primary: "#4ADE80", highlight: "#FEF08A", shadow: "#052E16", rim: "#FACC15", isMono });
+      drawWindStreamRibbon(ctx, { x: 0, y: 0, angle: baseAngle, length: r * 1.05, width: 12 * fadeOut + 3, phase: elapsedTime * 14, color: "#4ADE80", coreColor: "#FEF08A", isMono });
+      ctx.globalCompositeOperation = "source-over";
+      if (f > 0.2) {
+        drawStructuralExplosion(ctx, { x: 0, y: 0, radius: r * 0.86, progress: burstProg, element: "venom", color: "#4ADE80", isMono, seed: 113 });
       }
       break;
     }
   }
 
-  // Subtle shared Stage 1 awakening spark & Stage 5 dissipating ember motes tuned to hero palette
+  // Stage 1 awakening ring & Stage 5 dissipating faceted soul shards
   if (wakeW > 0.08) {
     ctx.globalAlpha = wakeW * 0.85;
-    ctx.strokeStyle = hotCol;
-    ctx.lineWidth = 2.4 * wakeW;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.22 * (1 + wakeW), 0, Math.PI * 2);
-    ctx.stroke();
+    drawTaperedArc(ctx, 0, 0, Math.max(8, r * 0.24 * (1 + wakeW)), baseAngle - 1.2, baseAngle + 1.2, 6.5 * wakeW + 1.5, mainCol, hotCol, isMono);
   }
   if (afterW > 0.05) {
-    ctx.globalAlpha = afterW * 0.78;
+    ctx.globalAlpha = afterW * 0.82;
     for (let ei = 0; ei < 4; ei++) {
       let ea = (Math.PI / 2) * ei - elapsedTime * 2.2 + baseAngle;
-      let er = r * (0.62 + (f - 0.66) * 0.65);
-      drawFourPointStar(ctx, Math.cos(ea) * er, Math.sin(ea) * er, 5 * afterW + 1.5, 1.5, "#FFFFFF", mainCol);
+      let er = r * (0.62 + (f - 0.64) * 0.65);
+      drawFacetedShard(ctx, {
+        x: Math.cos(ea) * er,
+        y: Math.sin(ea) * er * 0.76,
+        size: 5.5 * afterW + 2,
+        rot: ea + f * 3,
+        primary: mainCol,
+        highlight: "#FFFFFF",
+        shadow: "#090D16",
+        rim: accentCol,
+        isMono,
+      });
     }
   }
 
@@ -1574,11 +1158,8 @@ export function drawCosmicSpatialTear(ctx, h, elapsedTime, isMono, enableAdditiv
     drawFourPointStar(ctx, sx, sy, 2.8 * widthEnv + 0.8, 0.9, "#FFFFFF", rimCol);
   }
 
-  // Additive neon dimensional glow rim
+  // Dimensional contrast glow rim (zero additive glare)
   ctx.save();
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
   ctx.strokeStyle = mainCol;
   ctx.lineWidth = baseW * 1.15;
   traceSpine(1.0);
@@ -1656,13 +1237,36 @@ function drawDungSpear(ctx, p, t, state, isMono) {
 
   let idleBob = Math.sin(t * 3.4) * 1.4;
   let walkTilt = state.moveAmt * Math.sin(state.walkPhase) * 0.08;
-  let thrust = hasAtk ? Math.sin(atkProg * Math.PI) * 20 : 0;
-  let swingTilt = hasAtk ? Math.sin(atkProg * Math.PI) * 0.22 * parity : 0;
+  // Crisp axial spear windup -> violent piercing lunge along facing
+  let thrust = hasAtk
+    ? atkProg < 0.18
+      ? -9 * (atkProg / 0.18)
+      : Math.sin(clamp((atkProg - 0.14) / 0.86, 0, 1) * Math.PI) * 34
+    : 0;
+  let swingTilt = hasAtk ? Math.sin(clamp(atkProg, 0, 1) * Math.PI) * 0.045 * parity : 0;
   let flare = clamp(skillBoost + critBoost * 0.8 + (isUlt ? 0.55 : 0) + (isBerserk ? 0.25 : 0), 0, 1.3);
 
   ctx.save();
-  ctx.translate(thrust + state.moveAmt * 2, 15 + idleBob);
-  ctx.rotate(0.08 * (1 - (hasAtk ? Math.sin(atkProg * Math.PI) : 0)) + walkTilt + swingTilt);
+  ctx.translate(thrust + state.moveAmt * 2, 13 + idleBob);
+  ctx.rotate(0.05 * (1 - (hasAtk ? Math.sin(clamp(atkProg, 0, 1) * Math.PI) : 0)) + walkTilt + swingTilt);
+
+  // Synced supersonic spear-tip shock cone when thrusting forward
+  if (hasAtk && atkProg > 0.16 && atkProg < 0.88) {
+    let tipAlpha = Math.sin(clamp((atkProg - 0.16) / 0.72, 0, 1) * Math.PI);
+    ctx.save();
+    ctx.globalAlpha = tipAlpha * 0.85;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : isUlt ? "#FEF08A" : "#38BDF8";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(42, -11 * tipAlpha - 2);
+    ctx.lineTo(66 + tipAlpha * 10, 0);
+    ctx.lineTo(42, 11 * tipAlpha + 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(48, 0, 3.5, Math.max(2, 9.5 * tipAlpha), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // Flowing tail tassel behind pommel
   let wave1 = Math.sin(t * 11 + state.walkPhase) * (3.5 + state.moveAmt * 3);
@@ -1865,29 +1469,36 @@ function drawTinBlades(ctx, p, t, state, isMono) {
     let swing = 0;
     let lunge = 0;
     if (hasAtk) {
-      let s = Math.sin(atkProg * Math.PI);
+      let s = Math.sin(clamp(atkProg, 0, 1) * Math.PI);
       if (side === parity || state.skillAlpha > 0.2) {
-        swing = -side * (-0.35 + atkProg * 1.55);
-        lunge = s * 8;
+        swing = -side * (-0.52 + atkProg * 1.92);
+        lunge = s * 14.5;
       } else {
-        swing = side * s * 0.25;
-        lunge = s * 3;
+        swing = side * s * 0.28;
+        lunge = s * 4.5;
       }
     }
     // Hand anchor cleanly outside hero circle (radius 22)
     let anchorX = 11 + lunge;
-    let anchorY = side * 17;
+    let anchorY = side * 16.5;
     ctx.translate(anchorX, anchorY);
     ctx.rotate(side * (0.34 + idleWave - walkSweep) + swing);
 
-    // Subtle void trail during swing / skill / overdrive
+    // Synced blade-tip crescent wake on active blade
+    if (hasAtk && (side === parity || state.skillAlpha > 0.2)) {
+      let wA = Math.sin(clamp(atkProg, 0, 1) * Math.PI);
+      ctx.save();
+      ctx.globalAlpha = clamp(wA * 0.82, 0, 0.9);
+      drawTaperedArc(ctx, 0, 0, 36, -side * 0.65, side * 0.45, 5.8 * wA + 1.5, empowered ? "#FB7185" : "#E11D48", "#FFFFFF", isMono);
+      ctx.restore();
+    }
     if (hasAtk || flare > 0.2) {
       ctx.globalAlpha = clamp(0.45 + flare * 0.4, 0, 0.92);
       ctx.strokeStyle = isMono ? "#000000" : empowered ? "#FB7185" : "#F43F5E";
       ctx.lineWidth = empowered ? 3.8 : 3.2;
       ctx.beginPath();
       ctx.moveTo(2, side * 1.5);
-      ctx.quadraticCurveTo(18, -side * 7, 34, side * 2);
+      ctx.quadraticCurveTo(18, -side * 7, 36, side * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
@@ -2021,14 +1632,10 @@ function drawKinBow(ctx, p, t, state, isMono) {
     ctx.save();
     ctx.translate(8, 0);
     ctx.rotate(t * 5);
-    ctx.globalAlpha = clamp(flare * 0.7, 0, 0.85);
-    ctx.strokeStyle = isMono ? "#000000" : "#6EE7B7";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.arc(0, 0, 12 + flare * 3, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.globalAlpha = clamp(flare * 0.75, 0, 0.88);
+    let sigR = Math.max(4, 12 + flare * 3);
+    drawTaperedArc(ctx, 0, 0, sigR, 0, Math.PI * 0.78, 2.8, "#10B981", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, sigR, Math.PI, Math.PI * 1.78, 2.8, "#34D399", "#FFFFFF", isMono);
     ctx.restore();
   }
 
@@ -2172,8 +1779,16 @@ function drawKinBow(ctx, p, t, state, isMono) {
     ctx.restore();
   }
 
-  if (state.critAlpha > 0.15) {
-    drawFourPointStar(ctx, 20, 0, 7 * state.critAlpha, 2 * state.critAlpha, "#FEF08A", "#FFFFFF");
+  if ((state.hasAtk && state.atkProg < 0.65) || state.critAlpha > 0.15) {
+    let mp = state.hasAtk ? Math.sin(clamp(state.atkProg / 0.65, 0, 1) * Math.PI) : state.critAlpha;
+    if (mp > 0.08) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(110, 231, 183, ${0.85 * mp})`;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.ellipse(23, 0, Math.max(1.5, 2.5 + mp * 3), Math.max(3, 6 + mp * 5), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      drawFourPointStar(ctx, 22, 0, 6.5 * mp, 2 * mp, "#FEF08A", "#34D399");
+    }
   }
   ctx.restore();
 }
@@ -2181,9 +1796,9 @@ function drawKinBow(ctx, p, t, state, isMono) {
 function drawTrungOrb(ctx, p, t, state, isMono) {
   // Cầu Ma Pháp Vũ Trụ — Celestial Astrolabe Magic Orb
   let hasAtk = state.hasAtk;
-  let atkSurge = hasAtk ? Math.sin(state.atkProg * Math.PI) * 9 : 0;
+  let atkSurge = hasAtk ? Math.sin(state.atkProg * Math.PI) * 11 : 0;
   let orbActive = p.trung_orbs && p.trung_orbs.active;
-  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (orbActive ? 0.55 : 0), 0, 1.3);
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (orbActive ? 0.55 : 0) + (hasAtk ? 0.55 : 0), 0, 1.3);
   let floatX = Math.cos(t * 2.6) * 1.3;
   let floatY = Math.sin(t * 3.8) * 2.4 - state.moveAmt * 1.5;
 
@@ -2309,26 +1924,26 @@ function drawEohyenBlade(ctx, p, t, state, isMono) {
   let idleBob = Math.sin(t * 3.2) * 1.2;
   let walkTilt = state.moveAmt * (-0.18 + Math.sin(state.walkPhase) * 0.06);
 
-  let swAngle = hasAtk ? (-0.95 + 1.9 * clamp(atkProg * 1.15, 0, 1)) * parity : -0.22;
+  let swAngle = hasAtk ? (-1.08 + 2.16 * clamp(atkProg * 1.12, 0, 1)) * parity : -0.22;
+  let lunge = hasAtk ? Math.sin(clamp(atkProg, 0, 1) * Math.PI) * 6 : 0;
 
   ctx.save();
+  // Pivot around front-right shoulder grip so blade and tip-trail move in lockstep
+  ctx.translate(10 + lunge, 13 + idleBob);
   if (hasAtk) {
     drawTaperedArc(
       ctx,
       0,
       0,
-      36,
-      -0.95 * parity,
-      swAngle,
-      8 * (1 - atkProg * 0.6),
-      "rgba(56, 189, 248, 0.55)",
+      44,
+      -1.08 * parity + walkTilt,
+      swAngle + walkTilt,
+      8.5 * (1 - clamp(atkProg, 0, 1) * 0.55) + 1.5,
+      "rgba(56, 189, 248, 0.65)",
       "#E0F2FE",
       isMono
     );
   }
-
-  // Pivot around front-right shoulder grip so blade never cuts through body
-  ctx.translate(10, 14 + idleBob);
   ctx.rotate(swAngle + walkTilt);
 
   // Frost ribbon tassel at pommel
@@ -2576,8 +2191,16 @@ function drawLonghoiBow(ctx, p, t, state, isMono) {
     ctx.restore();
   }
 
-  if (state.critAlpha > 0.15) {
-    drawFourPointStar(ctx, 21, 0, 7 * state.critAlpha, 2 * state.critAlpha, "#FEF08A", "#EA580C");
+  if ((state.hasAtk && state.atkProg < 0.65) || state.critAlpha > 0.15) {
+    let mp = state.hasAtk ? Math.sin(clamp(state.atkProg / 0.65, 0, 1) * Math.PI) : state.critAlpha;
+    if (mp > 0.08) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(251, 146, 60, ${0.88 * mp})`;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.ellipse(24, 0, Math.max(1.5, 2.5 + mp * 3), Math.max(3, 6 + mp * 5), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      drawFourPointStar(ctx, 23, 0, 7 * mp, 2.2 * mp, "#FEF08A", "#EA580C");
+    }
   }
   ctx.restore();
 }
@@ -2585,9 +2208,9 @@ function drawLonghoiBow(ctx, p, t, state, isMono) {
 function drawDuccongStaffOrb(ctx, p, t, state, isMono) {
   // Trượng Hố Đen Tinh Vân — Nebula Singularity Scepter & Black-Hole Orb
   let hasAtk = state.hasAtk;
-  let atkSurge = hasAtk ? Math.sin(state.atkProg * Math.PI) * 10 : 0;
+  let atkSurge = hasAtk ? Math.sin(state.atkProg * Math.PI) * 12 : 0;
   let isChargedPassive = p.duccong_passive >= 2;
-  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (isChargedPassive ? 0.4 : 0), 0, 1.3);
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.8 + (isChargedPassive ? 0.4 : 0) + (hasAtk ? 0.58 : 0), 0, 1.3);
   let idleBob = Math.sin(t * 3.1) * 1.5;
   let walkTilt = state.moveAmt * Math.sin(state.walkPhase) * 0.08;
 
@@ -2630,14 +2253,11 @@ function drawDuccongStaffOrb(ctx, p, t, state, isMono) {
   if (flare > 0.15) {
     ctx.save();
     ctx.rotate(-t * 5);
-    ctx.globalAlpha = clamp(flare * 0.8, 0, 0.9);
-    ctx.strokeStyle = isMono ? "#000000" : "#38BDF8";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([5, 4]);
-    ctx.beginPath();
-    ctx.arc(0, 0, 15.5 + flare * 4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.globalAlpha = clamp(flare * 0.82, 0, 0.92);
+    let orbR = Math.max(6, 15.5 + flare * 4);
+    drawTaperedArc(ctx, 0, 0, orbR, 0.1, Math.PI * 0.82, 2.8, "#7C3AED", "#38BDF8", isMono);
+    drawTaperedArc(ctx, 0, 0, orbR, Math.PI + 0.1, Math.PI * 1.82, 2.8, "#A855F7", "#F5D0FE", isMono);
+    drawFourPointStar(ctx, orbR, 0, 3.6, 1.2, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
     ctx.restore();
   }
 
@@ -2721,19 +2341,35 @@ function drawGauGauntlets(ctx, p, t, state, isMono) {
   for (let side of [-1, 1]) {
     ctx.save();
     let isLead = bothSlam || side === activeLead;
-    let punchExt = isLead ? punchArc * 17 : -punchArc * 3;
+    let punchExt = isLead
+      ? hasGauAnim || state.hasAtk
+        ? clamp(gProg, 0, 1) < 0.18
+          ? -7 * (clamp(gProg, 0, 1) / 0.18)
+          : Math.sin(clamp((clamp(gProg, 0, 1) - 0.14) / 0.86, 0, 1) * Math.PI) * 31
+        : 0
+      : -punchArc * 4;
     let walkBob = state.moveAmt * Math.sin(state.walkPhase + (side > 0 ? 0 : Math.PI)) * 3.5;
     let idleBob = Math.sin(t * 4.2 + side) * 1.1;
 
     // During C2 guard, cross gauntlets forward in shield wall brace
-    let gx = isGuard ? 22 : 19 + punchExt + walkBob;
-    let gy = isGuard ? side * 9.5 : side * 17 + idleBob;
-    let rot = isGuard ? -side * 0.35 : isLead && punchArc > 0.1 ? -side * 0.12 * punchArc : side * 0.08;
-    let sc = isLead && punchArc > 0.15 ? 1 + punchArc * 0.16 : 1;
+    let gx = isGuard ? 22 : 18 + punchExt + walkBob;
+    let gy = isGuard ? side * 9.5 : side * 16 + idleBob;
+    let rot = isGuard ? -side * 0.35 : isLead && punchArc > 0.1 ? -side * 0.16 * punchArc : side * 0.08;
+    let sc = isLead && punchArc > 0.15 ? 1 + punchArc * 0.24 : 1;
 
     ctx.translate(gx, gy);
     ctx.rotate(rot);
     ctx.scale(sc, sc);
+    if (isLead && punchArc > 0.25) {
+      ctx.save();
+      ctx.globalAlpha = clamp(punchArc * 0.88, 0, 0.95);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : isRage ? "#FEF08A" : "#FB923C";
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(13, 0, 11 + punchArc * 7, -0.95, 0.95);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Armored Forearm Cuff + Bronze Shoulder Plate
     ctx.fillStyle = isMono ? "#111111" : "#451A03";
@@ -2922,16 +2558,23 @@ function drawBaoDaggers(ctx, p, t, state, isMono) {
     let sw = 0;
     let ext = 0;
     if (hasAtk) {
-      let s = Math.sin(atkProg * Math.PI);
+      let s = Math.sin(clamp(atkProg, 0, 1) * Math.PI);
       if (side === dir || state.skillAlpha > 0.2) {
-        sw = s * 0.85 * side;
-        ext = s * 6;
+        sw = -side * (-0.38 + clamp(atkProg, 0, 1) * 1.48);
+        ext = s * 13;
       } else {
         sw = -s * 0.35 * side;
       }
     }
-    ctx.translate(10 + ext, side * 16.5);
+    ctx.translate(10 + ext, side * 16);
     ctx.rotate(side * (0.36 + idleWave - walkSweep) + sw);
+    if (hasAtk && (side === dir || state.skillAlpha > 0.2)) {
+      let wA = Math.sin(clamp(atkProg, 0, 1) * Math.PI);
+      ctx.save();
+      ctx.globalAlpha = clamp(wA * 0.85, 0, 0.9);
+      drawTaperedArc(ctx, 0, 0, 31, -side * 0.6, side * 0.45, 4.8 * wA + 1.2, "#9333EA", "#F5D0FE", isMono);
+      ctx.restore();
+    }
     drawBaoDagger(ctx, side, isStealth, flare, side === dir ? state.critAlpha : 0, isMono);
     ctx.restore();
   }
@@ -2958,22 +2601,23 @@ function drawDanhGreatsword(ctx, p, t, state, isMono) {
   let idleSway = Math.sin(t * 2.8) * 0.04;
   let walkSway = state.moveAmt * Math.sin(state.walkPhase) * 0.07;
   let swAngle = hasSwing
-    ? (-1.22 + 2.44 * clamp(prog * 1.15, 0, 1)) * dDir
+    ? (-1.26 + 2.52 * clamp(prog * 1.12, 0, 1)) * dDir
     : isCharging
     ? -0.78 - chargeRatio * 0.25
     : -0.44 + idleSway + walkSway;
 
   ctx.save();
   if (hasSwing) {
+    // Synced arc radius directly matches extended greatsword tip (15 + 54 = 69)
     drawTaperedArc(
       ctx,
       0,
       0,
-      43,
-      -1.22 * dDir,
+      62,
+      -1.26 * dDir,
       swAngle,
-      (isBuffed ? 12 : 9) * (1 - prog * 0.6),
-      isBuffed ? "rgba(251, 191, 36, 0.72)" : "rgba(239, 68, 68, 0.62)",
+      (isBuffed ? 12.5 : 9.5) * (1 - clamp(prog, 0, 1) * 0.55) + 1.5,
+      isBuffed ? "rgba(251, 191, 36, 0.78)" : "rgba(239, 68, 68, 0.68)",
       "#FEF08A",
       isMono
     );
@@ -3464,13 +3108,13 @@ function drawPhongEnergyBlades(ctx, p, elapsedTime, state, isMono) {
     ctx.save();
     let isLead = side === 1;
     let isActiveBlade = (step === 2) || (step === 0 && isLead) || (step === 1 && !isLead);
-    let swing = atkPhase * (isActiveBlade ? 1.28 : 0.48) * (isLead ? -state.parity : state.parity);
-    let lunge = atkPhase * (isActiveBlade ? 4.5 : 1.5);
-    ctx.translate((isLead ? 7 : 5) + lunge, side * 13.5);
+    let swing = atkPhase * (isActiveBlade ? 1.52 : 0.56) * (isLead ? -state.parity : state.parity);
+    let lunge = atkPhase * (isActiveBlade ? 12 : 3.5);
+    ctx.translate((isLead ? 8 : 6) + lunge, side * 14);
     ctx.rotate(side * (isLead ? 0.24 : 0.42) + swing);
 
     // Translucent cyan energy halo along blade spine (zero shadowBlur)
-    let bladeLen = (isLead ? 29 : 25) + state.skillAlpha * 6 + ultGlow * 2;
+    let bladeLen = (isLead ? 34 : 30) + state.skillAlpha * 6 + ultGlow * 2;
     let haloGrad = ctx.createLinearGradient(-4, 0, bladeLen + 4, 0);
     haloGrad.addColorStop(0, "rgba(14, 165, 233, 0)");
     haloGrad.addColorStop(0.35, isMono ? "rgba(255,255,255,0.28)" : `rgba(34, 211, 238, ${0.32 * pulse})`);
@@ -3479,6 +3123,11 @@ function drawPhongEnergyBlades(ctx, p, elapsedTime, state, isMono) {
     ctx.beginPath();
     ctx.ellipse(bladeLen * 0.45, 0, bladeLen * 0.62, 6.2, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (state.hasAtk && isActiveBlade && atkPhase > 0.14) {
+      let wakeSweep = -0.82 * (isLead ? -state.parity : state.parity);
+      drawTaperedArc(ctx, 0, 0, bladeLen, wakeSweep, 0, 4.2 * atkPhase + 1.2, cyan, core, isMono);
+    }
 
     // Flowing cyan shadow ribbon trailing off hilt
     ctx.strokeStyle = isMono ? "#E2E8F0" : `rgba(34, 211, 238, ${0.52 * pulse})`;
@@ -3550,15 +3199,22 @@ function drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono) {
   let c3Active = (p?.dang_c3_asTimer || 0) > 0;
   let empowered = rageReady || c2Active || c3Active || state.skillAlpha > 0;
   let stepDir = (p?.dang_basicStep || 0) % 2 === 0 ? 1 : -1;
-  let punchThrust = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 12.5 : 0;
-  let punchTilt = state.hasAtk ? Math.sin(state.atkProg * Math.PI) * 0.22 : 0;
+  let atkSin = state.hasAtk ? Math.sin(clamp(state.atkProg, 0, 1) * Math.PI) : 0;
+  let punchThrust = state.hasAtk
+    ? (state.atkProg < 0.24 ? -(state.atkProg / 0.24) * 6 : Math.sin(clamp((state.atkProg - 0.24) / 0.76, 0, 1) * Math.PI) * 32)
+    : 0;
+  let punchTilt = atkSin * 0.18;
 
   for (let side of [-1, 1]) {
     ctx.save();
     let isActiveFist = side === stepDir;
-    let activeArm = isActiveFist ? punchThrust : punchThrust * 0.2;
-    ctx.translate(9 + activeArm, side * 14.5);
-    ctx.rotate(side * 0.14 + (isActiveFist ? -side * punchTilt : 0));
+    let activeArm = isActiveFist ? punchThrust : -atkSin * 4.5;
+    ctx.translate(10 + activeArm, side * 15);
+    ctx.rotate(side * 0.12 + (isActiveFist ? -side * punchTilt : 0));
+    if (isActiveFist && punchThrust > 2) {
+      let sc = 1 + Math.min(0.24, punchThrust / 135);
+      ctx.scale(sc, sc);
+    }
 
     // Left fist = White Tiger (Bạch Hổ), Right fist = Black Tiger (Hắc Hổ)
     let isWhiteTiger = side < 0;
@@ -3567,7 +3223,7 @@ function drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono) {
     let stripeCol = isMono ? white : isWhiteTiger ? black : white;
 
     // Swirling Black-White Tiger Qi flames around each fist
-    let auraR = (empowered ? 16 : 12.5) + Math.sin(elapsedTime * 14 + side) * 2;
+    let auraR = (empowered ? 17 : 13.5) + Math.sin(elapsedTime * 14 + side) * 2;
     let grad = ctx.createRadialGradient(4, 0, 2, 4, 0, auraR);
     grad.addColorStop(0, isMono ? "rgba(255,255,255,0.75)" : isWhiteTiger ? "rgba(248,250,252,0.82)" : "rgba(24,24,27,0.86)");
     grad.addColorStop(0.6, isMono ? "rgba(0,0,0,0.35)" : isWhiteTiger ? "rgba(203,213,225,0.42)" : "rgba(248,250,252,0.42)");
@@ -3594,15 +3250,15 @@ function drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono) {
     ctx.strokeStyle = shellStroke;
     ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(-5, -5.2);
-    ctx.lineTo(-2, -9.2); // outer tiger ear
-    ctx.lineTo(3, -6.5);
-    ctx.lineTo(10.5, -5.4); // snout brow
-    ctx.lineTo(13, 0); // tiger nose tip
-    ctx.lineTo(10.5, 5.4);
-    ctx.lineTo(3, 6.5);
-    ctx.lineTo(-2, 9.2); // inner tiger ear
-    ctx.lineTo(-5, 5.2);
+    ctx.moveTo(-5, -5.6);
+    ctx.lineTo(-2, -9.8); // outer tiger ear
+    ctx.lineTo(3, -6.8);
+    ctx.lineTo(11.5, -5.6); // snout brow
+    ctx.lineTo(14.5, 0); // tiger nose tip
+    ctx.lineTo(11.5, 5.6);
+    ctx.lineTo(3, 6.8);
+    ctx.lineTo(-2, 9.8); // inner tiger ear
+    ctx.lineTo(-5, 5.6);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -3623,14 +3279,14 @@ function drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono) {
     // Glowing fierce tiger eyes on gauntlet
     ctx.fillStyle = rageReady ? "#FACC15" : isWhiteTiger ? "#09090B" : "#F8FAFC";
     ctx.beginPath();
-    ctx.ellipse(4.8, -2.9, 2.1, 1.1, -0.35, 0, Math.PI * 2);
-    ctx.ellipse(4.8, 2.9, 2.1, 1.1, 0.35, 0, Math.PI * 2);
+    ctx.ellipse(5.2, -2.9, 2.1, 1.1, -0.35, 0, Math.PI * 2);
+    ctx.ellipse(5.2, 2.9, 2.1, 1.1, 0.35, 0, Math.PI * 2);
     ctx.fill();
     if (rageReady || c3Active) {
       ctx.fillStyle = "#FEF08A";
       ctx.beginPath();
-      ctx.arc(5.1, -2.9, 0.8, 0, Math.PI * 2);
-      ctx.arc(5.1, 2.9, 0.8, 0, Math.PI * 2);
+      ctx.arc(5.5, -2.9, 0.8, 0, Math.PI * 2);
+      ctx.arc(5.5, 2.9, 0.8, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -3639,13 +3295,23 @@ function drawDangTigerGauntlets(ctx, p, elapsedTime, state, isMono) {
     ctx.strokeStyle = black;
     ctx.lineWidth = 1.05;
     for (let c = -1; c <= 1; c++) {
-      let len = (c === 0 ? 16.5 : 14.5) + (rageReady ? 3.5 : 0) + (c3Active ? 2 : 0);
+      let len = (c === 0 ? 20 : 17.5) + (rageReady ? 4 : 0) + (c3Active ? 2.5 : 0);
       ctx.beginPath();
-      ctx.moveTo(9.5, c * 3.3 - 1.1);
-      ctx.lineTo(len, c * 3.5);
-      ctx.lineTo(9.5, c * 3.3 + 1.1);
+      ctx.moveTo(10, c * 3.5 - 1.1);
+      ctx.lineTo(len, c * 3.8);
+      ctx.lineTo(10, c * 3.5 + 1.1);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+    }
+
+    // Contact Tiger Qi Shock-Arc right in front of extended punch knuckles
+    if (isActiveFist && state.hasAtk && punchThrust > 8) {
+      let pRatio = clamp(punchThrust / 32, 0, 1);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : isWhiteTiger ? `rgba(248, 250, 252, ${0.9 * pRatio})` : `rgba(255, 255, 255, ${0.88 * pRatio})`;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(15, 0, 8 + pRatio * 6, -0.9, 0.9);
       ctx.stroke();
     }
 
@@ -3665,9 +3331,9 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
   let swingRot = 0;
   let thrust = 0;
   if (hasAtk) {
-    let ease = Math.sin(atkProg * Math.PI);
+    let ease = Math.sin(clamp(atkProg, 0, 1) * Math.PI);
     swingRot = parity * (-1.3 + atkProg * 2.65);
-    thrust = ease * 9;
+    thrust = ease * 14;
   } else if (skillAlpha > 0) {
     swingRot = Math.sin(skillAlpha * Math.PI * 3) * 0.55;
     thrust = skillAlpha * 6;
@@ -3677,7 +3343,7 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
   for (let side of [-1, 1]) {
     let hover = Math.sin(elapsedTime * 5 + side * 1.4) * 2.2;
     ctx.save();
-    ctx.translate(10 + thrust * 0.5, side * 15 + hover);
+    ctx.translate(11 + thrust * 0.5, side * 15.5 + hover);
     ctx.rotate(swingRot * 0.65 + side * 0.12);
 
     ctx.fillStyle = side < 0 ? white : cosmic;
@@ -3685,9 +3351,9 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     ctx.moveTo(-6, 0);
-    ctx.lineTo(3, -3.2);
-    ctx.lineTo(18, 0);
-    ctx.lineTo(3, 3.2);
+    ctx.lineTo(3, -3.4);
+    ctx.lineTo(20, 0);
+    ctx.lineTo(3, 3.4);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -3702,17 +3368,20 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
   // Primary Hand: Sovereign Genesis Blade-Scepter
   ctx.save();
   ctx.translate(14 + thrust, 0);
+  if (hasAtk && atkProg > 0.08 && atkProg < 0.94) {
+    drawTaperedArc(ctx, 0, 0, 39, -1.28 * parity, swingRot, 4.8 * Math.sin(atkProg * Math.PI) + 1.5, gold, cosmic, isMono);
+  }
   ctx.rotate(swingRot);
 
   // Radiant tip halo on strike or Ascension
   if (hasAtk || ascended || skillAlpha > 0) {
-    let haloGrad = ctx.createRadialGradient(18, 0, 2, 18, 0, ascended ? 22 : 16);
+    let haloGrad = ctx.createRadialGradient(22, 0, 2, 22, 0, ascended ? 24 : 18);
     haloGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.85)" : "rgba(250,204,21,0.75)");
     haloGrad.addColorStop(0.55, isMono ? "rgba(255,255,255,0.3)" : "rgba(56,189,248,0.4)");
     haloGrad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = haloGrad;
     ctx.beginPath();
-    ctx.arc(18, 0, ascended ? 22 : 16, 0, Math.PI * 2);
+    ctx.arc(22, 0, ascended ? 24 : 18, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -3725,10 +3394,10 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
 
   ctx.fillStyle = gold;
   ctx.beginPath();
-  ctx.moveTo(0, -8.5);
-  ctx.lineTo(4.2, -3);
-  ctx.lineTo(4.2, 3);
-  ctx.lineTo(0, 8.5);
+  ctx.moveTo(0, -9);
+  ctx.lineTo(4.5, -3.2);
+  ctx.lineTo(4.5, 3.2);
+  ctx.lineTo(0, 9);
   ctx.lineTo(-2.6, 0);
   ctx.closePath();
   ctx.fill();
@@ -3737,13 +3406,13 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
   // Crystalline White-Gold Celestial Blade
   ctx.fillStyle = white;
   ctx.strokeStyle = gold;
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.65;
   ctx.beginPath();
-  ctx.moveTo(3, -3.6);
-  ctx.lineTo(25, -2.4);
-  ctx.lineTo(34, 0);
-  ctx.lineTo(25, 2.4);
-  ctx.lineTo(3, 3.6);
+  ctx.moveTo(3, -3.8);
+  ctx.lineTo(30, -2.5);
+  ctx.lineTo(40, 0);
+  ctx.lineTo(30, 2.5);
+  ctx.lineTo(3, 3.8);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -3753,11 +3422,11 @@ function drawThienCelestialWeapon(ctx, p, elapsedTime, state, isMono) {
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(5, 0);
-  ctx.lineTo(29, 0);
+  ctx.lineTo(34, 0);
   ctx.stroke();
 
   if (critAlpha > 0 || ascended) {
-    drawFourPointStar(ctx, 27, 0, 6.5, 2.0, gold, white);
+    drawFourPointStar(ctx, 31, 0, 7.2, 2.1, gold, white);
   }
   ctx.restore();
 }
@@ -4026,6 +3695,12 @@ function drawNhiVenomCrossbow(ctx, p, elapsedTime, state, isMono) {
   ctx.fill();
   ctx.stroke();
 
+  if ((state.hasAtk && state.atkProg < 0.6) || state.critAlpha > 0.15) {
+    let mp = state.hasAtk ? Math.sin(clamp(state.atkProg / 0.6, 0, 1) * Math.PI) : state.critAlpha;
+    if (mp > 0.08) {
+      drawFourPointStar(ctx, boltX + 14, 0, 6.2 * mp, 1.9 * mp, "#FFFFFF", coreCol);
+    }
+  }
   ctx.restore();
 }
 
@@ -4051,32 +3726,32 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
 
   // Enlarge swords, blades, spears, bows, staves & gauntlets cleanly for unmistakable silhouette clarity
   let scaleMap = {
-    dung: 1.28,
-    tin: 1.32,
-    kin: 1.24,
-    trung: 1.22,
-    eohyen: 1.32,
-    longhoi: 1.26,
-    duccong: 1.24,
-    gau: 1.22,
-    bao: 1.30,
-    danh: 1.30,
-    luan: 1.24,
-    taidu: 1.28,
-    nguyen: 1.26,
-    duy: 1.28,
-    phong: 1.30,
-    dang: 1.26,
-    thien: 1.32,
-    thanh: 1.28,
-    nhi: 1.26,
-    minh: 1.26,
-    ducanh: 1.28,
-    bach: 1.22,
-    thai: 1.32,
-    khair: 1.26
+    dung: 1.48,
+    tin: 1.54,
+    kin: 1.46,
+    trung: 1.42,
+    eohyen: 1.54,
+    longhoi: 1.48,
+    duccong: 1.44,
+    gau: 1.50,
+    bao: 1.52,
+    danh: 1.56,
+    luan: 1.44,
+    taidu: 1.50,
+    nguyen: 1.46,
+    duy: 1.48,
+    phong: 1.52,
+    dang: 1.52,
+    thien: 1.56,
+    thanh: 1.50,
+    nhi: 1.48,
+    minh: 1.48,
+    ducanh: 1.54,
+    bach: 1.50,
+    thai: 1.58,
+    khair: 1.52
   };
-  let sc = scaleMap[heroId] || 1.26;
+  let sc = scaleMap[heroId] || 1.48;
   ctx.save();
   ctx.scale(sc, sc);
 
@@ -4188,20 +3863,7 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       thai: ["#EF4444", "#FDE047"],
       khair: ["#4ADE80", "#FACC15"]
     }[heroId] || ["#38BDF8", "#FFFFFF"];
-    drawWeaponArcLightning(ctx, 32, arcPower, elapsedTime, wColors[0], wColors[1], isMono, true);
-  }
-  if (hasAtk && rawAtkProg > 0.14 && rawAtkProg < 0.85) {
-    let swingA = Math.sin((rawAtkProg - 0.14) / 0.71 * Math.PI);
-    ctx.save();
-    if (!isMono) ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = swingA * 0.45;
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#E0F2FE";
-    ctx.lineWidth = 2.6;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.arc(10, 0, 26, -0.7 * state.parity, 0.7 * state.parity, state.parity < 0);
-    ctx.stroke();
-    ctx.restore();
+    drawWeaponArcLightning(ctx, 36, arcPower, elapsedTime, wColors[0], wColors[1], isMono, true);
   }
   ctx.restore();
 }
@@ -4655,13 +4317,13 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.stroke();
 
     ctx.rotate(elapsedTime * 14);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 164, 175, 0.85)";
-    ctx.lineWidth = 1.8;
-    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(76, 5, 25, 0.72)";
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
     ctx.arc(0, 0, 22, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
+    drawTaperedArc(ctx, 0, 0, 22, 0, Math.PI * 0.72, 3.6, "#E11D48", "#FDA4AF", isMono);
+    drawTaperedArc(ctx, 0, 0, 22, Math.PI, Math.PI * 1.72, 3.6, "#9F1239", "#FFE4E6", isMono);
 
     // Orbiting mini ruby shards
     for (let si = 0; si < 3; si++) {
@@ -4926,30 +4588,10 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   if (h.kind === "taidu_bolt" || h.kind === "turret_shot") {
     let isTurret = h.kind === "turret_shot";
     let mainCol = h.color || (isTurret ? "#38BDF8" : "#F97316");
-    ctx.strokeStyle = isMono ? "#000000" : isTurret ? "rgba(56, 189, 248, 0.65)" : "rgba(249, 115, 22, 0.68)";
-    ctx.lineWidth = isTurret ? 3.2 : 4.2;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-22, 0);
-    ctx.lineTo(10, 0);
-    ctx.stroke();
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = isTurret ? 1.4 : 1.8;
-    ctx.beginPath();
-    ctx.moveTo(-14, 0);
-    ctx.lineTo(11, 0);
-    ctx.stroke();
-    ctx.fillStyle = isMono ? "#FFFFFF" : isTurret ? "#BAE6FD" : "#FEF08A";
-    ctx.strokeStyle = isMono ? "#000000" : mainCol;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(15, 0);
-    ctx.lineTo(2, -4.4);
-    ctx.lineTo(5, 0);
-    ctx.lineTo(2, 4.4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    let rimCol = isTurret ? "#BAE6FD" : "#FEF08A";
+    drawWindStreamRibbon(ctx, { x: -8, y: 0, angle: 0, length: isTurret ? 26 : 32, width: isTurret ? 4.2 : 5.5, phase: elapsedTime * 18 + (h.id || 0), color: mainCol, coreColor: "#FFFFFF", isMono });
+    drawFacetedShard(ctx, { x: 6, y: 0, size: isTurret ? 6.2 : 7.8, rot: Math.PI * 0.5, aspect: 1.45, shape: "plate", primary: mainCol, highlight: "#FFFFFF", shadow: "#0F172A", rim: rimCol, isMono });
+    drawFourPointStar(ctx, 9, 0, isTurret ? 4.5 : 5.8, 1.4, "#FFFFFF", isMono ? "#000000" : mainCol);
     return;
   }
 
@@ -5021,43 +4663,18 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   }
 
   if (h.kind === "nguyen_bolt") {
-    let nAura = ctx.createRadialGradient(0, 0, 2, 0, 0, 17);
-    nAura.addColorStop(0, isMono ? "rgba(255,255,255,0.55)" : "rgba(254, 240, 138, 0.52)");
-    nAura.addColorStop(0.55, isMono ? "rgba(0,0,0,0.2)" : "rgba(52, 211, 153, 0.3)");
-    nAura.addColorStop(1, "rgba(16, 185, 129, 0)");
-    ctx.fillStyle = nAura;
-    ctx.beginPath();
-    ctx.arc(0, 0, 17, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#000000" : "rgba(52, 211, 153, 0.62)";
-    ctx.lineWidth = 4.4;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-18, 0);
-    ctx.lineTo(0, 0);
-    ctx.stroke();
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(-11, 0);
-    ctx.lineTo(2, 0);
-    ctx.stroke();
+    drawWindStreamRibbon(ctx, { x: -12, y: 0, angle: 0, length: 28, width: 4.8, phase: elapsedTime * 12, color: "#10B981", coreColor: "#FEF08A", isMono });
+    ctx.save();
     ctx.rotate(elapsedTime * 8);
     for (let i = 0; i < 4; i++) {
       let a = (Math.PI / 2) * i;
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#34D399";
+      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#34D399" : "#FDE047";
       ctx.beginPath();
-      ctx.ellipse(Math.cos(a) * 5.2, Math.sin(a) * 5.2, 3.6, 1.8, a, 0, Math.PI * 2);
+      ctx.ellipse(Math.cos(a) * 5.6, Math.sin(a) * 5.6, 3.8, 1.9, a, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(5.5, (h.radius || 8) * 0.72), 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#000000" : "#10B981";
-    ctx.fill();
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    drawFacetedShard(ctx, { x: 0, y: 0, size: Math.max(5.5, (h.radius || 8) * 0.78), rot: 0, aspect: 1.05, primary: "#10B981", highlight: "#FEF08A", shadow: "#064E3B", rim: "#6EE7B7", isMono });
+    ctx.restore();
     drawFourPointStar(ctx, 0, 0, 5.4, 1.8, "#FEF08A", null);
     return;
   }
@@ -5087,113 +4704,34 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   }
 
   if (h.kind === "wisp_bolt") {
-    let wGlow = ctx.createRadialGradient(0, 0, 2, 0, 0, 17);
-    wGlow.addColorStop(0, isMono ? "rgba(255,255,255,0.68)" : "rgba(232, 121, 249, 0.65)");
-    wGlow.addColorStop(0.55, isMono ? "rgba(0,0,0,0.2)" : "rgba(56, 189, 248, 0.3)");
-    wGlow.addColorStop(1, "rgba(192, 132, 252, 0)");
-    ctx.fillStyle = wGlow;
-    ctx.beginPath();
-    ctx.arc(0, 0, 17, 0, Math.PI * 2);
-    ctx.fill();
-
-    let wTail = ctx.createLinearGradient(-22, 0, 4, 0);
-    wTail.addColorStop(0, "rgba(192, 132, 252, 0)");
-    wTail.addColorStop(1, isMono ? "#FFFFFF" : "#C084FC");
-    ctx.strokeStyle = wTail;
-    ctx.lineWidth = 4.2;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-22, 0);
-    ctx.lineTo(0, 0);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(0, 0, 6.4, 0, Math.PI * 2);
-    ctx.fillStyle = isMono ? "#111111" : "#C084FC";
-    ctx.fill();
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
+    drawWindStreamRibbon(ctx, { x: -10, y: 0, angle: 0, length: 28, width: 5.4, phase: elapsedTime * 15 + (h.id || 0), color: "#C084FC", coreColor: "#F5D0FE", isMono });
+    drawFacetedShard(ctx, { x: 2, y: 0, size: 7.4, rot: elapsedTime * 6 + Math.PI * 0.5, aspect: 1.2, shape: "crystal", primary: "#A855F7", highlight: "#FFFFFF", shadow: "#3B0764", rim: "#38BDF8", isMono });
     for (let wi = 0; wi < 2; wi++) {
       let wa = elapsedTime * 11 + wi * Math.PI + (h.id || 0);
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#67E8F9";
-      ctx.beginPath();
-      ctx.arc(Math.cos(wa) * 9.5, Math.sin(wa) * 9.5, 1.8, 0, Math.PI * 2);
-      ctx.fill();
+      drawFourPointStar(ctx, Math.cos(wa) * 10, Math.sin(wa) * 10, 3.6, 1.1, "#FFFFFF", isMono ? "#000000" : "#67E8F9");
     }
-    drawFourPointStar(ctx, 0, 0, 5.2, 1.6, "#FFFFFF", isMono ? "#000000" : "#C084FC");
     return;
   }
 
   if (h.kind === "frost_bolt") {
-    let fTail = ctx.createLinearGradient(-24, 0, 6, 0);
-    fTail.addColorStop(0, "rgba(125, 211, 252, 0)");
-    fTail.addColorStop(1, isMono ? "#CCCCCC" : "#7DD3FC");
-    ctx.strokeStyle = fTail;
-    ctx.lineWidth = 4.0;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-24, 0);
-    ctx.lineTo(6, 0);
-    ctx.stroke();
-
-    ctx.fillStyle = isMono ? "#000000" : "#0284C7";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#E0F2FE";
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(16, 0);
-    ctx.lineTo(1, -6.2);
-    ctx.lineTo(-10, -2.5);
-    ctx.lineTo(-6, 0);
-    ctx.lineTo(-10, 2.5);
-    ctx.lineTo(1, 6.2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#E0F2FE";
-    ctx.beginPath();
-    ctx.moveTo(12, 0);
-    ctx.lineTo(2, -2.8);
-    ctx.lineTo(-3, 0);
-    ctx.lineTo(2, 2.8);
-    ctx.closePath();
-    ctx.fill();
-    drawFourPointStar(ctx, 11, 0, 4.8, 1.4, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
+    drawWindStreamRibbon(ctx, { x: -12, y: 0, angle: 0, length: 30, width: 5.0, phase: elapsedTime * 14, color: "#38BDF8", coreColor: "#E0F2FE", isMono });
+    drawFacetedShard(ctx, { x: 3, y: 0, size: 9.2, rot: Math.PI * 0.5, aspect: 1.65, shape: "crystal", primary: "#0284C7", highlight: "#F0F9FF", shadow: "#082F49", rim: "#BAE6FD", isMono });
+    drawFourPointStar(ctx, 12, 0, 5.2, 1.4, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
     return;
   }
 
   if (h.kind === "void_bolt") {
-    let vAura = ctx.createRadialGradient(0, 0, 2, 0, 0, 18);
-    vAura.addColorStop(0, isMono ? "rgba(255,255,255,0.55)" : "rgba(232, 121, 249, 0.58)");
-    vAura.addColorStop(0.6, isMono ? "rgba(0,0,0,0.2)" : "rgba(76, 29, 149, 0.35)");
-    vAura.addColorStop(1, "rgba(76, 29, 149, 0)");
-    ctx.fillStyle = vAura;
-    ctx.beginPath();
-    ctx.arc(0, 0, 18, 0, Math.PI * 2);
-    ctx.fill();
-
+    drawWindStreamRibbon(ctx, { x: -10, y: 0, angle: 0, length: 30, width: 5.6, phase: -elapsedTime * 16, color: "#7E22CE", coreColor: "#E879F9", isMono });
     ctx.save();
     ctx.rotate(elapsedTime * 9);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(56, 189, 248, 0.8)";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(56, 189, 248, 0.85)";
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 13, 5.2, 0.5, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 14, 5.4, 0.5, 0, Math.PI * 2);
     ctx.stroke();
-
-    ctx.fillStyle = isMono ? "#000000" : "#4C1D95";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#E879F9";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -9.5);
-    ctx.lineTo(9.5, 0);
-    ctx.lineTo(0, 9.5);
-    ctx.lineTo(-9.5, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    drawFacetedShard(ctx, { x: 0, y: 0, size: 8.6, rot: 0, aspect: 1.15, shape: "crystal", primary: "#4C1D95", highlight: "#F5D0FE", shadow: "#090414", rim: "#E879F9", isMono });
     ctx.restore();
-    drawFourPointStar(ctx, 0, 0, 5.6, 1.8, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
+    drawFourPointStar(ctx, 0, 0, 5.8, 1.8, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
     return;
   }
 
@@ -5289,18 +4827,7 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   }
 
   if (h.kind === "venom_fang") {
-    // Acidic mist wake
-    let vTrail = ctx.createLinearGradient(-28, 0, 8, 0);
-    vTrail.addColorStop(0, "rgba(163, 230, 53, 0)");
-    vTrail.addColorStop(1, isMono ? "rgba(0,0,0,0.45)" : "rgba(132, 204, 22, 0.55)");
-    ctx.fillStyle = vTrail;
-    ctx.beginPath();
-    ctx.moveTo(-28, 0);
-    ctx.quadraticCurveTo(-8, -7, 4, -4);
-    ctx.quadraticCurveTo(-8, 7, -28, 0);
-    ctx.fill();
-
-    // Curved bio-chitinous fang
+    drawWindStreamRibbon(ctx, { x: -12, y: 0, angle: 0, length: 28, width: 4.5, phase: elapsedTime * 14 + (h.id || 0), color: "#84CC16", coreColor: "#ECFCCB", isMono });
     ctx.fillStyle = isMono ? "#111111" : "#14532D";
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#A3E635";
     ctx.lineWidth = 2;
@@ -5313,60 +4840,19 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
-    // Glowing toxic nerve vein + droplet
     ctx.fillStyle = isMono ? "#FFFFFF" : "#BEF264";
     ctx.beginPath();
     ctx.ellipse(3, 0, 6.5, 2.2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = isMono ? "#DDDDDD" : "#4ADE80";
-    ctx.beginPath();
-    ctx.arc(-15, Math.sin(elapsedTime * 14 + (h.id || 0)) * 3, 2.4, 0, Math.PI * 2);
-    ctx.fill();
+    drawViscousDroplet(ctx, { x: -15, y: Math.sin(elapsedTime * 14 + (h.id || 0)) * 3, vx: -12, vy: 0, radius: 2.6, color: "#4ADE80", rimColor: "#ECFCCB", isMono });
     return;
   }
 
   if (h.kind === "blood_crystal") {
-    // Crimson mist wake
-    let bTrail = ctx.createLinearGradient(-26, 0, 4, 0);
-    bTrail.addColorStop(0, "rgba(225, 29, 72, 0)");
-    bTrail.addColorStop(1, isMono ? "rgba(0,0,0,0.45)" : "rgba(251, 113, 133, 0.58)");
-    ctx.fillStyle = bTrail;
-    ctx.beginPath();
-    ctx.moveTo(-26, 0);
-    ctx.lineTo(-2, -5.5);
-    ctx.lineTo(-2, 5.5);
-    ctx.closePath();
-    ctx.fill();
-
-    // Multi-faceted ruby prism shard
-    ctx.fillStyle = isMono ? "#000000" : "#9F1239";
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(18, 0);
-    ctx.lineTo(1, -7.5);
-    ctx.lineTo(-13, -2.5);
-    ctx.lineTo(-10, 0);
-    ctx.lineTo(-13, 2.5);
-    ctx.lineTo(1, 7.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Upper facet highlight
-    ctx.fillStyle = isMono ? "#555555" : "#F43F5E";
-    ctx.beginPath();
-    ctx.moveTo(18, 0);
-    ctx.lineTo(1, -7.5);
-    ctx.lineTo(-10, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = "#FEF08A";
-    ctx.beginPath();
-    ctx.arc(3, 0, 2.4, 0, Math.PI * 2);
-    ctx.fill();
+    drawWindStreamRibbon(ctx, { x: -10, y: 0, angle: 0, length: 26, width: 4.6, phase: elapsedTime * 13, color: "#E11D48", coreColor: "#FFE4E6", isMono });
+    drawFacetedShard(ctx, { x: 2, y: 0, size: 10.5, rot: Math.PI * 0.5, aspect: 1.65, shape: "crystal", primary: "#9F1239", highlight: "#FFE4E6", shadow: "#450A0A", rim: "#FDA4AF", isMono });
+    drawViscousDroplet(ctx, { x: -14, y: Math.sin(elapsedTime * 12 + (h.id || 0)) * 2.5, vx: -10, vy: 0, radius: 2.4, color: "#BE123C", rimColor: "#FDA4AF", isMono });
+    drawFourPointStar(ctx, 4, 0, 4.4, 1.3, "#FEF08A", isMono ? "#000000" : "#E11D48");
     return;
   }
 
@@ -5970,12 +5456,9 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     // Rotating sacred seal ring around orb
     ctx.save();
     ctx.rotate(elapsedTime * 7);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.18, 0, Math.PI * 2);
-    ctx.stroke();
+    let sealR = Math.max(3, r * 1.22);
+    drawTaperedArc(ctx, 0, 0, sealR, 0, Math.PI * 0.72, 3.0, "#FACC15", "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, sealR, Math.PI, Math.PI * 1.72, 3.0, "#38BDF8", "#FEF08A", isMono);
     ctx.restore();
 
     ctx.fillStyle = isMono ? "#FFFFFF" : "#1D4ED8";
@@ -6013,13 +5496,8 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.save();
     ctx.translate(-8, 0);
     ctx.rotate(elapsedTime * 8);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.arc(0, 0, 13, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    drawTaperedArc(ctx, 0, 0, 13, 0, Math.PI * 0.76, 3.0, "#FACC15", "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, 13, Math.PI, Math.PI * 1.76, 3.0, "#38BDF8", "#FEF08A", isMono);
     ctx.restore();
 
     let links = 7;
@@ -6494,1262 +5972,1347 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
 }
 
 export function drawUpgradedSlash(ctx, h, f, isMono, enableAdditive = true) {
-  let alpha = Math.max(0, 1 - f);
+  let alpha = f < 0.26 ? 1 : clamp(Math.pow((1 - f) / 0.74, 1.1), 0, 1);
+  let motionF = Math.min(1, f * 1.9);
   if (h.kind === "shockwave") {
-    let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.68));
-    let accent = isMono ? "#FFFFFF" : h.accentColor || "#FFFFFF";
-    let main = isMono ? "#000000" : h.color || "#38BDF8";
-    let ringGrad = ctx.createRadialGradient(h.x, h.y, r * 0.25, h.x, h.y, r);
-    ringGrad.addColorStop(0, "rgba(255,255,255,0)");
-    ringGrad.addColorStop(0.55, isMono ? `rgba(255,255,255,${0.12 * alpha})` : `rgba(255,255,255,${0.14 * alpha})`);
-    ringGrad.addColorStop(0.82, isMono ? `rgba(0,0,0,${0.26 * alpha})` : `rgba(255,255,255,${0.28 * alpha})`);
-    ringGrad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = ringGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Primary shock ring + additive neon pressure aura
-    ctx.save();
-    if (!isMono && enableAdditive) ctx.globalCompositeOperation = "lighter";
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.strokeStyle = main;
-    ctx.lineWidth = 6.6 * alpha + 1.5;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.84, 0, Math.PI * 2);
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 2.8 * alpha + 0.8;
-    ctx.stroke();
-    ctx.restore();
-
-    // Rotating arcane shock segments + outward speed rays
-    ctx.save();
-    ctx.strokeStyle = isMono ? "#CCCCCC" : h.color;
-    ctx.lineWidth = 1.8 * alpha + 0.5;
-    ctx.setLineDash([9, 6]);
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.64, f * 1.8, f * 1.8 + Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    for (let si = 0; si < 12; si++) {
-      let sa = (Math.PI / 6) * si + f * 0.6;
-      ctx.strokeStyle = si % 2 === 0 ? accent : main;
-      ctx.lineWidth = (si % 2 === 0 ? 2.0 : 1.3) * alpha;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(sa) * r * 0.72, h.y + Math.sin(sa) * r * 0.72);
-      ctx.lineTo(h.x + Math.cos(sa) * r * 1.12, h.y + Math.sin(sa) * r * 1.12);
-      ctx.stroke();
-    }
+    let colU = String(h.color || "").toUpperCase();
+    let elem =
+      colU === "#F43F5E" || colU === "#E11D48" || colU === "#EF4444"
+        ? "blood"
+        : colU === "#FBBF24" || colU === "#FACC15" || colU === "#FDE047"
+        ? "gold"
+        : colU === "#A855F7" || colU === "#C084FC"
+        ? "void"
+        : colU === "#10B981" || colU === "#34D399" || colU === "#14B8A6"
+        ? "teal"
+        : colU === "#F97316" || colU === "#EA580C"
+        ? "fire"
+        : "plasma";
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 100,
+      progress: f,
+      element: elem,
+      color: h.color,
+      isMono,
+      seed: (h.x || 0) * 0.05 + (h.y || 0) * 0.03,
+    });
     return;
   }
 
   if (h.kind === "gau_shockring") {
-    let v = h.radius * (0.18 + 0.82 * Math.pow(f, 0.66));
-    let sGrad = ctx.createRadialGradient(h.x, h.y, v * 0.18, h.x, h.y, v);
-    sGrad.addColorStop(0, "rgba(251, 191, 36, 0)");
-    sGrad.addColorStop(0.55, isMono ? "rgba(120,120,120,0.22)" : `rgba(249, 115, 22, ${0.38 * alpha})`);
-    sGrad.addColorStop(0.85, isMono ? "rgba(0,0,0,0.3)" : `rgba(234, 88, 12, ${0.32 * alpha})`);
-    sGrad.addColorStop(1, "rgba(234, 88, 12, 0)");
-    ctx.fillStyle = sGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, v, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Jagged seismic shock rim
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, v, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#000000" : h.color;
-    ctx.lineWidth = (h.heavy ? 9.0 : 6.4) * alpha + 1.8;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, v * 0.78, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 3.2 * alpha + 0.9;
-    ctx.stroke();
-
-    // Tectonic crack spokes + flying shattered rock chips
-    for (let i = 0; i < 8; i++) {
-      let ang = (Math.PI / 4) * i + f * 0.35;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-      ctx.lineWidth = 2.8 * alpha + 0.6;
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(ang) * v * 0.45, h.y + Math.sin(ang) * v * 0.45);
-      ctx.lineTo(h.x + Math.cos(ang + 0.08) * v * 0.8, h.y + Math.sin(ang + 0.08) * v * 0.8);
-      ctx.lineTo(h.x + Math.cos(ang) * v * 1.12, h.y + Math.sin(ang) * v * 1.12);
-      ctx.stroke();
-
-      let rx = h.x + Math.cos(ang + 0.2) * v * (0.76 + f * 0.28);
-      let ry = h.y + Math.sin(ang + 0.2) * v * (0.76 + f * 0.28);
-      ctx.save();
-      ctx.translate(rx, ry);
-      ctx.rotate(ang + f * 4);
-      ctx.fillStyle = isMono ? "#333333" : "#78350F";
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.moveTo(0, -4.5 * alpha);
-      ctx.lineTo(4 * alpha, 2 * alpha);
-      ctx.lineTo(-3.5 * alpha, 3.5 * alpha);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: (h.radius || 110) * (h.heavy ? 1.12 : 1.0),
+      progress: f,
+      element: "earth",
+      color: h.color || "#EA580C",
+      isMono,
+      seed: 19,
+    });
     return;
   }
 
   if (h.kind === "gau_punch") {
+    ctx.save();
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let v = h.comboStep || 0;
-    let T = 26 + f * (h.radius * 0.72);
-    let pAura = ctx.createRadialGradient(T * 0.7, 0, 4, T * 0.7, 0, 32);
-    pAura.addColorStop(0, isMono ? "rgba(255,255,255,0.45)" : `rgba(254, 240, 138, ${0.42 * alpha})`);
-    pAura.addColorStop(1, "rgba(249, 115, 22, 0)");
-    ctx.fillStyle = pAura;
+    ctx.rotate(h.angle || 0);
+    let v = h.step ?? h.comboStep ?? 0;
+    let reach = h.radius || 82;
+    let isFinisher = v === 2 || Boolean(h.empowered);
+    let T = 24 + motionF * (reach * 0.72);
+    let col = isMono ? "#FFFFFF" : h.color || "#F59E0B";
+    let hi = isMono ? "#FFFFFF" : "#FEF08A";
+
+    // Blunt Molten Piston Fist Pressure Cone (NO sword crescent arc!)
+    let coneLen = Math.max(26, T + (isFinisher ? 22 : 12));
+    let domeW = (isFinisher ? 28 : 21) * (0.72 + 0.35 * alpha);
+    let domeGrad = ctx.createLinearGradient(14, 0, coneLen + 14, 0);
+    domeGrad.addColorStop(0, "rgba(234, 88, 12, 0)");
+    domeGrad.addColorStop(0.55, isMono ? `rgba(255,255,255,${0.28 * alpha})` : `rgba(249, 115, 22, ${0.4 * alpha})`);
+    domeGrad.addColorStop(1, isMono ? `rgba(255,255,255,${0.68 * alpha})` : `rgba(254, 240, 138, ${0.7 * alpha})`);
+    ctx.fillStyle = domeGrad;
     ctx.beginPath();
-    ctx.arc(T * 0.7, 0, 32, 0, Math.PI * 2);
+    ctx.moveTo(14, -domeW * 0.55);
+    ctx.quadraticCurveTo(coneLen * 0.72, -domeW * 1.15, coneLen + 10, 0);
+    ctx.quadraticCurveTo(coneLen * 0.72, domeW * 1.15, 14, domeW * 0.55);
+    ctx.closePath();
     ctx.fill();
 
-    if (v > 0) {
-      for (let b = -1; b <= 1; b++) {
-        let y = b * 15;
-        let C = T - Math.abs(b) * 14;
-        ctx.strokeStyle = b === 0 ? "#FEF08A" : h.color;
-        ctx.lineWidth = (b === 0 ? 5.5 : 3.2) * alpha + 1;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(Math.max(12, C - 38), y);
-        ctx.lineTo(C + 12, y);
-        ctx.stroke();
-      }
-      drawTaperedArc(ctx, T - 4, 0, 22, -1.15, 1.15, (v === 3 ? 11 : 7.5) * alpha + 2, h.color, "#FEF08A", isMono);
-      drawFourPointStar(ctx, T + 14, 0, 8 * alpha, 2.2 * alpha, "#FEF08A", h.color);
-    } else {
-      ctx.strokeStyle = h.color;
-      ctx.lineWidth = 4.8 * alpha + 1;
-      ctx.lineCap = "round";
+    ctx.strokeStyle = hi;
+    ctx.globalAlpha = clamp(alpha * 1.05, 0, 1);
+    ctx.lineWidth = (isFinisher ? 5.2 : 3.8) * alpha + 1.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(coneLen - 10, -domeW * 0.92);
+    ctx.quadraticCurveTo(coneLen + 16, 0, coneLen - 10, domeW * 0.92);
+    ctx.stroke();
+
+    for (let ringIdx = 0; ringIdx < 2; ringIdx++) {
+      let rx = Math.max(2.5, (isFinisher ? 11 : 8) * (0.65 + motionF * 0.6));
+      let ry = Math.max(5, domeW * (ringIdx === 0 ? 0.95 : 1.32));
+      let cxRing = 20 + T * (ringIdx === 0 ? 0.55 : 0.88);
+      ctx.strokeStyle = ringIdx === 0 ? hi : col;
+      ctx.lineWidth = (ringIdx === 0 ? 3.2 : 2.2) * alpha + 0.8;
       ctx.beginPath();
-      ctx.moveTo(14, -7);
-      ctx.lineTo(T, -7);
-      ctx.moveTo(10, 0);
-      ctx.lineTo(T + 14, 0);
-      ctx.moveTo(14, 7);
-      ctx.lineTo(T, 7);
+      ctx.ellipse(cxRing, 0, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
-      drawTaperedArc(ctx, T - 4, 0, 17, -1.05, 1.05, 7.5 * alpha + 2, h.color, "#FEF08A", isMono);
     }
+
+    // Triple straight bear-knuckle blast streaks + basalt rock shards
+    for (let b = -1; b <= 1; b++) {
+      drawWindStreamRibbon(ctx, {
+        x: Math.max(12, T * 0.3),
+        y: b * 11,
+        angle: b * 0.08,
+        length: Math.max(24, coneLen * 0.65),
+        width: (b === 0 ? 7.4 : 4.2) * alpha + 1.4,
+        phase: f * 12 + b,
+        color: col,
+        coreColor: "#FEF08A",
+        isMono,
+      });
+    }
+    for (let si = -1; si <= 1; si += 2) {
+      drawFacetedShard(ctx, {
+        x: coneLen + 6,
+        y: si * (10 + motionF * 14),
+        size: (isFinisher ? 7.5 : 5.8) * alpha + 2,
+        rot: f * 5 * si + si,
+        shape: "rock",
+        primary: "#EA580C",
+        highlight: "#FEF08A",
+        shadow: "#292524",
+        rim: "#FBBF24",
+        isMono,
+      });
+    }
+    ctx.restore();
     return;
   }
 
   if (h.kind === "bao_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
     let dir = h.dir || 1;
-    let startA = (-h.spread / 2) * dir;
-    let sweepEnd = (-h.spread / 2 + h.spread * Math.min(1, f * 1.85 + 0.35)) * dir;
-    let bGrad = ctx.createRadialGradient(0, 0, h.radius * 0.25, 0, 0, h.radius * 1.1);
-    bGrad.addColorStop(0, "rgba(147, 51, 234, 0)");
-    bGrad.addColorStop(0.68, isMono ? `rgba(255,255,255,${0.2 * alpha})` : `rgba(168, 85, 247, ${0.32 * alpha})`);
-    bGrad.addColorStop(1, "rgba(232, 121, 249, 0)");
-    ctx.fillStyle = bGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, h.radius * 1.1, Math.min(startA, sweepEnd), Math.max(startA, sweepEnd));
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: h.radius * 0.96, startAng: startA, endAng: sweepEnd, f, color: "#9333EA", accentColor: "#E879F9", isMono, enableAdditive, tiltY: 0.84, crackStrength: h.crossed ? 1.15 : 0.78, seed: 3 });
-    drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, 12.5 * alpha + 2, "#9333EA", "#F5D0FE", isMono);
-    drawTaperedArc(ctx, 0, 0, h.radius * 0.76, startA * 0.85, sweepEnd * 0.9, 6.2 * alpha + 1, "#E879F9", "#FFFFFF", isMono);
-    for (let si = -1; si <= 1; si++) {
-      let sa = si * h.spread * 0.28 * dir;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(245, 208, 254, ${0.75 * alpha})`;
-      ctx.lineWidth = 1.6 * alpha + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(sa) * h.radius * 0.55, Math.sin(sa) * h.radius * 0.55);
-      ctx.lineTo(Math.cos(sa) * h.radius * 1.12, Math.sin(sa) * h.radius * 1.12);
-      ctx.stroke();
-    }
+    let sr = h.radius || 85;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: sr,
+      spread: h.spread || 1.75,
+      dir,
+      progress: f,
+      style: "shadow_blade",
+      primary: "#9333EA",
+      highlight: "#F5D0FE",
+      shadow: "#090414",
+      rim: "#E879F9",
+      tiltY: 0.84,
+      isMono,
+    });
     if (h.crossed) {
-      drawTaperedArc(ctx, 0, 0, h.radius * 0.88, h.spread * 0.5, -h.spread * 0.5, 8.5 * alpha + 1.5, "#E879F9", "#FFFFFF", isMono);
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: (h.angle || 0) + 0.18,
+        radius: sr * 0.88,
+        spread: (h.spread || 1.75) * 0.92,
+        dir: -dir,
+        progress: f,
+        style: "void",
+        primary: "#E879F9",
+        highlight: "#FFFFFF",
+        shadow: "#090414",
+        rim: "#A855F7",
+        tiltY: 0.84,
+        isMono,
+      });
     }
-    drawFourPointStar(ctx, Math.cos(sweepEnd) * h.radius, Math.sin(sweepEnd) * h.radius, 8 * alpha, 2.2 * alpha, "#F5D0FE", isMono ? "#000000" : "#9333EA");
+    // Void shadow dagger needles bursting off blade arc
+    for (let ni = -1; ni <= 1; ni += 2) {
+      let na = (h.angle || 0) + ni * 0.45 * dir;
+      let nd = sr * (0.72 + f * 0.22);
+      drawFacetedShard(ctx, {
+        x: h.x + Math.cos(na) * nd,
+        y: h.y + Math.sin(na) * nd,
+        size: 5.5 * alpha + 2,
+        rot: na,
+        aspect: 2.3,
+        primary: "#E879F9",
+        highlight: "#FFFFFF",
+        shadow: "#090414",
+        rim: "#9333EA",
+        isMono,
+      });
+    }
     return;
   }
 
   if (h.kind === "danh_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let dir = h.dir || 1;
-    let startA = (-h.spread / 2) * dir;
-    let sweepEnd = (-h.spread / 2 + h.spread * Math.min(1, f * 1.75 + 0.35)) * dir;
-    let dGrad = ctx.createRadialGradient(0, 0, h.radius * 0.25, 0, 0, h.radius * 1.12);
-    dGrad.addColorStop(0, "rgba(239, 68, 68, 0)");
-    dGrad.addColorStop(0.68, isMono ? `rgba(255,255,255,${0.2 * alpha})` : `rgba(249, 115, 22, ${0.32 * alpha})`);
-    dGrad.addColorStop(1, "rgba(239, 68, 68, 0)");
-    ctx.fillStyle = dGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, h.radius * 1.12, Math.min(startA, sweepEnd), Math.max(startA, sweepEnd));
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: h.radius * 0.96, startAng: startA, endAng: sweepEnd, f, color: h.color || "#EF4444", accentColor: "#FBBF24", isMono, enableAdditive, tiltY: 0.86, crackStrength: h.empowered ? 1.15 : 0.72, seed: 5 });
-    drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, (h.empowered ? 14.5 : 11.5) * alpha + 2, h.color, "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, h.radius * 0.78, startA * 0.85, sweepEnd * 0.88, 6.2 * alpha + 1, "#F59E0B", "#FFFFFF", isMono);
-    for (let fi = -1; fi <= 1; fi++) {
-      let fa = fi * h.spread * 0.26;
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
-      ctx.beginPath();
-      ctx.arc(Math.cos(fa) * h.radius * (0.94 + f * 0.14), Math.sin(fa) * h.radius * (0.94 + f * 0.14), 2.4 * alpha + 0.7, 0, Math.PI * 2);
-      ctx.fill();
+    let sr = h.radius || 90;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: sr,
+      spread: h.spread || 1.75,
+      dir: h.dir || 1,
+      progress: f,
+      style: "fire_dragon",
+      primary: h.color || "#EF4444",
+      highlight: "#FEF08A",
+      shadow: "#450A0A",
+      rim: "#FBBF24",
+      tiltY: 0.84,
+      isMono,
+    });
+    if (h.empowered) {
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: h.angle || 0,
+        radius: sr * 1.12,
+        spread: (h.spread || 1.75) * 0.85,
+        dir: h.dir || 1,
+        progress: Math.min(1, f * 1.08),
+        style: "celestial_gold",
+        primary: "#F59E0B",
+        highlight: "#FFFFFF",
+        shadow: "#450A0A",
+        rim: "#FEF08A",
+        tiltY: 0.84,
+        isMono,
+      });
     }
-    drawFourPointStar(ctx, Math.cos(sweepEnd) * h.radius, Math.sin(sweepEnd) * h.radius, 8.5 * alpha, 2.4 * alpha, "#FEF08A", isMono ? "#000000" : h.color);
     return;
   }
 
   if (h.kind === "danh_kiem_khi_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
     let step = h.step || 1;
-    let tilt = step === 1 ? -0.32 : step === 2 ? 0.32 : 0;
-    ctx.rotate(tilt);
-    ctx.scale(1, step === 3 ? 0.88 : 0.72);
-    let kGrad = ctx.createRadialGradient(f * 18, 0, h.radius * 0.3, f * 18, 0, h.radius * 1.08);
-    kGrad.addColorStop(0, "rgba(251, 146, 60, 0)");
-    kGrad.addColorStop(0.7, isMono ? `rgba(255,255,255,${0.22 * alpha})` : `rgba(239, 68, 68, ${0.34 * alpha})`);
-    kGrad.addColorStop(1, "rgba(239, 68, 68, 0)");
-    ctx.fillStyle = kGrad;
-    ctx.beginPath();
-    ctx.moveTo(f * 18, 0);
-    ctx.arc(f * 18, 0, h.radius * 1.08, -h.spread / 2, h.spread / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: f * 18, cy: 0, radius: h.radius * 0.98, startAng: -h.spread / 2, endAng: h.spread / 2, f, color: h.color || "#EF4444", accentColor: "#FEF08A", isMono, enableAdditive, tiltY: 0.92, crackStrength: step === 3 ? 1.25 : 0.82, seed: step + 7 });
-    drawTaperedArc(ctx, f * 18, 0, h.radius, -h.spread / 2, h.spread / 2, (step === 3 ? 15 : 11) * alpha + 2, h.color, "#FFFFFF", isMono);
-    drawTaperedArc(ctx, f * 22, 0, h.radius * 0.8, -h.spread * 0.42, h.spread * 0.42, 6 * alpha + 1, "#FEF08A", "#FFFFFF", isMono);
-    drawFourPointStar(ctx, f * 20 + h.radius, 0, (step === 3 ? 11 : 8) * alpha, 2.4 * alpha, "#FEF08A", isMono ? "#000000" : h.color);
+    let tilt = step === 1 ? -0.26 : step === 2 ? 0.26 : 0;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x + Math.cos(h.angle || 0) * f * 18,
+      y: h.y + Math.sin(h.angle || 0) * f * 18,
+      angle: (h.angle || 0) + tilt,
+      radius: (h.radius || 96) * (step === 3 ? 1.1 : 0.96),
+      spread: h.spread || 1.7,
+      dir: step === 2 ? -1 : 1,
+      progress: f,
+      style: "fire_dragon",
+      primary: h.color || "#EF4444",
+      highlight: "#FFFFFF",
+      shadow: "#450A0A",
+      rim: "#FEF08A",
+      tiltY: step === 3 ? 0.86 : 0.74,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "phong_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
     let dir = h.dir || 1;
-    let startA = (-h.spread / 2) * dir;
-    let sweepEnd = (-h.spread / 2 + h.spread * Math.min(1, f * 1.9 + 0.3)) * dir;
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: h.radius * 0.96, startAng: startA, endAng: sweepEnd, f, color: h.isCrit ? "#FACC15" : h.color || "#0EA5E9", accentColor: h.isCrit ? "#F43F5E" : "#67E8F9", isMono, enableAdditive, tiltY: 0.84, crackStrength: h.isCrit ? 1.22 : 0.82, seed: 11 });
-    drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, (h.isCrit ? 15.5 : 11) * alpha + 2, h.isCrit ? "#FACC15" : h.color || "#0EA5E9", "#67E8F9", isMono);
-    drawTaperedArc(ctx, 0, 0, h.radius * 0.78, startA * 0.85, sweepEnd * 0.9, 6 * alpha + 1.2, "#22D3EE", "#FFFFFF", isMono);
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: h.radius || 88,
+      spread: h.spread || 1.7,
+      dir,
+      progress: f,
+      style: h.isCrit ? "celestial_gold" : "plasma_cyan",
+      primary: h.isCrit ? "#FACC15" : h.color || "#0EA5E9",
+      highlight: "#FFFFFF",
+      shadow: "#082F49",
+      rim: h.isCrit ? "#F43F5E" : "#67E8F9",
+      tiltY: 0.84,
+      isMono,
+    });
     if (h.crossed) {
-      drawTaperedArc(ctx, 0, 0, h.radius * 0.92, h.spread * 0.52, -h.spread * 0.52, 8.5 * alpha + 1.5, h.isCrit ? "#38BDF8" : "#0EA5E9", "#FFFFFF", isMono);
-      drawFourPointStar(ctx, h.radius * 0.48, 0, 12 * alpha, 3 * alpha, "#E0F2FE", h.isCrit ? "#FACC15" : "#22D3EE");
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: (h.angle || 0) + 0.14,
+        radius: (h.radius || 88) * 0.92,
+        spread: (h.spread || 1.7) * 0.9,
+        dir: -dir,
+        progress: f,
+        style: "blood_crystal",
+        primary: "#F43F5E",
+        highlight: "#FFFFFF",
+        shadow: "#090D16",
+        rim: "#67E8F9",
+        tiltY: 0.84,
+        isMono,
+      });
     }
-    drawFourPointStar(ctx, Math.cos(sweepEnd) * h.radius, Math.sin(sweepEnd) * h.radius, (h.isCrit ? 12 : 7.5) * alpha, 2.4 * alpha, "#E0F2FE", "#0EA5E9");
     return;
   }
 
   if (h.kind === "phong_swap_burst") {
-    let r = h.radius * (0.2 + 0.8 * Math.pow(f, 0.65));
-    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.15, h.x, h.y, r);
-    grad.addColorStop(0, "rgba(224, 242, 254, 0)");
-    grad.addColorStop(0.58, isMono ? `rgba(255,255,255,${0.32 * alpha})` : `rgba(14, 165, 233, ${0.46 * alpha})`);
-    grad.addColorStop(0.86, isMono ? `rgba(0,0,0,${0.22 * alpha})` : `rgba(34, 211, 238, ${0.34 * alpha})`);
-    grad.addColorStop(1, "rgba(34, 211, 238, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
-    ctx.lineWidth = 7.2 * alpha + 1.6;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = "#E0F2FE";
-    ctx.lineWidth = 3.0 * alpha + 0.6;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.74, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 8 swirling phantom shadow-blade crescents radiating out
-    for (let bi = 0; bi < 8; bi++) {
-      let ba = f * 4.2 + (Math.PI / 4) * bi;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : bi % 2 === 0 ? "#67E8F9" : "#0EA5E9";
-      ctx.lineWidth = 2.8 * alpha + 0.8;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(ba) * r * 0.25, h.y + Math.sin(ba) * r * 0.25);
-      ctx.quadraticCurveTo(
-        h.x + Math.cos(ba + 0.28) * r * 0.64,
-        h.y + Math.sin(ba + 0.28) * r * 0.64,
-        h.x + Math.cos(ba + 0.14) * r * 1.04,
-        h.y + Math.sin(ba + 0.14) * r * 1.04
-      );
-      ctx.stroke();
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: (h.radius || 110) * (0.35 + 0.65 * Math.pow(f, 0.62)),
+      tiltY: 0.74,
+      rot: f * 3.8,
+      sides: 4,
+      primary: "#0EA5E9",
+      highlight: "#FFFFFF",
+      darkRim: "#082F49",
+      rim: "#F43F5E",
+      coreWash: "rgba(14, 165, 233, 0.24)",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 110,
+      progress: f,
+      element: "plasma",
+      color: "#22D3EE",
+      isMono,
+      seed: 13,
+    });
+    for (let bi = 0; bi < 2; bi++) {
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: f * 4.2 + bi * Math.PI,
+        radius: (h.radius || 110) * 0.85,
+        spread: 1.9,
+        progress: f,
+        style: bi === 0 ? "plasma_cyan" : "blood_crystal",
+        primary: bi === 0 ? "#22D3EE" : "#F43F5E",
+        highlight: "#FFFFFF",
+        shadow: "#082F49",
+        rim: "#E0F2FE",
+        tiltY: 0.76,
+        isMono,
+      });
     }
-    drawFourPointStar(ctx, h.x, h.y, r * 0.28 * alpha + 5, 3.0, "#FFFFFF", isMono ? "#000000" : "#22D3EE");
     return;
   }
 
   if (h.kind === "phong_c3_mark") {
-    let r = (h.radius || 58) * (0.64 + 0.36 * Math.sin(f * Math.PI));
+    let r = (h.radius || 58) * (0.68 + 0.32 * Math.sin(f * Math.PI));
+    drawImpactCraterDecal(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r * 1.05,
+      alpha: alpha * 0.78,
+      primary: "#F43F5E",
+      highlight: "#E0F2FE",
+      shadow: "#090D16",
+      debrisShape: "crystal",
+      isMono,
+    });
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r,
+      tiltY: 0.76,
+      rot: f * 2.6,
+      sides: 4,
+      primary: "#22D3EE",
+      highlight: "#FFFFFF",
+      darkRim: "#082F49",
+      rim: "#FACC15",
+      coreWash: "rgba(244, 63, 94, 0.24)",
+      isMono,
+    });
     ctx.save();
     ctx.translate(h.x, h.y);
-    let mGrad = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
-    mGrad.addColorStop(0, isMono ? `rgba(255,255,255,${0.28 * alpha})` : `rgba(244, 63, 94, ${0.3 * alpha})`);
-    mGrad.addColorStop(0.7, isMono ? `rgba(0,0,0,${0.18 * alpha})` : `rgba(34, 211, 238, ${0.22 * alpha})`);
-    mGrad.addColorStop(1, "rgba(34, 211, 238, 0)");
-    ctx.fillStyle = mGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.rotate(f * 2.6);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#22D3EE";
-    ctx.lineWidth = 3.8 * alpha + 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = isMono ? "#CCCCCC" : "#FACC15";
-    ctx.lineWidth = 2.0 * alpha;
-    ctx.setLineDash([8, 6]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
+    ctx.rotate(f * 1.6);
+    ctx.globalAlpha = alpha;
     ctx.strokeStyle = isMono ? "#000000" : "#F43F5E";
-    ctx.lineWidth = 5.4 * alpha + 1.2;
+    ctx.lineWidth = 5.4 * alpha + 1.4;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(-r * 1.02, -r * 1.02);
-    ctx.lineTo(r * 1.02, r * 1.02);
-    ctx.moveTo(-r * 1.02, r * 1.02);
-    ctx.lineTo(r * 1.02, -r * 1.02);
+    ctx.moveTo(-r * 0.96, -r * 0.96);
+    ctx.lineTo(r * 0.96, r * 0.96);
+    ctx.moveTo(-r * 0.96, r * 0.96);
+    ctx.lineTo(r * 0.96, -r * 0.96);
     ctx.stroke();
     ctx.strokeStyle = "#FFFFFF";
     ctx.lineWidth = 1.8 * alpha;
     ctx.stroke();
-
-    for (let k = 0; k < 4; k++) {
-      let ka = (Math.PI / 2) * k;
-      ctx.fillStyle = isMono ? "#FFFFFF" : k % 2 === 0 ? "#22D3EE" : "#F43F5E";
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(ka) * r * 1.22, Math.sin(ka) * r * 1.22);
-      ctx.lineTo(Math.cos(ka + 0.16) * r * 0.72, Math.sin(ka + 0.16) * r * 0.72);
-      ctx.lineTo(Math.cos(ka - 0.16) * r * 0.72, Math.sin(ka - 0.16) * r * 0.72);
-      ctx.closePath();
-      ctx.fill();
-    }
-    drawFourPointStar(ctx, 0, 0, 16 * alpha, 3.8 * alpha, "#E0F2FE", isMono ? "#000000" : "#0EA5E9");
     ctx.restore();
     return;
   }
 
   if (h.kind === "dang_punch") {
+    ctx.save();
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
+    ctx.rotate(h.angle || 0);
     let dir = h.dir || 1;
-    let reach = 24 + f * (h.radius * 0.84);
-    // Ink-wash Tiger-Claw qi shock lines (Black & White alternating)
+    let isWhite = dir > 0;
+    let sr = h.radius || 82;
+    let reach = 26 + motionF * (sr * 0.88);
+    let coreCol = isMono ? "#FFFFFF" : isWhite ? "#F8FAFC" : "#18181B";
+    let rimCol = isMono ? "#000000" : isWhite ? "#09090B" : "#F8FAFC";
+
+    let coneGrad = ctx.createLinearGradient(14, 0, reach + 24, 0);
+    coneGrad.addColorStop(0, "rgba(0,0,0,0)");
+    coneGrad.addColorStop(0.5, isMono ? `rgba(255,255,255,${0.28 * alpha})` : isWhite ? `rgba(248, 250, 252, ${0.36 * alpha})` : `rgba(24, 24, 27, ${0.52 * alpha})`);
+    coneGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(14, -7);
+    ctx.lineTo(reach + 22, -22);
+    ctx.lineTo(reach + 30, 0);
+    ctx.lineTo(reach + 22, 22);
+    ctx.lineTo(14, 7);
+    ctx.closePath();
+    ctx.fill();
+
+    let strikeX = Math.max(24, reach * 0.72);
+    ctx.strokeStyle = rimCol;
+    ctx.lineWidth = 4.2 * alpha + 1.2;
+    ctx.beginPath();
+    ctx.ellipse(strikeX, 0, Math.max(3, 6 + motionF * 4), Math.max(6, 17 + motionF * 6), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = coreCol;
+    ctx.lineWidth = 2.0 * alpha + 0.8;
+    ctx.stroke();
+
+    // Triple straight parallel Tiger-Claw gouge streaks shooting directly ahead
     for (let ci = -1; ci <= 1; ci++) {
-      let yOff = ci * 11 * dir;
-      ctx.strokeStyle = ci === 0 ? "#F8FAFC" : "#09090B";
-      ctx.lineWidth = (ci === 0 ? 5.6 : 7.8) * alpha + 1.5;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(10, yOff * 0.9);
-      ctx.quadraticCurveTo(reach * 0.55, yOff * 1.18, reach + (ci === 0 ? 20 : 8), yOff * 0.52);
-      ctx.stroke();
+      drawWindStreamRibbon(ctx, {
+        x: 16,
+        y: ci * 10 * dir,
+        angle: 0,
+        length: reach + (ci === 0 ? 18 : 4),
+        width: (ci === 0 ? 7.6 : 5.4) * alpha + 1.6,
+        phase: f * 12 + ci,
+        color: ci === 0 ? coreCol : rimCol,
+        coreColor: "#FFFFFF",
+        isMono,
+      });
     }
-    drawTaperedArc(ctx, reach - 4, 0, 26, -1.25, 1.25, 10.5 * alpha + 2, dir > 0 ? "#F8FAFC" : "#18181B", dir > 0 ? "#09090B" : "#F8FAFC", isMono);
-    drawFourPointStar(ctx, reach + 18, 0, 9.5 * alpha, 2.5 * alpha, "#FFFFFF", "#09090B");
+    drawFourPointStar(ctx, reach + 12, 0, 8 * alpha + 3, 2.5 * alpha + 1, "#FFFFFF", rimCol);
+    ctx.restore();
     return;
   }
 
   if (h.kind === "dang_tiger_fist_aoe" || h.kind === "dang_black_shield_boom") {
     let isShield = h.kind === "dang_black_shield_boom";
-    let r = h.radius * (0.2 + 0.8 * Math.pow(f, 0.65));
-    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.15, h.x, h.y, r);
-    grad.addColorStop(0, "rgba(248, 250, 252, 0)");
-    grad.addColorStop(0.58, isMono ? "rgba(0,0,0,0.34)" : `rgba(24, 24, 27, ${0.52 * alpha})`);
-    grad.addColorStop(0.88, isMono ? "rgba(255,255,255,0.22)" : `rgba(248, 250, 252, ${0.26 * alpha})`);
-    grad.addColorStop(1, "rgba(248, 250, 252, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Yin-Yang Half-Black Half-White kinetic shock ring
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#09090B";
-    ctx.lineWidth = (isShield ? 11 : 13.5) * alpha + 2.2;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI);
-    ctx.stroke();
-
-    ctx.strokeStyle = "#F8FAFC";
-    ctx.lineWidth = (isShield ? 10 : 12) * alpha + 2;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, Math.PI, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = "#F8FAFC";
-    ctx.lineWidth = 4.6 * alpha + 1;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.78, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Dramatic 4-claw Tiger Raking arcs across the impact center
-    for (let i = -1.5; i <= 1.5; i += 1) {
-      let off = i * r * 0.2;
-      ctx.strokeStyle = Math.abs(i) < 1 ? "#F8FAFC" : "#09090B";
-      ctx.lineWidth = (Math.abs(i) < 1 ? 5.2 : 4.0) * alpha + 0.8;
-      ctx.beginPath();
-      ctx.moveTo(h.x - r * 0.65, h.y + off - r * 0.26);
-      ctx.quadraticCurveTo(h.x, h.y + off - r * 0.08, h.x + r * 0.65, h.y + off + r * 0.26);
-      ctx.stroke();
-    }
+    drawImpactCraterDecal(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: (h.radius || 120) * 0.94,
+      alpha: alpha * 0.85,
+      primary: "#CBD5E1",
+      highlight: "#FFFFFF",
+      shadow: "#09090B",
+      debrisShape: "rock",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 120,
+      progress: f,
+      element: "earth",
+      color: isShield ? "#18181B" : "#F8FAFC",
+      isMono,
+      seed: isShield ? 17 : 19,
+    });
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: f * 1.4,
+      radius: (h.radius || 120) * 0.86,
+      spread: 2.3,
+      dir: 1,
+      progress: f,
+      style: "steel",
+      primary: "#F8FAFC",
+      highlight: "#FFFFFF",
+      shadow: "#09090B",
+      rim: "#CBD5E1",
+      tiltY: 0.76,
+      isMono,
+    });
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: f * 1.4 + Math.PI,
+      radius: (h.radius || 120) * 0.86,
+      spread: 2.3,
+      dir: -1,
+      progress: f,
+      style: "shadow_blade",
+      primary: "#18181B",
+      highlight: "#F8FAFC",
+      shadow: "#000000",
+      rim: "#94A3B8",
+      tiltY: 0.76,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "danh_dragon_shockring") {
-    let v = h.radius * (0.18 + 0.82 * Math.pow(f, 0.6));
-    let shockGrad = ctx.createRadialGradient(h.x, h.y, v * 0.2, h.x, h.y, v);
-    shockGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
-    shockGrad.addColorStop(0.55, isMono ? "rgba(0,0,0,0.22)" : `rgba(239, 68, 68, ${0.36 * alpha})`);
-    shockGrad.addColorStop(0.85, isMono ? "rgba(255,255,255,0.25)" : `rgba(249, 115, 22, ${0.34 * alpha})`);
-    shockGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
-    ctx.fillStyle = shockGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, v, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, v, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#000000" : h.color;
-    ctx.lineWidth = 11 * alpha + 2.2;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, v * 0.74, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 4.8 * alpha + 1.2;
-    ctx.stroke();
-
-    // Radial curving draconic flame tongues bursting outward
-    for (let i = 0; i < 10; i++) {
-      let ang = (Math.PI * 2 / 10) * i + f * 0.65;
-      let ix = h.x + Math.cos(ang) * (v * 0.72);
-      let iy = h.y + Math.sin(ang) * (v * 0.72);
-      let mx = h.x + Math.cos(ang + 0.12) * (v * 0.94);
-      let my = h.y + Math.sin(ang + 0.12) * (v * 0.94);
-      let ox = h.x + Math.cos(ang) * (v * 1.16);
-      let oy = h.y + Math.sin(ang) * (v * 1.16);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#F97316";
-      ctx.lineWidth = 3.6 * alpha + 1;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(ix, iy);
-      ctx.quadraticCurveTo(mx, my, ox, oy);
-      ctx.stroke();
+    drawImpactCraterDecal(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: (h.radius || 130) * 0.94,
+      alpha: alpha * 0.86,
+      primary: "#EF4444",
+      highlight: "#FEF08A",
+      shadow: "#450A0A",
+      debrisShape: "rock",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 130,
+      progress: f,
+      element: "fire",
+      color: h.color || "#EF4444",
+      isMono,
+      seed: 21,
+    });
+    for (let i = 0; i < 2; i++) {
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: f * 2.2 + i * Math.PI,
+        radius: (h.radius || 130) * 0.88,
+        spread: 2.1,
+        progress: f,
+        style: "fire_dragon",
+        primary: h.color || "#EF4444",
+        highlight: "#FEF08A",
+        shadow: "#450A0A",
+        rim: "#F59E0B",
+        tiltY: 0.76,
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "spear") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let reach = h.radius * (0.55 + 0.45 * Math.min(1, f * 1.8));
+    ctx.save();
+    let reach = (h.radius || 110) * (0.58 + 0.42 * Math.min(1, motionF * 1.25));
     let isCerb = Boolean(h.cerberus);
     let isEmp = Boolean(h.empowered);
-    drawTaperedArc(ctx, 0, 0, reach * 0.92, -h.spread * 0.44, h.spread * 0.44, (isCerb ? 12.5 : 9.4) * alpha + 1.6, h.color, isCerb ? "#FEF08A" : "#FFFFFF", isMono);
+    let spearCol = isMono ? "#FFFFFF" : h.color || "#38BDF8";
+    let spearRim = isMono ? "#000000" : isCerb ? "#F43F5E" : "#FEF08A";
+
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+
+    let coneGrad = ctx.createLinearGradient(14, 0, reach + 28, 0);
+    coneGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
+    coneGrad.addColorStop(0.55, isMono ? `rgba(255,255,255,${0.28 * alpha})` : isCerb ? `rgba(244, 63, 94, ${0.38 * alpha})` : `rgba(56, 189, 248, ${0.38 * alpha})`);
+    coneGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = coneGrad;
+    ctx.beginPath();
+    ctx.moveTo(reach + 32, 0);
+    ctx.lineTo(18, -(14 + (isCerb ? 8 : 4)));
+    ctx.lineTo(30, 0);
+    ctx.lineTo(18, 14 + (isCerb ? 8 : 4));
+    ctx.closePath();
+    ctx.fill();
+
+    for (let mi = 0; mi < 2; mi++) {
+      let mx = reach * (mi === 0 ? 0.42 : 0.74) + motionF * 12;
+      let mry = Math.max(5, (mi === 0 ? 18 : 11) + (isCerb ? 5 : 0));
+      let mrx = Math.max(2, 4.2 + motionF * 2.5);
+      ctx.strokeStyle = mi === 0 ? spearCol : spearRim;
+      ctx.globalAlpha = clamp(alpha * (mi === 0 ? 0.9 : 0.96), 0, 1);
+      ctx.lineWidth = (mi === 0 ? 3.2 : 2.2) * alpha + 0.8;
+      ctx.beginPath();
+      ctx.ellipse(mx, 0, mrx, mry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
     if (isCerb || isEmp) {
       let fanCols = isCerb ? ["#38BDF8", "#FDE047", "#F43F5E"] : ["#38BDF8", "#FEF08A", "#67E8F9"];
       for (let idx = -1; idx <= 1; idx++) {
-        let offA = idx * 0.24;
-        let len = idx === 0 ? reach + 22 : reach * 0.9;
-        ctx.save();
-        ctx.rotate(offA);
-        ctx.strokeStyle = isMono ? "#000000" : fanCols[idx + 1];
-        ctx.lineWidth = (idx === 0 ? 7.2 : 4.6) * alpha + 1.1;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(16, 0);
-        ctx.lineTo(len, 0);
-        ctx.stroke();
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 2.0 * alpha;
-        ctx.beginPath();
-        ctx.moveTo(22, 0);
-        ctx.lineTo(len + 3, 0);
-        ctx.stroke();
-        ctx.restore();
+        let offA = idx * 0.14;
+        let len = idx === 0 ? reach + 28 : reach * 0.9;
+        drawWindStreamRibbon(ctx, {
+          x: 16,
+          y: 0,
+          angle: offA,
+          length: len,
+          width: (idx === 0 ? 9.5 : 5.4) * alpha + 1.6,
+          phase: f * 14 + idx,
+          color: fanCols[idx + 1],
+          coreColor: "#FFFFFF",
+          isMono,
+        });
+        if (idx === 0) {
+          drawBranchingArc(ctx, { x1: 18, y1: 0, x2: len + 6, y2: 0, seed: f * 14 + idx, width: 2.2, color: fanCols[1], coreColor: "#FFFFFF", isMono });
+        }
       }
-      drawFourPointStar(ctx, reach + 20, 0, (isCerb ? 14 : 11) * alpha, 3.0 * alpha, "#FEF08A", isCerb ? "#F43F5E" : h.color);
+      drawFacetedShard(ctx, {
+        x: reach + 24,
+        y: 0,
+        size: 9.5 * alpha + 2.5,
+        rot: 0,
+        aspect: 2.1,
+        primary: isCerb ? "#F43F5E" : spearCol,
+        highlight: "#FEF08A",
+        shadow: "#082F49",
+        rim: "#FFFFFF",
+        isMono,
+      });
     } else {
-      ctx.strokeStyle = isMono ? "#000000" : h.color;
-      ctx.lineWidth = 6.0 * alpha + 1.1;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(16, 0);
-      ctx.lineTo(reach + 14, 0);
-      ctx.stroke();
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-      ctx.lineWidth = 2.4 * alpha + 0.6;
-      ctx.beginPath();
-      ctx.moveTo(18, -6);
-      ctx.bezierCurveTo(reach * 0.4, 9, reach * 0.7, -8, reach + 14, 0);
-      ctx.stroke();
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 2.1 * alpha;
-      ctx.beginPath();
-      ctx.moveTo(24, 0);
-      ctx.lineTo(reach + 16, 0);
-      ctx.stroke();
-      drawFourPointStar(ctx, reach + 16, 0, 9.2 * alpha, 2.4 * alpha, "#FFFFFF", h.color);
+      drawWindStreamRibbon(ctx, {
+        x: 16,
+        y: 0,
+        angle: 0,
+        length: reach + 22,
+        width: 8.2 * alpha + 1.6,
+        phase: f * 12,
+        color: spearCol,
+        coreColor: "#FFFFFF",
+        isMono,
+      });
+      drawBranchingArc(ctx, { x1: 20, y1: 0, x2: reach + 18, y2: 0, seed: f * 12, width: 1.7, color: spearCol, coreColor: "#FFFFFF", isMono });
+      drawFacetedShard(ctx, {
+        x: reach + 20,
+        y: 0,
+        size: 7.8 * alpha + 2,
+        rot: 0,
+        aspect: 2.0,
+        primary: spearCol,
+        highlight: "#FFFFFF",
+        shadow: "#082F49",
+        rim: "#FEF08A",
+        isMono,
+      });
     }
+    ctx.restore();
     return;
   }
 
   if (h.kind === "dung_cerberus_bite") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
     let r = (h.radius || 68) * (0.5 + 0.5 * Math.pow(f, 0.58));
-    let biteGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, r);
-    biteGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.52)" : `rgba(253, 224, 71, ${0.46 * alpha})`);
-    biteGrad.addColorStop(0.65, isMono ? "rgba(0,0,0,0.24)" : `rgba(56, 189, 248, ${0.3 * alpha})`);
-    biteGrad.addColorStop(1, "rgba(15, 23, 42, 0)");
-    ctx.fillStyle = biteGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3 ferocious Cerberus claw rakes + snapping abyssal fang arcs
+    drawImpactCraterDecal(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r * 0.96,
+      alpha: alpha * 0.8,
+      primary: "#38BDF8",
+      highlight: "#FDE047",
+      shadow: "#082F49",
+      debrisShape: "crystal",
+      isMono,
+    });
     let cols = ["#38BDF8", "#FDE047", "#F43F5E"];
     for (let i = -1; i <= 1; i++) {
-      let yOff = i * r * 0.25;
-      ctx.strokeStyle = isMono ? "#000000" : cols[i + 1];
-      ctx.lineWidth = (i === 0 ? 6.2 : 4.6) * alpha + 1.3;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.74, yOff - r * 0.28);
-      ctx.quadraticCurveTo(0, yOff + r * 0.08, r * 0.82, yOff + r * 0.26);
-      ctx.stroke();
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 1.8 * alpha;
-      ctx.stroke();
+      drawSculptedBladeSlash(ctx, {
+        x: h.x + Math.cos((h.angle || 0) + Math.PI * 0.5) * i * r * 0.22,
+        y: h.y + Math.sin((h.angle || 0) + Math.PI * 0.5) * i * r * 0.22,
+        angle: h.angle || 0,
+        radius: r * 0.92,
+        spread: 1.5,
+        dir: i === 0 ? 1 : -1,
+        progress: f,
+        style: i === 1 ? "blood_crystal" : "plasma_cyan",
+        primary: cols[i + 1],
+        highlight: "#FFFFFF",
+        shadow: "#090D16",
+        rim: "#FEF08A",
+        tiltY: 0.84,
+        isMono,
+      });
     }
-    // Snapping upper/lower hound fangs
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    // 3D beveled snapping upper/lower Cerberus fangs
     for (let s of [-1, 1]) {
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
       for (let fx of [-0.36, 0, 0.36]) {
-        ctx.beginPath();
-        ctx.moveTo(r * fx - 5, s * r * 0.58 * (1 - f * 0.4));
-        ctx.lineTo(r * fx, s * r * 0.14);
-        ctx.lineTo(r * fx + 5, s * r * 0.58 * (1 - f * 0.4));
-        ctx.closePath();
-        ctx.fill();
+        drawFacetedShard(ctx, {
+          x: r * fx,
+          y: s * r * 0.38 * (1 - f * 0.45),
+          size: 7.5 * alpha + 2.5,
+          rot: s > 0 ? -Math.PI * 0.5 : Math.PI * 0.5,
+          aspect: 1.9,
+          primary: "#FDE047",
+          highlight: "#FFFFFF",
+          shadow: "#082F49",
+          rim: "#38BDF8",
+          isMono,
+        });
       }
     }
-    drawTaperedArc(ctx, 0, 0, r * 0.88, -1.15, 1.15, 8 * alpha + 1.6, h.color || "#FDE047", "#FFFFFF", isMono);
-    drawFourPointStar(ctx, 0, 0, 15 * alpha, 3.4 * alpha, "#FFFFFF", "#FDE047");
     return;
   }
 
   if (h.kind === "dung_c1_charge") {
+    let reach = (h.radius || 175) * (0.4 + 0.6 * Math.min(1, f * 1.5));
+    drawSculptedBladeSlash(ctx, {
+      x: h.x + Math.cos(h.angle || 0) * reach * 0.65,
+      y: h.y + Math.sin(h.angle || 0) * reach * 0.65,
+      angle: h.angle || 0,
+      radius: 46,
+      spread: 1.85,
+      progress: f,
+      style: "plasma_cyan",
+      primary: "#38BDF8",
+      highlight: "#FEF08A",
+      shadow: "#082F49",
+      rim: "#FFFFFF",
+      tiltY: 0.84,
+      isMono,
+    });
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle || 0);
-    let reach = (h.radius || 175) * (0.4 + 0.6 * Math.min(1, f * 1.5));
-    let coneGrad = ctx.createLinearGradient(0, 0, reach, 0);
-    coneGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
-    coneGrad.addColorStop(0.45, isMono ? "rgba(255,255,255,0.42)" : `rgba(56, 189, 248, ${0.46 * alpha})`);
-    coneGrad.addColorStop(1, isMono ? "rgba(255,255,255,0.78)" : `rgba(253, 224, 71, ${0.78 * alpha})`);
-    ctx.fillStyle = coneGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, -32);
-    ctx.lineTo(reach, 0);
-    ctx.lineTo(0, 32);
-    ctx.closePath();
-    ctx.fill();
-
     for (let s of [-1, 0, 1]) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : s === 0 ? "#FFFFFF" : s < 0 ? "#38BDF8" : "#FDE047";
-      ctx.lineWidth = (s === 0 ? 5.4 : 3.6) * alpha + 0.9;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(-14, s * 18);
-      ctx.lineTo(reach + (s === 0 ? 22 : -10), s * 4);
-      ctx.stroke();
+      drawWindStreamRibbon(ctx, {
+        x: -10,
+        y: s * 14,
+        angle: -s * 0.08,
+        length: reach + (s === 0 ? 28 : -8),
+        width: (s === 0 ? 11 : 6.2) * alpha + 2,
+        phase: f * 16 + s,
+        color: s === 0 ? "#FDE047" : "#38BDF8",
+        coreColor: "#FFFFFF",
+        isMono,
+      });
     }
-    // Sonic shock chevrons along spear lunge
-    for (let k = 0; k < 2; k++) {
-      let cx = reach * (0.45 + k * 0.3);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : k === 0 ? "#38BDF8" : "#FEF08A";
-      ctx.lineWidth = 2.4 * alpha + 0.6;
-      ctx.beginPath();
-      ctx.moveTo(cx - 18, -22);
-      ctx.lineTo(cx + 8, 0);
-      ctx.lineTo(cx - 18, 22);
-      ctx.stroke();
-    }
-    drawFourPointStar(ctx, reach + 12, 0, 15 * alpha, 3.4 * alpha, "#FEF08A", isMono ? "#000000" : "#38BDF8");
+    drawBranchingArc(ctx, { x1: 0, y1: 0, x2: reach + 18, y2: 0, seed: f * 20, width: 2.4, color: "#38BDF8", coreColor: "#FFFFFF", isMono });
+    drawFacetedShard(ctx, {
+      x: reach + 16,
+      y: 0,
+      size: 10 * alpha + 2.5,
+      rot: 0,
+      aspect: 2.0,
+      primary: "#38BDF8",
+      highlight: "#FEF08A",
+      shadow: "#082F49",
+      rim: "#FFFFFF",
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "dung_c2_awaken") {
-    let r = (h.radius || 125) * (0.2 + 0.8 * Math.pow(f, 0.6));
-    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.14, h.x, h.y, r);
-    grad.addColorStop(0, "rgba(254, 240, 138, 0)");
-    grad.addColorStop(0.55, isMono ? "rgba(255,255,255,0.34)" : `rgba(249, 115, 22, ${0.42 * alpha})`);
-    grad.addColorStop(0.85, isMono ? "rgba(0,0,0,0.28)" : `rgba(244, 63, 94, ${0.36 * alpha})`);
-    grad.addColorStop(1, "rgba(244, 63, 94, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#000000" : h.color || "#F59E0B";
-    ctx.lineWidth = 9.5 * alpha + 1.8;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 3.8 * alpha + 0.9;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.74, 0, Math.PI * 2);
-    ctx.stroke();
-
-    for (let i = 0; i < 10; i++) {
-      let ang = (Math.PI / 5) * i + f * 0.85;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#FB7185";
-      ctx.lineWidth = 2.8 * alpha + 0.9;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(ang) * r * 0.48, h.y + Math.sin(ang) * r * 0.48);
-      ctx.lineTo(h.x + Math.cos(ang) * r * 1.15, h.y + Math.sin(ang) * r * 1.15);
-      ctx.stroke();
-    }
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 125,
+      progress: f,
+      element: "fire",
+      color: h.color || "#F59E0B",
+      isMono,
+      seed: 23,
+    });
     return;
   }
 
   if (h.kind === "danh_firebreath") {
+    ctx.save();
+    let reach = (h.radius || 165) * (0.48 + 0.52 * Math.pow(Math.min(1, motionF * 1.15), 0.7));
+    let dir = h.dir || 1;
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let reach = h.radius * (0.42 + 0.58 * Math.pow(Math.min(1, f * 1.35), 0.72));
-    let half = h.spread * 0.5;
-    let coneGrad = ctx.createRadialGradient(10, 0, 8, 10, 0, reach);
-    coneGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.85)" : `rgba(254, 249, 195, ${0.82 * alpha})`);
-    coneGrad.addColorStop(0.45, isMono ? "rgba(120,120,120,0.6)" : `rgba(249, 115, 22, ${0.65 * alpha})`);
-    coneGrad.addColorStop(0.82, isMono ? "rgba(0,0,0,0.45)" : `rgba(220, 38, 38, ${0.42 * alpha})`);
-    coneGrad.addColorStop(1, "rgba(153, 27, 27, 0)");
+    ctx.rotate(h.angle || 0);
 
-    // Outer crimson dragon-blaze cone
-    ctx.fillStyle = coneGrad;
+    for (let ci = -1; ci <= 1; ci++) {
+      let cr = 46 + ci * 13;
+      drawTaperedArc(ctx, 18, ci * 5, cr, -0.78 * dir, 0.78 * dir, 4.4 * alpha + 1.2, "#EF4444", "#FEF08A", isMono);
+    }
+
+    let half = clamp((h.spread || 1.45) * 0.44, 0.28, 0.85);
+    let endX = Math.max(48, reach);
+    let edgeY = Math.sin(half) * endX;
+
+    let outerGrad = ctx.createLinearGradient(24, 0, endX + 18, 0);
+    outerGrad.addColorStop(0, isMono ? `rgba(255,255,255,${0.44 * alpha})` : `rgba(220, 38, 38, ${0.46 * alpha})`);
+    outerGrad.addColorStop(0.6, isMono ? `rgba(180,180,180,${0.22 * alpha})` : `rgba(234, 88, 12, ${0.26 * alpha})`);
+    outerGrad.addColorStop(1, "rgba(127, 29, 29, 0)");
+    ctx.fillStyle = outerGrad;
     ctx.beginPath();
-    ctx.moveTo(12, 0);
-    ctx.arc(0, 0, reach, -half, half);
+    ctx.moveTo(24, -6);
+    ctx.bezierCurveTo(endX * 0.45, -edgeY * 0.72, endX * 0.82, -edgeY * 1.15, endX + 12, -edgeY * 0.65);
+    ctx.quadraticCurveTo(endX + 24, 0, endX + 12, edgeY * 0.65);
+    ctx.bezierCurveTo(endX * 0.82, edgeY * 1.15, endX * 0.45, edgeY * 0.72, 24, 6);
     ctx.closePath();
     ctx.fill();
 
-    // Inner blazing flame tongues
     for (let i = -2; i <= 2; i++) {
-      let ta = i * (half * 0.36);
-      let tr = reach * (0.78 + (1 - Math.abs(i) * 0.14) * 0.18);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : i === 0 ? `rgba(254, 249, 195, ${0.9 * alpha})` : `rgba(251, 191, 36, ${0.72 * alpha})`;
-      ctx.lineWidth = (i === 0 ? 7 : 4.5) * alpha + 1.2;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(16, 0);
-      ctx.quadraticCurveTo(Math.cos(ta) * tr * 0.52, Math.sin(ta) * tr * 0.52 + Math.sin(f * 16 + i) * 7, Math.cos(ta) * tr, Math.sin(ta) * tr);
-      ctx.stroke();
+      let ta = i * (half * 0.38);
+      drawWindStreamRibbon(ctx, {
+        x: 24,
+        y: i * 2.5,
+        angle: ta,
+        length: Math.max(30, reach * (0.76 + (1 - Math.abs(i) * 0.14) * 0.24) - 20),
+        width: (i === 0 ? 11.5 : 6.8) * alpha + 2.0,
+        phase: f * 18 + i,
+        color: i === 0 ? "#FACC15" : "#F97316",
+        coreColor: "#FEF08A",
+        isMono,
+      });
     }
 
-    drawTaperedArc(ctx, 0, 0, reach * 0.94, -half, half, 13 * alpha + 2, h.empowered ? "#EF4444" : "#F97316", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.68, -half * 0.78, half * 0.78, 7 * alpha + 1.5, "#FBBF24", "#FFFFFF", isMono);
+    for (let ei = 0; ei < 4; ei++) {
+      let ea = ((ei - 1.5) * 0.34) * half;
+      let ed = reach * (0.58 + 0.35 * ((ei * 0.27 + motionF * 0.6) % 1));
+      drawFacetedShard(ctx, {
+        x: Math.cos(ea) * ed,
+        y: Math.sin(ea) * ed,
+        size: 4.5 * alpha + 1.5,
+        rot: ea + f * 6,
+        primary: "#F97316",
+        highlight: "#FEF08A",
+        shadow: "#450A0A",
+        rim: "#FFFFFF",
+        isMono,
+      });
+    }
+    ctx.restore();
     return;
   }
 
   if (h.kind === "luan_portal_wave") {
-    let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.66));
-    let waveGrad = ctx.createRadialGradient(h.x, h.y, r * 0.14, h.x, h.y, r);
-    waveGrad.addColorStop(0, "rgba(168, 85, 247, 0)");
-    waveGrad.addColorStop(0.55, isMono ? "rgba(0,0,0,0.28)" : `rgba(192, 132, 252, ${0.42 * alpha})`);
-    waveGrad.addColorStop(0.86, isMono ? "rgba(255,255,255,0.2)" : `rgba(56, 189, 248, ${0.32 * alpha})`);
-    waveGrad.addColorStop(1, "rgba(56, 189, 248, 0)");
-    ctx.fillStyle = waveGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#000000" : "#A855F7";
-    ctx.lineWidth = 8.5 * alpha + 1.8;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.78, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
-    ctx.lineWidth = 3.8 * alpha + 0.9;
-    ctx.stroke();
-
-    // Rotating dimensional mirror hexagram inside shockwave
-    ctx.save();
-    ctx.translate(h.x, h.y);
-    ctx.rotate(f * 1.4);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(245, 208, 254, ${alpha * 0.75})`;
-    ctx.lineWidth = 2.0 * alpha;
-    ctx.beginPath();
-    for (let k = 0; k < 6; k++) {
-      let a = (Math.PI / 3) * k;
-      let px = Math.cos(a) * r * 0.68, py = Math.sin(a) * r * 0.68;
-      k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
-
-    // Shattered mirror glass fragments & cyan rift flares flying outward
-    for (let i = 0; i < 10; i++) {
-      let ang = (Math.PI * 2 / 10) * i + f * 1.05;
-      let sx = h.x + Math.cos(ang) * r * 0.95;
-      let sy = h.y + Math.sin(ang) * r * 0.95;
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(ang + f * 3.2);
-      ctx.fillStyle = i % 2 === 0 ? (isMono ? "#FFFFFF" : "#F5D0FE") : (isMono ? "#CCCCCC" : "#38BDF8");
-      ctx.strokeStyle = isMono ? "#000000" : "#7C3AED";
-      ctx.lineWidth = 1.0;
-      ctx.beginPath();
-      ctx.moveTo(0, -7.5 * alpha - 2);
-      ctx.lineTo(5 * alpha + 1.5, 0);
-      ctx.lineTo(0, 7.5 * alpha + 2);
-      ctx.lineTo(-5 * alpha - 1.5, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-    drawFourPointStar(ctx, h.x, h.y, r * 0.24 * alpha + 4, 2.8, "#FFFFFF", isMono ? "#000000" : "#A855F7");
+    let r = (h.radius || 160) * (0.25 + 0.75 * Math.pow(f, 0.66));
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r * 0.88,
+      tiltY: 0.74,
+      rot: f * 1.6,
+      sides: 6,
+      primary: "#A855F7",
+      highlight: "#F5D0FE",
+      darkRim: "#1E1B4B",
+      rim: "#38BDF8",
+      coreWash: "rgba(168, 85, 247, 0.24)",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 160,
+      progress: f,
+      element: "void",
+      color: h.color || "#A855F7",
+      isMono,
+      seed: 19,
+    });
     return;
   }
 
   if (h.kind === "nguyen_wave") {
+    let reach = (h.radius || 140) * (0.35 + 0.65 * Math.pow(f, 0.72));
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: reach,
+      spread: clamp(h.spread || Math.PI, 0.6, Math.PI * 1.6),
+      progress: f,
+      style: "wind_gale",
+      primary: "#10B981",
+      highlight: "#FEF08A",
+      shadow: "#064E3B",
+      rim: "#6EE7B7",
+      tiltY: 0.8,
+      isMono,
+    });
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle || 0);
-    let reach = h.radius * (0.35 + 0.65 * Math.pow(f, 0.72));
     let half = (h.spread || Math.PI) * 0.5;
-    let waveGrad = ctx.createRadialGradient(0, 0, reach * 0.12, 0, 0, reach);
-    waveGrad.addColorStop(0, "rgba(16, 185, 129, 0)");
-    waveGrad.addColorStop(0.55, isMono ? "rgba(0,0,0,0.22)" : `rgba(52, 211, 153, ${0.34 * alpha})`);
-    waveGrad.addColorStop(0.85, isMono ? "rgba(255,255,255,0.22)" : `rgba(254, 240, 138, ${0.28 * alpha})`);
-    waveGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
-    ctx.fillStyle = waveGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, reach, -half, half);
-    ctx.closePath();
-    ctx.fill();
-
-    drawTaperedArc(ctx, 0, 0, reach, -half, half, 13.5 * alpha + 2.2, "#10B981", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.74, -half * 0.86, half * 0.86, 7.5 * alpha + 1.4, "#34D399", "#FFFFFF", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.52, -half * 0.65, half * 0.65, 4.0 * alpha + 0.8, "#FACC15", "#FFFFFF", isMono);
     for (let i = -3; i <= 3; i++) {
-      let pa = i * (half * 0.28);
+      let pa = i * (half * 0.26);
       let pr = reach * (0.68 + f * 0.28);
       ctx.save();
-      ctx.translate(Math.cos(pa) * pr, Math.sin(pa) * pr);
+      ctx.translate(Math.cos(pa) * pr, Math.sin(pa) * pr * 0.8);
       ctx.rotate(pa + f * 2.2);
-      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7";
-      ctx.strokeStyle = isMono ? "#000000" : "#059669";
-      ctx.lineWidth = 1.0;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 6.2 * alpha + 1.8, 2.8 * alpha + 0.9, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      drawUltPetal(ctx, 0, -4, 9 * alpha + 3, 4.5 * alpha + 1.5, isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7", isMono ? "#000000" : "#059669");
       ctx.restore();
     }
-    drawFourPointStar(ctx, reach * 0.94, 0, 10 * alpha + 2, 2.6, "#FEF08A", isMono ? "#000000" : "#10B981");
     return;
   }
 
   if (h.kind === "taidu_hex_blast") {
-    let r = h.radius * (0.2 + 0.8 * Math.pow(f, 0.58));
-    if (!Number.isFinite(h.x) || !Number.isFinite(h.y) || !Number.isFinite(r) || r <= 0) return;
-    let mainCol = isMono ? "#000000" : h.color || "#F97316";
-    let accentCol = isMono ? "#FFFFFF" : h.accentColor || "#38BDF8";
-    let blastGrad = ctx.createRadialGradient(h.x, h.y, r * 0.08, h.x, h.y, r);
-    blastGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.75)" : `rgba(254, 240, 138, ${0.7 * alpha})`);
-    blastGrad.addColorStop(0.48, isMono ? "rgba(0,0,0,0.34)" : `rgba(249, 115, 22, ${0.44 * alpha})`);
-    blastGrad.addColorStop(0.84, isMono ? "rgba(255,255,255,0.18)" : `rgba(56, 189, 248, ${0.28 * alpha})`);
-    blastGrad.addColorStop(1, "rgba(56, 189, 248, 0)");
-    ctx.fillStyle = blastGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Outer hexagonal tech shockwave + counter-rotating inner tactical hex
-    ctx.save();
-    ctx.translate(h.x, h.y);
-    ctx.rotate(f * 0.55);
-    ctx.strokeStyle = mainCol;
-    ctx.lineWidth = 6.2 * alpha + 1.6;
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      let a = (Math.PI / 3) * i;
-      let px = Math.cos(a) * r, py = Math.sin(a) * r;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    ctx.rotate(-f * 1.1);
-    ctx.strokeStyle = accentCol;
-    ctx.lineWidth = 3.2 * alpha + 0.9;
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      let a = (Math.PI / 3) * i;
-      let px = Math.cos(a) * r * 0.72, py = Math.sin(a) * r * 0.72;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    // Ionized targeting circle + radial vector spikes
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.4 * alpha + 0.7;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
-    ctx.stroke();
-    for (let i = 0; i < 6; i++) {
-      let a = (Math.PI / 3) * i + Math.PI / 6;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.4, Math.sin(a) * r * 0.4);
-      ctx.lineTo(Math.cos(a) * r * 1.12, Math.sin(a) * r * 1.12);
-      ctx.stroke();
-    }
-    drawFourPointStar(ctx, 0, 0, r * 0.28 * alpha + 6, 3.2, "#FFFFFF", accentCol);
-    ctx.restore();
+    let rad = Math.max(12, h.radius || 130);
+    if (!Number.isFinite(h.x) || !Number.isFinite(h.y)) return;
+    drawImpactCraterDecal(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: rad * 0.92,
+      alpha: alpha * 0.86,
+      primary: h.color || "#F97316",
+      highlight: "#FEF08A",
+      shadow: "#0F172A",
+      debrisShape: "rock",
+      isMono,
+    });
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: rad * (0.35 + 0.65 * Math.pow(f, 0.58)),
+      tiltY: 0.74,
+      rot: f * 0.9,
+      sides: 6,
+      primary: h.color || "#F97316",
+      highlight: "#FFFFFF",
+      darkRim: "#0F172A",
+      rim: h.accentColor || "#38BDF8",
+      coreWash: "rgba(249, 115, 22, 0.24)",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: rad,
+      progress: f,
+      element: "fire",
+      color: h.color || "#F97316",
+      isMono,
+      seed: 27,
+    });
     return;
   }
 
   if (h.kind === "nguyen_lotus_boom") {
-    let r = h.radius * (0.2 + 0.8 * Math.pow(f, 0.62));
-    if (!Number.isFinite(h.x) || !Number.isFinite(h.y) || !Number.isFinite(r) || r <= 0) return;
-    let lotusGrad = ctx.createRadialGradient(h.x, h.y, r * 0.1, h.x, h.y, r);
-    lotusGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.62)" : `rgba(254, 240, 138, ${0.55 * alpha})`);
-    lotusGrad.addColorStop(0.55, isMono ? "rgba(0,0,0,0.26)" : `rgba(16, 185, 129, ${0.36 * alpha})`);
-    lotusGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
-    ctx.fillStyle = lotusGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: (h.radius || 140) * 0.88,
+      tiltY: 0.76,
+      rot: f * 1.1,
+      sides: 8,
+      primary: "#10B981",
+      highlight: "#FEF08A",
+      darkRim: "#064E3B",
+      rim: "#34D399",
+      coreWash: "rgba(16, 185, 129, 0.22)",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 140,
+      progress: f,
+      element: "teal",
+      color: "#10B981",
+      isMono,
+      seed: 31,
+    });
+    let r = (h.radius || 140) * (0.25 + 0.75 * Math.pow(f, 0.62));
     ctx.save();
     ctx.translate(h.x, h.y);
-    ctx.strokeStyle = isMono ? "#000000" : "#10B981";
-    ctx.lineWidth = 6.8 * alpha + 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 3.2 * alpha + 0.8;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
-    ctx.stroke();
-
+    ctx.scale(1, 0.76);
     ctx.rotate(f * 0.9);
+    ctx.globalAlpha = Math.max(0.05, alpha);
     for (let i = 0; i < 8; i++) {
-      let a = (Math.PI * 2 / 8) * i;
-      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7";
-      ctx.strokeStyle = isMono ? "#000000" : "#059669";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(Math.cos(a) * r * 0.64, Math.sin(a) * r * 0.64, r * 0.2, r * 0.075, a, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      let a = (Math.PI / 4) * i;
+      drawUltPetal(ctx, a, r * 0.32, r * 0.88, r * 0.14, isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#6EE7B7", isMono ? "#000000" : "#059669");
     }
-    drawFourPointStar(ctx, 0, 0, r * 0.26 * alpha + 5, 2.8, "#FFFFFF", isMono ? "#000000" : "#10B981");
     ctx.restore();
     return;
   }
 
   if (h.kind === "shield_explode") {
-    let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.62));
-    let sg = ctx.createRadialGradient(h.x, h.y, r * 0.14, h.x, h.y, r);
-    sg.addColorStop(0, isMono ? "rgba(255,255,255,0.5)" : `rgba(254, 240, 138, ${0.42 * alpha})`);
-    sg.addColorStop(0.6, isMono ? "rgba(0,0,0,0.25)" : `rgba(56, 189, 248, ${0.34 * alpha})`);
-    sg.addColorStop(1, "rgba(56, 189, 248, 0)");
-    ctx.fillStyle = sg;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#000000" : h.color || "#38BDF8";
-    ctx.lineWidth = 8.2 * alpha + 1.6;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.75, 0, Math.PI * 2);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 3.4 * alpha + 0.6;
-    ctx.stroke();
-
-    // Hexagonal barrier fracture rays
-    for (let i = 0; i < 6; i++) {
-      let a = (Math.PI / 3) * i + f * 0.5;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#BAE6FD";
-      ctx.lineWidth = 2.4 * alpha;
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(a) * r * 0.42, h.y + Math.sin(a) * r * 0.42);
-      ctx.lineTo(h.x + Math.cos(a) * r * 1.08, h.y + Math.sin(a) * r * 1.08);
-      ctx.stroke();
-    }
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 100,
+      progress: f,
+      element: "plasma",
+      color: h.color || "#38BDF8",
+      isMono,
+      seed: 37,
+    });
     return;
   }
 
   if (h.kind === "duy_decoy_boom") {
-    let r = h.radius * (0.18 + 0.82 * Math.pow(f, 0.55));
-    ctx.save();
-    ctx.translate(h.x, h.y);
-    let grad = ctx.createRadialGradient(0, 0, r * 0.08, 0, 0, r);
-    grad.addColorStop(0, isMono ? "rgba(255,255,255,0.65)" : "rgba(253, 224, 71, 0.68)");
-    grad.addColorStop(0.5, isMono ? "rgba(100,100,100,0.4)" : "rgba(244, 63, 94, 0.44)");
-    grad.addColorStop(1, "rgba(20, 184, 166, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#000000" : "#F43F5E";
-    ctx.lineWidth = 7.2 * alpha + 1.6;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#2DD4BF";
-    ctx.lineWidth = 3.6 * alpha + 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 12 radial shockwave needle flares + spinning shuriken sparks
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.6 * alpha;
-    for (let i = 0; i < 12; i++) {
-      let a = (Math.PI / 6) * i + f * 0.75;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
-      ctx.lineTo(Math.cos(a) * r * 1.1, Math.sin(a) * r * 1.1);
-      ctx.stroke();
-    }
-    drawFourPointStar(ctx, 0, 0, r * 0.34 * alpha + 6, 3.5, "#FFFFFF", isMono ? "#000000" : "#F43F5E");
-    ctx.restore();
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 145,
+      progress: f,
+      element: "teal",
+      color: "#F43F5E",
+      isMono,
+      seed: 43,
+    });
     return;
   }
 
   if (h.kind === "duy_heal_lotus") {
-    let r = h.radius * (0.35 + 0.65 * Math.pow(f, 0.6));
+    let r = (h.radius || 90) * (0.35 + 0.65 * Math.pow(f, 0.6));
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r * 0.94,
+      tiltY: 0.76,
+      rot: f * 1.5,
+      sides: 8,
+      primary: "#34D399",
+      highlight: "#FEF08A",
+      darkRim: "#042F2E",
+      rim: "#2DD4BF",
+      coreWash: "rgba(52, 211, 153, 0.22)",
+      isMono,
+    });
     ctx.save();
     ctx.translate(h.x, h.y);
+    ctx.scale(1, 0.76);
     ctx.rotate(f * 1.5);
     ctx.globalAlpha = Math.max(0.1, alpha);
     for (let i = 0; i < 8; i++) {
       let a = (Math.PI / 4) * i;
-      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#34D399" : "#2DD4BF";
-      ctx.strokeStyle = isMono ? "#000000" : "#FEF08A";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.ellipse(Math.cos(a) * r * 0.54, Math.sin(a) * r * 0.54, r * 0.4, r * 0.14, a, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      drawUltPetal(ctx, a, r * 0.24, r * 0.88, r * 0.14, isMono ? "#FFFFFF" : i % 2 === 0 ? "#34D399" : "#2DD4BF", isMono ? "#000000" : "#FEF08A");
     }
-    ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
-    ctx.lineWidth = 2.8 * alpha;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-    ctx.stroke();
-    drawFourPointStar(ctx, 0, 0, r * 0.28, r * 0.09, "#FFFFFF", isMono ? "#000000" : "#34D399");
     ctx.restore();
     return;
   }
 
   if (h.kind === "duy_dash_cut") {
-    ctx.save();
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
-    let dAura = ctx.createRadialGradient(0, 0, h.radius * 0.2, 0, 0, h.radius * 1.12);
-    dAura.addColorStop(0, "rgba(20, 184, 166, 0)");
-    dAura.addColorStop(0.68, isMono ? `rgba(255,255,255,${0.24 * alpha})` : `rgba(20, 184, 166, ${0.36 * alpha})`);
-    dAura.addColorStop(1, "rgba(244, 63, 94, 0)");
-    ctx.fillStyle = dAura;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, h.radius * 1.12, -1.08, 1.08);
-    ctx.closePath();
-    ctx.fill();
-
-    drawTaperedArc(ctx, 0, 0, h.radius, -1.08, 1.08, 13 * alpha + 2.2, "#14B8A6", "#FDE047", isMono);
-    drawTaperedArc(ctx, 0, 0, h.radius * 0.78, 0.88, -0.88, 8.2 * alpha + 1.5, "#F43F5E", "#FFFFFF", isMono);
-    for (let wi = -1; wi <= 1; wi++) {
-      let wa = wi * 0.36;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : wi === 0 ? "#FEF08A" : "#2DD4BF";
-      ctx.lineWidth = 2.2 * alpha + 0.7;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(wa) * h.radius * 0.35, Math.sin(wa) * h.radius * 0.35);
-      ctx.lineTo(Math.cos(wa) * h.radius * 1.15, Math.sin(wa) * h.radius * 1.15);
-      ctx.stroke();
-    }
-    drawFourPointStar(ctx, h.radius * 0.9, 0, 12 * alpha + 2, 2.8 * alpha, "#FFFFFF", isMono ? "#000000" : "#14B8A6");
-    ctx.restore();
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: h.radius || 88,
+      spread: 2.15,
+      dir: 1,
+      progress: f,
+      style: "wind_gale",
+      primary: "#14B8A6",
+      highlight: "#FEF08A",
+      shadow: "#042F2E",
+      rim: "#2DD4BF",
+      tiltY: 0.82,
+      isMono,
+    });
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: (h.angle || 0) + 0.14,
+      radius: (h.radius || 88) * 0.86,
+      spread: 1.85,
+      dir: -1,
+      progress: f,
+      style: "blood_crystal",
+      primary: "#F43F5E",
+      highlight: "#FFFFFF",
+      shadow: "#090D16",
+      rim: "#FDE047",
+      tiltY: 0.82,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "boss_cyber_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let reach = h.radius * (0.45 + 0.55 * Math.min(1, f * 1.6));
-    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 13 * alpha + 2, "#0284C7", "#E0F2FE", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.78, -h.spread * 0.4, h.spread * 0.4, 6.5 * alpha + 1.2, "#F59E0B", "#FFFFFF", isMono);
-    drawFourPointStar(ctx, Math.cos(h.spread * 0.42) * reach, Math.sin(h.spread * 0.42) * reach, 8 * alpha, 2.2 * alpha, "#FEF08A", "#38BDF8");
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: (h.radius || 110) * (0.65 + 0.35 * Math.min(1, f * 1.6)),
+      spread: h.spread || 1.8,
+      progress: f,
+      style: "plasma_cyan",
+      primary: "#0284C7",
+      highlight: "#E0F2FE",
+      shadow: "#082F49",
+      rim: "#F59E0B",
+      tiltY: 0.8,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "boss_thunder_slash") {
+    let reach = (h.radius || 120) * (0.62 + 0.38 * Math.min(1, f * 1.65));
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: reach,
+      spread: h.spread || 1.9,
+      progress: f,
+      style: "celestial_gold",
+      primary: "#0284C7",
+      highlight: "#FEF08A",
+      shadow: "#082F49",
+      rim: "#FDE047",
+      tiltY: 0.8,
+      isMono,
+    });
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let reach = h.radius * (0.4 + 0.6 * Math.min(1, f * 1.65));
-    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 14 * alpha + 2, "#0284C7", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.82, h.spread * 0.42, -h.spread * 0.42, 7.5 * alpha + 1.4, "#FDE047", "#FFFFFF", isMono);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.4 * alpha + 0.6;
+    ctx.rotate(h.angle || 0);
     for (let i = -2; i <= 2; i++) {
-      let a = i * (h.spread * 0.2);
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * reach * 0.55, Math.sin(a) * reach * 0.55);
-      ctx.lineTo(Math.cos(a + 0.08) * reach * 0.82, Math.sin(a + 0.08) * reach * 0.82);
-      ctx.lineTo(Math.cos(a) * reach * 1.08, Math.sin(a) * reach * 1.08);
-      ctx.stroke();
+      let a = i * ((h.spread || 1.9) * 0.18);
+      drawBranchingArc(ctx, {
+        x1: Math.cos(a) * reach * 0.45,
+        y1: Math.sin(a) * reach * 0.45,
+        x2: Math.cos(a) * reach * 1.08,
+        y2: Math.sin(a) * reach * 1.08,
+        seed: f * 15 + i,
+        width: 2.2,
+        color: "#38BDF8",
+        coreColor: "#FEF08A",
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "boss_venom_slash") {
+    let reach = (h.radius || 115) * (0.62 + 0.38 * Math.min(1, f * 1.65));
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: reach,
+      spread: h.spread || 1.85,
+      progress: f,
+      style: "venom_serpent",
+      primary: "#16A34A",
+      highlight: "#ECFCCB",
+      shadow: "#052E16",
+      rim: "#BEF264",
+      tiltY: 0.8,
+      isMono,
+    });
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let reach = h.radius * (0.38 + 0.62 * Math.min(1, f * 1.65));
-    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 14.5 * alpha + 2, "#16A34A", "#BEF264", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.78, -h.spread * 0.42, h.spread * 0.42, 7 * alpha + 1.2, "#84CC16", "#ECFCCB", isMono);
-    for (let i = 0; i < 6; i++) {
-      let a = -h.spread * 0.42 + (h.spread * 0.84 * i) / 5;
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#BEF264";
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * (reach * (0.9 + (i % 2) * 0.14)), Math.sin(a) * (reach * (0.9 + (i % 2) * 0.14)), 3.6 * alpha + 0.8, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.rotate(h.angle || 0);
+    for (let i = 0; i < 5; i++) {
+      let a = -(h.spread || 1.85) * 0.4 + ((h.spread || 1.85) * 0.8 * i) / 4;
+      drawViscousDroplet(ctx, {
+        x: Math.cos(a) * reach * (0.9 + (i % 2) * 0.12),
+        y: Math.sin(a) * reach * (0.9 + (i % 2) * 0.12),
+        vx: Math.cos(a) * 40,
+        vy: Math.sin(a) * 40,
+        radius: 4.5 * alpha + 1.4,
+        color: "#84CC16",
+        rimColor: "#ECFCCB",
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "boss_blood_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let reach = h.radius * (0.36 + 0.64 * Math.min(1, f * 1.7));
-    drawTaperedArc(ctx, 0, 0, reach, -h.spread * 0.5, h.spread * 0.5, 15 * alpha + 2, "#9F1239", "#FDA4AF", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.82, h.spread * 0.45, -h.spread * 0.45, 9.5 * alpha + 1.5, "#FB7185", "#FEF08A", isMono);
-    drawFourPointStar(ctx, Math.cos(h.spread * 0.44) * reach, Math.sin(h.spread * 0.44) * reach, 9 * alpha, 2.4 * alpha, "#FDA4AF", "#9F1239");
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: (h.radius || 125) * (0.6 + 0.4 * Math.min(1, f * 1.7)),
+      spread: h.spread || 2.0,
+      progress: f,
+      style: "blood_crystal",
+      primary: "#9F1239",
+      highlight: "#FDA4AF",
+      shadow: "#450A0A",
+      rim: "#FB7185",
+      tiltY: 0.8,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "boss_seraph_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
     let dir = h.dir || 1;
-    let reach = h.radius * (0.35 + 0.65 * Math.min(1, f * 1.72));
-    drawTaperedArc(ctx, 0, 0, reach, (-h.spread / 2) * dir, (h.spread / 2) * dir, 17 * alpha + 2.2, h.color || "#DC2626", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, reach * 0.78, (-h.spread * 0.4) * dir, (h.spread * 0.4) * dir, 9 * alpha + 1.5, "#FBBF24", "#FFFFFF", isMono);
-    drawFourPointStar(ctx, Math.cos((h.spread * 0.45) * dir) * reach, Math.sin((h.spread * 0.45) * dir) * reach, 11 * alpha, 3 * alpha, "#FEF08A", "#DC2626");
+    let reach = (h.radius || 135) * (0.6 + 0.4 * Math.min(1, f * 1.72));
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: reach,
+      spread: h.spread || 2.1,
+      dir,
+      progress: f,
+      style: "fire_dragon",
+      primary: h.color || "#DC2626",
+      highlight: "#FEF08A",
+      shadow: "#450A0A",
+      rim: "#FBBF24",
+      tiltY: 0.82,
+      isMono,
+    });
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: reach * 0.84,
+      spread: (h.spread || 2.1) * 0.86,
+      dir,
+      progress: Math.min(1, f * 1.08),
+      style: "celestial_gold",
+      primary: "#FBBF24",
+      highlight: "#FFFFFF",
+      shadow: "#450A0A",
+      rim: "#FEF08A",
+      tiltY: 0.82,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "thanh_snake_fan") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let r = (h.radius || 76) * (0.4 + 0.6 * f);
+    let r = (h.radius || 76) * (0.45 + 0.55 * f);
     let col = h.isEcho ? "#A78BFA" : h.color || "#10B981";
     let rim = h.isEcho ? "#F3E8FF" : "#A7F3D0";
-    let tGrad = ctx.createRadialGradient(0, 0, r * 0.18, 0, 0, r);
-    tGrad.addColorStop(0, "rgba(16, 185, 129, 0)");
-    tGrad.addColorStop(0.65, isMono ? `rgba(255,255,255,${0.22 * alpha})` : `rgba(52, 211, 153, ${0.32 * alpha})`);
-    tGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
-    ctx.fillStyle = tGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, r, -0.7, 0.7);
-    ctx.closePath();
-    ctx.fill();
-
-    drawTaperedArc(ctx, 0, 0, r, -0.68, 0.68, 12.5 * alpha + 2.0, col, rim, isMono);
-    drawTaperedArc(ctx, 0, 0, r * 0.74, -0.5, 0.5, 6.2 * alpha + 1.2, "#FFFFFF", "#FDE047", isMono);
-    for (let s of [-0.3, 0, 0.3]) {
-      ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha})` : `rgba(167, 243, 208, ${alpha * 0.94})`;
-      ctx.lineWidth = 2.4 * alpha + 0.7;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(s) * r * 0.26, Math.sin(s) * r * 0.26);
-      ctx.quadraticCurveTo(Math.cos(s + 0.08) * r * 0.7, Math.sin(s + 0.08) * r * 0.7, Math.cos(s) * r * 1.12, Math.sin(s) * r * 1.12);
-      ctx.stroke();
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: r,
+      spread: 1.4,
+      progress: f,
+      style: "venom_serpent",
+      primary: col,
+      highlight: "#FFFFFF",
+      shadow: "#064E3B",
+      rim,
+      tiltY: 0.84,
+      isMono,
+    });
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    for (let s of [-0.28, 0, 0.28]) {
+      drawWindStreamRibbon(ctx, {
+        x: Math.cos(s) * r * 0.25,
+        y: Math.sin(s) * r * 0.25,
+        angle: s,
+        length: r * 0.85,
+        width: 4.5 * alpha + 1.4,
+        phase: f * 12 + s,
+        color: col,
+        coreColor: rim,
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "thanh_devour_bite") {
     let r = (h.radius || 140) * (0.48 + 0.52 * f);
-    let dGrad = ctx.createRadialGradient(h.x, h.y, r * 0.15, h.x, h.y, r);
-    dGrad.addColorStop(0, "rgba(16, 185, 129, 0)");
-    dGrad.addColorStop(0.62, isMono ? `rgba(255,255,255,${0.25 * alpha})` : `rgba(16, 185, 129, ${0.34 * alpha})`);
-    dGrad.addColorStop(1, "rgba(147, 51, 234, 0)");
-    ctx.fillStyle = dGrad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha})` : `rgba(52, 211, 153, ${alpha * 0.95})`;
-    ctx.lineWidth = 6.2 * alpha + 1.4;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = isMono ? `rgba(200,200,200,${alpha * 0.85})` : `rgba(168, 85, 247, ${alpha * 0.88})`;
-    ctx.lineWidth = 3.2 * alpha;
-    ctx.setLineDash([12, 8]);
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.74, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    for (let k = 0; k < 8; k++) {
-      let a = (Math.PI / 4) * k + f * 0.55;
-      ctx.fillStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${alpha * 0.94})`;
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(a) * r * 0.82, h.y + Math.sin(a) * r * 0.82);
-      ctx.lineTo(h.x + Math.cos(a + 0.08) * r * 1.09, h.y + Math.sin(a + 0.08) * r * 1.09);
-      ctx.lineTo(h.x + Math.cos(a - 0.08) * r * 1.09, h.y + Math.sin(a - 0.08) * r * 1.09);
-      ctx.closePath();
-      ctx.fill();
+    drawImpactCraterDecal(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r * 0.94,
+      alpha: alpha * 0.82,
+      primary: "#10B981",
+      highlight: "#ECFCCB",
+      shadow: "#064E3B",
+      debrisShape: "crystal",
+      isMono,
+    });
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: r * 0.9,
+      tiltY: 0.76,
+      rot: f * 1.4,
+      sides: 6,
+      primary: "#10B981",
+      highlight: "#ECFCCB",
+      darkRim: "#064E3B",
+      rim: "#A855F7",
+      coreWash: "rgba(16, 185, 129, 0.22)",
+      isMono,
+    });
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 140,
+      progress: f,
+      element: "venom",
+      color: "#10B981",
+      isMono,
+      seed: 41,
+    });
+    for (let k = 0; k < 6; k++) {
+      let a = (Math.PI / 3) * k + f * 0.55;
+      drawFacetedShard(ctx, {
+        x: h.x + Math.cos(a) * r * 0.88,
+        y: h.y + Math.sin(a) * r * 0.68,
+        size: 7 * alpha + 2.5,
+        rot: a + Math.PI,
+        aspect: 1.9,
+        primary: "#FDE047",
+        highlight: "#FFFFFF",
+        shadow: "#064E3B",
+        rim: "#34D399",
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "thanh_shield_pulse") {
-    let r = (h.radius || 64) * (0.45 + 0.55 * f);
-    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.22, h.x, h.y, r);
-    grad.addColorStop(0, "rgba(167, 243, 208, 0)");
-    grad.addColorStop(0.68, isMono ? `rgba(255,255,255,${alpha * 0.45})` : `rgba(16, 185, 129, ${alpha * 0.62})`);
-    grad.addColorStop(1, "rgba(16, 185, 129, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(167, 139, 250, ${alpha * 0.9})`;
-    ctx.lineWidth = 3.0 * alpha;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.86, 0, Math.PI * 2);
-    ctx.stroke();
+    drawArcaneMagicCircle(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: (h.radius || 64) * (0.45 + 0.55 * f),
+      tiltY: 0.76,
+      rot: f * 2.1,
+      sides: 6,
+      primary: "#10B981",
+      highlight: "#A7F3D0",
+      darkRim: "#064E3B",
+      rim: "#A78BFA",
+      coreWash: "rgba(16, 185, 129, 0.25)",
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "nhi_flask_boom" || h.kind === "nhi_mist_pulse") {
-    let r = (h.radius || 96) * (0.32 + 0.68 * Math.min(1, f * 1.25));
     let isMist = h.kind === "nhi_mist_pulse";
-    let baseCol = h.color || (isMist ? "#4ADE80" : "#C084FC");
-    let grad = ctx.createRadialGradient(h.x, h.y, r * 0.1, h.x, h.y, r);
-    grad.addColorStop(0, isMono ? `rgba(255,255,255,${alpha * 0.52})` : isMist ? `rgba(74, 222, 128, ${alpha * 0.55})` : `rgba(192, 132, 252, ${alpha * 0.6})`);
-    grad.addColorStop(0.65, isMono ? `rgba(200,200,200,${alpha * 0.28})` : `rgba(34, 197, 94, ${alpha * 0.38})`);
-    grad.addColorStop(1, "rgba(34, 197, 94, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? `rgba(255,255,255,${alpha * 0.9})` : baseCol;
-    ctx.lineWidth = 3.4 * alpha + 1.0;
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, r * 0.9, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Shattered glass shards + alchemical droplet rays
-    for (let k = 0; k < 8; k++) {
-      let a = (Math.PI / 4) * k + 0.25 + f * 0.4;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : k % 2 === 0 ? "#E879F9" : "#4ADE80";
-      ctx.lineWidth = 2.4 * alpha + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(h.x + Math.cos(a) * r * 0.36, h.y + Math.sin(a) * r * 0.36);
-      ctx.lineTo(h.x + Math.cos(a) * r * 1.02, h.y + Math.sin(a) * r * 1.02);
-      ctx.stroke();
-    }
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 96,
+      progress: f,
+      element: isMist ? "venom" : "void",
+      color: h.color || (isMist ? "#4ADE80" : "#C084FC"),
+      isMono,
+      seed: 47,
+    });
     return;
   }
 
   if (h.kind === "nhi_ult_shock") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
-    let r = (h.radius || 82) * (0.35 + 0.65 * f);
-    let grad = ctx.createRadialGradient(0, 0, r * 0.14, 0, 0, r);
-    grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.78})`);
-    grad.addColorStop(0.55, isMono ? `rgba(220,220,220,${alpha * 0.5})` : `rgba(217, 70, 239, ${alpha * 0.62})`);
-    grad.addColorStop(1, "rgba(34, 197, 94, 0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(74, 222, 128, ${alpha * 0.94})`;
-    ctx.lineWidth = 3.6 * alpha + 1.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2);
-    ctx.stroke();
-    drawFourPointStar(ctx, 0, 0, r * 0.82 * alpha, r * 0.2 * alpha, isMono ? "#FFFFFF" : "#E879F9", isMono ? "#000000" : "#4ADE80");
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 82,
+      progress: f,
+      element: "venom",
+      color: "#E879F9",
+      isMono,
+      seed: 51,
+    });
     return;
   }
 
   if (h.kind === "minh_seal_boom") {
-    ctx.translate(h.x, h.y);
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 185,
+      progress: f,
+      element: "gold",
+      color: "#FACC15",
+      isMono,
+      seed: 59,
+    });
     let r = (h.radius || 185) * (0.28 + 0.72 * f);
-    let g = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
-    g.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.85})`);
-    g.addColorStop(0.42, isMono ? `rgba(200,200,200,${alpha * 0.55})` : `rgba(250, 204, 21, ${alpha * 0.58})`);
-    g.addColorStop(0.82, isMono ? `rgba(100,100,100,${alpha * 0.3})` : `rgba(56, 189, 248, ${alpha * 0.34})`);
-    g.addColorStop(1, "rgba(56, 189, 248, 0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${alpha})`;
-    ctx.lineWidth = 5.4 * alpha + 1.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = isMono ? "#E5E5E5" : `rgba(56, 189, 248, ${alpha * 0.94})`;
-    ctx.lineWidth = 3.0 * alpha + 0.8;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.74, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 8-point double celestial star burst + rotating sacred talisman rune ring
-    drawFourPointStar(ctx, 0, 0, r * 0.74 * alpha, r * 0.17 * alpha, "#FEF08A", "#FFFFFF");
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.globalAlpha = alpha;
+    drawFourPointStar(ctx, 0, 0, r * 0.74 * alpha, r * 0.16 * alpha, "#FEF08A", "#FFFFFF");
     ctx.rotate(Math.PI / 4 + f * 0.6);
-    drawFourPointStar(ctx, 0, 0, r * 0.58 * alpha, r * 0.14 * alpha, isMono ? "#FFFFFF" : "#38BDF8", "#FFFFFF");
+    drawFourPointStar(ctx, 0, 0, r * 0.56 * alpha, r * 0.13 * alpha, isMono ? "#FFFFFF" : "#38BDF8", "#FFFFFF");
+    ctx.restore();
     return;
   }
 
@@ -7771,17 +7334,10 @@ export function drawUpgradedSlash(ctx, h, f, isMono, enableAdditive = true) {
     ctx.lineWidth = 3.5;
     ctx.strokeRect(0, -hw, len, hw * 2);
 
-    ctx.strokeStyle = isMono ? `rgba(229, 229, 229, ${alpha * 0.62})` : `rgba(56, 189, 248, ${alpha * 0.72})`;
-    ctx.lineWidth = 2.4;
-    ctx.setLineDash([12, 8]);
     for (let i = -2; i <= 2; i++) {
       let ly = (i / 2) * (hw * 0.82);
-      ctx.beginPath();
-      ctx.moveTo(16, ly);
-      ctx.lineTo(len * sweep, ly);
-      ctx.stroke();
+      drawBranchingArc(ctx, { x1: 16, y1: ly, x2: len * sweep, y2: ly, seed: i + f * 5, width: 1.8, color: "#38BDF8", coreColor: "#FEF08A", isMono });
     }
-    ctx.setLineDash([]);
 
     let barX = len * sweep;
     ctx.strokeStyle = isMono ? `rgba(255, 255, 255, ${alpha})` : `rgba(254, 240, 138, ${alpha})`;
@@ -7796,423 +7352,540 @@ export function drawUpgradedSlash(ctx, h, f, isMono, enableAdditive = true) {
   }
 
   if (h.kind === "ducanh_fortress_boom" || h.kind === "ducanh_meteor_boom") {
-    ctx.translate(h.x, h.y);
-    let r = (h.radius || 175) * (0.28 + 0.72 * f);
     let isMeteor = h.kind === "ducanh_meteor_boom";
-    let g = ctx.createRadialGradient(0, 0, r * 0.08, 0, 0, r);
-    g.addColorStop(0, isMono ? `rgba(255,255,255,${alpha * 0.8})` : `rgba(254, 240, 138, ${alpha * 0.82})`);
-    g.addColorStop(0.55, isMono ? `rgba(120,120,120,${alpha * 0.45})` : isMeteor ? `rgba(249, 115, 22, ${alpha * 0.62})` : `rgba(96, 165, 250, ${alpha * 0.55})`);
-    g.addColorStop(1, "rgba(15, 23, 42, 0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : isMeteor ? `rgba(249, 115, 22, ${alpha})` : `rgba(147, 197, 253, ${alpha})`;
-    ctx.lineWidth = (isMeteor ? 6.5 : 5.0) * alpha + 1.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    if (!isMeteor) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(74, 222, 128, ${alpha * 0.9})`;
-      ctx.lineWidth = 3.2 * alpha + 0.8;
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        let a = (Math.PI / 3) * i + f * 0.45;
-        let px = Math.cos(a) * r * 0.78;
-        let py = Math.sin(a) * r * 0.78;
-        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    for (let k = 0; k < 10; k++) {
-      let a = (Math.PI / 5) * k + (isMeteor ? 0.2 : 0);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(251, 191, 36, ${alpha * 0.95})`;
-      ctx.lineWidth = (isMeteor ? 3.8 : 3.0) * alpha + 0.6;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.28, Math.sin(a) * r * 0.28);
-      ctx.lineTo(Math.cos(a) * r * 1.06, Math.sin(a) * r * 1.06);
-      ctx.stroke();
-    }
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 175,
+      progress: f,
+      element: isMeteor ? "fire" : "earth",
+      color: isMeteor ? "#F97316" : "#60A5FA",
+      isMono,
+      seed: 67,
+    });
     return;
   }
 
   if (h.kind === "bach_cross_slash") {
+    let r = (h.radius || 96) * (0.85 + 0.15 * f);
+    let dir = h.dir || 1;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: r,
+      spread: (h.spread || 1.6) * 1.08,
+      dir,
+      progress: f,
+      style: "wind_gale",
+      primary: h.color || "#22D3EE",
+      highlight: "#FFFFFF",
+      shadow: "#083344",
+      rim: "#A5F3FC",
+      tiltY: 0.84,
+      isMono,
+    });
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: (h.angle || 0) + 0.12,
+      radius: r * 0.86,
+      spread: h.spread || 1.6,
+      dir: -dir,
+      progress: f,
+      style: "void",
+      primary: h.accentColor || "#E879F9",
+      highlight: "#FFFFFF",
+      shadow: "#1E1B4B",
+      rim: "#22D3EE",
+      tiltY: 0.84,
+      isMono,
+    });
+    // Crisp Twin Wind-Katar Cross Needles
+    ctx.save();
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let r = h.radius * (0.85 + 0.15 * f);
-    let bGrad = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.12);
-    bGrad.addColorStop(0, "rgba(34, 211, 238, 0)");
-    bGrad.addColorStop(0.65, isMono ? `rgba(255,255,255,${0.25 * alpha})` : `rgba(34, 211, 238, ${0.34 * alpha})`);
-    bGrad.addColorStop(1, "rgba(232, 121, 249, 0)");
-    ctx.fillStyle = bGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, r * 1.12, -h.spread * 0.6, h.spread * 0.6);
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: r * 0.96, startAng: -h.spread * 0.56, endAng: h.spread * 0.56, f, color: h.color || "#22D3EE", accentColor: h.accentColor || "#E879F9", isMono, enableAdditive, tiltY: 0.85, crackStrength: 1.05, seed: 13 });
-    drawTaperedArc(ctx, 0, 0, r, -h.spread * 0.56, h.spread * 0.56, 14 * alpha + 2.2, h.color || "#22D3EE", "#FFFFFF", isMono);
-    drawTaperedArc(ctx, 0, 0, r * 0.82, h.spread * 0.52, -h.spread * 0.52, 10.5 * alpha + 1.8, h.accentColor || "#E879F9", "#A5F3FC", isMono);
-    for (let wi = -2; wi <= 2; wi++) {
-      let wa = wi * h.spread * 0.18;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : wi === 0 ? `rgba(255,255,255,${alpha * 0.92})` : `rgba(103, 232, 249, ${alpha * 0.78})`;
-      ctx.lineWidth = 2.2 * alpha + 0.6;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(wa) * r * 0.4, Math.sin(wa) * r * 0.4);
-      ctx.lineTo(Math.cos(wa) * r * 1.15, Math.sin(wa) * r * 1.15);
-      ctx.stroke();
+    ctx.rotate(h.angle || 0);
+    for (let xi = -1; xi <= 1; xi += 2) {
+      drawWindStreamRibbon(ctx, {
+        x: 20,
+        y: xi * 12,
+        angle: -xi * 0.28,
+        length: r * 0.72,
+        width: 4.5 * alpha + 1.2,
+        phase: f * 16 + xi,
+        color: xi < 0 ? "#22D3EE" : "#E879F9",
+        coreColor: "#FFFFFF",
+        isMono,
+      });
     }
-    drawFourPointStar(ctx, r * 0.84, 0, (1 - f) * 15 + 4, 3.2, "#FFFFFF", isMono ? "#000000" : "#E879F9");
+    ctx.restore();
     return;
   }
 
   if (h.kind === "thai_arena_cleave") {
+    let r = (h.radius || 105) * (0.78 + 0.22 * f);
+    let sp = (h.spread || 1.7) * 1.08;
+    let ang = h.angle || 0;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: ang,
+      radius: r,
+      spread: sp,
+      dir: h.dir || 1,
+      progress: f,
+      style: "fire_dragon",
+      primary: "#EF4444",
+      highlight: "#FEF08A",
+      shadow: "#450A0A",
+      rim: "#FACC15",
+      tiltY: 0.86,
+      isMono,
+    });
+    // Heavy Colosseum War-Axe Outer Gouge Wake + Basalt Shards
+    ctx.save();
     ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle);
-    let r = h.radius * (0.76 + 0.24 * f);
-    let cGrad = ctx.createRadialGradient(0, 0, r * 0.18, 0, 0, r * 1.14);
-    cGrad.addColorStop(0, "rgba(239, 68, 68, 0)");
-    cGrad.addColorStop(0.62, isMono ? `rgba(255,255,255,${0.26 * alpha})` : `rgba(239, 68, 68, ${0.38 * alpha})`);
-    cGrad.addColorStop(1, "rgba(250, 204, 21, 0)");
-    ctx.fillStyle = cGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, r * 1.14, -h.spread * 0.56, h.spread * 0.56);
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: r * 0.98, startAng: -h.spread * 0.54, endAng: h.spread * 0.54, f, color: "#EF4444", accentColor: "#FDE047", isMono, enableAdditive, tiltY: 0.88, crackStrength: h.empowered ? 1.25 : 0.85, seed: 17 });
-    drawTaperedArc(ctx, 0, 0, r, -h.spread * 0.54, h.spread * 0.54, 18.5 * alpha + 2.8, "#EF4444", "#FDE047", isMono);
-    drawTaperedArc(ctx, 0, 0, r * 0.78, -h.spread * 0.44, h.spread * 0.44, 10.5 * alpha + 1.8, "#FACC15", "#FFFFFF", isMono);
+    ctx.scale(1, 0.86);
+    drawTaperedArc(ctx, 0, 0, Math.max(12, r * 1.06), ang - sp * 0.55, ang + sp * 0.55, 6.2 * alpha + 1.8, "#F59E0B", "#FEF08A", isMono);
+    for (let si = -1; si <= 1; si += 2) {
+      let sa = ang + si * sp * 0.34;
+      drawFacetedShard(ctx, {
+        x: Math.cos(sa) * r * 0.96,
+        y: Math.sin(sa) * r * 0.96,
+        size: 6.5 * alpha + 2,
+        rot: sa + f * 4,
+        shape: "rock",
+        primary: "#EF4444",
+        highlight: "#FEF08A",
+        shadow: "#450A0A",
+        rim: "#F59E0B",
+        isMono,
+      });
+    }
+    ctx.restore();
     if (h.empowered) {
-      drawTaperedArc(ctx, 0, 0, r * 1.08, -h.spread * 0.38, h.spread * 0.38, 7.2 * alpha + 1.4, "#FEF08A", "#FFFFFF", isMono);
-      for (let i = -2; i <= 2; i++) {
-        let a = i * 0.24;
-        ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${alpha * 0.94})`;
-        ctx.lineWidth = 3.0;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * r * 0.28, Math.sin(a) * r * 0.28);
-        ctx.lineTo(Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15);
-        ctx.stroke();
-      }
-      drawFourPointStar(ctx, r * 0.96, 0, 14 * alpha + 3, 3.6, "#FFFFFF", isMono ? "#000000" : "#F59E0B");
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: ang,
+        radius: r * 1.14,
+        spread: (h.spread || 1.7) * 0.9,
+        dir: h.dir || 1,
+        progress: Math.min(1, f * 1.08),
+        style: "celestial_gold",
+        primary: "#FACC15",
+        highlight: "#FFFFFF",
+        shadow: "#422006",
+        rim: "#FEF08A",
+        tiltY: 0.86,
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "thai_cyclone_ring") {
-    ctx.translate(h.x, h.y);
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 170,
+      progress: f,
+      element: "fire",
+      color: "#F59E0B",
+      isMono,
+      seed: 73,
+    });
     let r = (h.radius || 170) * (0.4 + 0.6 * f);
-    let g = ctx.createRadialGradient(0, 0, r * 0.14, 0, 0, r);
-    g.addColorStop(0, "rgba(254, 240, 138, 0)");
-    g.addColorStop(0.62, isMono ? `rgba(255,255,255,${alpha * 0.32})` : `rgba(239, 68, 68, ${alpha * 0.48})`);
-    g.addColorStop(0.92, isMono ? `rgba(180,180,180,${alpha * 0.28})` : `rgba(245, 158, 11, ${alpha * 0.34})`);
-    g.addColorStop(1, "rgba(239, 68, 68, 0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${alpha * 0.88})`;
-    ctx.lineWidth = 3.6;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-
+    ctx.save();
+    ctx.translate(h.x, h.y);
     ctx.rotate(f * 7.8);
-    drawTaperedArc(ctx, 0, 0, r * 0.92, 0, Math.PI * 1.45, 16 * alpha + 2.4, "#F59E0B", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, r * 0.84, Math.PI, Math.PI * 2.45, 12.5 * alpha + 1.8, "#EF4444", "#FFFFFF", isMono);
-    for (let si = 0; si < 6; si++) {
-      let sa = (Math.PI / 3) * si;
-      drawFourPointStar(ctx, Math.cos(sa) * r * 0.9, Math.sin(sa) * r * 0.9, 8 * alpha + 2, 2.2, "#FEF08A", isMono ? "#000000" : "#EF4444");
-    }
+    drawSculptedBladeSlash(ctx, {
+      x: 0,
+      y: 0,
+      angle: 0,
+      radius: r * 0.9,
+      spread: Math.PI * 1.4,
+      progress: f,
+      style: "fire_dragon",
+      primary: "#F59E0B",
+      highlight: "#FEF08A",
+      shadow: "#7C2D12",
+      rim: "#EF4444",
+      isMono,
+    });
+    ctx.restore();
     return;
   }
 
   if (h.kind === "khair_sniper_muzzle") {
+    ctx.save();
+    let r = (h.radius || 52) * (0.55 + 0.45 * motionF);
     ctx.translate(h.x, h.y);
     ctx.rotate(h.angle || 0);
-    let r = (h.radius || 75) * (0.4 + 0.6 * f);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(250, 204, 21, ${alpha})`;
-    ctx.lineWidth = 5.0 * alpha + 1.4;
+
+    let coneG = ctx.createLinearGradient(0, 0, r * 1.45, 0);
+    coneG.addColorStop(0, isMono ? `rgba(255,255,255,${0.55 * alpha})` : `rgba(254, 240, 138, ${0.58 * alpha})`);
+    coneG.addColorStop(0.5, isMono ? `rgba(180,180,180,${0.26 * alpha})` : `rgba(74, 222, 128, ${0.28 * alpha})`);
+    coneG.addColorStop(1, "rgba(74, 222, 128, 0)");
+    ctx.fillStyle = coneG;
     ctx.beginPath();
-    ctx.ellipse(12, 0, r * 0.25, r * 0.66, 0, 0, Math.PI * 2);
+    ctx.moveTo(0, -4);
+    ctx.lineTo(r * 1.45, -13);
+    ctx.lineTo(r * 1.6, 0);
+    ctx.lineTo(r * 1.45, 13);
+    ctx.lineTo(0, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(250, 204, 21, ${alpha})`;
+    ctx.lineWidth = 4.2 * alpha + 1.2;
+    ctx.beginPath();
+    ctx.ellipse(10, 0, Math.max(2, r * 0.18), Math.max(4, r * 0.48), 0, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(74, 222, 128, ${alpha * 0.92})`;
-    ctx.lineWidth = 3.0 * alpha + 1;
+    ctx.lineWidth = 2.6 * alpha + 0.9;
     ctx.beginPath();
-    ctx.ellipse(28, 0, r * 0.16, r * 0.42, 0, 0, Math.PI * 2);
+    ctx.ellipse(26, 0, Math.max(2, r * 0.13), Math.max(3, r * 0.34), 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = isMono ? `rgba(255,255,255,${alpha * 0.78})` : `rgba(74, 222, 128, ${alpha * 0.82})`;
+    drawWindStreamRibbon(ctx, { x: 4, y: 0, angle: 0, length: r * 1.4, width: 8.5 * alpha + 1.6, phase: f * 12, color: "#4ADE80", coreColor: "#FEF08A", isMono });
+    drawFourPointStar(ctx, 8, 0, r * 0.44, 3.2, "#FFFFFF", isMono ? "#000000" : "#FACC15");
+    ctx.restore();
+    return;
+  }
+
+  if (h.kind === "cast_muzzle") {
+    ctx.save();
+    let r = (h.radius || 30) * (0.58 + 0.42 * motionF);
+    let col = isMono ? "#FFFFFF" : h.color || "#38BDF8";
+    let hi = isMono ? "#FFFFFF" : h.accentColor || "#FEF08A";
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.angle || 0);
+    ctx.globalAlpha = clamp(alpha, 0, 1);
+
+    // Crisp tilted elemental muzzle/cast ring at weapon tip
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.8 * alpha + 0.9;
     ctx.beginPath();
-    ctx.moveTo(4, -8);
-    ctx.lineTo(r * 1.45, 0);
-    ctx.lineTo(4, 8);
-    ctx.closePath();
-    ctx.fill();
-    drawFourPointStar(ctx, 16, 0, r * 0.5, 3.6, "#FFFFFF", isMono ? "#000000" : "#FACC15");
+    ctx.ellipse(6, 0, Math.max(1.8, r * 0.22), Math.max(3.5, r * 0.54), 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    drawWindStreamRibbon(ctx, { x: 2, y: 0, angle: 0, length: Math.max(18, r * 1.05), width: 5.8 * alpha + 1.2, phase: f * 14, color: col, coreColor: hi, isMono });
+    drawFourPointStar(ctx, 6, 0, r * 0.42 + 2, 2.2, "#FFFFFF", col);
+    ctx.restore();
     return;
   }
 
   if (h.kind === "khair_recoil_blast") {
-    ctx.translate(h.x, h.y);
-    let r = (h.radius || 140) * (0.26 + 0.74 * f);
-    let g = ctx.createRadialGradient(0, 0, r * 0.08, 0, 0, r);
-    g.addColorStop(0, isMono ? `rgba(255,255,255,${alpha * 0.85})` : `rgba(254, 240, 138, ${alpha * 0.88})`);
-    g.addColorStop(0.5, isMono ? `rgba(180,180,180,${alpha * 0.5})` : `rgba(74, 222, 128, ${alpha * 0.58})`);
-    g.addColorStop(1, "rgba(16, 185, 129, 0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(250, 204, 21, ${alpha})`;
-    ctx.lineWidth = 5.0 * alpha + 1.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(74, 222, 128, ${alpha * 0.9})`;
-    ctx.lineWidth = 2.8 * alpha + 0.8;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-
-    for (let i = 0; i < 10; i++) {
-      let a = (Math.PI / 5) * i + f * 0.7;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? `rgba(74, 222, 128, ${alpha * 0.94})` : `rgba(254, 240, 138, ${alpha * 0.94})`;
-      ctx.lineWidth = 3.0;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.25, Math.sin(a) * r * 0.25);
-      ctx.lineTo(Math.cos(a) * r * 1.06, Math.sin(a) * r * 1.06);
-      ctx.stroke();
-    }
-    drawFourPointStar(ctx, 0, 0, r * 0.32 * alpha + 7, 3.6, "#FFFFFF", isMono ? "#000000" : "#FACC15");
+    drawStructuralExplosion(ctx, {
+      x: h.x,
+      y: h.y,
+      radius: h.radius || 140,
+      progress: f,
+      element: "venom",
+      color: "#4ADE80",
+      isMono,
+      seed: 79,
+    });
     return;
   }
 
   if (h.kind === "tin_spatial_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
     let sr = h.radius || 90;
     let sp = h.spread || 1.75;
-    let tg = ctx.createRadialGradient(0, 0, sr * 0.18, 0, 0, sr * 1.18);
-    tg.addColorStop(0, "rgba(225, 29, 72, 0)");
-    tg.addColorStop(0.58, isMono ? `rgba(0,0,0,${0.32 * alpha})` : `rgba(244, 63, 94, ${0.44 * alpha})`);
-    tg.addColorStop(1, "rgba(225, 29, 72, 0)");
-    ctx.fillStyle = tg;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, sr * 1.18, -sp / 2, sp / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.98, startAng: -sp / 2, endAng: sp / 2, f, color: "#E11D48", accentColor: "#FDA4AF", isMono, enableAdditive, tiltY: 0.84, crackStrength: 1.32, seed: 19 });
-    drawTaperedArc(ctx, 0, 0, sr, -sp / 2, sp / 2, 15 * alpha + 2.4, "#E11D48", "#FDA4AF", isMono);
-    drawTaperedArc(ctx, 0, 0, sr * 0.79, -sp * 0.44, sp * 0.44, 7.5 * alpha + 1.4, "#FB7185", "#FFFFFF", isMono);
+    let dir = h.dir || 1;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: sr,
+      spread: sp,
+      dir,
+      progress: f,
+      style: "blood_crystal",
+      primary: "#E11D48",
+      highlight: "#FFFFFF",
+      shadow: "#09040A",
+      rim: "#FDA4AF",
+      tiltY: 0.84,
+      isMono,
+    });
     if (h.crossed) {
-      drawTaperedArc(ctx, 0, 0, sr * 0.94, sp * 0.5, -sp * 0.5, 10.5 * alpha + 1.6, "#F43F5E", "#FFE4E6", isMono);
+      drawSculptedBladeSlash(ctx, {
+        x: h.x,
+        y: h.y,
+        angle: (h.angle || 0) + 0.16,
+        radius: sr * 0.92,
+        spread: sp * 0.92,
+        dir: -dir,
+        progress: f,
+        style: "void",
+        primary: "#F43F5E",
+        highlight: "#FFE4E6",
+        shadow: "#09040A",
+        rim: "#FFFFFF",
+        tiltY: 0.84,
+        isMono,
+      });
     }
-    // Jagged spatial rift fracture arc + shattered ruby dimension shards
-    ctx.strokeStyle = isMono ? "#000000" : "#09040A";
-    ctx.lineWidth = 3.0 * alpha + 0.8;
-    ctx.beginPath();
-    for (let i = 0; i <= 8; i++) {
-      let a = -sp * 0.44 + (sp * 0.88 * i) / 8;
-      let rj = sr * (i % 2 === 0 ? 0.86 : 0.99);
-      i === 0 ? ctx.moveTo(Math.cos(a) * rj, Math.sin(a) * rj) : ctx.lineTo(Math.cos(a) * rj, Math.sin(a) * rj);
-    }
-    ctx.stroke();
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 1.2 * alpha;
-    ctx.stroke();
-    for (let di = -1; di <= 1; di++) {
-      let da = di * sp * 0.3;
-      drawFourPointStar(ctx, Math.cos(da) * sr * 0.98, Math.sin(da) * sr * 0.98, 8.2 * alpha + 1.8, 2.2 * alpha, "#FFFFFF", isMono ? "#000000" : "#E11D48");
+    // Crimson Blood-Crystal shards splintering at spatial slash rim
+    for (let si = -1; si <= 1; si += 2) {
+      let sa = (h.angle || 0) + si * sp * 0.36;
+      drawFacetedShard(ctx, {
+        x: h.x + Math.cos(sa) * sr * (0.78 + f * 0.2),
+        y: h.y + Math.sin(sa) * sr * (0.78 + f * 0.2),
+        size: 5.8 * alpha + 1.8,
+        rot: sa,
+        shape: "crystal",
+        primary: "#E11D48",
+        highlight: "#FFFFFF",
+        shadow: "#09040A",
+        rim: "#FDA4AF",
+        isMono,
+      });
     }
     return;
   }
 
   if (h.kind === "eohyen_frost_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
     let sr = h.radius || 90;
     let sp = h.spread || 1.35;
-    let fg = ctx.createRadialGradient(0, 0, sr * 0.2, 0, 0, sr * 1.18);
-    fg.addColorStop(0, "rgba(56, 189, 248, 0)");
-    fg.addColorStop(0.62, isMono ? `rgba(255,255,255,${0.26 * alpha})` : `rgba(56, 189, 248, ${0.42 * alpha})`);
-    fg.addColorStop(1, "rgba(224, 242, 254, 0)");
-    ctx.fillStyle = fg;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, sr * 1.18, -sp / 2, sp / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.97, startAng: -sp / 2, endAng: sp / 2, f, color: "#0284C7", accentColor: "#BAE6FD", isMono, enableAdditive, tiltY: 0.88, crackStrength: 0.95, seed: 23 });
-    drawTaperedArc(ctx, 0, 0, sr, -sp / 2, sp / 2, 14 * alpha + 2.2, "#0284C7", "#E0F2FE", isMono);
-    drawTaperedArc(ctx, 0, 0, sr * 0.78, -sp * 0.42, sp * 0.42, 7.0 * alpha + 1.3, "#7DD3FC", "#FFFFFF", isMono);
-    for (let si = -2; si <= 2; si++) {
-      let sa = si * sp * 0.2;
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#E0F2FE";
-      ctx.strokeStyle = isMono ? "#000000" : "#0284C7";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(sa) * sr * 1.18, Math.sin(sa) * sr * 1.18);
-      ctx.lineTo(Math.cos(sa - 0.06) * sr * 0.84, Math.sin(sa - 0.06) * sr * 0.84);
-      ctx.lineTo(Math.cos(sa + 0.06) * sr * 0.84, Math.sin(sa + 0.06) * sr * 0.84);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: sr,
+      spread: sp,
+      dir: h.dir || 1,
+      progress: f,
+      style: "frost",
+      primary: "#0284C7",
+      highlight: "#FFFFFF",
+      shadow: "#082F49",
+      rim: "#BAE6FD",
+      tiltY: 0.86,
+      isMono,
+    });
+    for (let fi = -1; fi <= 1; fi++) {
+      let fa = (h.angle || 0) + fi * sp * 0.35;
+      let fd = sr * (0.72 + f * 0.22);
+      drawFacetedShard(ctx, {
+        x: h.x + Math.cos(fa) * fd,
+        y: h.y + Math.sin(fa) * fd,
+        size: 5.5 * alpha + 1.6,
+        rot: fa + f * 2,
+        shape: "crystal",
+        primary: "#7DD3FC",
+        highlight: "#FFFFFF",
+        shadow: "#082F49",
+        rim: "#BAE6FD",
+        isMono,
+      });
     }
-    drawFourPointStar(ctx, Math.cos(sp * 0.28) * sr, Math.sin(sp * 0.28) * sr, 10 * alpha + 2, 2.5 * alpha, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
     return;
   }
 
   if (h.kind === "kin_gale_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
-    let sr = h.radius || 105;
-    let sp = h.spread || 1.6;
-    let kg = ctx.createRadialGradient(0, 0, sr * 0.2, 0, 0, sr * 1.16);
-    kg.addColorStop(0, "rgba(16, 185, 129, 0)");
-    kg.addColorStop(0.62, isMono ? `rgba(255,255,255,${0.25 * alpha})` : `rgba(52, 211, 153, ${0.4 * alpha})`);
-    kg.addColorStop(1, "rgba(254, 240, 138, 0)");
-    ctx.fillStyle = kg;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, sr * 1.16, -sp / 2, sp / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.96, startAng: -sp / 2, endAng: sp / 2, f, color: "#10B981", accentColor: "#FEF08A", isMono, enableAdditive, tiltY: 0.84, crackStrength: 0.78, seed: 29 });
-    drawTaperedArc(ctx, 0, 0, sr, -sp / 2, sp / 2, 14 * alpha + 2.2, "#10B981", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, sr * 0.78, -sp * 0.44, sp * 0.44, 7.2 * alpha + 1.4, "#6EE7B7", "#FFFFFF", isMono);
-    for (let wi of [-1, 1]) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(254, 240, 138, ${0.84 * alpha})`;
-      ctx.lineWidth = 2.4 * alpha;
-      ctx.beginPath();
-      ctx.arc(0, 0, sr * 1.09, wi * sp * 0.12 - 0.3, wi * sp * 0.12 + 0.3);
-      ctx.stroke();
-    }
-    drawFourPointStar(ctx, sr * 0.96, 0, 11 * alpha + 2.4, 2.8 * alpha, "#FEF08A", isMono ? "#000000" : "#10B981");
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: h.angle || 0,
+      radius: h.radius || 105,
+      spread: h.spread || 1.6,
+      dir: h.dir || 1,
+      progress: f,
+      style: "wind_gale",
+      primary: "#10B981",
+      highlight: "#FEF08A",
+      shadow: "#064E3B",
+      rim: "#6EE7B7",
+      tiltY: 0.84,
+      isMono,
+    });
     return;
   }
 
   if (h.kind === "thien_sword_slash") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
     let sr = h.radius || 96;
     let sp = h.spread || 1.6;
     let dir = h.dir || 1;
-    let mainCol = h.color || "#FACC15";
-    let accentCol = h.accentColor || "#38BDF8";
-    let startA = (-sp / 2) * dir;
-    let sweepEnd = (-sp / 2 + sp * Math.min(1, f * 1.8 + 0.35)) * dir;
-
-    let tg = ctx.createRadialGradient(0, 0, sr * 0.18, 0, 0, sr * 1.18);
-    tg.addColorStop(0, "rgba(250, 204, 21, 0)");
-    tg.addColorStop(0.58, isMono ? `rgba(255,255,255,${0.28 * alpha})` : `rgba(250, 204, 21, ${0.38 * alpha})`);
-    tg.addColorStop(0.86, isMono ? `rgba(0,0,0,${0.22 * alpha})` : `rgba(56, 189, 248, ${0.32 * alpha})`);
-    tg.addColorStop(1, "rgba(56, 189, 248, 0)");
-    ctx.fillStyle = tg;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, sr * 1.18, Math.min(startA, sweepEnd), Math.max(startA, sweepEnd));
-    ctx.closePath();
-    ctx.fill();
-
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.98, startAng: startA, endAng: sweepEnd, f, color: mainCol, accentColor: accentCol, isMono, enableAdditive, tiltY: 0.86, crackStrength: 1.18, seed: 31 });
-    drawTaperedArc(ctx, 0, 0, sr, startA, sweepEnd, 16 * alpha + 2.4, mainCol, "#FFFFFF", isMono);
-    drawTaperedArc(ctx, 0, 0, sr * 0.79, startA * 0.88, sweepEnd * 0.92, 8.8 * alpha + 1.6, accentCol, "#FEF08A", isMono);
-    for (let si = -2; si <= 2; si++) {
-      let sa = si * sp * 0.19 * dir;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(254, 240, 138, ${0.88 * alpha})`;
-      ctx.lineWidth = 2.2 * alpha;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(sa) * sr * 0.52, Math.sin(sa) * sr * 0.52);
-      ctx.lineTo(Math.cos(sa) * sr * 1.14, Math.sin(sa) * sr * 1.14);
-      ctx.stroke();
+    let ang = h.angle || 0;
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: ang,
+      radius: sr,
+      spread: sp,
+      dir,
+      progress: f,
+      style: "celestial_gold",
+      primary: h.color || "#FACC15",
+      highlight: "#FFFFFF",
+      shadow: "#422006",
+      rim: "#FEF08A",
+      tiltY: 0.84,
+      isMono,
+    });
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: ang + 0.08,
+      radius: sr * 0.84,
+      spread: sp * 0.86,
+      dir,
+      progress: Math.min(1, f * 1.1),
+      style: "plasma_cyan",
+      primary: h.accentColor || "#38BDF8",
+      highlight: "#FFFFFF",
+      shadow: "#082F49",
+      rim: "#FEF08A",
+      tiltY: 0.84,
+      isMono,
+    });
+    // Celestial 4-point star sparkles along arc
+    for (let si = -1; si <= 1; si += 2) {
+      let sa = ang + si * sp * 0.38;
+      drawFourPointStar(ctx, h.x + Math.cos(sa) * sr * 0.86, h.y + Math.sin(sa) * sr * 0.86, 7.5 * alpha + 2, 2.2, "#FFFFFF", isMono ? "#000000" : "#FACC15");
     }
-    drawFourPointStar(ctx, Math.cos(sweepEnd) * sr, Math.sin(sweepEnd) * sr, 12.5 * alpha + 2.5, 3.2 * alpha, "#FFFFFF", isMono ? "#000000" : accentCol);
-    drawFourPointStar(ctx, sr * 0.65, 0, 8.0 * alpha + 1.5, 2.1 * alpha, "#FEF08A", isMono ? "#000000" : mainCol);
     return;
   }
 
   if (h.kind === "ducanh_hammer_cleave") {
-    ctx.translate(h.x, h.y);
-    ctx.rotate(h.angle || 0);
     let sr = h.radius || 96;
-    let sp = h.spread || 1.4;
-    let dir = h.dir || 1;
-    let startA = (-sp / 2) * dir;
-    let sweepEnd = (-sp / 2 + sp * Math.min(1, f * 1.7 + 0.38)) * dir;
-    let dg = ctx.createRadialGradient(0, 0, sr * 0.2, 0, 0, sr * 1.18);
-    dg.addColorStop(0, "rgba(245, 158, 11, 0)");
-    dg.addColorStop(0.6, isMono ? `rgba(255,255,255,${0.26 * alpha})` : `rgba(245, 158, 11, ${0.44 * alpha})`);
-    dg.addColorStop(1, "rgba(234, 88, 12, 0)");
-    ctx.fillStyle = dg;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, sr * 1.18, Math.min(startA, sweepEnd), Math.max(startA, sweepEnd));
-    ctx.closePath();
-    ctx.fill();
+    let ang = h.angle || 0;
+    let ix = h.x + Math.cos(ang) * (sr * 0.68);
+    let iy = h.y + Math.sin(ang) * (sr * 0.68);
 
-    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.96, startAng: startA, endAng: sweepEnd, f, color: "#D97706", accentColor: "#FEF08A", isMono, enableAdditive, tiltY: 0.84, crackStrength: 0.92, seed: 37 });
-    drawTaperedArc(ctx, 0, 0, sr, startA, sweepEnd, 17 * alpha + 2.5, "#D97706", "#FEF08A", isMono);
-    drawTaperedArc(ctx, 0, 0, sr * 0.76, startA * 0.85, sweepEnd * 0.88, 8.5 * alpha + 1.6, "#F59E0B", "#FFFFFF", isMono);
-    for (let si = -2; si <= 2; si++) {
-      let sa = si * sp * 0.2;
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(254, 240, 138, ${0.86 * alpha})`;
-      ctx.lineWidth = 2.6 * alpha;
+    // True Siege Hammer Ground Slam positioned cleanly at & ahead of enlarged gauntlet tips
+    drawImpactCraterDecal(ctx, {
+      x: ix,
+      y: iy,
+      radius: sr * 0.56,
+      alpha: alpha * 0.88,
+      tiltY: 0.72,
+      seed: (ix * 0.09 + iy * 0.05) % 10,
+      primary: "#D97706",
+      highlight: "#FEF08A",
+      shadow: "#1C1917",
+      rim: "#F59E0B",
+      debrisShape: "rock",
+      isMono,
+    });
+
+    // Forward tapered shockwave crescent wrapping ahead of both slammed anvils
+    drawTaperedArc(ctx, ix, iy, Math.max(18, sr * 0.36), ang - 1.18, ang + 1.18, 5.2 * alpha + 1.4, "#F59E0B", "#FEF08A", isMono);
+
+    ctx.save();
+    if (motionF < 0.72) {
+      let dropP = clamp(motionF / 0.48, 0, 1);
+      let topY = iy - 68 * (1 - dropP);
+      let anvilA = clamp(1 - Math.max(0, motionF - 0.35) / 0.37, 0, 1);
+      let smashG = ctx.createLinearGradient(ix, topY - 40, ix, iy);
+      smashG.addColorStop(0, "rgba(251, 191, 36, 0)");
+      smashG.addColorStop(0.6, isMono ? `rgba(255,255,255,${0.46 * anvilA})` : `rgba(245, 158, 11, ${0.5 * anvilA})`);
+      smashG.addColorStop(1, isMono ? `rgba(255,255,255,${0.76 * anvilA})` : `rgba(254, 240, 138, ${0.76 * anvilA})`);
+      ctx.fillStyle = smashG;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(sa) * sr * 0.58, Math.sin(sa) * sr * 0.58);
-      ctx.lineTo(Math.cos(sa) * sr * 1.16, Math.sin(sa) * sr * 1.16);
+      ctx.moveTo(ix - 14, topY - 42);
+      ctx.lineTo(ix + 14, topY - 42);
+      ctx.lineTo(ix + 22, iy);
+      ctx.lineTo(ix - 22, iy);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    for (let ri = 0; ri < 2; ri++) {
+      let srx = Math.max(8, sr * (0.22 + f * (ri === 0 ? 0.38 : 0.56)));
+      let sry = Math.max(5, srx * 0.64);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : ri === 0 ? "#FEF08A" : "#F59E0B";
+      ctx.globalAlpha = clamp(alpha * (ri === 0 ? 0.92 : 0.7), 0, 1);
+      ctx.lineWidth = (ri === 0 ? 4.4 : 2.8) * alpha + 1.1;
+      ctx.beginPath();
+      ctx.ellipse(ix, iy, srx, sry, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
-    drawFourPointStar(ctx, Math.cos(sweepEnd) * sr, Math.sin(sweepEnd) * sr, 11 * alpha + 2.5, 2.8 * alpha, "#FEF08A", isMono ? "#000000" : "#EA580C");
+    ctx.globalAlpha = alpha;
+
+    for (let bi = 0; bi < 4; bi++) {
+      let ba = ang + (Math.PI * 0.5) * bi + 0.38;
+      let bd = sr * (0.2 + motionF * 0.42);
+      let arcBounce = Math.sin(motionF * Math.PI) * 18;
+      let rx = ix + Math.cos(ba) * bd;
+      let ryGround = iy + Math.sin(ba) * bd * 0.66;
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.35;
+      ctx.fillStyle = "#020617";
+      ctx.beginPath();
+      ctx.ellipse(rx, ryGround + 2, 5.5, 2.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      drawFacetedShard(ctx, {
+        x: rx,
+        y: ryGround - arcBounce,
+        size: 6.4 * alpha + 2.2,
+        rot: ba + f * 4.5,
+        shape: "rock",
+        primary: "#B45309",
+        highlight: "#FEF08A",
+        shadow: "#1C1917",
+        rim: "#F59E0B",
+        isMono,
+      });
+    }
+    drawFourPointStar(ctx, ix, iy, 12 * alpha + 3, 4.0, "#FFFFFF", isMono ? "#000000" : "#F59E0B");
+    ctx.restore();
     return;
   }
 
-  // Generic slash / crossed slash (fallback with Cosmic Slash layer)
-  ctx.translate(h.x, h.y);
-  ctx.rotate(h.angle);
+  // Generic slash / crossed slash (sculpted asymmetric blade slash + cosmic wake)
   let sr = h.radius || 70;
-  let sg = ctx.createRadialGradient(0, 0, sr * 0.35, 0, 0, sr * 1.12);
-  sg.addColorStop(0, "rgba(255,255,255,0)");
-  sg.addColorStop(0.7, isMono ? `rgba(255,255,255,${0.18 * alpha})` : `${h.color || "#38BDF8"}30`);
-  sg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = sg;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, sr * 1.12, -h.spread / 2, h.spread / 2);
-  ctx.closePath();
-  ctx.fill();
-
-  drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.96, startAng: -h.spread / 2, endAng: h.spread / 2, f, color: h.color || "#38BDF8", accentColor: h.accentColor || "#E0F2FE", isMono, enableAdditive, tiltY: 0.88, crackStrength: h.crossed ? 1.08 : 0.65, seed: 41 });
-  drawTaperedArc(ctx, 0, 0, sr, -h.spread / 2, h.spread / 2, 11.5 * alpha + 1.6, h.color, "#FFFFFF", isMono);
-  drawTaperedArc(ctx, 0, 0, sr * 0.78, -h.spread * 0.38, h.spread * 0.38, 5.5 * alpha + 1.1, h.color, "#FFFFFF", isMono);
-  for (let si = -1; si <= 1; si++) {
-    let sa = si * h.spread * 0.28 + (f - 0.5) * 0.12;
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(255,255,255,0.75)";
-    ctx.lineWidth = 1.6 * alpha + 0.6;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(sa) * sr * 0.62, Math.sin(sa) * sr * 0.62);
-    ctx.lineTo(Math.cos(sa) * sr * 1.08, Math.sin(sa) * sr * 1.08);
-    ctx.stroke();
-  }
+  let spread = clamp(h.spread || 1.65, 0.4, Math.PI * 1.85);
+  let colU = String(h.color || "#38BDF8").toUpperCase();
+  let slashStyle =
+    colU === "#F43F5E" || colU === "#E11D48"
+      ? "blood_crystal"
+      : colU === "#EF4444" || colU === "#F97316" || colU === "#EA580C"
+      ? "fire_dragon"
+      : colU === "#34D399" || colU === "#10B981" || colU === "#14B8A6"
+      ? "wind_gale"
+      : colU === "#A855F7" || colU === "#C084FC"
+      ? "void"
+      : colU === "#FACC15" || colU === "#FBBF24" || colU === "#FDE047"
+      ? "celestial_gold"
+      : "plasma_cyan";
+  drawSculptedBladeSlash(ctx, {
+    x: h.x,
+    y: h.y,
+    angle: h.angle || 0,
+    radius: sr,
+    spread,
+    progress: f,
+    style: slashStyle,
+    primary: h.color || "#38BDF8",
+    highlight: h.accentColor || "#FFFFFF",
+    shadow: "#090D16",
+    rim: h.accentColor || "#E0F2FE",
+    tiltY: 0.88,
+    isMono,
+  });
   if (h.crossed) {
-    drawTaperedArc(ctx, 0, 0, sr * 0.9, h.spread * 0.46, -h.spread * 0.46, 8.2 * alpha + 1.3, h.color, "#FFE4E6", isMono);
+    drawSculptedBladeSlash(ctx, {
+      x: h.x,
+      y: h.y,
+      angle: (h.angle || 0) + 0.28,
+      radius: sr * 0.88,
+      spread: spread * 0.85,
+      progress: Math.min(1, f * 1.1),
+      style: slashStyle,
+      primary: h.accentColor || "#FFE4E6",
+      highlight: "#FFFFFF",
+      shadow: "#090D16",
+      rim: h.color || "#38BDF8",
+      tiltY: 0.88,
+      isMono,
+    });
   }
-  let tipAng = h.spread * (f * 0.5 - 0.1);
-  drawFourPointStar(ctx, Math.cos(tipAng) * sr, Math.sin(tipAng) * sr, 8.5 * alpha + 2, 2.3 * alpha + 0.8, "#FFFFFF", isMono ? "#000000" : h.color);
 }
 
 export function drawCurvedLightning(ctx, l, isMono, enableAdditive = true) {
@@ -8234,15 +7907,12 @@ export function drawCurvedLightning(ctx, l, isMono, enableAdditive = true) {
     }
   };
 
-  // Pass 1: Layered additive electric plasma ionization sheath (zero shadowBlur)
+  // Pass 1: Subtle translucent electric ionization sheath (zero glare, zero shadowBlur)
   ctx.save();
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
-  ctx.globalAlpha = alpha * 0.32;
+  ctx.globalAlpha = alpha * 0.22;
   traceJaggedBolt();
   ctx.strokeStyle = isMono ? "#FFFFFF" : l.color;
-  ctx.lineWidth = w * 4.2;
+  ctx.lineWidth = w * 3.8;
   ctx.stroke();
   ctx.restore();
 
@@ -8316,107 +7986,103 @@ export function drawCurvedLightning(ctx, l, isMono, enableAdditive = true) {
 }
 
 export function drawImpactBurst(ctx, b, isMono, enableAdditive = true) {
-  let f = clamp(b.life / Math.max(0.05, b.maxLife), 0, 1);
+  let f = clamp((b.life || 0) / Math.max(0.05, b.maxLife || 0.36), 0, 1);
   let tier = b.tier || (b.isCrit ? "heavy" : "light");
   let isFinisher = tier === "finisher";
   let isHeavy = tier === "heavy" || b.isCrit || isFinisher;
-  let alpha = (1 - Math.pow(f, 1.25)) * (isFinisher ? 0.96 : 0.86);
-  let r = b.radius * (0.28 + 0.72 * Math.pow(f, 0.55));
+  let alpha = (f < 0.26 ? 1 : clamp(1 - Math.pow((f - 0.26) / 0.74, 1.15), 0, 1)) * (isFinisher ? 0.92 : 0.86);
+  let r = Math.max(4, (b.radius || 28) * (0.34 + 0.66 * Math.pow(Math.min(1, f * 1.65), 0.55)));
   let mainCol = isMono ? "#CBD5E1" : (b.color || "#38BDF8");
   let hotCol = isMono ? "#FFFFFF" : (isFinisher ? "#F43F5E" : isHeavy ? "#FDE047" : mainCol);
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.translate(b.x, b.y);
+  ctx.translate(b.x || 0, b.y || 0);
   ctx.rotate(b.angle || 0);
 
-  // Soft radial impact flash (stronger core flash at impact onset)
-  let iGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * (isFinisher ? 1.38 : 1.15));
-  iGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.68)" : isFinisher ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.52)");
-  iGrad.addColorStop(0.5, isMono ? "rgba(180,180,180,0.22)" : `${mainCol}48`);
-  iGrad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = iGrad;
-  ctx.beginPath();
-  ctx.arc(0, 0, r * (isFinisher ? 1.38 : 1.15), 0, Math.PI * 2);
-  ctx.fill();
+  // Layer 0: Translucent feathered "khói mờ" impact dust wisps (no opaque blobs)
+  let mistCnt = isHeavy ? 4 : 2;
+  for (let di = 0; di < mistCnt; di++) {
+    let da = (Math.PI * 2 * di) / mistCnt + 0.4;
+    let dist = r * (0.32 + f * 0.28);
+    let dx = Math.cos(da) * dist;
+    let dy = Math.sin(da) * dist * 0.8;
+    let dr = Math.max(3, r * 0.42 * (0.85 + f * 0.25));
+    let dg = ctx.createRadialGradient(dx, dy, 0, dx, dy, dr);
+    dg.addColorStop(0, isMono ? `rgba(15, 23, 42, ${0.18 * alpha})` : `rgba(6, 9, 17, ${0.18 * alpha})`);
+    dg.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = dg;
+    ctx.beginPath();
+    ctx.arc(dx, dy, dr, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Layered additive neon shockwave rings
+  // Layer 1: Tapered asymmetric shockwave crescents (crisp source-over contrast)
   ctx.save();
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.strokeStyle = mainCol;
-  ctx.lineWidth = (isFinisher ? 5.2 : isHeavy ? 3.8 : 2.3) * alpha + 0.6;
-  ctx.stroke();
+  drawTaperedArc(ctx, 0, 0, r, -1.25, 1.25, (isFinisher ? 8.5 : isHeavy ? 6.2 : 4.2) * alpha + 1.2, mainCol, "#FFFFFF", isMono);
+  drawTaperedArc(ctx, 0, 0, r * 0.92, Math.PI - 1.15, Math.PI + 1.15, (isFinisher ? 6.5 : 4.5) * alpha + 1, hotCol, "#FFFFFF", isMono);
 
-  if (isHeavy) {
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.68, 0, Math.PI * 2);
-    ctx.strokeStyle = isFinisher ? hotCol : "rgba(226, 232, 240, 0.72)";
-    ctx.lineWidth = (isFinisher ? 2.6 : 1.5) * alpha;
-    ctx.stroke();
-  }
-
-  // Finisher: 3D tilted ground shock ring + upward soul-shard wisps
   if (isFinisher) {
-    ctx.save();
-    ctx.scale(1, 0.62);
-    ctx.strokeStyle = hotCol;
-    ctx.lineWidth = 3.2 * alpha + 0.8;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.24, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(12, r * 1.18),
+      tiltY: 0.65,
+      rot: f * 2.2,
+      sides: 4,
+      primary: hotCol,
+      highlight: "#FFFFFF",
+      darkRim: "#090D16",
+      rim: mainCol,
+      isMono,
+    });
   }
   ctx.restore();
 
-  // Staggered directional velocity needles
-  let needleCount = isFinisher ? 10 : isHeavy ? 8 : 5;
-  ctx.strokeStyle = hotCol;
-  ctx.lineWidth = (isFinisher ? 2.1 : 1.5) * alpha + 0.4;
-  ctx.lineCap = "round";
-  for (let i = 0; i < needleCount; i++) {
-    let sa = (Math.PI * 2 / needleCount) * i + 0.24;
-    let out = i % 2 === 0 ? (isFinisher ? 1.42 : 1.25) : 1.04;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(sa) * r * 0.44, Math.sin(sa) * r * 0.44);
-    ctx.lineTo(Math.cos(sa) * r * out, Math.sin(sa) * r * out);
-    ctx.stroke();
-  }
+  // Layer 2: Multi-tone compact central flash cavity (controlled non-blinding alpha)
+  let iGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * (isFinisher ? 1.05 : 0.84));
+  iGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.42)" : isFinisher ? "rgba(255,255,255,0.48)" : "rgba(255,255,255,0.34)");
+  iGrad.addColorStop(0.55, isMono ? "rgba(180,180,180,0.16)" : colorWithAlpha(mainCol, 0.24));
+  iGrad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = iGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * (isFinisher ? 1.05 : 0.84), 0, Math.PI * 2);
+  ctx.fill();
 
-  // Spinning shattered cosmic shards for Heavy & Finisher tiers
-  if (isHeavy && f < 0.88) {
-    let sCount = isFinisher ? 6 : 3;
-    for (let si = 0; si < sCount; si++) {
-      let sa = (Math.PI * 2 / sCount) * si + f * 2.4;
-      let sd = r * (0.55 + f * 0.65);
-      let sx = Math.cos(sa) * sd;
-      let sy = Math.sin(sa) * sd;
-      let sz = (isFinisher ? 5.2 : 3.6) * (1 - f);
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(sa + f * 6);
-      ctx.fillStyle = isMono ? "#FFFFFF" : (si % 2 === 0 ? hotCol : mainCol);
-      ctx.beginPath();
-      ctx.moveTo(0, -sz);
-      ctx.lineTo(sz * 0.7, 0);
-      ctx.lineTo(0, sz);
-      ctx.lineTo(-sz * 0.7, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
+  let shardCount = isFinisher ? 8 : isHeavy ? 6 : 4;
+  for (let si = 0; si < shardCount; si++) {
+    let sa = (Math.PI * 2 / shardCount) * si + f * 1.8 + 0.25;
+    let sd = r * (0.52 + f * 0.68);
+    let sx = Math.cos(sa) * sd;
+    let syGround = Math.sin(sa) * sd * 0.84;
+    let lift = Math.sin(f * Math.PI) * 9;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.34;
+    ctx.fillStyle = "#020617";
+    ctx.beginPath();
+    ctx.ellipse(sx, syGround + 2, 3.2, 1.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    drawFacetedShard(ctx, {
+      x: sx,
+      y: syGround - lift,
+      size: Math.max(2.2, (isFinisher ? 6.2 : isHeavy ? 4.4 : 3.0) * (1 - f * 0.55)),
+      rot: sa + f * 4,
+      shape: si % 2 === 0 ? "crystal" : "rock",
+      primary: si % 2 === 0 ? hotCol : mainCol,
+      highlight: "#FFFFFF",
+      shadow: "#090D16",
+      rim: mainCol,
+      isMono,
+    });
   }
 
   // Elemental / Hero signature silhouette micro-accent on impact
   let sigCol = (b.color || "").toUpperCase();
   if (f < 0.85) {
     if (sigCol === "#F43F5E" || sigCol === "#E11D48" || b.heroId === "tin") {
-      // Crimson Ma Thạch razor X-splinters
       ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
-      ctx.lineWidth = (isHeavy ? 2.6 : 1.7) * (1 - f);
+      ctx.lineWidth = (isHeavy ? 3.2 : 2.1) * (1 - f);
       ctx.beginPath();
       ctx.moveTo(-r * 1.15, -r * 0.38);
       ctx.lineTo(r * 1.15, r * 0.38);
@@ -8424,57 +8090,43 @@ export function drawImpactBurst(ctx, b, isMono, enableAdditive = true) {
       ctx.lineTo(-r * 0.38, r * 1.05);
       ctx.stroke();
     } else if (sigCol === "#38BDF8" || sigCol === "#7DD3FC" || b.heroId === "eohyen" || b.heroId === "dung") {
-      // Glacial/storm diamond facets
-      for (let fi = 0; fi < 4; fi++) {
-        let fa = (Math.PI / 2) * fi + f * 1.5;
-        drawUltDiamondShard(ctx, Math.cos(fa) * r * 0.88, Math.sin(fa) * r * 0.88, 6.5 * (1 - f) + 2, 2.4 * (1 - f) + 0.8, fa, "#FFFFFF", mainCol);
-      }
+      drawBranchingArc(ctx, { x1: -r * 0.75, y1: 0, x2: r * 0.75, y2: 0, seed: f * 14, width: 1.6, color: mainCol, coreColor: "#FFFFFF", isMono });
     } else if (sigCol === "#34D399" || sigCol === "#22D3EE" || b.heroId === "kin" || b.heroId === "bach") {
-      // Twin gale crescent wakes
-      ctx.strokeStyle = isMono ? "#FFFFFF" : mainCol;
-      ctx.lineWidth = 2.2 * (1 - f) + 0.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 1.12, -0.75, 0.75);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 1.12, Math.PI - 0.75, Math.PI + 0.75);
-      ctx.stroke();
-    } else if (sigCol === "#A855F7" || sigCol === "#C084FC" || b.heroId === "duccong" || b.heroId === "bao" || b.heroId === "luan") {
-      // Singularity / mirror prism diamond bracket
-      ctx.strokeStyle = isMono ? "#FFFFFF" : mainCol;
-      ctx.lineWidth = 1.8 * (1 - f) + 0.5;
-      drawUltPolygon(ctx, 0, 0, 4, r * 0.84, f * 2);
-      ctx.stroke();
+      drawWindStreamRibbon(ctx, { x: -r * 0.6, y: 0, angle: 0, length: r * 1.25, width: 4.5 * (1 - f) + 1, phase: f * 10, color: mainCol, coreColor: "#FFFFFF", isMono });
     } else if (sigCol === "#F97316" || sigCol === "#EA580C" || b.heroId === "longhoi" || b.heroId === "danh") {
-      // Blazing solar ember petal flares
       for (let pi = 0; pi < 3; pi++) {
         let pa = (Math.PI * 2 * pi) / 3 + f * 1.2;
-        drawUltPetal(ctx, pa, r * 0.28, r * 1.12, 5.5 * (1 - f) + 1.5, isMono ? "rgba(255,255,255,0.5)" : "rgba(251, 146, 60, 0.6)", "#FEF08A");
+        drawUltPetal(ctx, pa, r * 0.25, r * 1.08, 5.8 * (1 - f) + 1.5, isMono ? "rgba(255,255,255,0.5)" : "rgba(251, 146, 60, 0.65)", "#FEF08A");
       }
     }
   }
 
-  // Directional collision flare + twin X-cross slash (Heavy & Finisher)
+  // Sharp directional ignition cross-flare + Heavy/Finisher double X-slash
   if (f < 0.78) {
-    let starScale = (1 - f / 0.78) * (isFinisher ? 1.75 : isHeavy ? 1.38 : 0.92);
+    let starScale = (1 - f / 0.78) * (isFinisher ? 1.85 : isHeavy ? 1.42 : 0.98);
     drawFourPointStar(ctx, 0, 0, 12.5 * starScale, 2.5 * starScale, isMono ? "#E2E8F0" : "#FEF08A", isMono ? "#0F172A" : mainCol);
     if (isHeavy) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : (isFinisher ? "#FFFFFF" : "rgba(254, 240, 138, 0.88)");
-      ctx.lineWidth = (isFinisher ? 3.2 : 2.1) * (1 - f);
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(-r * 1.32, -r * 0.64);
-      ctx.lineTo(r * 1.32, r * 0.64);
-      ctx.moveTo(-r * 0.92, r * 0.68);
-      ctx.lineTo(r * 0.92, -r * 0.68);
-      ctx.stroke();
+      drawSculptedBladeSlash(ctx, {
+        x: 0,
+        y: 0,
+        angle: -0.35,
+        radius: Math.max(8, r * 0.85),
+        spread: 1.35,
+        progress: f,
+        style: isFinisher ? "blood_crystal" : "celestial_gold",
+        primary: hotCol,
+        highlight: "#FFFFFF",
+        shadow: "#090D16",
+        rim: mainCol,
+        isMono,
+      });
     }
   }
   ctx.restore();
 }
 
 export function drawGroundCrack(ctx, h, elapsedTime, isMono) {
-  let f = Math.max(0, 1 - h.life / h.maxLife);
+  let f = clamp((1 - h.life / h.maxLife) * 1.85, 0, 1);
   if (f <= 0.01) return;
 
   ctx.save();
@@ -8495,13 +8147,20 @@ export function drawGroundCrack(ctx, h, elapsedTime, isMono) {
 
   let pulse = 0.72 + 0.28 * Math.sin((elapsedTime || 0) * 7 + (h.id || 0));
 
-  // 1. Stone rim bevel shadow (creates sunken 3D fissure depth)
+  // 1. Dual 3D chasm relief bevel (sunlit upper stone lip + sunken lower overhang shadow)
   ctx.lineCap = "round";
   ctx.lineJoin = "miter";
   ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y - 1.5);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y - 1.5);
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.28)" : "rgba(226, 232, 240, 0.24)";
+  ctx.lineWidth = 7.4;
+  ctx.stroke();
+
+  ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y + 2.2);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y + 2.2);
-  ctx.strokeStyle = isMono ? "rgba(0,0,0,0.45)" : "rgba(148, 163, 184, 0.28)";
+  ctx.strokeStyle = isMono ? "rgba(0,0,0,0.48)" : "rgba(2, 6, 18, 0.56)";
   ctx.lineWidth = 7.5;
   ctx.stroke();
 
@@ -8558,14 +8217,28 @@ export function drawGroundCrack(ctx, h, elapsedTime, isMono) {
     }
   }
 
-  // 6. Scattered angular stone debris chips around crack rim
+  // 6. 3D beveled stone debris chips around crack rim
   if (Array.isArray(h.rockChips)) {
     for (let rc of h.rockChips) {
       ctx.save();
       ctx.translate(rc.x, rc.y);
       ctx.rotate(rc.rot || 0);
       let s = rc.s || 3.5;
-      ctx.fillStyle = isMono ? "#222222" : "#334155";
+      ctx.fillStyle = "#1E293B";
+      ctx.beginPath();
+      ctx.moveTo(-s, -s * 0.5);
+      ctx.lineTo(s * 0.8, -s * 0.7);
+      ctx.lineTo(s, s * 0.6);
+      ctx.lineTo(-s * 0.5, s * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = isMono ? "#94A3B8" : "#64748B";
+      ctx.beginPath();
+      ctx.moveTo(-s, -s * 0.5);
+      ctx.lineTo(s * 0.8, -s * 0.7);
+      ctx.lineTo(s * 0.12, 0);
+      ctx.closePath();
+      ctx.fill();
       ctx.strokeStyle = "#090D16";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -8574,7 +8247,6 @@ export function drawGroundCrack(ctx, h, elapsedTime, isMono) {
       ctx.lineTo(s, s * 0.6);
       ctx.lineTo(-s * 0.5, s * 0.8);
       ctx.closePath();
-      ctx.fill();
       ctx.stroke();
       ctx.restore();
     }
@@ -8669,16 +8341,16 @@ export function drawHeroBody(ctx, opts) {
   if (isUlt && !isDowned) {
     ctx.save();
     ctx.rotate(elapsedTime * 2.2);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FBBF24";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([7, 5]);
+    let ultR = Math.max(6, radius * 1.3);
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(15, 23, 42, 0.72)";
+    ctx.lineWidth = 3.8;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 1.28, 0, Math.PI * 2);
+    ctx.arc(0, 0, ultR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
     for (let oi = 0; oi < 4; oi++) {
       let oa = (Math.PI / 2) * oi;
-      drawFourPointStar(ctx, Math.cos(oa) * radius * 1.28, Math.sin(oa) * radius * 1.28, 4.2, 1.4, "#FEF08A", isMono ? "#000000" : trimCol);
+      drawTaperedArc(ctx, 0, 0, ultR, oa + 0.14, oa + Math.PI / 2 - 0.16, 3.2, "#F59E0B", "#FEF08A", isMono);
+      drawFourPointStar(ctx, Math.cos(oa) * ultR, Math.sin(oa) * ultR, 4.4, 1.4, "#FEF08A", isMono ? "#000000" : trimCol);
     }
     ctx.restore();
   }
@@ -8802,19 +8474,16 @@ export function drawHeroBody(ctx, opts) {
     ctx.save();
     ctx.translate(-4, 0);
     ctx.rotate(elapsedTime * 1.4);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-    ctx.lineWidth = 1.8;
-    ctx.setLineDash([7, 5]);
+    let astR = Math.max(6, radius * 1.26);
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(30, 27, 75, 0.72)";
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 1.26, 0, Math.PI * 2);
+    ctx.arc(0, 0, astR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
     for (let i = 0; i < 4; i++) {
       let ha = (Math.PI / 2) * i;
-      ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#38BDF8";
-      ctx.beginPath();
-      ctx.arc(Math.cos(ha) * radius * 1.26, Math.sin(ha) * radius * 1.26, 2.7, 0, Math.PI * 2);
-      ctx.fill();
+      drawTaperedArc(ctx, 0, 0, astR, ha + 0.16, ha + Math.PI / 2 - 0.18, 2.8, i % 2 === 0 ? "#FDE047" : "#818CF8", "#FFFFFF", isMono);
+      drawFourPointStar(ctx, Math.cos(ha) * astR, Math.sin(ha) * astR, 3.8, 1.2, i % 2 === 0 ? "#FEF08A" : "#38BDF8", isMono ? "#000000" : "#1E1B4B");
     }
     ctx.restore();
   } else if (heroId === "eohyen") {
@@ -8997,13 +8666,9 @@ export function drawHeroBody(ctx, opts) {
     ctx.save();
     ctx.translate(-3, 0);
     ctx.rotate(-elapsedTime * 1.7);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
-    ctx.lineWidth = 1.6;
-    ctx.setLineDash([8, 6]);
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 1.24, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    let luanR = Math.max(6, radius * 1.24);
+    drawTaperedArc(ctx, 0, 0, luanR, 0.08, Math.PI * 0.8, 3.0, "#38BDF8", "#F5D0FE", isMono);
+    drawTaperedArc(ctx, 0, 0, luanR, Math.PI + 0.08, Math.PI * 1.8, 3.0, "#A855F7", "#BAE6FD", isMono);
     ctx.restore();
 
     // Twin levitating fractured mirror shards flanking shoulders
@@ -9215,16 +8880,15 @@ export function drawHeroBody(ctx, opts) {
     ctx.save();
     ctx.translate(-3, 0);
     ctx.rotate(elapsedTime * (isUlt ? 1.75 : 0.95));
-    let ringR = radius * (isUlt ? 1.56 : 1.4);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
-    ctx.lineWidth = isUlt ? 2.4 : 1.9;
-    ctx.setLineDash([10, 6]);
+    let ringR = Math.max(8, radius * (isUlt ? 1.56 : 1.4));
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(66, 32, 6, 0.65)";
+    ctx.lineWidth = isUlt ? 4.2 : 3.4;
     ctx.beginPath();
     ctx.arc(0, 0, ringR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
     for (let i = 0; i < 6; i++) {
       let a = (Math.PI / 3) * i;
+      drawTaperedArc(ctx, 0, 0, ringR, a + 0.14, a + Math.PI / 3 - 0.14, isUlt ? 3.8 : 3.0, "#FACC15", "#FFFFFF", isMono);
       let sx = Math.cos(a) * ringR;
       let sy = Math.sin(a) * ringR;
       drawFourPointStar(ctx, sx, sy, i % 2 === 0 ? 5.2 : 3.6, 1.6, i % 2 === 0 ? "#FDE047" : "#38BDF8", "#FFFFFF");
@@ -9402,17 +9066,12 @@ export function drawHeroBody(ctx, opts) {
     // Orbiting golden celestial seal ring & diamond nodes
     ctx.save();
     ctx.rotate(elapsedTime * 1.55);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-    ctx.lineWidth = 1.9;
-    ctx.setLineDash([8, 5]);
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 1.36, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    let minhR = Math.max(8, radius * 1.36);
     for (let i = 0; i < 4; i++) {
       let a = (Math.PI / 2) * i;
-      let sx = Math.cos(a) * radius * 1.36;
-      let sy = Math.sin(a) * radius * 1.36;
+      drawTaperedArc(ctx, 0, 0, minhR, a + 0.15, a + Math.PI / 2 - 0.15, 3.1, i % 2 === 0 ? "#FACC15" : "#38BDF8", "#FEF08A", isMono);
+      let sx = Math.cos(a) * minhR;
+      let sy = Math.sin(a) * minhR;
       drawFourPointStar(ctx, sx, sy, 4.6, 1.7, i % 2 === 0 ? "#FDE047" : "#38BDF8", "#FFFFFF");
     }
     ctx.restore();
@@ -9630,13 +9289,9 @@ export function drawHeroBody(ctx, opts) {
       ctx.arc(0, 0, radius * 1.7, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-      ctx.lineWidth = 2.1;
-      ctx.setLineDash([7, 5]);
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 1.38, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      let thaiR = Math.max(8, radius * 1.38);
+      drawTaperedArc(ctx, 0, 0, thaiR, elapsedTime * 2.1, elapsedTime * 2.1 + Math.PI * 0.78, 3.8, "#EF4444", "#FDE047", isMono);
+      drawTaperedArc(ctx, 0, 0, thaiR, elapsedTime * 2.1 + Math.PI, elapsedTime * 2.1 + Math.PI * 1.78, 3.8, "#F59E0B", "#FEF08A", isMono);
     }
 
     // Crimson imperial arena cape
@@ -9678,13 +9333,15 @@ export function drawHeroBody(ctx, opts) {
     if (khairAiming || isUlt) {
       ctx.save();
       ctx.rotate(elapsedTime * 1.8);
+      let khairR = Math.max(8, radius * 1.38);
       ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash([9, 7]);
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 1.38, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.lineWidth = 2.1;
+      for (let bi = 0; bi < 4; bi++) {
+        let ba = (Math.PI / 2) * bi;
+        ctx.beginPath();
+        ctx.arc(0, 0, khairR, ba - 0.24, ba + 0.24);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
@@ -9742,18 +9399,24 @@ export function drawHeroBody(ctx, opts) {
   ctx.lineWidth = isUlt ? 2.8 : 2.3;
   ctx.stroke();
 
-  // Top-left curved specular sheen & bottom-right bounce rim inside the circle
-  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.5)" : "rgba(255, 255, 255, 0.42)";
-  ctx.lineWidth = 1.8;
+  // Top-left curved specular sheen & bottom-right volumetric rim inside the circle
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.55)" : "rgba(255, 255, 255, 0.5)";
+  ctx.lineWidth = 2.0;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.arc(-radius * 0.14, -radius * 0.14, radius * 0.72, -2.55, -0.78);
   ctx.stroke();
 
-  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.22)" : `${fillAccent}66`;
-  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = isMono ? "rgba(0,0,0,0.45)" : "rgba(2, 6, 23, 0.48)";
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.arc(0, 0, radius * 0.84, 0.35, 1.45);
+  ctx.arc(0, 0, radius * 0.86, 0.25, 1.55);
+  ctx.stroke();
+
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.22)" : `${fillAccent}70`;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.8, 0.4, 1.4);
   ctx.stroke();
 
   // Subtle dark inner framing ring inside the circle
@@ -10566,23 +10229,23 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
     ctx.rotate((elapsedTime || 0) * 1.9);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FBBF24";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 6]);
+    let eliteR = Math.max(8, r * 1.32);
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(66, 32, 6, 0.7)";
+    ctx.lineWidth = 3.8;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 1.32, 0, Math.PI * 2);
+    ctx.arc(0, 0, eliteR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
     for (let ei = 0; ei < 4; ei++) {
       let ea = (Math.PI / 2) * ei;
-      drawFourPointStar(ctx, Math.cos(ea) * r * 1.32, Math.sin(ea) * r * 1.32, 4.4, 1.5, "#FEF08A", isMono ? "#000000" : "#D97706");
+      drawTaperedArc(ctx, 0, 0, eliteR, ea + 0.14, ea + Math.PI / 2 - 0.14, 3.4, "#F59E0B", "#FEF08A", isMono);
+      drawFourPointStar(ctx, Math.cos(ea) * eliteR, Math.sin(ea) * eliteR, 4.4, 1.5, "#FEF08A", isMono ? "#000000" : "#D97706");
     }
     ctx.restore();
   }
 
   ctx.beginPath();
-  ctx.ellipse(enemy.x, enemy.y + r * 0.75, r * (0.94 + idleBreath), r * 0.43, 0, 0, Math.PI * 2);
-  ctx.fillStyle = isMono ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0.48)";
+  ctx.ellipse(enemy.x + 2, enemy.y + r * 0.77, r * (0.98 + idleBreath), r * 0.45, 0, 0, Math.PI * 2);
+  ctx.fillStyle = isMono ? "rgba(0,0,0,0.8)" : "rgba(2, 6, 23, 0.56)";
   ctx.fill();
 
   const makeMobGrad = (cLight, cMid, cDark) => {
@@ -11028,16 +10691,23 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
   } else if (enemy.kind === "root_burrower") {
     // Sinh Vật Ẩn Nấp Dưới Rễ — Spiked Subterranean Burrower
     if (enemy.burrowed) {
-      ctx.strokeStyle = "#34D399";
-      ctx.lineWidth = 2.6;
-      ctx.setLineDash([4, 3]);
+      drawImpactCraterDecal(ctx, {
+        x: 0,
+        y: 0,
+        radius: Math.max(10, r * 1.04),
+        alpha: 0.9,
+        tiltY: 0.78,
+        seed: (enemy.id || 1) * 0.7,
+        debrisShape: "rock",
+        primary: "#10B981",
+        highlight: "#A7F3D0",
+        shadow: "#052E16",
+        rim: "#34D399",
+        isMono,
+      });
+      ctx.fillStyle = isMono ? "#111111" : "#1E293B";
       ctx.beginPath();
-      ctx.arc(0, 0, r * 0.96, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = "#1E293B";
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.56, 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(4, r * 0.52), 0, Math.PI * 2);
       ctx.fill();
     } else {
       ctx.beginPath();
@@ -11098,51 +10768,113 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.fillRect(r * 0.38, -3.5, 4.8, 2.3);
     ctx.fillRect(r * 0.38, 1.3, 4.8, 2.3);
   } else {
-    // Quái Nhỏ — Armed Goblin Raider with Jagged Cleaver Blade
+    // Quái Nhỏ — 2.5D Armored Goblin Raider (Buckler Shield, Iron Shoulder Pauldrons, Spiked Helm & Notched Cleaver)
+    // Left armored forearm + strapped round iron-wood buckler
     ctx.save();
-    ctx.translate(r * 0.35, r * 0.68);
-    ctx.rotate(0.28 - atkSwing * 0.95);
-    ctx.fillStyle = hit ? "#CBD5E1" : isMono ? "#222222" : "#94A3B8";
+    ctx.translate(r * 0.24, -r * 0.76);
+    ctx.rotate(-0.32 + atkSwing * 0.25);
+    ctx.fillStyle = hit ? "#E2E8F0" : isMono ? "#262626" : "#78350F";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#D97706";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(r * 0.2, 0, Math.max(2.6, r * 0.22), Math.max(4.8, r * 0.56), 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = hit ? "#FFFFFF" : isMono ? "#94A3B8" : "#CBD5E1";
+    ctx.beginPath();
+    ctx.arc(r * 0.24, 0, Math.max(1.8, r * 0.14), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Right arm + heavy notched goblin cleaver blade
+    ctx.save();
+    ctx.translate(r * 0.34, r * 0.74);
+    ctx.rotate(0.28 - atkSwing * 0.98);
+    // Leather grip
+    ctx.strokeStyle = isMono ? "#333333" : "#451A03";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.25, 0);
+    ctx.lineTo(r * 0.22, 0);
+    ctx.stroke();
+    // Two-tone steel cleaver blade
+    const clGrad = ctx.createLinearGradient(0, -r * 0.35, r * 1.15, r * 0.35);
+    clGrad.addColorStop(0, hit ? "#FFFFFF" : isMono ? "#1F1F1F" : "#475569");
+    clGrad.addColorStop(0.55, hit ? "#E2E8F0" : isMono ? "#525252" : "#CBD5E1");
+    clGrad.addColorStop(1, isMono ? "#FFFFFF" : "#F8FAFC");
+    ctx.fillStyle = clGrad;
     ctx.strokeStyle = "#0F172A";
     ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.moveTo(-2, -2.5);
-    ctx.lineTo(r * 0.98, -4.5);
-    ctx.lineTo(r * 1.18, 2.5);
-    ctx.lineTo(2, 3.2);
+    ctx.moveTo(r * 0.08, -2.5);
+    ctx.lineTo(r * 0.96, -5.2);
+    ctx.lineTo(r * 1.24, -1.0);
+    ctx.lineTo(r * 1.12, 3.8);
+    ctx.lineTo(r * 0.14, 3.0);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
     ctx.restore();
 
+    // Pointed goblin ears + iron-riveted shoulder pads
     for (let s of [-1, 1]) {
       ctx.fillStyle = isMono ? "#111111" : hit ? "#CBD5E1" : "#16A34A";
       ctx.strokeStyle = "#0F172A";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(-r * 0.1, s * r * 0.65);
-      ctx.lineTo(-r * 0.48, s * r * 1.2);
-      ctx.lineTo(r * 0.25, s * r * 0.72);
+      ctx.moveTo(-r * 0.08, s * r * 0.65);
+      ctx.lineTo(-r * 0.46, s * r * 1.22);
+      ctx.lineTo(r * 0.24, s * r * 0.72);
       ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Iron shoulder armor plate
+      ctx.fillStyle = isMono ? "#262626" : hit ? "#E2E8F0" : "#334155";
+      ctx.strokeStyle = isMono ? "#CBD5E1" : "#64748B";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(-r * 0.05, s * r * 0.66, Math.max(3.5, r * 0.36), Math.max(2.4, r * 0.24), s * 0.18, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     }
 
+    // Main volumetric body
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
     ctx.fillStyle = makeMobGrad("#86EFAC", enemy.color || "#22C55E", "#14532D");
     ctx.fill();
     ctx.strokeStyle = isElite ? "#FBBF24" : "#0F172A";
-    ctx.lineWidth = 2.3;
+    ctx.lineWidth = 2.4;
     ctx.stroke();
 
-    // Specular rim inside goblin head
-    ctx.strokeStyle = "rgba(255,255,255,0.28)";
-    ctx.lineWidth = 1.2;
+    // Spiked Iron War-Helm band across back/crown of head
+    ctx.fillStyle = isMono ? "#1F2937" : hit ? "#E2E8F0" : "#475569";
+    ctx.strokeStyle = "#0F172A";
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.arc(-r * 0.1, -r * 0.1, r * 0.68, -2.4, -0.8);
+    ctx.arc(-r * 0.08, 0, r * 0.88, Math.PI * 0.55, Math.PI * 1.45);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
 
+    // Helm top iron crest spike
+    ctx.fillStyle = isMono ? "#E2E8F0" : "#94A3B8";
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.78, 0);
+    ctx.lineTo(-r * 1.16, -2.5);
+    ctx.lineTo(-r * 1.16, 2.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Specular rim inside goblin armor
+    ctx.strokeStyle = "rgba(255,255,255,0.34)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(-r * 0.1, -r * 0.1, Math.max(3, r * 0.68), -2.4, -0.8);
+    ctx.stroke();
+
+    // Glowing fierce eyes + tiny ivory tusks
     ctx.fillStyle = "#FEF08A";
     ctx.beginPath();
     ctx.arc(r * 0.44, -r * 0.25, 2.4, 0, Math.PI * 2);
@@ -11150,9 +10882,19 @@ export function drawMonsterEntity(ctx, enemy, elapsedTime, isMono) {
     ctx.fill();
     ctx.fillStyle = "#EF4444";
     ctx.beginPath();
-    ctx.arc(r * 0.47, -r * 0.25, 0.9, 0, Math.PI * 2);
-    ctx.arc(r * 0.47, r * 0.25, 0.9, 0, Math.PI * 2);
+    ctx.arc(r * 0.47, -r * 0.25, 0.95, 0, Math.PI * 2);
+    ctx.arc(r * 0.47, r * 0.25, 0.95, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.fillStyle = "#F8FAFC";
+    for (let s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(r * 0.64, s * r * 0.22);
+      ctx.lineTo(r * 0.84, s * r * 0.14);
+      ctx.lineTo(r * 0.68, s * r * 0.08);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   ctx.restore();
@@ -11432,14 +11174,29 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
 
     // Target lock laser sight during windup + muzzle burst on release
     if (windupRatio > 0) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(244, 63, 94, ${0.4 + 0.5 * windupRatio})`;
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash([8, 6]);
+      let beamEnd = 84 + 190 * windupRatio;
+      ctx.strokeStyle = isMono ? "rgba(0,0,0,0.6)" : "rgba(76, 5, 25, 0.55)";
+      ctx.lineWidth = 4.2;
       ctx.beginPath();
       ctx.moveTo(84, 0);
-      ctx.lineTo(84 + 190 * windupRatio, 0);
+      ctx.lineTo(beamEnd, 0);
       ctx.stroke();
-      ctx.setLineDash([]);
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(244, 63, 94, ${0.48 + 0.5 * windupRatio})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(84, 0);
+      ctx.lineTo(beamEnd, 0);
+      ctx.stroke();
+
+      let lockX = 84 + ((beamEnd - 84) * ((t * 2.4) % 1));
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(lockX - 5, -4);
+      ctx.lineTo(lockX + 3, 0);
+      ctx.lineTo(lockX - 5, 4);
+      ctx.stroke();
       drawFourPointStar(ctx, 84, 0, 9 * windupRatio, 2.5, "#FEF08A", accent);
     } else if (releaseRatio >= 0 && releaseRatio < 0.65) {
       let ms = 1 - releaseRatio / 0.65;
@@ -11762,129 +11519,402 @@ export function drawBossWeapon(ctx, boss, elapsedTime, isMono) {
   ctx.restore();
 }
 
-export function drawDanhDragonForm(ctx, x, y, radius, facing, elapsedTime, isMono) {
+export function drawDanhDragonForm(ctx, x, y, radius, facing, elapsedTime, isMono, opts = {}) {
+  let r = Math.max(14, radius || 22);
+  let isAtk = Boolean(opts?.isAttacking);
+  let atkProg = clamp(opts?.atkProg || 0, 0, 1);
+  let atkSin = isAtk ? Math.sin(atkProg * Math.PI) : 0;
+  let atkParity = opts?.atkParity || 1;
+  let isMoving = Boolean(opts?.isMoving);
+  let hitFlash = Boolean(opts?.hitFlash);
+  let isDowned = Boolean(opts?.isDowned);
+  let pulse = 0.92 + 0.08 * Math.sin(elapsedTime * 9.5);
+  let ink = isMono ? "#000000" : "#180404";
+  let crimsonDark = isMono ? "#171717" : "#690D0D";
+  let crimson = isMono ? "#383838" : "#B91C1C";
+  let scarlet = isMono ? "#666666" : "#EF4444";
+  let ember = isMono ? "#A3A3A3" : "#F97316";
+  let gold = isMono ? "#FFFFFF" : "#FBBF24";
+  let whiteHot = isMono ? "#FFFFFF" : "#FEF08A";
+
   ctx.save();
   ctx.translate(x, y);
-  let pulse = 0.88 + 0.12 * Math.sin(elapsedTime * 11);
+  if (isDowned) ctx.globalAlpha *= 0.42;
 
-  // Outer fiery dragon aura ring
-  let aura = ctx.createRadialGradient(0, 0, radius * 0.35, 0, 0, radius * 2.75);
-  aura.addColorStop(0, isMono ? "rgba(0,0,0,0.16)" : "rgba(254, 240, 138, 0.38)");
-  aura.addColorStop(0.48, isMono ? "rgba(0,0,0,0.10)" : "rgba(239, 68, 68, 0.32)");
-  aura.addColorStop(0.78, isMono ? "rgba(0,0,0,0.04)" : "rgba(249, 115, 22, 0.14)");
+  // 1. Ground draconic heat shadow & subtle orbiting dragon sigil
+  let auraR = r * 2.85;
+  let aura = ctx.createRadialGradient(0, 0, r * 0.25, 0, 0, auraR);
+  aura.addColorStop(0, isMono ? "rgba(0,0,0,0.22)" : "rgba(239, 68, 68, 0.34)");
+  aura.addColorStop(0.5, isMono ? "rgba(0,0,0,0.12)" : "rgba(249, 115, 22, 0.2)");
   aura.addColorStop(1, "rgba(220, 38, 38, 0)");
   ctx.fillStyle = aura;
   ctx.beginPath();
-  ctx.arc(0, 0, radius * 2.75, 0, Math.PI * 2);
+  ctx.arc(0, 0, auraR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Rotating draconic sigil ring + counter-rotating inner rune ring
   ctx.save();
-  ctx.rotate(elapsedTime * 2.8);
-  ctx.strokeStyle = isMono ? "#000000" : "#F59E0B";
-  ctx.lineWidth = 2.6;
-  ctx.setLineDash([12, 8]);
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + 19, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  for (let i = 0; i < 6; i++) {
-    let a = (Math.PI * 2 / 6) * i;
-    ctx.fillStyle = i % 2 === 0 ? (isMono ? "#FFFFFF" : "#FEF08A") : (isMono ? "#000000" : "#EF4444");
-    ctx.beginPath();
-    ctx.arc(Math.cos(a) * (radius + 19), Math.sin(a) * (radius + 19), 3.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.rotate(elapsedTime * 2.1);
+  let dragR = Math.max(12, r + 24);
+  drawTaperedArc(ctx, 0, 0, dragR, 0, Math.PI * 0.78, 3.6, "#DC2626", "#FDE047", isMono);
+  drawTaperedArc(ctx, 0, 0, dragR, Math.PI, Math.PI * 1.78, 3.6, "#EA580C", "#FEF08A", isMono);
   ctx.restore();
 
-  ctx.save();
-  ctx.rotate(-elapsedTime * 2.1);
-  ctx.strokeStyle = isMono ? "#444444" : "rgba(254, 240, 138, 0.6)";
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
+  // Orbiting magma embers
   for (let i = 0; i < 6; i++) {
-    let a = (Math.PI * 2 / 6) * i;
-    let px = Math.cos(a) * (radius + 13);
-    let py = Math.sin(a) * (radius + 13);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-  ctx.stroke();
-  ctx.restore();
-
-  // Rising dragon ember sparks
-  for (let i = 0; i < 6; i++) {
-    let spA = elapsedTime * 3.4 + i * 1.05;
-    let spR = radius + 12 + ((elapsedTime * 22 + i * 7) % 16);
-    ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#FEF08A" : "#FB923C";
+    let spA = elapsedTime * 3.0 + i * 1.05;
+    let spR = r + 15 + ((elapsedTime * 22 + i * 7) % 18);
+    ctx.fillStyle = i % 2 === 0 ? whiteHot : ember;
     ctx.beginPath();
-    ctx.arc(Math.cos(spA) * spR, Math.sin(spA) * spR, 2, 0, Math.PI * 2);
+    ctx.arc(Math.cos(spA) * spR, Math.sin(spA) * spR, 2.0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Undulating fiery dragon tail & blazing wings + sweeping golden dragon horns
+  // Orient full Top-Down True Dragon body along facing
   ctx.save();
   ctx.rotate(facing);
+  let breathe = 1 + Math.sin(elapsedTime * 5.0) * 0.03;
+  ctx.scale(breathe, breathe);
 
-  // Articulated flaming dragon tail with dorsal spikes
-  for (let seg = 6; seg >= 1; seg--) {
-    let tx = -radius - seg * 8.2;
-    let ty = Math.sin(elapsedTime * 11 - seg * 0.72) * (4 + seg * 1.45);
-    let tr = Math.max(3.4, 10.5 - seg * 1.15);
-    ctx.fillStyle = isMono ? "#222222" : seg % 2 === 0 ? "#DC2626" : "#F97316";
+  // 2. Smooth Organic Scaled Serpent-Dragon Tail (10 Bezier-smoothed segments + serrated spine + flame crest)
+  let tailSpine = [];
+  for (let seg = 0; seg <= 9; seg++) {
+    let tx = -r * 0.5 - seg * (r * 0.42);
+    let whip = (seg / 9) * (isAtk ? Math.sin(atkProg * Math.PI * 2) * 14 * atkParity : 0);
+    let ty = Math.sin(elapsedTime * (isMoving ? 11.2 : 6.8) - seg * 0.62) * (1.8 + seg * 1.55) + whip;
+    let hw = Math.max(1.8, r * 0.48 * Math.pow(1 - seg * 0.085, 1.15));
+    tailSpine.push({ x: tx, y: ty, hw });
+  }
+  ctx.fillStyle = hitFlash ? "#FFFFFF" : crimsonDark;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(tailSpine[0].x, tailSpine[0].y - tailSpine[0].hw);
+  for (let i = 1; i < tailSpine.length; i++) {
+    let prev = tailSpine[i - 1];
+    let pt = tailSpine[i];
+    ctx.quadraticCurveTo((prev.x + pt.x) * 0.5, (prev.y - prev.hw + pt.y - pt.hw) * 0.5, pt.x, pt.y - pt.hw);
+  }
+  let tip = tailSpine[tailSpine.length - 1];
+  // Swept crescent wyrm tail-fin & blazing magma plume
+  ctx.quadraticCurveTo(tip.x - 8, tip.y - 11, tip.x - 22, tip.y - 8);
+  ctx.quadraticCurveTo(tip.x - 14, tip.y, tip.x - 26, tip.y);
+  ctx.quadraticCurveTo(tip.x - 14, tip.y, tip.x - 22, tip.y + 8);
+  ctx.quadraticCurveTo(tip.x - 8, tip.y + 11, tip.x, tip.y + tip.hw);
+  for (let i = tailSpine.length - 2; i >= 0; i--) {
+    let next = tailSpine[i + 1];
+    let pt = tailSpine[i];
+    ctx.quadraticCurveTo((next.x + pt.x) * 0.5, (next.y + next.hw + pt.y + pt.hw) * 0.5, pt.x, pt.y + pt.hw);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Serrated obsidian-ember dorsal ridge & glowing spinal scales down the tail
+  for (let i = 1; i < tailSpine.length; i++) {
+    let pt = tailSpine[i];
+    ctx.fillStyle = i % 2 === 0 ? ember : scarlet;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.arc(tx, ty, tr, 0, Math.PI * 2);
+    ctx.moveTo(pt.x + 3.8, pt.y);
+    ctx.lineTo(pt.x - 2.5, pt.y - pt.hw * 0.48);
+    ctx.lineTo(pt.x - 6.2, pt.y);
+    ctx.lineTo(pt.x - 2.5, pt.y + pt.hw * 0.48);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.beginPath();
-    ctx.arc(tx, ty, tr * 0.48, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.stroke();
   }
 
-  let flap = Math.sin(elapsedTime * 12) * 0.28;
+  // 3. Sweeping Curved Wyvern-Dragon Wings (arched arm spar + curved fingers + scalloped ember membrane)
+  let flap = Math.sin(elapsedTime * (isMoving ? 10.5 : 5.8)) * 0.22 + atkSin * 0.25;
   for (let side of [-1, 1]) {
     ctx.save();
-    ctx.translate(-5, side * (radius * 0.55));
-    ctx.rotate(side * (0.42 + flap));
-    let wGrad = ctx.createLinearGradient(0, 0, -58, side * 42);
-    wGrad.addColorStop(0, isMono ? "#222222" : "rgba(185, 28, 28, 0.96)");
-    wGrad.addColorStop(0.55, isMono ? "#666666" : "rgba(249, 115, 22, 0.88)");
-    wGrad.addColorStop(1, isMono ? "#FFFFFF" : "rgba(254, 240, 138, 0.94)");
-    ctx.fillStyle = wGrad;
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.2;
+    ctx.translate(-r * 0.1, side * (r * 0.56));
+    ctx.rotate(side * (0.22 + flap));
+
+    let s = side * pulse;
+    // Tip coordinates for curved wing phalanges
+    let elbowX = -6;
+    let elbowY = 26 * s;
+    let tip1X = -22;
+    let tip1Y = 58 * s;
+    let tip2X = -40;
+    let tip2Y = 44 * s;
+    let tip3X = -54;
+    let tip3Y = 26 * s;
+    let rootX = -24;
+    let rootY = 4 * side;
+
+    // Deep volcanic crimson-to-ember translucent wing membrane with scalloped arches
+    let wGrad = ctx.createRadialGradient(-10, 14 * s, 4, -28, 30 * s, 56);
+    wGrad.addColorStop(0, isMono ? "#171717" : "rgba(88, 12, 12, 0.96)");
+    wGrad.addColorStop(0.55, isMono ? "#525252" : "rgba(185, 28, 28, 0.9)");
+    wGrad.addColorStop(1, isMono ? "#D4D4D4" : "rgba(249, 115, 22, 0.85)");
+    ctx.fillStyle = hitFlash ? "#FFFFFF" : wGrad;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : ink;
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-26, side * 39 * pulse);
-    ctx.lineTo(-38, side * 16);
-    ctx.lineTo(-58, side * 32 * pulse);
-    ctx.lineTo(-44, side * 5);
-    ctx.lineTo(-18, -side * 4);
+    ctx.moveTo(6, 0);
+    ctx.quadraticCurveTo(2, 16 * s, elbowX, elbowY);
+    ctx.quadraticCurveTo(-12, 44 * s, tip1X, tip1Y);
+    // Scalloped curved trailing edges between wing fingers
+    ctx.quadraticCurveTo(-24, 38 * s, tip2X, tip2Y);
+    ctx.quadraticCurveTo(-38, 26 * s, tip3X, tip3Y);
+    ctx.quadraticCurveTo(-34, 10 * s, rootX, rootY);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Glowing wing rib veins
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(254, 249, 195, 0.85)";
-    ctx.lineWidth = 1.5;
+    // Subtle molten membrane veins radiating from wrist
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(253, 224, 71, 0.45)";
+    ctx.lineWidth = 1.1;
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-26, side * 39 * pulse);
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-58, side * 32 * pulse);
+    ctx.moveTo(elbowX, elbowY);
+    ctx.quadraticCurveTo(-20, 32 * s, -31, 37 * s);
+    ctx.moveTo(elbowX, elbowY);
+    ctx.quadraticCurveTo(-24, 22 * s, -39, 18 * s);
     ctx.stroke();
-    ctx.restore();
 
-    // Sweeping golden-crimson dragon horns ahead of brow
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 3.4;
+    // Armored curved wing arm & 3 tapered bone spars (obsidian outer + ember ridge)
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 5.2;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(6, side * 9);
-    ctx.quadraticCurveTo(19, side * 20, 32, side * 13);
+    ctx.moveTo(6, 0);
+    ctx.quadraticCurveTo(2, 16 * s, elbowX, elbowY);
+    ctx.quadraticCurveTo(-12, 44 * s, tip1X, tip1Y);
+    ctx.moveTo(elbowX, elbowY);
+    ctx.quadraticCurveTo(-22, 34 * s, tip2X, tip2Y);
+    ctx.moveTo(elbowX, elbowY);
+    ctx.quadraticCurveTo(-28, 24 * s, tip3X, tip3Y);
+    ctx.stroke();
+
+    ctx.strokeStyle = isMono ? "#FFFFFF" : ember;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+
+    // Curved wing-wrist claw hook
+    ctx.fillStyle = whiteHot;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(elbowX + 2, elbowY);
+    ctx.quadraticCurveTo(elbowX + 8, elbowY + 5 * s, elbowX + 12, elbowY + 2 * s);
+    ctx.quadraticCurveTo(elbowX + 4, elbowY + 8 * s, elbowX - 3, elbowY + 2 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 4. Muscular Forelimbs & Slashing Dragon Talons (lunge forward on attack)
+  for (let side of [-1, 1]) {
+    let isStrikePaw = isAtk && side * atkParity >= 0;
+    let pawForward = isStrikePaw ? atkSin * 20 : isAtk ? -atkSin * 4 : 0;
+    let pawSwing = isStrikePaw ? -side * atkSin * 0.48 : 0;
+    ctx.save();
+    ctx.translate(r * 0.48 + pawForward, side * (r * 0.72));
+    ctx.rotate(side * 0.34 + pawSwing);
+
+    ctx.fillStyle = hitFlash ? "#FFFFFF" : crimsonDark;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.moveTo(-6, -side * 5.2);
+    ctx.quadraticCurveTo(4, -side * 6, 12, -side * 4);
+    ctx.lineTo(14, side * 4.5);
+    ctx.quadraticCurveTo(3, side * 6.5, -5, side * 5.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Shoulder armor spike
+    ctx.fillStyle = isMono ? "#CCCCCC" : gold;
+    ctx.beginPath();
+    ctx.moveTo(2, -side * 4.5);
+    ctx.lineTo(-3, -side * 9.5);
+    ctx.lineTo(-6, -side * 3.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3 curved incandescent Dragon Talons
+    ctx.fillStyle = whiteHot;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1.0;
+    for (let ti = -1; ti <= 1; ti++) {
+      let ty = ti * 3.6;
+      ctx.beginPath();
+      ctx.moveTo(12, ty - 1.5);
+      ctx.quadraticCurveTo(21, ty + side * 1.4, 25, ty + side * 4.0);
+      ctx.quadraticCurveTo(17, ty + side * 0.8, 12, ty + 1.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 5. Muscular Dragon Torso, Layered Carapace Plates & Molten Spine Crest
+  let bodyGrad = ctx.createLinearGradient(-r * 0.95, 0, r * 0.8, 0);
+  bodyGrad.addColorStop(0, crimsonDark);
+  bodyGrad.addColorStop(0.55, crimson);
+  bodyGrad.addColorStop(1, scarlet);
+  ctx.fillStyle = hitFlash ? "#FFFFFF" : bodyGrad;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(r * 0.82, 0);
+  ctx.bezierCurveTo(r * 0.65, -r * 0.95, 0, -r * 0.9, -r * 0.92, -r * 0.42);
+  ctx.lineTo(-r * 0.92, r * 0.42);
+  ctx.bezierCurveTo(0, r * 0.9, r * 0.65, r * 0.95, r * 0.82, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Overlapping curved obsidian-crimson dorsal carapace plates with fine gold edge trim
+  for (let pi = -1; pi <= 1; pi++) {
+    let px = pi * (r * 0.34);
+    let pw = r * (0.56 - Math.abs(pi) * 0.1);
+    ctx.fillStyle = pi === 1 ? crimson : crimsonDark;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : gold;
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.moveTo(px + 8, 0);
+    ctx.quadraticCurveTo(px + 2, -pw * 0.88, px - 7, -pw * 0.65);
+    ctx.quadraticCurveTo(px - 2, 0, px - 7, pw * 0.65);
+    ctx.quadraticCurveTo(px + 2, pw * 0.88, px + 8, 0);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
   }
+  // Glowing molten spinal seam along center back
+  ctx.strokeStyle = whiteHot;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.72, 0);
+  ctx.lineTo(r * 0.62, 0);
+  ctx.stroke();
+
+  // 6. Sculpted True Dragon Head: Swept Tapered Horns, Roaring Jaws, Fangs & Whiskers
+  let headLunge = atkSin * 7;
+  let jawOpen = clamp(0.18 + atkSin * 0.82 + Math.max(0, Math.sin(elapsedTime * 4.5)) * 0.14, 0.12, 1.0);
+  ctx.save();
+  ctx.translate(r * 0.56 + headLunge, 0);
+
+  // Flowing incandescent draconic whiskers & tapered swept horns
+  for (let side of [-1, 1]) {
+    let wWave = Math.sin(elapsedTime * 11 + side) * 3.5;
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(16, side * 5.5);
+    ctx.bezierCurveTo(6, side * 16 + wWave, -10, side * 20 - wWave, -24, side * 15 + wWave);
+    ctx.stroke();
+
+    // Sleek tapered multi-tined dragon horn (dark obsidian base -> fiery gold tip)
+    let hGrad = ctx.createLinearGradient(2, side * 6, -34, side * 20);
+    hGrad.addColorStop(0, ink);
+    hGrad.addColorStop(0.55, crimsonDark);
+    hGrad.addColorStop(1, whiteHot);
+    ctx.fillStyle = hGrad;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : ink;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(4, side * 6);
+    ctx.quadraticCurveTo(-12, side * 20, -34, side * 16);
+    ctx.quadraticCurveTo(-16, side * 14, -18, side * 27);
+    ctx.quadraticCurveTo(-9, side * 15, -2, side * 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Glowing molten furnace throat inside roaring jaws
+  let mawGrad = ctx.createRadialGradient(15, 0, 1, 15, 0, 16);
+  mawGrad.addColorStop(0, "#FFFFFF");
+  mawGrad.addColorStop(0.5, whiteHot);
+  mawGrad.addColorStop(1, "rgba(239, 68, 68, 0)");
+  ctx.fillStyle = mawGrad;
+  ctx.beginPath();
+  ctx.ellipse(15, 0, 11, 4.5 + jawOpen * 5.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Articulated upper/lower jaw cheekbones flaring on roar + curved fangs
+  for (let side of [-1, 1]) {
+    let jFl = jawOpen * 3.5;
+    ctx.fillStyle = hitFlash ? "#FFFFFF" : crimsonDark;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : gold;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(27, side * (1.2 + jFl * 0.4));
+    ctx.quadraticCurveTo(18, side * (8.5 + jFl), 2, side * (10.5 + jFl * 0.5));
+    ctx.lineTo(-4, side * 5);
+    ctx.lineTo(18, side * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.moveTo(22, side * (2.6 + jFl * 0.4));
+    ctx.lineTo(20, side * 0.2);
+    ctx.lineTo(17, side * (3.2 + jFl * 0.5));
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Sculpted Horned Dragon Skull Shield & Snout Bridge
+  let headGrad = ctx.createLinearGradient(-4, 0, 31, 0);
+  headGrad.addColorStop(0, crimsonDark);
+  headGrad.addColorStop(0.55, crimson);
+  headGrad.addColorStop(1, ember);
+  ctx.fillStyle = hitFlash ? "#FFFFFF" : headGrad;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(31, 0);
+  ctx.quadraticCurveTo(23, -6.5, 9, -9.2);
+  ctx.lineTo(-5, -10.5);
+  ctx.lineTo(-9, 0);
+  ctx.lineTo(-5, 10.5);
+  ctx.lineTo(9, 9.2);
+  ctx.quadraticCurveTo(23, 6.5, 31, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Glowing snout ridge & fierce glowing amber slit dragon eyes
+  ctx.strokeStyle = whiteHot;
+  ctx.lineWidth = 1.7;
+  ctx.beginPath();
+  ctx.moveTo(2, 0);
+  ctx.lineTo(26, 0);
+  ctx.stroke();
+
+  for (let side of [-1, 1]) {
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.ellipse(12, side * 4.8, 3.6, 1.4, side * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.arc(12.6, side * 4.8, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (jawOpen > 0.25) {
+    for (let side of [-1, 1]) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(254, 240, 138, 0.78)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(26, side * 2.2);
+      ctx.quadraticCurveTo(32, side * (4 + jawOpen * 3), 29, side * (8 + jawOpen * 4));
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
   ctx.restore();
   ctx.restore();
 }
@@ -11897,26 +11927,32 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
 
   // Guard energy tether or Pursuit laser designator in world space
   if (mode === "guard" && typeof opts.playerX === "number" && typeof opts.playerY === "number") {
-    ctx.save();
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.4)" : "rgba(52, 211, 153, 0.45)";
-    ctx.lineWidth = 2.2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(x, y + bob);
-    ctx.lineTo(opts.playerX, opts.playerY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
+    drawBranchingArc(ctx, {
+      x1: x,
+      y1: y + bob,
+      x2: opts.playerX,
+      y2: opts.playerY,
+      seed: elapsedTime * 14,
+      width: 2.1,
+      color: "#34D399",
+      coreColor: "#ECFDF5",
+      isMono,
+    });
   } else if (mode === "pursuit" && typeof opts.targetX === "number" && typeof opts.targetY === "number") {
     ctx.save();
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.35)" : "rgba(249, 115, 22, 0.32)";
-    ctx.lineWidth = 1.4;
-    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = isMono ? "rgba(0,0,0,0.45)" : "rgba(124, 45, 18, 0.45)";
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
     ctx.moveTo(x, y + bob);
     ctx.lineTo(opts.targetX, opts.targetY);
     ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(249, 115, 22, 0.48)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    let pt = (elapsedTime * 2.2) % 1;
+    let px = x + (opts.targetX - x) * pt;
+    let py = (y + bob) + (opts.targetY - (y + bob)) * pt;
+    drawFourPointStar(ctx, px, py, 4.5, 1.4, "#FEF08A", isMono ? "#000000" : "#F97316");
     ctx.restore();
   }
 
@@ -11933,24 +11969,20 @@ export function drawTaiDuDrone(ctx, x, y, mode, facing, elapsedTime, shieldProgr
   if ((opts.overdrive || 0) > 0) {
     ctx.save();
     ctx.rotate(-elapsedTime * 6.5);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.4;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.arc(0, 0, 21, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    drawTaperedArc(ctx, 0, 0, 21, 0, Math.PI * 0.78, 3.2, "#F59E0B", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, 21, Math.PI, Math.PI * 1.78, 3.2, "#F59E0B", "#FEF08A", isMono);
     ctx.restore();
   }
   ctx.save();
   ctx.rotate(elapsedTime * (mode === "pursuit" || (opts.overdrive || 0) > 0 ? 6.2 : 3.2));
   ctx.strokeStyle = colPrimary;
-  ctx.lineWidth = 1.8;
-  ctx.setLineDash([6, 4]);
-  ctx.beginPath();
-  ctx.arc(0, 0, 15, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.lineWidth = 2.0;
+  for (let di = 0; di < 3; di++) {
+    let da = ((Math.PI * 2) / 3) * di;
+    ctx.beginPath();
+    ctx.arc(0, 0, 15, da + 0.16, da + (Math.PI * 2) / 3 - 0.22);
+    ctx.stroke();
+  }
   ctx.restore();
 
   if (mode === "guard" && shieldProgress > 0) {
@@ -12030,14 +12062,19 @@ export function drawTaiDuTurret(ctx, turret, elapsedTime, isMono) {
   // High-tech cyan-orange laser designator & target lock reticle
   if (turret.hasTarget && typeof turret.targetX === "number" && typeof turret.targetY === "number") {
     ctx.save();
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.34)" : "rgba(56, 189, 248, 0.36)";
-    ctx.lineWidth = 1.8;
-    ctx.setLineDash([7, 5]);
+    ctx.strokeStyle = isMono ? "rgba(0,0,0,0.45)" : "rgba(8, 47, 73, 0.55)";
+    ctx.lineWidth = 3.6;
     ctx.beginPath();
     ctx.moveTo(turret.x, turret.y);
     ctx.lineTo(turret.targetX, turret.targetY);
     ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.48)" : "rgba(56, 189, 248, 0.45)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    let lt = (elapsedTime * 2.5) % 1;
+    let lx = turret.x + (turret.targetX - turret.x) * lt;
+    let ly = turret.y + (turret.targetY - turret.y) * lt;
+    drawFourPointStar(ctx, lx, ly, 4.8, 1.4, "#FEF08A", isMono ? "#000000" : "#38BDF8");
 
     ctx.translate(turret.targetX, turret.targetY);
     ctx.rotate(elapsedTime * 2.5);
@@ -12200,13 +12237,15 @@ export function drawLuanPortal(ctx, portal, elapsedTime, isMono) {
     ctx.stroke();
     ctx.restore();
   }
-  ctx.strokeStyle = isMono ? "#FFFFFF" : "#C084FC";
-  ctx.lineWidth = 2.8;
-  ctx.setLineDash([12, 7]);
+  ctx.strokeStyle = isMono ? "#0F172A" : "rgba(30, 5, 56, 0.8)";
+  ctx.lineWidth = 4.6;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  for (let pi = 0; pi < 4; pi++) {
+    let pa = (Math.PI / 2) * pi;
+    drawTaperedArc(ctx, 0, 0, r, pa + 0.14, pa + Math.PI / 2 - 0.16, 4.2, pi % 2 === 0 ? "#C084FC" : "#38BDF8", "#F5D0FE", isMono);
+  }
 
   // Orbiting faceted shattered mirror glass shards
   for (let i = 0; i < 8; i++) {
@@ -12424,14 +12463,11 @@ export function drawNguyenSatellites(ctx, x, y, baseAngle, elapsedTime, orbitRad
   ctx.save();
   ctx.translate(x, y);
 
-  // Subtle emerald-gold sanctuary orbit ring
-  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.4)" : "rgba(52, 211, 153, 0.45)";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 6]);
-  ctx.beginPath();
-  ctx.arc(0, 0, orbitRadius, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // Sculpted emerald-gold sanctuary orbit ribbons
+  for (let oi = 0; oi < 3; oi++) {
+    let oa = baseAngle + (Math.PI * 2 / 3) * oi;
+    drawTaperedArc(ctx, 0, 0, Math.max(8, orbitRadius), oa + 0.16, oa + (Math.PI * 2) / 3 - 0.16, 3.2, "#10B981", "#FEF08A", isMono);
+  }
 
   // Harmonic golden triangle links connecting the 3 satellites
   let pts = [];
@@ -12557,13 +12593,20 @@ export function drawTaiDuCarpetStrike(ctx, strike, elapsedTime, isMono) {
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = isMono ? "#FFFFFF" : "#F97316";
-  ctx.lineWidth = 2.6;
-  ctx.setLineDash([10, 6]);
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  drawPerspectiveZoneBase(ctx, {
+    x: 0,
+    y: 0,
+    radius: r,
+    tiltY: 0.94,
+    rot: elapsedTime * 1.8,
+    primary: strike.isOrbital ? "#38BDF8" : "#F97316",
+    secondary: "#FEF08A",
+    darkRim: "#0F172A",
+    coreWash: "rgba(249, 115, 22, 0.12)",
+    midWash: "rgba(15, 23, 42, 0.18)",
+    segments: 4,
+    isMono,
+  });
 
   // Rotating 4-corner cybernetic targeting lock brackets
   ctx.save();
@@ -12682,14 +12725,24 @@ export function drawNguyenSanctuaryField(ctx, field, elapsedTime, isMono) {
   ctx.stroke();
 
   ctx.save();
+  drawArcaneMagicCircle(ctx, {
+    x: 0,
+    y: 0,
+    radius: r,
+    tiltY: 0.96,
+    rot: elapsedTime * 0.85,
+    sides: 6,
+    starMode: true,
+    nodeShape: "crystal",
+    primary: "#10B981",
+    highlight: "#FEF08A",
+    darkRim: "#052E16",
+    rim: "#34D399",
+    coreWash: "rgba(16, 185, 129, 0.14)",
+    midWash: "rgba(5, 46, 22, 0.12)",
+    isMono,
+  });
   ctx.rotate(elapsedTime * 0.85);
-  ctx.strokeStyle = isMono ? "#FFFFFF" : "#10B981";
-  ctx.lineWidth = 3.2;
-  ctx.setLineDash([16, 8]);
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
 
   // Outer 6-petal emerald lotus + inner golden 6-petal lotus
   ctx.strokeStyle = isMono ? "rgba(255,255,255,0.55)" : "rgba(52, 211, 153, 0.65)";
@@ -12810,13 +12863,24 @@ export function drawDuyDecoy(ctx, decoy, elapsedTime, isMono) {
   ctx.arc(0, 0, blastR, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.28)" : urgent ? `rgba(244, 63, 94, ${0.32 + pulse * 0.25})` : "rgba(45, 212, 191, 0.28)";
-  ctx.lineWidth = urgent ? 2.4 : 1.6;
-  ctx.setLineDash([8, 8]);
-  ctx.beginPath();
-  ctx.arc(0, 0, blastR, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.save();
+  ctx.rotate(elapsedTime * (urgent ? 2.4 : 1.1));
+  for (let di = 0; di < 4; di++) {
+    let da = (Math.PI / 2) * di;
+    drawTaperedArc(
+      ctx,
+      0,
+      0,
+      Math.max(8, blastR),
+      da + 0.18,
+      da + Math.PI / 2 - 0.22,
+      urgent ? 3.2 : 2.2,
+      urgent ? "#F43F5E" : "#14B8A6",
+      urgent ? "#FEF08A" : "#99F6E4",
+      isMono
+    );
+  }
+  ctx.restore();
 
   // Orbiting chakra kunai seal tags + swirling substitution smoke
   for (let si = 0; si < 4; si++) {
@@ -12944,13 +13008,11 @@ export function drawPhongIllusion(ctx, illusion, elapsedTime, isMono) {
   ctx.translate(x, y);
 
   // Cyan afterimage & remaining duration ring underneath
-  ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(34, 211, 238, ${0.58 * pulse})`;
-  ctx.lineWidth = 2;
-  ctx.setLineDash([5, 4]);
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + 7, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.save();
+  ctx.rotate(elapsedTime * 3.2);
+  drawTaperedArc(ctx, 0, 0, Math.max(6, radius + 7), 0, Math.PI * 0.78, 3.0, "#0EA5E9", "#A5F3FC", isMono);
+  drawTaperedArc(ctx, 0, 0, Math.max(6, radius + 7), Math.PI, Math.PI * 1.78, 3.0, "#22D3EE", "#FFFFFF", isMono);
+  ctx.restore();
 
   let lifeRatio = clamp(remain / Math.max(0.1, maxLife), 0, 1);
   ctx.strokeStyle = isMono ? "#E2E8F0" : "#0EA5E9";
@@ -13122,13 +13184,16 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
     if (windupRatio > 0) {
       ctx.save();
       ctx.rotate(t * 4.5);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : auraColor;
-      ctx.lineWidth = 2.6;
-      ctx.setLineDash([12, 8]);
+      let wr = Math.max(8, r * (1.58 - windupRatio * 0.35));
+      ctx.strokeStyle = isMono ? "#000000" : "rgba(15, 23, 42, 0.72)";
+      ctx.lineWidth = 4.6;
       ctx.beginPath();
-      ctx.arc(0, 0, r * (1.58 - windupRatio * 0.35), 0, Math.PI * 2);
+      ctx.arc(0, 0, wr, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.setLineDash([]);
+      for (let wi = 0; wi < 4; wi++) {
+        let wa = (Math.PI / 2) * wi;
+        drawTaperedArc(ctx, 0, 0, wr, wa + 0.14, wa + Math.PI / 2 - 0.18, 3.8, auraColor, "#FEF08A", isMono);
+      }
       ctx.restore();
     }
   }
@@ -13145,19 +13210,16 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
     // Outer counter-rotating targeting HUD ring
     ctx.save();
     ctx.rotate(t * (isP2 ? 2.1 : 1.2));
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 2.2;
-    ctx.setLineDash([12, 6, 3, 6]);
+    let hudR = Math.max(10, r * 1.42);
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(15, 23, 42, 0.72)";
+    ctx.lineWidth = 4.2;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 1.42, 0, Math.PI * 2);
+    ctx.arc(0, 0, hudR, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
     for (let i = 0; i < 4; i++) {
       let ta = (Math.PI / 2) * i;
-      ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
-      ctx.beginPath();
-      ctx.arc(Math.cos(ta) * r * 1.42, Math.sin(ta) * r * 1.42, 3.6, 0, Math.PI * 2);
-      ctx.fill();
+      drawTaperedArc(ctx, 0, 0, hudR, ta + 0.16, ta + Math.PI / 2 - 0.16, 3.4, accent, "#FEF08A", isMono);
+      drawFourPointStar(ctx, Math.cos(ta) * hudR, Math.sin(ta) * hudR, 4.8, 1.6, "#FEF08A", isMono ? "#000000" : accent);
     }
     ctx.restore();
 
@@ -13782,18 +13844,21 @@ export function drawUpgradedBossBody(ctx, boss, elapsedTime, isMono) {
   // 1. Dual Counter-Rotating 12-Sigil Apocalypse Judgment Rings
   ctx.save();
   ctx.rotate(t * (isP3 ? 1.55 : 0.9));
+  let lucR = Math.max(12, r * 1.74);
+  ctx.strokeStyle = isMono ? "#000000" : "rgba(15, 23, 42, 0.78)";
+  ctx.lineWidth = 5.4;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 1.74, 0, Math.PI * 2);
-  ctx.strokeStyle = gold;
-  ctx.lineWidth = 3;
-  ctx.setLineDash([16, 7, 4, 7]);
+  ctx.arc(0, 0, lucR, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  for (let g = 0; g < 6; g++) {
+    let ga = ((Math.PI * 2) / 6) * g;
+    drawTaperedArc(ctx, 0, 0, lucR, ga + 0.12, ga + (Math.PI * 2) / 6 - 0.14, 4.2, g % 2 === 0 ? gold : crim, "#FEF08A", isMono);
+  }
   for (let g = 0; g < 12; g++) {
     let p = ((Math.PI * 2) / 12) * g;
-    let hx = Math.cos(p) * r * 1.74;
-    let hy = Math.sin(p) * r * 1.74;
-    drawFourPointStar(ctx, hx, hy, g % 2 === 0 ? 7.5 : 5.2, 2.2, g % 2 === 0 ? gold : crim);
+    let hx = Math.cos(p) * lucR;
+    let hy = Math.sin(p) * lucR;
+    drawFourPointStar(ctx, hx, hy, g % 2 === 0 ? 7.5 : 5.2, 2.2, g % 2 === 0 ? gold : crim, isMono ? "#000000" : "#09090B");
   }
   ctx.restore();
 
@@ -14045,20 +14110,25 @@ export function drawThienTimeZone(ctx, zones, elapsedTime, isMono) {
     ctx.fill();
 
     // Rotating outer celestial astrolabe ring + zodiac gear teeth
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: r,
+      tiltY: 0.94,
+      rot: elapsedTime * 0.85,
+      sides: 6,
+      starMode: true,
+      nodeShape: "crystal",
+      primary: "#38BDF8",
+      highlight: "#FEF08A",
+      darkRim: "#082F49",
+      rim: "#FACC15",
+      coreWash: "rgba(56, 189, 248, 0.14)",
+      midWash: "rgba(250, 204, 21, 0.08)",
+      isMono,
+    });
     ctx.save();
     ctx.rotate(elapsedTime * 0.85);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
-    ctx.lineWidth = 2.8;
-    ctx.setLineDash([14, 8]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(56, 189, 248, 0.52)";
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.91, 0, Math.PI * 2);
-    ctx.stroke();
     for (let gi = 0; gi < 4; gi++) {
       let ga = (Math.PI / 2) * gi;
       drawFourPointStar(ctx, Math.cos(ga) * r * 0.91, Math.sin(ga) * r * 0.91, 7.5, 2.2, "#FFFFFF", isMono ? "#333333" : "#FACC15");
@@ -14136,15 +14206,25 @@ export function drawThienSpatialPortal(ctx, portals, elapsedTime, isMono) {
     ctx.arc(0, 0, r * pulse * 1.15, 0, Math.PI * 2);
     ctx.fill();
 
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(8, r * 0.92),
+      tiltY: 0.94,
+      rot: elapsedTime * 3.1,
+      sides: 6,
+      starMode: true,
+      nodeShape: "crystal",
+      primary: "#FACC15",
+      highlight: "#FFFFFF",
+      darkRim: "#082F49",
+      rim: "#38BDF8",
+      coreWash: "rgba(56, 189, 248, 0.18)",
+      midWash: "rgba(250, 204, 21, 0.1)",
+      isMono,
+    });
     ctx.save();
     ctx.rotate(elapsedTime * 3.1);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
-    ctx.lineWidth = 2.6;
-    ctx.setLineDash([10, 6]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
     for (let si = 0; si < 4; si++) {
       let sa = (Math.PI / 2) * si;
       drawFourPointStar(ctx, Math.cos(sa) * r * 0.86, Math.sin(sa) * r * 0.86, 5.5, 1.8, "#FFFFFF", isMono ? "#333333" : "#38BDF8");
@@ -14190,20 +14270,43 @@ export function drawThienSunJudgement(ctx, suns, elapsedTime, isMono) {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
 
-    // Expanding shockwave rings + radial divine judgement rays
-    ctx.strokeStyle = isMono ? `rgba(255,255,255,${lifeRatio})` : `rgba(250, 204, 21, ${0.92 * lifeRatio})`;
-    ctx.lineWidth = 5.4 * lifeRatio + 1.6;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * (0.28 + expand * 0.72), 0, Math.PI * 2);
-    ctx.stroke();
+    drawImpactCraterDecal(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(16, r * 0.62),
+      alpha: 0.82 * lifeRatio,
+      tiltY: 0.78,
+      seed: (sn.x * 0.09 + sn.y * 0.05) % 10,
+      debrisShape: "crystal",
+      primary: "#F59E0B",
+      highlight: "#FEF08A",
+      shadow: "#082F49",
+      rim: "#38BDF8",
+      isMono,
+    });
 
-    ctx.strokeStyle = isMono ? `rgba(255,255,255,${lifeRatio * 0.72})` : `rgba(56, 189, 248, ${0.88 * lifeRatio})`;
-    ctx.lineWidth = 3.2;
-    ctx.setLineDash([18, 10]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * (0.15 + expand * 0.82), 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // Expanding sculpted shockwave crescents + grounded solar vortex eruption
+    let sw1R = Math.max(8, r * (0.28 + expand * 0.72));
+    let sw2R = Math.max(8, r * (0.18 + expand * 0.82));
+    drawTaperedArc(ctx, 0, 0, sw1R, elapsedTime * 1.4, elapsedTime * 1.4 + Math.PI * 1.25, 9 * lifeRatio + 2, "#FACC15", "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, sw1R, elapsedTime * 1.4 + Math.PI, elapsedTime * 1.4 + Math.PI * 2.25, 9 * lifeRatio + 2, "#F59E0B", "#FEF08A", isMono);
+    drawTaperedArc(ctx, 0, 0, sw2R, -elapsedTime * 1.8, -elapsedTime * 1.8 + Math.PI * 0.9, 6.5 * lifeRatio + 1.6, "#38BDF8", "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, sw2R, -elapsedTime * 1.8 + Math.PI, -elapsedTime * 1.8 + Math.PI * 1.9, 6.5 * lifeRatio + 1.6, "#0EA5E9", "#BAE6FD", isMono);
+
+    drawEnergyVortexPillar(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(24, r * 0.34),
+      height: 290,
+      progress: clamp(1 - lifeRatio, 0.05, 0.95),
+      phase: elapsedTime * 8,
+      debrisShape: "crystal",
+      primary: "#FACC15",
+      highlight: "#FFFFFF",
+      shadow: "#082F49",
+      rim: "#38BDF8",
+      isMono,
+    });
 
     ctx.strokeStyle = isMono ? `rgba(255,255,255,${0.48 * lifeRatio})` : `rgba(254, 240, 138, ${0.55 * lifeRatio})`;
     ctx.lineWidth = 2.0;
@@ -14379,32 +14482,37 @@ export function drawThanhDevourSerpents(ctx, serpents, elapsedTime, isMono) {
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
-    ctx.lineWidth = 3.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.rotate(elapsedTime * 2.2);
-    ctx.strokeStyle = isMono ? "#E5E5E5" : "#C084FC";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([12, 8]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(167, 243, 208, 0.52)";
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    for (let hi = 0; hi < 6; hi++) {
-      let ha = (Math.PI / 3) * hi;
-      let hx = Math.cos(ha) * r * 0.68, hy = Math.sin(ha) * r * 0.68;
-      hi === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(16, r * 0.92),
+      tiltY: 0.76,
+      rot: elapsedTime * 2.2,
+      sides: 6,
+      starMode: true,
+      nodeShape: "crystal",
+      primary: "#10B981",
+      highlight: "#A7F3D0",
+      darkRim: "#042F2E",
+      rim: "#C084FC",
+      coreWash: "rgba(16, 185, 129, 0.2)",
+      midWash: "rgba(147, 51, 234, 0.14)",
+      isMono,
+    });
+    drawEnergyVortexPillar(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(16, r * 0.44),
+      height: 165,
+      progress: p,
+      phase: elapsedTime * 10,
+      debrisShape: "crystal",
+      primary: "#10B981",
+      highlight: "#A7F3D0",
+      shadow: "#042F2E",
+      rim: "#C084FC",
+      isMono,
+    });
 
     // Giant Mãng Xà twin abyssal jaws erupting from center
     ctx.save();
@@ -14539,21 +14647,27 @@ export function drawNhiToxicMist(ctx, mists, elapsedTime, isMono) {
     ctx.globalAlpha = fade * 0.9;
 
     let grad = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
-    grad.addColorStop(0, mainCol + "0.42)");
-    grad.addColorStop(0.6, mainCol + "0.24)");
+    grad.addColorStop(0, mainCol + "0.18)");
+    grad.addColorStop(0.6, mainCol + "0.07)");
     grad.addColorStop(1, mainCol + "0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
 
-    // Drifting billowing toxic spore clouds & swirling mist arcs
+    // Soft translucent "khói mờ" curling spore wisps (zero opaque discs)
     for (let p = 0; p < 5; p++) {
       let pa = (Math.PI * 2 / 5) * p + elapsedTime * 0.55;
-      let pr = r * 0.52;
-      ctx.fillStyle = mainCol + "0.16)";
+      let pr = r * 0.54;
+      let wx = Math.cos(pa) * pr;
+      let wy = Math.sin(pa) * pr;
+      let wr = Math.max(8, r * 0.34);
+      let wg = ctx.createRadialGradient(wx, wy, 0, wx, wy, wr);
+      wg.addColorStop(0, mainCol + "0.11)");
+      wg.addColorStop(1, mainCol + "0)");
+      ctx.fillStyle = wg;
       ctx.beginPath();
-      ctx.arc(Math.cos(pa) * pr, Math.sin(pa) * pr, r * 0.34, 0, Math.PI * 2);
+      ctx.arc(wx, wy, wr, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -14575,14 +14689,22 @@ export function drawNhiToxicMist(ctx, mists, elapsedTime, isMono) {
       ctx.fill();
     }
 
-    ctx.strokeStyle = mainCol + "0.74)";
-    ctx.lineWidth = 2.4;
-    ctx.setLineDash([12, 8]);
     ctx.rotate(elapsedTime * 0.9);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    for (let wi = 0; wi < 4; wi++) {
+      let wa = (Math.PI / 2) * wi;
+      drawTaperedArc(
+        ctx,
+        0,
+        0,
+        Math.max(8, r * 0.92),
+        wa + 0.12,
+        wa + Math.PI / 2 - 0.16,
+        3.6,
+        elixir === "green" ? "#4ADE80" : elixir === "life" ? "#2DD4BF" : "#C084FC",
+        secCol,
+        isMono
+      );
+    }
 
     ctx.restore();
   }
@@ -14841,15 +14963,25 @@ export function drawDungCerberusForm(ctx, x, y, radius, facing, elapsedTime, opt
   ctx.fill();
 
   // Outer rotating Sigma rune gear ring
+  drawArcaneMagicCircle(ctx, {
+    x: 0,
+    y: 0,
+    radius: Math.max(12, radius + 21),
+    tiltY: 0.92,
+    rot: elapsedTime * 2.4,
+    sides: 3,
+    starMode: true,
+    nodeShape: "crystal",
+    primary: berserkActive ? "#F43F5E" : "#38BDF8",
+    highlight: "#FEF08A",
+    darkRim: "#0F172A",
+    rim: "#FDE047",
+    coreWash: "rgba(56, 189, 248, 0.1)",
+    midWash: "rgba(15, 23, 42, 0.14)",
+    isMono,
+  });
   ctx.save();
   ctx.rotate(elapsedTime * 2.4);
-  ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
-  ctx.lineWidth = 2.4;
-  ctx.setLineDash([14, 7, 4, 7]);
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + 21, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
   for (let i = 0; i < 3; i++) {
     let a = (Math.PI * 2 / 3) * i;
     let ox = Math.cos(a) * (radius + 21);
@@ -14973,39 +15105,38 @@ export function drawDungCerberusUlt(ctx, bursts, elapsedTime, isMono) {
       ctx.stroke();
     }
 
-    // Rotating Sigma Magic Hexagram + Cerberus Runic Tri-Ring
-    ctx.save();
-    ctx.rotate(elapsedTime * 1.9);
-    ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
-    ctx.lineWidth = 2.2;
-    ctx.setLineDash([16, 10]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Twin interlocking triangles (Seal of the Hound)
-    for (let tIdx = 0; tIdx < 2; tIdx++) {
-      ctx.beginPath();
-      for (let k = 0; k < 3; k++) {
-        let ang = (Math.PI * 2 / 3) * k + (tIdx * Math.PI / 3);
-        let px = Math.cos(ang) * r * 0.78;
-        let py = Math.sin(ang) * r * 0.78;
-        if (k === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = tIdx === 0 ? (isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.82)") : (isMono ? "#000000" : "rgba(244, 63, 94, 0.75)");
-      ctx.lineWidth = 2.4;
-      ctx.stroke();
-    }
-    ctx.restore();
+    // Rotating Sigma Magic Hexagram + Cerberus Runic Tri-Ring + Thunder Vortex Pillar
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(20, r * 0.94),
+      tiltY: 0.78,
+      rot: elapsedTime * 1.9,
+      sides: 6,
+      starMode: true,
+      nodeShape: "crystal",
+      primary: "#38BDF8",
+      highlight: "#FDE047",
+      darkRim: "#0F172A",
+      rim: "#F43F5E",
+      coreWash: "rgba(253, 224, 71, 0.16)",
+      midWash: "rgba(56, 189, 248, 0.14)",
+      isMono,
+    });
+    drawEnergyVortexPillar(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(18, r * 0.42),
+      height: 220,
+      progress: p,
+      phase: elapsedTime * 12,
+      debrisShape: "crystal",
+      primary: "#38BDF8",
+      highlight: "#FEF08A",
+      shadow: "#0F172A",
+      rim: "#F43F5E",
+      isMono,
+    });
 
     // 2. Anime Impact Speedlines Radiating Outward
     if (p < 0.75) {
@@ -15032,16 +15163,28 @@ export function drawDungCerberusUlt(ctx, bursts, elapsedTime, isMono) {
     ctx.translate(0, -surgeY - 12);
     ctx.scale(scalePop, scalePop);
 
-    // Snapping Abyssal Demon Chains around Cerberus torso
+    // Snapping Abyssal Demon Chains (forged dark-gold links + crackling branching arc)
     for (let ci of [-1, 1]) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-      ctx.lineWidth = 3.2;
-      ctx.setLineDash([8, 6]);
-      ctx.beginPath();
-      ctx.moveTo(ci * 22, 24);
-      ctx.quadraticCurveTo(ci * 78, -6 + Math.sin(elapsedTime * 16) * 8, ci * 108, 36);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      let sx = ci * 22, sy = 24;
+      let cx = ci * 78, cy = -6 + Math.sin(elapsedTime * 16) * 8;
+      let ex = ci * 108, ey = 36;
+      for (let li = 0; li <= 7; li++) {
+        let lt = li / 7;
+        let lx = (1 - lt) * (1 - lt) * sx + 2 * (1 - lt) * lt * cx + lt * lt * ex;
+        let ly = (1 - lt) * (1 - lt) * sy + 2 * (1 - lt) * lt * cy + lt * lt * ey;
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(ci * 0.35 + (li % 2 === 0 ? 0.28 : -0.28));
+        ctx.strokeStyle = isMono ? "#000000" : "#0F172A";
+        ctx.lineWidth = 3.4;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 5.2, 2.8, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = isMono ? "#FFFFFF" : li % 2 === 0 ? "#FDE047" : "#38BDF8";
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // Twin spectral colossal claws slamming outward
@@ -15226,57 +15369,61 @@ export function drawDucAnhSiegeGauntlets(ctx, p, elapsedTime, state, isMono) {
 
   for (let s of [-1, 1]) {
     let isLead = s * parity > 0;
-    let punch = isLead ? atkSin * 15 : -atkSin * 3.5;
+    let punch = isLead
+      ? (state?.hasAtk ? (atkProg < 0.22 ? -(atkProg / 0.22) * 6 : Math.sin(clamp((atkProg - 0.22) / 0.78, 0, 1) * Math.PI) * 30) : 0)
+      : -atkSin * 4.5;
     let sideBob = s * walkSway;
 
     ctx.save();
-    ctx.translate(15 + punch + sideBob * 0.4, s * 16.5);
-    ctx.rotate(isLead ? -s * atkSin * 0.14 : s * 0.08);
+    ctx.translate(14 + punch + sideBob * 0.4, s * 16.5);
+    ctx.rotate(isLead ? -s * atkSin * 0.12 : s * 0.08);
 
-    // Hydraulic piston strut behind gauntlet
+    // Heavy twin hydraulic piston struts behind siege anvil gauntlet
     ctx.strokeStyle = isMono ? "#999999" : "#94A3B8";
-    ctx.lineWidth = 4.2;
+    ctx.lineWidth = 4.6;
     ctx.beginPath();
-    ctx.moveTo(-12, 0);
-    ctx.lineTo(-3, 0);
+    ctx.moveTo(-14, -2.5);
+    ctx.lineTo(-3, -2.5);
+    ctx.moveTo(-14, 2.5);
+    ctx.lineTo(-3, 2.5);
     ctx.stroke();
 
-    // Heavy beveled titanium siege ram gauntlet body
+    // Enlarged beveled titanium siege anvil gauntlet body
     ctx.fillStyle = isMono ? "#262626" : "#334155";
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#F59E0B";
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(-6, -7.5);
-    ctx.lineTo(9, -7.5);
-    ctx.lineTo(13, -4);
-    ctx.lineTo(13, 4);
-    ctx.lineTo(9, 7.5);
-    ctx.lineTo(-6, 7.5);
+    ctx.moveTo(-8, -9.2);
+    ctx.lineTo(12, -9.2);
+    ctx.lineTo(17, -4.8);
+    ctx.lineTo(17, 4.8);
+    ctx.lineTo(12, 9.2);
+    ctx.lineTo(-8, 9.2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Armored knuckle bumper plates + molten amber vents
+    // Heavy armored anvil hammer knuckle plate + molten amber vents
     ctx.fillStyle = isMono ? "#FFFFFF" : "#FBBF24";
-    ctx.fillRect(8, -5.2, 3.2, 10.4);
+    ctx.fillRect(10.5, -6.5, 4.2, 13);
 
     // Glowing furnace vent core on dorsal armor
-    let ventR = 3.0 + flare * 1.4;
+    let ventR = 3.5 + flare * 1.5;
     ctx.fillStyle = isMono ? "#FFFFFF" : "#F97316";
     ctx.beginPath();
-    ctx.arc(1.5, 0, ventR, 0, Math.PI * 2);
+    ctx.arc(2, 0, ventR, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#FEF08A";
     ctx.beginPath();
-    ctx.arc(1.5, 0, ventR * 0.52, 0, Math.PI * 2);
+    ctx.arc(2, 0, ventR * 0.52, 0, Math.PI * 2);
     ctx.fill();
 
-    // Shock ring flash at peak of lead punch
-    if (isLead && atkSin > 0.35) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${atkSin * 0.9})`;
-      ctx.lineWidth = 2.4;
+    // Heavy anvil shock ring flash at peak of lead hammer punch
+    if (isLead && atkSin > 0.25) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(253, 224, 71, ${atkSin * 0.92})`;
+      ctx.lineWidth = 3.0;
       ctx.beginPath();
-      ctx.arc(13, 0, 8 + atkSin * 6, -1.0, 1.0);
+      ctx.arc(17, 0, 9 + atkSin * 7, -1.05, 1.05);
       ctx.stroke();
     }
     ctx.restore();
@@ -15308,27 +15455,23 @@ export function drawMinhSanctuaries(ctx, zones, elapsedTime, isMono) {
     ctx.stroke();
 
     // Rotating sacred hexagram & celestial astrolabe ring
-    ctx.save();
-    ctx.rotate(elapsedTime * 1.1);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
-    ctx.lineWidth = 2.2;
-    ctx.setLineDash([12, 7]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.84, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    for (let t = 0; t < 2; t++) {
-      ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        let a = (Math.PI * 2 / 3) * i + (t * Math.PI) / 3;
-        let px = Math.cos(a) * r * 0.72;
-        let py = Math.sin(a) * r * 0.72;
-        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.stroke();
-    }
-    ctx.restore();
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(16, r * 0.88),
+      tiltY: 0.94,
+      rot: elapsedTime * 1.1,
+      sides: 6,
+      starMode: true,
+      nodeShape: "crystal",
+      primary: "#FACC15",
+      highlight: "#FFFFFF",
+      darkRim: "#0C4A6E",
+      rim: "#38BDF8",
+      coreWash: "rgba(56, 189, 248, 0.14)",
+      midWash: "rgba(250, 204, 21, 0.08)",
+      isMono,
+    });
 
     // Counter-rotating frost-crystalline cardinal ticks
     ctx.save();
@@ -15480,14 +15623,28 @@ export function drawDucAnhMeteorLeaps(ctx, leaps, elapsedTime, isMono) {
     // Rotating tactical siege target brackets
     ctx.save();
     ctx.rotate(elapsedTime * 3.5);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE047";
-    ctx.lineWidth = 2.4;
-    ctx.setLineDash([16, 12]);
-    ctx.beginPath();
-    ctx.arc(0, 0, rad * 0.86, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    for (let bi = 0; bi < 4; bi++) {
+      let ba = (Math.PI / 2) * bi;
+      drawTaperedArc(ctx, 0, 0, Math.max(8, rad * 0.86), ba + 0.16, ba + Math.PI / 2 - 0.2, 4.0, "#F97316", "#FDE047", isMono);
+    }
     ctx.restore();
+
+    if (t > 0.72) {
+      drawImpactCraterDecal(ctx, {
+        x: 0,
+        y: 0,
+        radius: Math.max(16, rad * (0.45 + (t - 0.72) * 1.8)),
+        alpha: clamp((t - 0.72) / 0.28, 0, 0.9),
+        tiltY: 0.8,
+        seed: (tx * 0.11 + ty * 0.07) % 10,
+        debrisShape: "rock",
+        primary: "#EA580C",
+        highlight: "#FEF08A",
+        shadow: "#1C1917",
+        rim: "#F97316",
+        isMono,
+      });
+    }
 
     // Expanding impact progress ring
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
@@ -15567,10 +15724,15 @@ export function drawBachPhantomBlades(ctx, p, elapsedTime, state, isMono) {
 
   for (let s of [-1, 1]) {
     let isLead = s * parity > 0;
-    let thrust = isLead ? atkSin * 11 : -atkSin * 3;
+    let thrust = isLead ? atkSin * 19 : -atkSin * 4;
+    let bladeSwing = isLead ? -s * atkSin * 0.85 : s * 0.22;
     ctx.save();
     ctx.translate(10 + thrust, s * 16);
-    ctx.rotate((isLead ? -s * atkSin * 0.65 : s * 0.22) + s * 0.26);
+    ctx.rotate(bladeSwing + s * 0.26);
+
+    if (isLead && state?.hasAtk && atkSin > 0.16) {
+      drawTaperedArc(ctx, 0, 0, 31, s * 0.72, 0, 4.0 * atkSin + 1.1, s === -1 ? "#22D3EE" : "#E879F9", "#FFFFFF", isMono);
+    }
 
     // Reverse-grip wind ribbon trailing from hilt
     ctx.strokeStyle = isMono ? "#FFFFFF" : s === -1 ? "rgba(103, 232, 249, 0.7)" : "rgba(232, 121, 249, 0.65)";
@@ -15587,24 +15749,24 @@ export function drawBachPhantomBlades(ctx, p, elapsedTime, state, isMono) {
     ctx.fillRect(-7, -2.5, 9, 5);
     ctx.strokeRect(-7, -2.5, 9, 5);
 
-    // Curved phantom wind katar-blade
-    let bg = ctx.createLinearGradient(0, -5, 24, 5);
+    // Enlarged curved phantom wind katar-blade
+    let bg = ctx.createLinearGradient(0, -5, 30, 5);
     bg.addColorStop(0, "#0891B2");
     bg.addColorStop(0.55, "#67E8F9");
     bg.addColorStop(1, "#FFFFFF");
     ctx.fillStyle = isMono ? "#FFFFFF" : bg;
     ctx.strokeStyle = isMono ? "#000000" : "#E879F9";
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.65;
     ctx.beginPath();
-    ctx.moveTo(2, -4.2);
-    ctx.quadraticCurveTo(16, -7.2 * s, 25, 0);
-    ctx.quadraticCurveTo(12, 4.4 * s, 2, 4.2);
+    ctx.moveTo(2, -4.4);
+    ctx.quadraticCurveTo(18, -8.2 * s, 30, 0);
+    ctx.quadraticCurveTo(14, 4.8 * s, 2, 4.4);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
     if (flare > 0.15) {
-      drawFourPointStar(ctx, 13, 0, 4.5 + flare * 3, 1.5, "#FFFFFF", "#22D3EE");
+      drawFourPointStar(ctx, 16, 0, 4.8 + flare * 3, 1.6, "#FFFFFF", "#22D3EE");
     }
     ctx.restore();
   }
@@ -15615,61 +15777,64 @@ export function drawThaiColosseumHalberd(ctx, p, elapsedTime, state, isMono) {
   let atkSin = state?.hasAtk ? Math.sin(atkProg * Math.PI) : 0;
   let parity = state?.parity || 1;
   let inArena = Boolean(p?.thai_inArena);
-  let swing = state?.hasAtk ? (-0.7 + atkProg * 1.85) * parity : Math.sin(elapsedTime * 2.4) * 0.06;
+  let swing = state?.hasAtk ? (-1.05 + atkProg * 2.1) * parity : Math.sin(elapsedTime * 2.4) * 0.06;
 
   ctx.save();
-  ctx.translate(12, 11 * parity);
+  ctx.translate(12 + atkSin * 5, 11 * parity);
+  if (state?.hasAtk && atkSin > 0.12) {
+    drawTaperedArc(ctx, 0, 0, 45, -1.05 * parity, swing, 6.2 * atkSin + 1.8, "#EF4444", "#FEF08A", isMono);
+  }
   ctx.rotate(swing);
 
-  // Heavy gilded war-shaft
+  // Extended heavy gilded war-shaft
   ctx.strokeStyle = isMono ? "#FFFFFF" : "#7F1D1D";
-  ctx.lineWidth = 4.6;
+  ctx.lineWidth = 4.8;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-24, 0);
-  ctx.lineTo(24, 0);
+  ctx.moveTo(-26, 0);
+  ctx.lineTo(32, 0);
   ctx.stroke();
   ctx.strokeStyle = isMono ? "#999999" : "#F59E0B";
-  ctx.lineWidth = 2.0;
+  ctx.lineWidth = 2.1;
   ctx.stroke();
 
   // Flowing crimson war-tassel
   ctx.strokeStyle = isMono ? "#FFFFFF" : "#EF4444";
-  ctx.lineWidth = 2.4;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.moveTo(10, 2);
-  ctx.quadraticCurveTo(4, 9 + Math.sin(elapsedTime * 9) * 2.5, -2, 12);
+  ctx.moveTo(13, 2);
+  ctx.quadraticCurveTo(6, 10 + Math.sin(elapsedTime * 9) * 2.5, -1, 14);
   ctx.stroke();
 
-  // Crescent Colosseum War-Axe Head + Spear Spike
-  let axeG = ctx.createLinearGradient(12, -14, 30, 14);
+  // Enlarged Crescent Colosseum War-Axe Head + Spear Spike
+  let axeG = ctx.createLinearGradient(14, -18, 36, 18);
   axeG.addColorStop(0, inArena ? "#FEF08A" : "#E2E8F0");
   axeG.addColorStop(0.5, "#EF4444");
   axeG.addColorStop(1, "#F59E0B");
   ctx.fillStyle = isMono ? "#FFFFFF" : axeG;
   ctx.strokeStyle = isMono ? "#000000" : "#FDE047";
-  ctx.lineWidth = 1.9;
+  ctx.lineWidth = 2.0;
   ctx.beginPath();
-  ctx.moveTo(13, -4);
-  ctx.quadraticCurveTo(22, -17, 29, -12);
-  ctx.quadraticCurveTo(22, 0, 29, 12);
-  ctx.quadraticCurveTo(22, 17, 13, 4);
+  ctx.moveTo(15, -4.5);
+  ctx.quadraticCurveTo(26, -21, 36, -15);
+  ctx.quadraticCurveTo(26, 0, 36, 15);
+  ctx.quadraticCurveTo(26, 21, 15, 4.5);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  // Imperial halberd spear tip
+  // Extended imperial halberd spear tip
   ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
   ctx.beginPath();
-  ctx.moveTo(22, -4);
-  ctx.lineTo(38, 0);
-  ctx.lineTo(22, 4);
+  ctx.moveTo(27, -4.5);
+  ctx.lineTo(48, 0);
+  ctx.lineTo(27, 4.5);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
   if (inArena || atkSin > 0.25) {
-    drawFourPointStar(ctx, 20, 0, inArena ? 6.8 : 4.5, 2.0, "#FFFFFF", "#FDE047");
+    drawFourPointStar(ctx, 25, 0, inArena ? 7.2 : 5.0, 2.2, "#FFFFFF", "#FDE047");
   }
   ctx.restore();
 }
@@ -15695,13 +15860,13 @@ export function drawKhairRailSniper(ctx, p, elapsedTime, state, isMono) {
     ctx.fillStyle = isMono ? "#404040" : "#1E293B";
     ctx.strokeStyle = isMono ? "#FFFFFF" : aimCharge > 0.2 ? "#FACC15" : "#38BDF8";
     ctx.lineWidth = 1.5;
-    ctx.fillRect(6, s * 2.8 - 1.4, 27, 2.8);
-    ctx.strokeRect(6, s * 2.8 - 1.4, 27, 2.8);
+    ctx.fillRect(6, s * 2.8 - 1.4, 29, 2.8);
+    ctx.strokeRect(6, s * 2.8 - 1.4, 29, 2.8);
   }
 
   // Glowing golden-cyan plasma energy chamber along the center rail
   ctx.fillStyle = isMono ? "#FFFFFF" : aimCharge > 0.2 ? "#FEF08A" : "#38BDF8";
-  ctx.fillRect(4, -1.3, 24, 2.6);
+  ctx.fillRect(4, -1.3, 26, 2.6);
 
   // Telescopic Eagle-Eye optical scope mounted top-side
   ctx.fillStyle = isMono ? "#262626" : "#334155";
@@ -15712,10 +15877,18 @@ export function drawKhairRailSniper(ctx, p, elapsedTime, state, isMono) {
   ctx.fill();
   ctx.stroke();
 
-  // Muzzle focusing core when aiming C2
-  if (aimCharge > 0.08) {
-    let pulse = 4.5 + aimCharge * 5 + Math.sin(elapsedTime * 16) * 1.4;
-    drawFourPointStar(ctx, 35, 0, pulse, pulse * 0.32, "#FFFFFF", "#FACC15");
+  // Muzzle focusing core when aiming C2 or firing shot
+  if (aimCharge > 0.08 || (state?.bowRecoil || 0) > 0.02 || (state?.hasAtk && state.atkProg < 0.55)) {
+    let fireBurst = (state?.hasAtk && state.atkProg < 0.55) ? Math.sin(clamp(state.atkProg / 0.55, 0, 1) * Math.PI) : 0;
+    let pulse = 4.5 + aimCharge * 5 + fireBurst * 4.5 + Math.sin(elapsedTime * 16) * 1.4;
+    if (fireBurst > 0.1) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(250, 204, 21, ${0.9 * fireBurst})`;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.ellipse(37, 0, Math.max(1.5, 2.4 + fireBurst * 2.5), Math.max(3, 6 + fireBurst * 4.5), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    drawFourPointStar(ctx, 37, 0, pulse, pulse * 0.32, "#FFFFFF", "#FACC15");
   }
   ctx.restore();
 }
@@ -15764,16 +15937,25 @@ export function drawThaiArenaDomains(ctx, zones, elapsedTime, isMono) {
     ctx.stroke();
 
     // Colosseum Arena radial sunbeams & rotating rune circle
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: Math.max(20, r * 0.76),
+      tiltY: 0.94,
+      rot: elapsedTime * 0.32,
+      sides: 8,
+      starMode: false,
+      nodeShape: "plate",
+      primary: "#F59E0B",
+      highlight: "#FEF08A",
+      darkRim: "#450A0A",
+      rim: "#EF4444",
+      coreWash: "rgba(245, 158, 11, 0.14)",
+      midWash: "rgba(127, 29, 29, 0.14)",
+      isMono,
+    });
     ctx.save();
     ctx.rotate(elapsedTime * 0.32);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(253, 224, 71, 0.72)";
-    ctx.lineWidth = 2.4;
-    ctx.setLineDash([20, 12]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
     ctx.strokeStyle = isMono ? "rgba(255,255,255,0.24)" : "rgba(245, 158, 11, 0.36)";
     ctx.lineWidth = 2.0;
     for (let si = 0; si < 8; si++) {
@@ -15801,24 +15983,36 @@ export function drawThaiArenaDomains(ctx, zones, elapsedTime, isMono) {
     drawFourPointStar(ctx, 0, 0, 22 * pulse, 6.0, isMono ? "#FFFFFF" : "#FEF08A", isMono ? "#333333" : "#EF4444");
     ctx.restore();
 
-    // 8 Carved Colosseum Battle Pillars & glowing barrier chains between adjacent pillars
+    // 8 Carved Colosseum Battle Pillars & forged imperial barrier chains between adjacent pillars
     let pillars = [];
     for (let i = 0; i < 8; i++) {
       let a = (Math.PI / 4) * i + elapsedTime * 0.08;
       pillars.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, a });
     }
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.42)" : `rgba(253, 224, 71, ${0.42 + 0.16 * Math.sin(elapsedTime * 7)})`;
-    ctx.lineWidth = 2.0;
-    ctx.setLineDash([12, 8]);
     for (let i = 0; i < 8; i++) {
       let p1 = pillars[i], p2 = pillars[(i + 1) % 8];
       let mx = (p1.x + p2.x) * 0.48, my = (p1.y + p2.y) * 0.48;
+      ctx.strokeStyle = isMono ? "rgba(0,0,0,0.65)" : "rgba(69, 10, 10, 0.72)";
+      ctx.lineWidth = 4.2;
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
       ctx.quadraticCurveTo(mx, my, p2.x, p2.y);
       ctx.stroke();
+
+      ctx.strokeStyle = isMono ? "rgba(255,255,255,0.62)" : `rgba(253, 224, 71, ${0.56 + 0.2 * Math.sin(elapsedTime * 7)})`;
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+
+      for (let li = 1; li <= 4; li++) {
+        let lt = li / 5;
+        let lx = (1 - lt) * (1 - lt) * p1.x + 2 * (1 - lt) * lt * mx + lt * lt * p2.x;
+        let ly = (1 - lt) * (1 - lt) * p1.y + 2 * (1 - lt) * lt * my + lt * lt * p2.y;
+        ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
+        ctx.beginPath();
+        ctx.arc(lx, ly, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    ctx.setLineDash([]);
 
     for (let i = 0; i < 8; i++) {
       let pt = pillars[i];
@@ -15877,17 +16071,11 @@ export function drawKhairMedBeacons(ctx, beacons, elapsedTime, isMono, ownerPos 
     // Counter-rotating tactical emerald & gold perimeter rings + corner brackets
     ctx.save();
     ctx.rotate(elapsedTime * 0.85);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#4ADE80";
-    ctx.lineWidth = 2.8;
-    ctx.setLineDash([14, 8]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-    ctx.lineWidth = 2.0;
     for (let bi = 0; bi < 4; bi++) {
       let ba = (Math.PI / 2) * bi;
+      drawTaperedArc(ctx, 0, 0, Math.max(10, r), ba + 0.14, ba + Math.PI / 2 - 0.18, 4.0, "#10B981", "#86EFAC", isMono);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
+      ctx.lineWidth = 2.0;
       ctx.beginPath();
       ctx.arc(0, 0, r + 5, ba - 0.15, ba + 0.15);
       ctx.stroke();
@@ -15896,13 +16084,14 @@ export function drawKhairMedBeacons(ctx, beacons, elapsedTime, isMono, ownerPos 
 
     ctx.save();
     ctx.rotate(-elapsedTime * 1.15);
-    ctx.strokeStyle = isMono ? "#CCCCCC" : "rgba(250, 204, 21, 0.72)";
-    ctx.lineWidth = 1.8;
-    ctx.setLineDash([6, 10]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    for (let ri = 0; ri < 6; ri++) {
+      let ra = (Math.PI / 3) * ri;
+      ctx.strokeStyle = isMono ? "#CCCCCC" : "rgba(250, 204, 21, 0.72)";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(8, r * 0.72), ra + 0.18, ra + Math.PI / 3 - 0.22);
+      ctx.stroke();
+    }
     ctx.restore();
 
     // Rotating radar sweep sector
@@ -15967,13 +16156,22 @@ export function drawKhairMedBeacons(ctx, beacons, elapsedTime, isMono, ownerPos 
 
         ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
         ctx.lineWidth = 1.8;
-        ctx.setLineDash([8, 6]);
-        ctx.lineDashOffset = -elapsedTime * 55;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(rx, ry);
         ctx.stroke();
-        ctx.setLineDash([]);
+        let tP2 = (elapsedTime * 1.9 + 0.5) % 1;
+        drawFacetedShard(ctx, {
+          x: rx * tP2,
+          y: ry * tP2,
+          size: 4.5,
+          rot: Math.atan2(ry, rx),
+          primary: "#4ADE80",
+          highlight: "#FEF08A",
+          shadow: "#052E16",
+          rim: "#FFFFFF",
+          isMono,
+        });
 
         let tP = (elapsedTime * 1.9) % 1;
         drawFourPointStar(ctx, rx * tP, ry * tP, 6.6, 2.1, "#FFFFFF", isMono ? "#333333" : "#4ADE80");
@@ -16123,15 +16321,25 @@ export function drawBachWindSeals(ctx, seals, elapsedTime, isMono) {
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
 
+      drawArcaneMagicCircle(ctx, {
+        x: 0,
+        y: 0,
+        radius: Math.max(16, r * 0.92),
+        tiltY: 0.94,
+        rot: elapsedTime * 1.45,
+        sides: 6,
+        starMode: true,
+        nodeShape: "crystal",
+        primary: "#22D3EE",
+        highlight: "#FFFFFF",
+        darkRim: "#082F49",
+        rim: "#E879F9",
+        coreWash: "rgba(34, 211, 238, 0.14)",
+        midWash: "rgba(232, 121, 249, 0.1)",
+        isMono,
+      });
       ctx.save();
       ctx.rotate(elapsedTime * 1.45);
-      ctx.strokeStyle = isMono ? "#CCCCCC" : "#E879F9";
-      ctx.lineWidth = 2.2;
-      ctx.setLineDash([16, 10]);
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
       // Swirling cyclone wind ribbons + blade hexagram
       for (let hi = 0; hi < 6; hi++) {
         let ha = (Math.PI / 3) * hi;
@@ -16158,13 +16366,13 @@ export function drawBachWindSeals(ctx, seals, elapsedTime, isMono) {
       ctx.fill();
 
       // Outer hazard perimeter ring + crescent vortex sweep
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(103, 232, 249, 0.85)";
-      ctx.lineWidth = 2.6;
-      ctx.setLineDash([10, 6]);
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.save();
+      ctx.rotate(-elapsedTime * 2.2);
+      for (let bi = 0; bi < 4; bi++) {
+        let ba = (Math.PI / 2) * bi;
+        drawTaperedArc(ctx, 0, 0, Math.max(8, r), ba + 0.14, ba + Math.PI / 2 - 0.18, 3.8, bi % 2 === 0 ? "#22D3EE" : "#E879F9", "#FFFFFF", isMono);
+      }
+      ctx.restore();
 
       // Converging implosion countdown ring
       let convR = Math.max(8, r * (1 - p));
@@ -16438,92 +16646,195 @@ export function drawHeroPassiveAura(ctx, opts = {}) {
     }
 
     case "dung": {
-      // 0..5 Electric Cerberus Passive Stacks orbiting as cyan-gold storm sparks
+      // 0..5 Electric Cerberus Passive Stacks orbiting as cyan-gold storm sparks + ground storm collar
       let stacks = clamp(p.dung_passive ?? b.dung_passive ?? 0, 0, 5);
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 14,
+        tiltY: 0.76,
+        rot: elapsedTime * 1.5,
+        primary: stacks >= 5 ? "#FDE047" : "#38BDF8",
+        secondary: "#0EA5E9",
+        darkRim: "#082F49",
+        coreWash: "rgba(56, 189, 248, 0.12)",
+        midWash: "rgba(253, 224, 71, 0.05)",
+        segments: 3,
+        isMono,
+      });
       if (stacks > 0) {
         let full = stacks >= 5;
-        let orbitR = radius + 14;
+        let orbitR = radius + 15;
         for (let i = 0; i < stacks; i++) {
           let ang = elapsedTime * 3.1 + (Math.PI * 2 * i) / 5;
           let sx = Math.cos(ang) * orbitR;
-          let sy = Math.sin(ang) * orbitR;
-          drawFourPointStar(ctx, sx, sy, full ? 6.2 : 4.5, 1.7, "#FFFFFF", isMono ? "#0F172A" : full ? "#FDE047" : "#38BDF8");
+          let sy = Math.sin(ang) * orbitR * 0.76;
+          drawFacetedShard(ctx, {
+            x: sx,
+            y: sy,
+            size: full ? 5.6 : 4.2,
+            rot: ang + Math.PI * 0.5,
+            primary: full ? "#FDE047" : "#38BDF8",
+            highlight: "#FFFFFF",
+            shadow: "#082F49",
+            rim: "#BAE6FD",
+            isMono,
+          });
         }
       }
       break;
     }
 
     case "kin": {
-      // 0..4 Emerald Wind Stacks orbiting + crimson-emerald lifesteal ring
+      // 0..4 Emerald Wind Stacks orbiting + wind stream collar + lifesteal ring
       let stacks = clamp(p.kin_passive ?? b.kin_passive ?? 0, 0, 4);
       let lsActive = (p.kin_c2_lifestealTimer || 0) > 0 || Boolean(b.kin_ls);
+      for (let w = 0; w < 2; w++) {
+        let wa = elapsedTime * 3.2 + w * Math.PI;
+        drawWindStreamRibbon(ctx, {
+          x: Math.cos(wa) * (radius + 14),
+          y: Math.sin(wa) * (radius + 14) * 0.76,
+          angle: wa + Math.PI * 0.5,
+          length: 16,
+          width: lsActive ? 3.8 : 2.6,
+          phase: elapsedTime * 10 + w,
+          color: "#10B981",
+          coreColor: "#FEF08A",
+          isMono,
+        });
+      }
       if (stacks > 0) {
         for (let i = 0; i < stacks; i++) {
           let ang = elapsedTime * 3.8 + (Math.PI * 2 * i) / 4;
-          drawUltDiamondShard(ctx, Math.cos(ang) * (radius + 14), Math.sin(ang) * (radius + 14), 6.5, 2.6, ang + 0.5, isMono ? "#FFFFFF" : "#34D399", "#FFFFFF");
+          drawFacetedShard(ctx, {
+            x: Math.cos(ang) * (radius + 15),
+            y: Math.sin(ang) * (radius + 15) * 0.76,
+            size: 5.0,
+            rot: ang + 0.5,
+            primary: "#34D399",
+            highlight: "#FEF08A",
+            shadow: "#064E3B",
+            rim: "#FFFFFF",
+            isMono,
+          });
         }
       }
       if (lsActive) {
-        ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius + 16, elapsedTime * 3, elapsedTime * 3 + Math.PI * 1.2);
-        ctx.stroke();
+        drawTaperedArc(ctx, 0, 0, radius + 16, elapsedTime * 3, elapsedTime * 3 + Math.PI * 1.25, 3.6, "#34D399", "#FEF08A", isMono);
       }
       break;
     }
 
     case "trung": {
-      // 0..3 Astral Spell-Stack sigil pips
+      // 0..3 Astral Spell-Stack sigil crystals + celestial collar
       let stacks = clamp(p.trung_passive ?? b.trung_passive ?? 0, 0, 3);
-      if (stacks > 0) {
-        let ready = stacks >= 3;
-        for (let i = 0; i < stacks; i++) {
-          let ang = elapsedTime * 2.4 + (Math.PI * 2 * i) / 3;
-          let ox = Math.cos(ang) * (radius + 14);
-          let oy = Math.sin(ang) * (radius + 14);
-          ctx.fillStyle = isMono ? "#FFFFFF" : ready ? "#FDE047" : "#818CF8";
-          ctx.beginPath();
-          ctx.arc(ox, oy, ready ? 4.2 : 3.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
+      let ready = stacks >= 3;
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 14,
+        tiltY: 0.76,
+        rot: -elapsedTime * 1.4,
+        primary: ready ? "#FDE047" : "#818CF8",
+        secondary: "#A855F7",
+        darkRim: "#1E1B4B",
+        coreWash: "rgba(129, 140, 248, 0.14)",
+        midWash: "rgba(253, 224, 71, 0.06)",
+        segments: 3,
+        isMono,
+      });
+      for (let i = 0; i < stacks; i++) {
+        let ang = elapsedTime * 2.4 + (Math.PI * 2 * i) / 3;
+        drawFacetedShard(ctx, {
+          x: Math.cos(ang) * (radius + 15),
+          y: Math.sin(ang) * (radius + 15) * 0.76,
+          size: ready ? 5.6 : 4.2,
+          rot: ang + elapsedTime * 2,
+          primary: ready ? "#FDE047" : "#818CF8",
+          highlight: "#FFFFFF",
+          shadow: "#1E1B4B",
+          rim: "#C084FC",
+          isMono,
+        });
       }
       break;
     }
 
     case "eohyen": {
-      // 0..4 Glacial Frost Crystal Pips orbiting
+      // 0..4 Glacial Frost Crystal Pips orbiting + frosty perimeter collar
       let stacks = clamp(p.eohyen_passive ?? b.eohyen_passive ?? 0, 0, 4);
-      for (let i = 0; i < stacks; i++) {
-        let ang = -elapsedTime * 2.1 + (Math.PI * 2 * i) / 4;
-        drawUltDiamondShard(ctx, Math.cos(ang) * (radius + 15), Math.sin(ang) * (radius + 15), 6.5, 2.8, ang, "#E0F2FE", isMono ? "#0F172A" : "#38BDF8");
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 14,
+        tiltY: 0.76,
+        rot: elapsedTime * 1.1,
+        primary: "#38BDF8",
+        secondary: "#BAE6FD",
+        darkRim: "#082F49",
+        coreWash: "rgba(56, 189, 248, 0.12)",
+        midWash: "rgba(186, 230, 253, 0.05)",
+        segments: 6,
+        isMono,
+      });
+      for (let i = 0; i < Math.max(2, stacks); i++) {
+        let ang = -elapsedTime * 2.1 + (Math.PI * 2 * i) / Math.max(2, stacks);
+        drawFacetedShard(ctx, {
+          x: Math.cos(ang) * (radius + 15),
+          y: Math.sin(ang) * (radius + 15) * 0.76,
+          size: stacks > 0 ? 5.2 : 3.8,
+          rot: ang,
+          primary: "#0284C7",
+          highlight: "#FFFFFF",
+          shadow: "#082F49",
+          rim: "#BAE6FD",
+          isMono,
+        });
       }
       break;
     }
 
     case "duccong": {
-      // Orbiting Dark-Violet Singularity Motes + Siphon charge ring
+      // Orbiting Dark-Violet Faceted Singularity Shards + Gravity Slipstream
       let stacks = clamp(p.duccong_passive ?? b.duccong_passive ?? 0, 0, 3);
       let count = Math.max(2, stacks + 1);
       for (let i = 0; i < count; i++) {
         let ang = -elapsedTime * 2.4 + (Math.PI * 2 * i) / count;
-        ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#C084FC" : "#38BDF8";
-        ctx.beginPath();
-        ctx.arc(Math.cos(ang) * (radius + 13), Math.sin(ang) * (radius + 13), 2.8, 0, Math.PI * 2);
-        ctx.fill();
+        drawFacetedShard(ctx, {
+          x: Math.cos(ang) * (radius + 15),
+          y: Math.sin(ang) * (radius + 15) * 0.78,
+          size: 4.8,
+          rot: ang + elapsedTime * 2,
+          primary: i % 2 === 0 ? "#A855F7" : "#38BDF8",
+          highlight: "#F5D0FE",
+          shadow: "#2E1065",
+          rim: "#67E8F9",
+          isMono,
+        });
       }
       break;
     }
 
     case "gau": {
-      // Rage meter ember arc around feet (0..100)
+      // Tapered magma-gold Rage meter arc around feet (0..100) + earth ember shards
       let rage = clamp((p.gau_rage ?? b.gau_rage ?? 0) / 100, 0, 1);
       if (rage > 0.05) {
-        ctx.strokeStyle = isMono ? "#FFFFFF" : rage >= 0.85 ? "#F97316" : "#FBBF24";
-        ctx.lineWidth = 2.6;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * rage);
-        ctx.stroke();
+        drawTaperedArc(ctx, 0, 0, radius + 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * rage, rage >= 0.85 ? 5.6 : 4.0, rage >= 0.85 ? "#F97316" : "#FBBF24", "#FEF08A", isMono);
+      }
+      for (let i = 0; i < 2; i++) {
+        let a = elapsedTime * 2.2 + i * Math.PI;
+        drawFacetedShard(ctx, {
+          x: Math.cos(a) * (radius + 15),
+          y: Math.sin(a) * (radius + 15) * 0.76,
+          size: rage >= 0.85 ? 5.2 : 3.8,
+          rot: a,
+          shape: "rock",
+          primary: "#EA580C",
+          highlight: "#FEF08A",
+          shadow: "#292524",
+          rim: "#F59E0B",
+          isMono,
+        });
       }
       break;
     }
@@ -16532,119 +16843,342 @@ export function drawHeroPassiveAura(ctx, opts = {}) {
       // 3 Drifting Dimensional Mirror Prism Shards
       for (let i = 0; i < 3; i++) {
         let ang = elapsedTime * 2.2 + (Math.PI * 2 * i) / 3;
-        drawUltDiamondShard(ctx, Math.cos(ang) * (radius + 15), Math.sin(ang) * (radius + 15), 6, 2.4, ang + elapsedTime, isMono ? "#FFFFFF" : i === 0 ? "#67E8F9" : "#C084FC", "#FFFFFF");
+        drawFacetedShard(ctx, {
+          x: Math.cos(ang) * (radius + 15),
+          y: Math.sin(ang) * (radius + 15) * 0.78,
+          size: 5.5,
+          rot: ang + elapsedTime,
+          primary: i === 0 ? "#38BDF8" : "#A855F7",
+          highlight: "#FFFFFF",
+          shadow: "#1E1B4B",
+          rim: "#E879F9",
+          isMono,
+        });
       }
       break;
     }
 
     case "taidu": {
-      // 3rd-shot EMP capacitor lock glint
+      // Tactical targeting collar + 3rd-shot EMP capacitor lock tapered arc & branching spark
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 14,
+        tiltY: 0.76,
+        rot: elapsedTime * 1.4,
+        primary: "#F97316",
+        secondary: "#38BDF8",
+        darkRim: "#0F172A",
+        coreWash: "rgba(56, 189, 248, 0.08)",
+        midWash: "rgba(249, 115, 22, 0.04)",
+        segments: 3,
+        isMono,
+      });
       if ((p.taidu_basicCount || 0) >= 2) {
-        ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius + 13, facing - 0.6, facing + 0.6);
-        ctx.stroke();
+        drawTaperedArc(ctx, 0, 0, radius + 15, facing - 0.75, facing + 0.75, 4.8, "#38BDF8", "#FEF08A", isMono);
+        drawBranchingArc(ctx, {
+          x1: Math.cos(facing - 0.5) * (radius + 14),
+          y1: Math.sin(facing - 0.5) * (radius + 14),
+          x2: Math.cos(facing + 0.5) * (radius + 14),
+          y2: Math.sin(facing + 0.5) * (radius + 14),
+          seed: elapsedTime * 18,
+          width: 1.5,
+          color: "#38BDF8",
+          coreColor: "#FFFFFF",
+          isMono,
+        });
       }
       break;
     }
 
     case "nguyen": {
-      // Low-HP Emergency Rescue Aura Shimmer
+      // Low-HP Emergency Rescue Sanctuary Lotus Ring
       let lowHp = p.maxHp > 0 && p.hp / p.maxHp <= 0.45;
       if (lowHp || (p.nguyen_rescueFlashTimer || 0) > 0) {
-        ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius + 15 + Math.sin(elapsedTime * 8) * 2, 0, Math.PI * 2);
-        ctx.stroke();
+        drawPerspectiveZoneBase(ctx, {
+          x: 0,
+          y: 0,
+          radius: radius + 17 + Math.sin(elapsedTime * 8) * 1.5,
+          tiltY: 0.76,
+          rot: elapsedTime * 1.4,
+          primary: "#34D399",
+          secondary: "#FDE047",
+          darkRim: "#064E3B",
+          coreWash: "rgba(52, 211, 153, 0.14)",
+          midWash: "rgba(253, 224, 71, 0.06)",
+          segments: 4,
+          isMono,
+        });
       }
       break;
     }
 
     case "phong": {
-      // Twin shadow-blade orbit wisps
+      // Twin shadow-blade aerodynamic wind ribbons
       for (let i = 0; i < 2; i++) {
         let ang = elapsedTime * 4.2 + i * Math.PI;
-        ctx.strokeStyle = isMono ? "#FFFFFF" : i === 0 ? "#22D3EE" : "#F43F5E";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, radius + 13, ang, ang + 0.65);
-        ctx.stroke();
+        drawWindStreamRibbon(ctx, {
+          x: Math.cos(ang) * (radius + 14),
+          y: Math.sin(ang) * (radius + 14) * 0.78,
+          angle: ang + Math.PI * 0.5,
+          length: 18,
+          width: 3.4,
+          phase: elapsedTime * 12 + i,
+          color: i === 0 ? "#22D3EE" : "#F43F5E",
+          coreColor: "#FFFFFF",
+          isMono,
+        });
       }
       break;
     }
 
     case "nhi": {
-      // Active Tri-Elixir Ammo Indicator Pip (purple / green / life)
+      // Active Tri-Elixir Viscous Flask Droplet Indicator + rotating alchemy collar
       let ammo = p.nhi_ammoType || b.nhi_ammo || "purple";
-      let col = isMono ? "#FFFFFF" : ammo === "green" ? "#4ADE80" : ammo === "life" ? "#FB7185" : "#C084FC";
-      let ang = elapsedTime * 3.0;
-      ctx.fillStyle = col;
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.arc(Math.cos(ang) * (radius + 14), Math.sin(ang) * (radius + 14), 4.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      let col = ammo === "green" ? "#4ADE80" : ammo === "life" ? "#FB7185" : "#C084FC";
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 14,
+        tiltY: 0.76,
+        rot: elapsedTime * 1.6,
+        primary: col,
+        secondary: "#4ADE80",
+        darkRim: "#2E1065",
+        coreWash: "rgba(192, 132, 252, 0.1)",
+        midWash: "rgba(74, 222, 128, 0.05)",
+        segments: 3,
+        isMono,
+      });
+      for (let i = 0; i < 2; i++) {
+        let ang = elapsedTime * 3.0 + i * Math.PI;
+        drawViscousDroplet(ctx, {
+          x: Math.cos(ang) * (radius + 15),
+          y: Math.sin(ang) * (radius + 15) * 0.78,
+          vx: -Math.sin(ang) * 12,
+          vy: Math.cos(ang) * 12,
+          radius: i === 0 ? 4.8 : 3.5,
+          color: col,
+          rimColor: "#FFFFFF",
+          isMono,
+        });
+      }
       break;
     }
 
     case "minh": {
-      // Rotating Heavenly Decree Seal Halo
-      ctx.save();
-      ctx.rotate(elapsedTime * 1.6);
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash([7, 7]);
-      ctx.beginPath();
-      ctx.arc(0, 0, radius + 14, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
+      // Rotating Heavenly Decree sacred seal with 4 cardinal prism talismans
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 17,
+        tiltY: 0.74,
+        rot: elapsedTime * 1.5,
+        primary: "#FACC15",
+        secondary: "#38BDF8",
+        darkRim: "#422006",
+        coreWash: "rgba(250, 204, 21, 0.18)",
+        midWash: "rgba(56, 189, 248, 0.08)",
+        segments: 4,
+        isMono,
+      });
+      for (let i = 0; i < 4; i++) {
+        let ang = elapsedTime * 1.8 + (Math.PI * 0.5) * i;
+        drawFacetedShard(ctx, {
+          x: Math.cos(ang) * (radius + 16),
+          y: Math.sin(ang) * (radius + 16) * 0.74,
+          size: 5.2,
+          rot: ang + Math.PI * 0.5,
+          primary: i % 2 === 0 ? "#FACC15" : "#38BDF8",
+          highlight: "#FFFFFF",
+          shadow: "#422006",
+          rim: "#FEF08A",
+          isMono,
+        });
+      }
       break;
     }
 
     case "ducanh": {
-      // Siege Armor Gear Aura + Molten Hot-Regen Sparks
+      // Interlocking forged bronze siege gear aura + molten ember rivets
       let hot = (p.ducanh_passiveHotTimer || 0) > 0;
       ctx.save();
+      ctx.scale(1, 0.76);
       ctx.rotate(-elapsedTime * (hot ? 3.2 : 1.2));
-      ctx.strokeStyle = isMono ? "#FFFFFF" : hot ? "#FEF08A" : "#F59E0B";
-      ctx.lineWidth = hot ? 2.6 : 1.8;
-      ctx.setLineDash([9, 6]);
-      ctx.beginPath();
-      ctx.arc(0, 0, radius + 14, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : hot ? "#FEF08A" : "#D97706";
+      ctx.lineWidth = hot ? 2.8 : 2.1;
+      for (let i = 0; i < 6; i++) {
+        let a = (Math.PI / 3) * i;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 15, a + 0.1, a + Math.PI / 3 - 0.16);
+        ctx.stroke();
+        drawFacetedShard(ctx, {
+          x: Math.cos(a) * (radius + 15),
+          y: Math.sin(a) * (radius + 15),
+          size: hot ? 5.2 : 4.2,
+          rot: a,
+          shape: "plate",
+          primary: hot ? "#F97316" : "#92400E",
+          highlight: "#FEF08A",
+          shadow: "#1C1917",
+          rim: "#FBBF24",
+          isMono,
+        });
+      }
       ctx.restore();
       break;
     }
 
-    case "duy":
-    case "dang":
-    case "thanh":
-    case "thien":
-    case "bach":
-    case "thai":
-    case "khair":
+    case "duy": {
+      // Stealth-quiet bamboo/jade ambush mist + kunai shadow wisps
+      let idleT = p.duy_idleTime || 0;
+      let quiet = idleT >= 1.2 || Boolean(b.duy_quiet);
+      for (let i = 0; i < 3; i++) {
+        let a = elapsedTime * (quiet ? 2.8 : 1.7) + (Math.PI * 2 * i) / 3;
+        drawWindStreamRibbon(ctx, {
+          x: Math.cos(a) * (radius + 13),
+          y: Math.sin(a) * (radius + 13) * 0.78,
+          angle: a + Math.PI * 0.5,
+          length: 16,
+          width: quiet ? 3.8 : 2.6,
+          phase: elapsedTime * 6 + i,
+          color: quiet ? "#F43F5E" : "#14B8A6",
+          coreColor: "#CCFBF1",
+          isMono,
+        });
+      }
+      break;
+    }
+
+    case "dang": {
+      // Yin-Yang martial tiger qi swirls orbiting feet + Taiji collar
+      let ready = Boolean(p.dang_rageReady || b.dang_ready);
+      for (let i = 0; i < 2; i++) {
+        let a = elapsedTime * (ready ? 4.4 : 2.6) + i * Math.PI;
+        drawTaperedArc(ctx, 0, 0, radius + 14, a, a + 1.45, ready ? 5.8 : 4.0, i === 0 ? "#F8FAFC" : "#18181B", i === 0 ? "#F59E0B" : "#CBD5E1", isMono);
+      }
+      break;
+    }
+
+    case "thanh": {
+      // Twin-serpent emerald & violet venom wisps coiling low
+      for (let i = 0; i < 2; i++) {
+        let a = elapsedTime * 3.1 + i * Math.PI;
+        drawWindStreamRibbon(ctx, {
+          x: Math.cos(a) * (radius + 14),
+          y: Math.sin(a) * (radius + 14) * 0.76,
+          angle: a + Math.PI * 0.5,
+          length: 20,
+          width: 4.0,
+          phase: elapsedTime * 10 + i * 2,
+          color: i === 0 ? "#34D399" : "#A78BFA",
+          coreColor: "#ECFDF5",
+          isMono,
+        });
+      }
+      break;
+    }
+
+    case "thien": {
+      // Celestial halo blades orbiting solar crown + golden runic halo
+      let god = Boolean(p.thien_godMode || (p.thien_ascendedTimer || 0) > 0 || b.thien_god);
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + (god ? 18 : 14),
+        tiltY: 0.76,
+        rot: elapsedTime * (god ? 2.4 : 1.2),
+        primary: "#FACC15",
+        secondary: "#38BDF8",
+        darkRim: "#422006",
+        coreWash: "rgba(250, 204, 21, 0.16)",
+        midWash: "rgba(56, 189, 248, 0.08)",
+        segments: 6,
+        isMono,
+      });
+      let count = god ? 4 : 2;
+      for (let i = 0; i < count; i++) {
+        let a = elapsedTime * (god ? 3.8 : 2.2) + (Math.PI * 2 * i) / count;
+        drawFacetedShard(ctx, {
+          x: Math.cos(a) * (radius + 16),
+          y: Math.sin(a) * (radius + 16) * 0.76,
+          size: god ? 6.8 : 5.2,
+          rot: a + Math.PI * 0.5,
+          aspect: 1.75,
+          primary: i % 2 === 0 ? "#FACC15" : "#38BDF8",
+          highlight: "#FFFFFF",
+          shadow: "#422006",
+          rim: "#FEF08A",
+          isMono,
+        });
+      }
+      break;
+    }
+
+    case "bach": {
+      // Dual slipstream gale wind ribbons + neon cyan petals
+      let stacks = clamp(p.bach_passiveStacks ?? b.bach_stacks ?? 0, 0, 4);
+      let count = Math.max(2, stacks + 1);
+      for (let i = 0; i < count; i++) {
+        let a = elapsedTime * 4.2 + (Math.PI * 2 * i) / count;
+        drawWindStreamRibbon(ctx, {
+          x: Math.cos(a) * (radius + 14),
+          y: Math.sin(a) * (radius + 14) * 0.78,
+          angle: a + Math.PI * 0.5,
+          length: 18,
+          width: 3.6,
+          phase: elapsedTime * 12 + i,
+          color: i % 2 === 0 ? "#22D3EE" : "#E879F9",
+          coreColor: "#FFFFFF",
+          isMono,
+        });
+      }
+      break;
+    }
+
+    case "thai": {
+      // Gladiator crest ember sparks & forged gold arc
+      drawTaperedArc(ctx, 0, 0, radius + 14, facing - 0.9, facing + 0.9, 5.4, "#EF4444", "#FDE047", isMono);
+      for (let i = 0; i < 3; i++) {
+        let a = elapsedTime * 3.4 + (Math.PI * 2 * i) / 3;
+        drawFacetedShard(ctx, {
+          x: Math.cos(a) * (radius + 15),
+          y: Math.sin(a) * (radius + 15) * 0.76,
+          size: 4.5,
+          rot: a,
+          primary: "#EF4444",
+          highlight: "#FEF08A",
+          shadow: "#450A0A",
+          rim: "#FACC15",
+          isMono,
+        });
+      }
+      break;
+    }
+
+    case "khair": {
+      // Optic sniper laser rangefinder arc & bio-amber reticle pips
+      let zoomed = (p.khair_aimZoomBlend || 0) > 0.1 || Boolean(b.khair_zoom);
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + (zoomed ? 18 : 14),
+        tiltY: 0.78,
+        rot: facing - 0.4,
+        primary: zoomed ? "#FACC15" : "#4ADE80",
+        secondary: "#15803D",
+        darkRim: "#052E16",
+        coreWash: "rgba(74, 222, 128, 0.08)",
+        midWash: "rgba(250, 204, 21, 0.04)",
+        segments: 3,
+        isMono,
+      });
+      drawFourPointStar(ctx, Math.cos(facing) * (radius + 15), Math.sin(facing) * (radius + 15) * 0.78, 5.4, 1.6, "#FEF08A", isMono ? "#000000" : "#4ADE80");
+      break;
+    }
+
     default: {
-      // Subtle signature directional trim arc so every hero has crisp ground presence
-      let trimCol = isMono ? "#FFFFFF" : {
-        duy: "#14B8A6",
-        dang: "#F8FAFC",
-        thanh: "#34D399",
-        thien: "#FACC15",
-        bach: "#22D3EE",
-        thai: "#FDE047",
-        khair: "#4ADE80"
-      }[heroId] || "#38BDF8";
-      ctx.globalAlpha = 0.45;
-      ctx.strokeStyle = trimCol;
-      ctx.lineWidth = 1.7;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius + 13, facing - 0.5, facing + 0.5);
-      ctx.stroke();
+      drawTaperedArc(ctx, 0, 0, radius + 13, facing - 0.6, facing + 0.6, 3.8, "#38BDF8", "#FFFFFF", isMono);
       break;
     }
   }

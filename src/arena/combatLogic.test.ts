@@ -9434,4 +9434,942 @@ test('PROJECT VFX REBIRTH: All 24 heroes bespoke drawUltimateSequence, drawHeroP
   assert.equal(shadowBlurWrites, 0, 'Project VFX Rebirth helpers must never write non-zero shadowBlur');
 });
 
+test('PHASE 2 VFX & DEATH TAXONOMY: classifyEnemyDeathProfile, spawnEnemyDeathVfx, renderDeadCorpse across all 9 archetypes, wave bosses, and map finale bosses', async () => {
+  const { DEATH_ARCHETYPES, classifyEnemyDeathProfile, spawnEnemyDeathVfx, renderDeadCorpse } = await import('./deathVfx.js');
+
+  let shadowBlurWrites = 0;
+  let activeOps = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y)); activeOps++; },
+    lineTo(x: number, y: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y)); activeOps++; },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+      assert.ok(Number.isFinite(cx) && Number.isFinite(cy) && Number.isFinite(x) && Number.isFinite(y));
+      activeOps++;
+    },
+    bezierCurveTo() { activeOps++; },
+    arc(x: number, y: number, r: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(r) && r >= 0.25); activeOps++; },
+    ellipse(x: number, y: number, rx: number, ry: number) {
+      assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(rx) && Number.isFinite(ry) && rx > 0 && ry > 0);
+      activeOps++;
+    },
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() { activeOps++; },
+    stroke() { activeOps++; },
+    clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  assert.equal(DEATH_ARCHETYPES.length, 9);
+
+  // Verify finale boss lore variants
+  const tombProf = classifyEnemyDeathProfile({ isFrozenTombEntityBoss: true });
+  assert.equal(tombProf.archetype, 'frost_crystal');
+  assert.equal(tombProf.loreVariant, 'frozen_coffin');
+  assert.equal(tombProf.tier, 'finale_boss');
+
+  const forestProf = classifyEnemyDeathProfile({ isGrudgeForestBoss: true });
+  assert.equal(forestProf.archetype, 'wood_root');
+  assert.equal(forestProf.loreVariant, 'moving_root');
+  assert.equal(forestProf.tier, 'finale_boss');
+
+  const voidProf = classifyEnemyDeathProfile({ isVoidCityBoss: true });
+  assert.equal(voidProf.archetype, 'shadow_void');
+  assert.equal(voidProf.loreVariant, 'blank_pages');
+  assert.equal(voidProf.tier, 'finale_boss');
+
+  // Verify wave bosses 3..27
+  const expectedWaveArchetypes: Record<number, string> = {
+    3: 'stone_construct',
+    6: 'infernal_fire',
+    9: 'frost_crystal',
+    12: 'shadow_void',
+    15: 'steel_mech',
+    18: 'celestial_arcane',
+    21: 'infernal_fire',
+    24: 'flesh_beast',
+    27: 'celestial_arcane',
+  };
+  for (const [waveStr, expectedArch] of Object.entries(expectedWaveArchetypes)) {
+    const p = classifyEnemyDeathProfile({ kind: 'boss', bossWave: Number(waveStr) });
+    assert.equal(p.archetype, expectedArch, `Wave ${waveStr} boss should classify as ${expectedArch}`);
+    assert.equal(p.tier, 'boss');
+  }
+
+  // Representative samples covering all 9 archetypes + 3 finale bosses
+  const samples = [
+    { kind: 'brute', x: 100, y: 120, radius: 22 },
+    { kind: 'venom_spider', x: 140, y: 160, radius: 18 },
+    { kind: 'bomber', x: 180, y: 200, radius: 16 },
+    { kind: 'frost_knight', x: 220, y: 240, radius: 20 },
+    { kind: 'stone_warden', x: 260, y: 280, radius: 24 },
+    { kind: 'iron_juggernaut', x: 300, y: 320, radius: 24 },
+    { kind: 'root_woodfolk', x: 340, y: 360, radius: 18 },
+    { kind: 'thunder_shaman', x: 380, y: 400, radius: 18 },
+    { kind: 'mirror_dweller', voidVariant: 'mirror_fracture', x: 420, y: 440, radius: 20 },
+    { kind: 'boss', isFrozenTombEntityBoss: true, x: 500, y: 500, radius: 44 },
+    { kind: 'boss', isGrudgeForestBoss: true, x: 540, y: 540, radius: 44 },
+    { kind: 'boss', isVoidCityBoss: true, x: 580, y: 580, radius: 44 },
+  ];
+
+  const seenArchetypes = new Set<string>();
+  for (const enemy of samples) {
+    const mockEngine: any = {
+      redCrystals: [],
+      bloodParticles: [],
+      flameParticles: [],
+      smokePuffs: [],
+      deadCorpses: [],
+      impactBursts: [],
+      particles: [],
+      explosions: [],
+      getPerformanceProfile: () => ({
+        particleBudgetScale: 1,
+        maxCrystals: 120,
+        maxBlood: 140,
+        maxFlames: 120,
+        maxSmoke: 60,
+        maxCorpses: 40,
+      }),
+      createCataclysmicExplosion(x: number, y: number, r: number, color: string, element: string) {
+        this.explosions.push({ x, y, r, color, element });
+      },
+      spawnImpactBurst(x: number, y: number, color: string, tier: string, angle: number) {
+        this.impactBursts.push({ x, y, color, tier, angle });
+      },
+      spawnParticles(x: number, y: number, color: string, count: number, minSpd: number, maxSpd: number, size: number, maxLife: number, shape: string) {
+        for (let i = 0; i < count; i++) this.particles.push({ x, y, color, size, maxLife, shape });
+      },
+    };
+
+    const prof = spawnEnemyDeathVfx(mockEngine, enemy, { attackerFacing: 0.65 });
+    assert.ok(prof, 'spawnEnemyDeathVfx should return profile');
+    seenArchetypes.add(prof.archetype);
+    assert.equal(mockEngine.deadCorpses.length, 1);
+    assert.ok(mockEngine.redCrystals.length >= 2);
+    assert.ok(mockEngine.redCrystals.every((c: any) => Number.isFinite(c.rotSpd) && c.alpha === 1));
+    assert.ok(mockEngine.bloodParticles.every((b: any) => Number.isFinite(b.gravity)));
+
+    const corpse = mockEngine.deadCorpses[0];
+    for (const isMono of [false, true]) {
+      for (const tFrac of [0.1, 0.45, 0.85]) {
+        corpse.timer = corpse.maxLife * tFrac;
+        assert.doesNotThrow(() => {
+          renderDeadCorpse(ctxStub, corpse, isMono);
+        });
+      }
+    }
+  }
+
+  assert.equal(seenArchetypes.size, 9, 'Test samples must cover all 9 death archetypes');
+  assert.ok(activeOps > 250, 'renderDeadCorpse should issue substantial geometry draw calls');
+  assert.equal(shadowBlurWrites, 0, 'deathVfx must never write non-zero shadowBlur');
+});
+
+test('PHASE 2 VFX MATERIALS & WEAPON RENDERER: vfxMaterials primitives, weaponRenderer upgrades & GameEngine zone/explosion/remote death smoke pass with zero shadowBlur', async () => {
+  const vm: any = await import('./vfxMaterials.js');
+  const wr: any = await import('./weaponRenderer.js');
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+
+  let shadowBlurWrites = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y)); },
+    lineTo(x: number, y: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y)); },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+      assert.ok(Number.isFinite(cx) && Number.isFinite(cy) && Number.isFinite(x) && Number.isFinite(y));
+    },
+    bezierCurveTo() {},
+    arc(x: number, y: number, r: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(r) && r >= 0.25); },
+    ellipse(x: number, y: number, rx: number, ry: number) {
+      assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(rx) && Number.isFinite(ry) && rx > 0 && ry > 0);
+    },
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  for (const isMono of [false, true]) {
+    for (const element of ['fire', 'plasma', 'void', 'frost', 'earth', 'gold', 'venom', 'blood', 'arcane', 'teal']) {
+      for (const progress of [0.08, 0.35, 0.78]) {
+        assert.doesNotThrow(() => {
+          vm.drawStructuralExplosion(ctxStub, { x: 200, y: 200, radius: 96, progress, element, isMono });
+        });
+      }
+    }
+    for (const style of ['steel', 'fire_dragon', 'wind_gale', 'frost', 'void', 'celestial_gold', 'plasma_cyan']) {
+      assert.doesNotThrow(() => {
+        vm.drawSculptedBladeSlash(ctxStub, { x: 220, y: 220, angle: 0.4, radius: 90, progress: 0.4, style, isMono });
+      });
+    }
+    for (const shape of ['crystal', 'rock', 'plate', 'paper']) {
+      assert.doesNotThrow(() => {
+        vm.drawFacetedShard(ctxStub, { x: 180, y: 180, size: 10, rot: 0.8, shape, isMono });
+      });
+    }
+    vm.drawVolumetricSmokeLobe(ctxStub, { x: 150, y: 150, radius: 22, seed: 2.1, lifeRatio: 0.35, isMono });
+    vm.drawViscousDroplet(ctxStub, { x: 160, y: 160, vx: 120, vy: 80, radius: 4, isMono });
+    vm.drawWindStreamRibbon(ctxStub, { x: 170, y: 170, angle: 0.3, length: 48, width: 9, phase: 1.1, isMono });
+    vm.drawBranchingArc(ctxStub, { x1: 120, y1: 120, x2: 240, y2: 180, seed: 3.3, width: 2.5, isMono });
+    vm.drawPerspectiveZoneBase(ctxStub, { x: 300, y: 300, radius: 110, rot: 0.7, isMono });
+
+    // Exercise upgraded weaponRenderer projectile & slash paths
+    for (const kind of ['taidu_bolt', 'turret_shot', 'nguyen_bolt', 'venom_fang', 'blood_crystal']) {
+      wr.drawUpgradedProjectile(ctxStub, {
+        kind, x: 260, y: 260, vx: 220, vy: 40, radius: 14, color: '#38BDF8', life: 0.25, maxLife: 1.0,
+      }, 1.5, isMono);
+    }
+    wr.drawUpgradedSlash(ctxStub, {
+      kind: 'luan_portal_wave', x: 320, y: 320, angle: 0.2, radius: 140, spread: Math.PI * 2, color: '#9333EA', life: 0.18, maxLife: 0.6,
+    }, 0.3, isMono, true);
+  }
+
+  // GameEngine render smoke test with active Phase 2 zones, explosions, corpses, shards, droplets, and enemy_death remote event
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+    engine.startNewGame(Mi[0]);
+    const px = engine.player.x;
+    const py = engine.player.y;
+
+    const zoneKinds = [
+      'arrow_rain', 'trung_thunder_zone', 'fox_king_rain', 'gau_tremor',
+      'thanh_poison_zone', 'nhi_poison_zone', 'danh_dragon_fire',
+      'taidu_plasma_zone', 'khair_ion_crater', 'acid_pool',
+      'blizzard_vortex', 'boss_emp_field', 'boss_storm_field', 'blood_sanctuary',
+    ];
+    for (const kind of zoneKinds) {
+      engine.zones.push({
+        id: engine.nextEntityId++,
+        kind,
+        x: px + 40,
+        y: py + 40,
+        radius: 110,
+        timer: 0.8,
+        duration: 4.0,
+        tickTimer: 0,
+        tickInterval: 0.5,
+        damagePerTick: 0,
+        visualOnly: true,
+        rotation: 0.4,
+      });
+    }
+
+    engine.createCataclysmicExplosion(px + 90, py, 140, '#F97316', 'fire');
+    engine.createFrostExplosion(px - 90, py, 120);
+    engine.applyRemoteVfx('tin', [
+      { type: 'enemy_death', x: px + 60, y: py + 50, radius: 22, kind: 'frost_knight', bossWave: 0, attackerFacing: 0.5 },
+    ]);
+    assert.ok(engine.deadCorpses.length >= 1, 'applyRemoteVfx enemy_death should spawn a rendered corpse');
+
+    engine.updateVFX(0.05);
+    for (const isMono of [false, true]) {
+      engine.player.tin_monochrome_realm_timer = isMono ? 1.2 : 0;
+      assert.doesNotThrow(() => engine.render());
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.equal(shadowBlurWrites, 0, 'Phase 2 VFX & GameEngine render must never set non-zero shadowBlur');
+});
+
+test('PHASE 2 ULTIMATE SCULPTED MOBA VFX: arcane circles, vortex pillars, impact craters, weaponRenderer ultimates & GameEngine hazards use zero shadowBlur and zero setLineDash', async () => {
+  const vm: any = await import('./vfxMaterials.js');
+  const wr: any = await import('./weaponRenderer.js');
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+
+  let shadowBlurWrites = 0;
+  let setLineDashCalls = 0;
+  let drawOps = 0;
+
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y)); drawOps++; },
+    lineTo(x: number, y: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y)); drawOps++; },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+      assert.ok(Number.isFinite(cx) && Number.isFinite(cy) && Number.isFinite(x) && Number.isFinite(y));
+      drawOps++;
+    },
+    bezierCurveTo() { drawOps++; },
+    arc(x: number, y: number, r: number) { assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(r) && r >= 0.25); drawOps++; },
+    ellipse(x: number, y: number, rx: number, ry: number) {
+      assert.ok(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(rx) && Number.isFinite(ry) && rx >= 0.25 && ry >= 0.25);
+      drawOps++;
+    },
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() { drawOps++; }, stroke() { drawOps++; }, clip() {}, setTransform() {},
+    setLineDash() { setLineDashCalls++; },
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  for (const isMono of [false, true]) {
+    vm.drawArcaneMagicCircle(ctxStub, { x: 240, y: 240, radius: 130, tiltY: 0.72, rot: 0.6, sides: 6, starMode: true, isMono });
+    vm.drawEnergyVortexPillar(ctxStub, { x: 260, y: 260, radius: 52, height: 190, progress: 0.45, phase: 2.1, isMono });
+    vm.drawImpactCraterDecal(ctxStub, { x: 280, y: 280, radius: 85, alpha: 0.9, tiltY: 0.72, seed: 1.7, isMono });
+
+    wr.drawThienSunJudgement(ctxStub, [{ x: 300, y: 300, radius: 150, timer: 0.95, duration: 1.2, impactTimer: 0.4, seed: 1 }], 2.4, isMono);
+    wr.drawDungCerberusUlt(ctxStub, [{ x: 320, y: 320, radius: 185, life: 0.32, maxLife: 0.75, phase: 1.2 }], 2.4, isMono);
+    wr.drawThanhDevourSerpents(ctxStub, [{ x: 340, y: 340, targetX: 400, targetY: 360, radius: 95, timer: 0.4, duration: 0.9, burstTriggered: true }], 2.4, isMono);
+    wr.drawDucAnhMeteorLeaps(ctxStub, [{ startX: 200, startY: 200, targetX: 380, targetY: 320, radius: 130, timer: 0.78, duration: 0.9 }], 2.4, isMono);
+    wr.drawThaiArenaDomains(ctxStub, [{ x: 360, y: 360, radius: 220, timer: 1.5, duration: 7.0, angle: 0.3 }], 2.4, isMono);
+    wr.drawBachWindSeals(ctxStub, [{ x: 380, y: 380, radius: 140, timer: 0.6, duration: 2.2, slashes: 5 }], 2.4, isMono);
+    wr.drawHeroPassiveAura(ctxStub, { heroId: 'thien', x: 250, y: 250, radius: 22, facing: 0.4, elapsedTime: 2.4, isMono, enableAdditive: true, player: { thien_energy: 85, thien_ascendedTimer: 2 } });
+  }
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+    engine.startNewGame(Mi[0]);
+    const px = engine.player.x;
+    const py = engine.player.y;
+
+    engine.lavaPools.push({ id: engine.nextEntityId++, x: px + 60, y: py + 20, radius: 85, timer: 0.4, duration: 3.0 });
+    engine.frostBarrages.push({ id: engine.nextEntityId++, x: px - 60, y: py + 30, radius: 110, timer: 0.3, duration: 2.5 });
+    engine.galaxyVortices.push({ id: engine.nextEntityId++, x: px + 20, y: py - 70, radius: 130, timer: 0.8, duration: 3.0, rotation: 0.6, isGalaxy: true, stars: [{ distRatio: 0.4, angle: 0.5, size: 2, color: '#F472B6' }] });
+    engine.bossWarnings.push({ id: engine.nextEntityId++, x: px + 110, y: py, radius: 95, timer: 0.45, duration: 1.1, kind: 'apocalypse', color: '#EF4444' });
+    engine.bossShockRings.push({ id: engine.nextEntityId++, x: px, y: py, currentRadius: 65, maxRadius: 180, ringWidth: 12, color: '#F97316', accentColor: '#FEF08A' });
+    engine.bossBeams.push({ id: engine.nextEntityId++, x1: px - 120, y1: py - 40, x2: px + 160, y2: py + 40, width: 34, timer: 0.35, duration: 1.0, fadeTimer: 0.3, triggered: false, color: '#EF4444', glowColor: '#FEF08A' });
+    engine.skyDragons.push({ id: engine.nextEntityId++, x: px + 75, y: py - 25, radius: 95, timer: 0.95, duration: 1.0, empowered: true, impacted: true });
+    engine.dragonWaves.push({ id: engine.nextEntityId++, x: px, y: py + 40, angle: 0.25, empowered: true });
+    engine.giantMeteors.push({ id: engine.nextEntityId++, startX: px - 150, startY: py - 150, targetX: px + 80, targetY: py + 60, currentX: px, currentY: py - 40, meteorSize: 44 });
+    engine.xpOrbs.push({ id: engine.nextEntityId++, x: px + 35, y: py + 35, radius: 7 });
+    engine.screenFlashWhite = 0.22;
+
+    for (const isMono of [false, true]) {
+      engine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+      assert.doesNotThrow(() => engine.render());
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.ok(drawOps > 400, 'Expected substantial sculpted MOBA geometry draw calls');
+  assert.equal(shadowBlurWrites, 0, 'Ultimate MOBA VFX & GameEngine render must never set non-zero shadowBlur');
+  assert.equal(setLineDashCalls, 0, 'Ultimate MOBA VFX & GameEngine render must never call setLineDash');
+});
+
+test('WEAPON ARCHETYPES, ENLARGED/SYNCED WEAPONS & DANH TRUE DRAGON TRANSFORMATION: zero shadowBlur, zero setLineDash & finite geometry across all 24 heroes', async () => {
+  const wr: any = await import('./weaponRenderer.js');
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+
+  let shadowBlurWrites = 0;
+  let setLineDashCalls = 0;
+  let drawOps = 0;
+
+  const assertNum = (v: number, label: string) => {
+    assert.ok(Number.isFinite(v), `${label} must be finite, got ${v}`);
+  };
+
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    lineWidth: 1,
+    strokeStyle: '#ffffff',
+    fillStyle: '#ffffff',
+    font: '12px sans-serif',
+    textAlign: 'left',
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {},
+    translate(x: number, y: number) { assertNum(x, 'translate.x'); assertNum(y, 'translate.y'); },
+    rotate(a: number) { assertNum(a, 'rotate.a'); },
+    scale(x: number, y: number) { assertNum(x, 'scale.x'); assertNum(y, 'scale.y'); },
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assertNum(x, 'moveTo.x'); assertNum(y, 'moveTo.y'); drawOps++; },
+    lineTo(x: number, y: number) { assertNum(x, 'lineTo.x'); assertNum(y, 'lineTo.y'); drawOps++; },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+      assertNum(cx, 'q.cx'); assertNum(cy, 'q.cy'); assertNum(x, 'q.x'); assertNum(y, 'q.y');
+      drawOps++;
+    },
+    bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) {
+      assertNum(c1x, 'b.c1x'); assertNum(c1y, 'b.c1y');
+      assertNum(c2x, 'b.c2x'); assertNum(c2y, 'b.c2y');
+      assertNum(x, 'b.x'); assertNum(y, 'b.y');
+      drawOps++;
+    },
+    arc(x: number, y: number, r: number, s: number, e: number) {
+      assertNum(x, 'arc.x'); assertNum(y, 'arc.y'); assertNum(s, 'arc.s'); assertNum(e, 'arc.e');
+      assert.ok(Number.isFinite(r) && r >= 0.25, `arc.r must be >= 0.25, got ${r}`);
+      drawOps++;
+    },
+    ellipse(x: number, y: number, rx: number, ry: number, rot: number, s: number, e: number) {
+      assertNum(x, 'el.x'); assertNum(y, 'el.y'); assertNum(rot, 'el.rot'); assertNum(s, 'el.s'); assertNum(e, 'el.e');
+      assert.ok(Number.isFinite(rx) && rx >= 0.25 && Number.isFinite(ry) && ry >= 0.25, `ellipse radii must be >= 0.25, got ${rx},${ry}`);
+      drawOps++;
+    },
+    rect(x: number, y: number, w: number, h: number) { assertNum(x, 'r.x'); assertNum(y, 'r.y'); assertNum(w, 'r.w'); assertNum(h, 'r.h'); drawOps++; },
+    roundRect(x: number, y: number, w: number, h: number) { assertNum(x, 'rr.x'); assertNum(y, 'rr.y'); assertNum(w, 'rr.w'); assertNum(h, 'rr.h'); drawOps++; },
+    fillRect(x: number, y: number, w: number, h: number) { assertNum(x, 'fr.x'); assertNum(y, 'fr.y'); assertNum(w, 'fr.w'); assertNum(h, 'fr.h'); drawOps++; },
+    strokeRect(x: number, y: number, w: number, h: number) { assertNum(x, 'sr.x'); assertNum(y, 'sr.y'); assertNum(w, 'sr.w'); assertNum(h, 'sr.h'); drawOps++; },
+    clearRect() {},
+    fill() { drawOps++; }, stroke() { drawOps++; }, clip() {}, setTransform() {},
+    setLineDash() { setLineDashCalls++; },
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  // 1. All 24 heroes drawHeroWeapon during active attack swing/thrust/punch/shot
+  for (const hero of Mi) {
+    for (const isMono of [false, true]) {
+      for (const parity of [1, -1]) {
+        const fakePlayer: any = {
+          facing: 0.4,
+          attackAnimTimer: 0.12,
+          weaponAttackDuration: 0.22,
+          attackAnimAngle: 0.4,
+          attackSwingParity: parity,
+          weaponSkillTimer: 0.15,
+          weaponSkillDur: 0.45,
+          weaponCritTimer: 0,
+          bowRecoilTimer: 0.08,
+          gau_animKind: 'basic_2',
+          gau_animTimer: 0.12,
+          gau_animDur: 0.22,
+          phong_basicStep: parity > 0 ? 0 : 1,
+          dang_basicStep: parity > 0 ? 0 : 1,
+          taidu_barrelParity: parity,
+          nhi_ammoType: 'purple',
+        };
+        assert.doesNotThrow(
+          () => wr.drawHeroWeapon(ctxStub, hero.id, fakePlayer, 3.2, isMono),
+          `drawHeroWeapon failed for ${hero.id}, mono=${isMono}, parity=${parity}`,
+        );
+      }
+    }
+  }
+
+  // 2. All distinct basic attack VFX archetypes
+  const slashKinds = [
+    { kind: 'gau_punch', step: 0 },
+    { kind: 'gau_punch', step: 1 },
+    { kind: 'gau_punch', step: 2, empowered: true },
+    { kind: 'dang_punch', dir: 1 },
+    { kind: 'dang_punch', dir: -1 },
+    { kind: 'spear', empowered: false, cerberus: false },
+    { kind: 'spear', empowered: true, cerberus: true },
+    { kind: 'ducanh_hammer_cleave', dir: 1 },
+    { kind: 'thai_arena_cleave', dir: 1, empowered: true },
+    { kind: 'danh_firebreath', dir: 1, empowered: true },
+    { kind: 'khair_sniper_muzzle' },
+    { kind: 'cast_muzzle' },
+    { kind: 'bao_slash', dir: 1, crossed: true },
+    { kind: 'bach_cross_slash', dir: 1, crossed: true },
+    { kind: 'tin_spatial_slash', dir: -1 },
+    { kind: 'eohyen_frost_slash', dir: 1 },
+    { kind: 'thien_sword_slash', dir: 1 },
+    { kind: 'danh_slash', dir: -1 },
+  ];
+  for (const cfg of slashKinds) {
+    for (const isMono of [false, true]) {
+      for (const prog of [0.08, 0.48, 0.92]) {
+        assert.doesNotThrow(() => {
+          wr.drawUpgradedSlash(
+            ctxStub,
+            {
+              x: 400,
+              y: 400,
+              angle: 0.35,
+              radius: 105,
+              spread: 1.45,
+              color: '#F97316',
+              accentColor: '#FEF08A',
+              life: prog * 0.24,
+              maxLife: 0.24,
+              ...cfg,
+            },
+            prog,
+            isMono,
+            true,
+          );
+        }, `drawUpgradedSlash failed for ${cfg.kind}, prog=${prog}, mono=${isMono}`);
+      }
+    }
+  }
+
+  // 3. drawDanhDragonForm backward-compat (7 args) & full attacking opts (8 args) + Ultimate sequence
+  for (const isMono of [false, true]) {
+    assert.doesNotThrow(() => wr.drawDanhDragonForm(ctxStub, 400, 360, 22, 0.5, 4.1, isMono));
+    assert.doesNotThrow(() =>
+      wr.drawDanhDragonForm(ctxStub, 400, 360, 22, 0.5, 4.1, isMono, {
+        isAttacking: true,
+        atkProg: 0.45,
+        atkParity: -1,
+        isMoving: true,
+        hitFlash: false,
+        isDowned: false,
+      }),
+    );
+    assert.doesNotThrow(() =>
+      wr.drawUltimateSequence(
+        ctxStub,
+        { kind: 'danh', x: 400, y: 360, radius: 190, angle: 0.2, timer: 0.32, duration: 0.72 },
+        4.1,
+        isMono,
+        true,
+      ),
+    );
+  }
+
+  // 4. Full GameEngine integration check: triggerBasicAttack produces distinct kinds & Danh Dragon Mode renders without human body/weapon
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const danhHero = Mi.find((h: any) => h.id === 'danh');
+    const ducanhHero = Mi.find((h: any) => h.id === 'ducanh');
+    const kinHero = Mi.find((h: any) => h.id === 'kin');
+    assert.ok(danhHero && ducanhHero && kinHero);
+
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+
+    // Verify Danh Dragon Form renders with dragonWaves + skyDragons + danh_dragon_fire and skips human body/weapon
+    engine.startNewGame(danhHero);
+    engine.player.danh_dragonTimer = 8.0;
+    engine.player.attackTimer = 0;
+    engine.triggerBasicAttack();
+    assert.equal(engine.slashes[0]?.kind, 'danh_firebreath', 'Dragon Danh basic attack should emit danh_firebreath');
+
+    let heroBodySpyCalls = 0;
+    const px = engine.player.x;
+    const py = engine.player.y;
+    engine.dragonWaves.push({ id: engine.nextEntityId++, x: px + 80, y: py, angle: 0.2, empowered: true });
+    engine.skyDragons.push({ id: engine.nextEntityId++, x: px - 70, y: py - 20, radius: 95, timer: 0.45, duration: 1.0, empowered: true, impacted: false });
+    engine.zones.push({ id: engine.nextEntityId++, kind: 'danh_dragon_fire', x: px, y: py + 45, radius: 85, timer: 0.5, duration: 3.0 });
+    assert.doesNotThrow(() => engine.render());
+    assert.equal(heroBodySpyCalls, 0);
+
+    // Verify Duc Anh uses anvil slam cleave & Kin emits cast_muzzle on bow release
+    engine.startNewGame(ducanhHero);
+    engine.player.attackTimer = 0;
+    engine.triggerBasicAttack();
+    assert.equal(engine.slashes[0]?.kind, 'ducanh_hammer_cleave');
+
+    engine.startNewGame(kinHero);
+    engine.player.attackTimer = 0;
+    engine.triggerBasicAttack();
+    assert.equal(engine.slashes[0]?.kind, 'cast_muzzle');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.ok(drawOps > 2500, `Expected substantial draw ops, got ${drawOps}`);
+  assert.equal(shadowBlurWrites, 0, 'Weapon & Dragon tests must never set non-zero shadowBlur');
+  assert.equal(setLineDashCalls, 0, 'Weapon & Dragon tests must never call setLineDash');
+});
+
+test('KHOI MO TRANSLUCENT MIST, ZERO BLINDING GLARE, 3D VFX MATERIALS & EXTENDED LIFETIMES', async () => {
+  const vm: any = await import('./vfxMaterials.js');
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+
+  let shadowBlurWrites = 0;
+  let setLineDashCalls = 0;
+  let radialGradientCalls = 0;
+  let drawOps = 0;
+  const globalCompositeOps: string[] = [];
+
+  const assertNum = (v: number, label: string) => {
+    assert.ok(Number.isFinite(v), `${label} must be finite, got ${v}`);
+  };
+
+  let curComposite = 'source-over';
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    set globalCompositeOperation(v: string) {
+      curComposite = v;
+      globalCompositeOps.push(v);
+    },
+    get globalCompositeOperation() {
+      return curComposite;
+    },
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    lineWidth: 1,
+    strokeStyle: '#ffffff',
+    fillStyle: '#ffffff',
+    font: '12px sans-serif',
+    textAlign: 'left',
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {},
+    translate(x: number, y: number) { assertNum(x, 'translate.x'); assertNum(y, 'translate.y'); },
+    rotate(a: number) { assertNum(a, 'rotate.a'); },
+    scale(x: number, y: number) { assertNum(x, 'scale.x'); assertNum(y, 'scale.y'); },
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assertNum(x, 'moveTo.x'); assertNum(y, 'moveTo.y'); drawOps++; },
+    lineTo(x: number, y: number) { assertNum(x, 'lineTo.x'); assertNum(y, 'lineTo.y'); drawOps++; },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) {
+      assertNum(cx, 'q.cx'); assertNum(cy, 'q.cy'); assertNum(x, 'q.x'); assertNum(y, 'q.y');
+      drawOps++;
+    },
+    bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) {
+      assertNum(c1x, 'b.c1x'); assertNum(c1y, 'b.c1y');
+      assertNum(c2x, 'b.c2x'); assertNum(c2y, 'b.c2y');
+      assertNum(x, 'b.x'); assertNum(y, 'b.y');
+      drawOps++;
+    },
+    arc(x: number, y: number, r: number, s: number, e: number) {
+      assertNum(x, 'arc.x'); assertNum(y, 'arc.y'); assertNum(s, 'arc.s'); assertNum(e, 'arc.e');
+      assert.ok(Number.isFinite(r) && r >= 0.25, `arc.r must be >= 0.25, got ${r}`);
+      drawOps++;
+    },
+    ellipse(x: number, y: number, rx: number, ry: number, rot: number, s: number, e: number) {
+      assertNum(x, 'el.x'); assertNum(y, 'el.y'); assertNum(rot, 'el.rot'); assertNum(s, 'el.s'); assertNum(e, 'el.e');
+      assert.ok(Number.isFinite(rx) && rx >= 0.25 && Number.isFinite(ry) && ry >= 0.25, `ellipse radii must be >= 0.25, got ${rx},${ry}`);
+      drawOps++;
+    },
+    rect(x: number, y: number, w: number, h: number) { assertNum(x, 'r.x'); assertNum(y, 'r.y'); assertNum(w, 'r.w'); assertNum(h, 'r.h'); drawOps++; },
+    roundRect(x: number, y: number, w: number, h: number) { assertNum(x, 'rr.x'); assertNum(y, 'rr.y'); assertNum(w, 'rr.w'); assertNum(h, 'rr.h'); drawOps++; },
+    fillRect(x: number, y: number, w: number, h: number) { assertNum(x, 'fr.x'); assertNum(y, 'fr.y'); assertNum(w, 'fr.w'); assertNum(h, 'fr.h'); drawOps++; },
+    strokeRect(x: number, y: number, w: number, h: number) { assertNum(x, 'sr.x'); assertNum(y, 'sr.y'); assertNum(w, 'sr.w'); assertNum(h, 'sr.h'); drawOps++; },
+    clearRect() {},
+    fill() { drawOps++; }, stroke() { drawOps++; }, clip() {}, setTransform() {},
+    setLineDash() { setLineDashCalls++; },
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => {
+      radialGradientCalls++;
+      return { addColorStop() {} };
+    },
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  // 1. Verify 3D VFX Materials across progress=[0.05, 0.45, 0.9] and isMono=[false, true]
+  for (const isMono of [false, true]) {
+    for (const progress of [0.05, 0.45, 0.9]) {
+      assert.doesNotThrow(() =>
+        vm.drawVolumetricSmokeLobe(ctxStub, {
+          x: 200,
+          y: 220,
+          radius: 42,
+          lifeRatio: progress,
+          seed: 2.1,
+          isMono,
+        }),
+      );
+      assert.doesNotThrow(() =>
+        vm.drawStructuralExplosion(ctxStub, {
+          x: 320,
+          y: 300,
+          radius: 110,
+          progress,
+          primary: '#F97316',
+          highlight: '#FEF08A',
+          shadow: '#7C2D12',
+          rim: '#FDBA74',
+          isMono,
+        }),
+      );
+      assert.doesNotThrow(() =>
+        vm.drawEnergyVortexPillar(ctxStub, {
+          x: 420,
+          y: 380,
+          radius: 68,
+          height: 210,
+          progress,
+          phase: 1.2,
+          isMono,
+        }),
+      );
+      assert.doesNotThrow(() =>
+        vm.drawImpactCraterDecal(ctxStub, {
+          x: 500,
+          y: 410,
+          radius: 90,
+          alpha: 1 - progress * 0.6,
+          seed: 1.7,
+          isMono,
+        }),
+      );
+    }
+  }
+
+  assert.ok(radialGradientCalls >= 18, `Expected feathered radial gradients for smoke/explosion/crater, got ${radialGradientCalls}`);
+  assert.ok(!globalCompositeOps.includes('lighter'), '3D VFX materials must not trigger additive lighter glare');
+
+  // 2. Verify extended GameEngine VFX lifetimes and hold-then-dissolve survival
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+    engine.startNewGame(Mi[0]);
+    const px = engine.player.x;
+    const py = engine.player.y;
+
+    engine.slashes.push({
+      x: px,
+      y: py,
+      angle: 0,
+      radius: 90,
+      spread: 1.2,
+      color: '#F97316',
+      life: 0,
+      maxLife: 0.45,
+      kind: 'danh_slash',
+    });
+    engine.spawnImpactBurst(px, py, '#F97316', '#FEF08A', 2, 1.0);
+    engine.spawnSmokePuff(px, py, '#64748B', 28);
+    engine.spawnGroundCrack(px, py, 95, '#F97316');
+    engine.spawnUltimateSequence('danh', px, py, 160, 0);
+
+    assert.ok(engine.impactBursts[0]?.maxLife >= 0.36, 'impactBursts maxLife should be extended >= 0.36');
+    assert.ok(engine.smokePuffs[0]?.maxLife >= 1.0, 'smokePuffs maxLife should be extended >= 1.0');
+    assert.ok(engine.groundCracks[0]?.maxLife >= 5.0, 'groundCracks maxLife should be extended >= 5.0');
+    assert.ok(engine.ultimateSequences[0]?.maxLife >= 2.4, 'ultimateSequences maxLife should be extended >= 2.4');
+
+    // After 0.35s update, extended slash & ultimate must still be visibly alive
+    engine.updateVFX(0.35);
+    assert.equal(engine.slashes.length, 1, 'Extended slash should remain visible after 0.35s');
+    assert.equal(engine.ultimateSequences.length, 1, 'Extended ultimate sequence should remain visible after 0.35s');
+    assert.equal(engine.smokePuffs.length, 1, 'Extended smoke puff should remain visible after 0.35s');
+    assert.doesNotThrow(() => engine.render());
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.ok(drawOps > 300, `Expected substantial 3D VFX draw ops, got ${drawOps}`);
+  assert.equal(shadowBlurWrites, 0, '3D VFX & extended lifetime tests must never set non-zero shadowBlur');
+  assert.equal(setLineDashCalls, 0, '3D VFX & extended lifetime tests must never call setLineDash');
+});
+
+test('Classic Sanctum Colosseum renderer, refined blade slash gradients, and upgraded creeps draw safely without shadowBlur or setLineDash', async () => {
+  const classicMod: any = await import('./classicArenaRenderer.js');
+  const vm: any = await import('./vfxMaterials.js');
+  const wr: any = await import('./weaponRenderer.js');
+
+  let shadowBlurWrites = 0;
+  let setLineDashCalls = 0;
+  let drawOps = 0;
+  let linearGradients = 0;
+  const assertNum = (v: number, label: string) => {
+    assert.ok(Number.isFinite(v), `${label} must be finite, got ${v}`);
+  };
+
+  const ctxStub: any = {
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    fillStyle: '#000',
+    strokeStyle: '#000',
+    lineWidth: 1,
+    lineCap: 'round',
+    lineJoin: 'round',
+    font: '12px sans-serif',
+    textAlign: 'left',
+    set shadowBlur(v: number) { if (v > 0) shadowBlurWrites++; },
+    get shadowBlur() { return 0; },
+    save() {}, restore() {},
+    translate(x: number, y: number) { assertNum(x, 'tx'); assertNum(y, 'ty'); },
+    rotate(a: number) { assertNum(a, 'rot'); },
+    scale(x: number, y: number) { assertNum(x, 'sx'); assertNum(y, 'sy'); },
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assertNum(x, 'mx'); assertNum(y, 'my'); drawOps++; },
+    lineTo(x: number, y: number) { assertNum(x, 'lx'); assertNum(y, 'ly'); drawOps++; },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) { assertNum(cx, 'qcx'); assertNum(cy, 'qcy'); assertNum(x, 'qx'); assertNum(y, 'qy'); drawOps++; },
+    bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) { assertNum(c1x, 'b1'); assertNum(c1y, 'b2'); assertNum(c2x, 'b3'); assertNum(c2y, 'b4'); assertNum(x, 'b5'); assertNum(y, 'b6'); drawOps++; },
+    arc(x: number, y: number, r: number, s: number, e: number) {
+      assertNum(x, 'ax'); assertNum(y, 'ay'); assertNum(s, 'as'); assertNum(e, 'ae');
+      assert.ok(Number.isFinite(r) && r >= 0.25, `arc.r >= 0.25, got ${r}`);
+      drawOps++;
+    },
+    ellipse(x: number, y: number, rx: number, ry: number, rot: number, s: number, e: number) {
+      assertNum(x, 'ex'); assertNum(y, 'ey'); assertNum(rot, 'er'); assertNum(s, 'es'); assertNum(e, 'ee');
+      assert.ok(Number.isFinite(rx) && rx >= 0.25 && Number.isFinite(ry) && ry >= 0.25, `ellipse radii >= 0.25, got ${rx},${ry}`);
+      drawOps++;
+    },
+    rect(x: number, y: number, w: number, h: number) { assertNum(x, 'rx'); assertNum(y, 'ry'); assertNum(w, 'rw'); assertNum(h, 'rh'); drawOps++; },
+    roundRect(x: number, y: number, w: number, h: number) { assertNum(x, 'rrx'); assertNum(y, 'rry'); assertNum(w, 'rrw'); assertNum(h, 'rrh'); drawOps++; },
+    fillRect(x: number, y: number, w: number, h: number) { assertNum(x, 'frx'); assertNum(y, 'fry'); assertNum(w, 'frw'); assertNum(h, 'frh'); drawOps++; },
+    strokeRect(x: number, y: number, w: number, h: number) { assertNum(x, 'srx'); assertNum(y, 'sry'); assertNum(w, 'srw'); assertNum(h, 'srh'); drawOps++; },
+    fill() { drawOps++; }, stroke() { drawOps++; }, clip() {}, setTransform() {},
+    setLineDash() { setLineDashCalls++; },
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: (x0: number, y0: number, x1: number, y1: number) => {
+      assertNum(x0, 'lg.x0'); assertNum(y0, 'lg.y0'); assertNum(x1, 'lg.x1'); assertNum(y1, 'lg.y1');
+      linearGradients++;
+      return { addColorStop() {} };
+    },
+  };
+
+  for (const isMono of [false, true]) {
+    for (const tier of ['saver', 'high']) {
+      const prof = { effectiveTier: tier, enableRadialGlows: tier === 'high' };
+      assert.doesNotThrow(() =>
+        classicMod.drawClassicArenaFloor(ctxStub, 2200, 1600, { minX: 400, maxX: 1800, minY: 200, maxY: 1400 }, 3.2, isMono, prof),
+      );
+      assert.doesNotThrow(() =>
+        classicMod.drawClassicArenaAtmosphereScene(ctxStub, { viewW: 1280, viewH: 720, elapsedTime: 3.2 }, isMono, prof),
+      );
+    }
+
+    assert.doesNotThrow(() =>
+      vm.drawSculptedBladeSlash(ctxStub, {
+        x: 600,
+        y: 500,
+        angle: 0.5,
+        radius: 210,
+        thickness: 42,
+        spread: 2.1,
+        progress: 0.35,
+        style: 'fire_dragon',
+        primary: '#EF4444',
+        highlight: '#FEF08A',
+        shadow: '#450A0A',
+        rim: '#FBBF24',
+        isMono,
+      }),
+    );
+
+    for (const kind of ['normal', 'brute', 'charger', 'caster', 'frost_archer', 'shield_knight']) {
+      for (const hitFlash of [0, 0.12]) {
+        assert.doesNotThrow(() =>
+          wr.drawMonsterEntity(
+            ctxStub,
+            { id: 12, kind, x: 500, y: 400, radius: 18, facing: 0.4, vx: 60, vy: 10, hitFlash, attackAnimTimer: 0.15, attackAnimDur: 0.28 },
+            2.4,
+            isMono,
+          ),
+        );
+      }
+    }
+  }
+
+  assert.ok(linearGradients >= 4, `Expected directional linear gradients on blade slash & creeps, got ${linearGradients}`);
+  assert.ok(drawOps > 500, `Expected substantial draw ops across Classic floor/slash/creeps, got ${drawOps}`);
+  assert.equal(shadowBlurWrites, 0, 'Must never set non-zero shadowBlur');
+  assert.equal(setLineDashCalls, 0, 'Must never call setLineDash');
+});
+
 
