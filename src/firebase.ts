@@ -51,7 +51,7 @@ let googleSignInInFlight: Promise<{
 }> | null = null;
 
 export const FALLBACK_WEB_PLAY_URL =
-  "https://ais-pre-bjzju4ypt3d6qr6rjrqybp-163789142771.asia-east1.run.app";
+  "https://ais-pre-eqxkulwhrfyj26fsvx7zad-350119879479.asia-southeast1.run.app";
 
 const BRIDGED_AUTH_STORAGE_KEY = "arena_hero_bridged_google_v1";
 

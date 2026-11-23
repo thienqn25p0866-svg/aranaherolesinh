@@ -9028,3 +9028,410 @@ test('All dedicated world skill renderers and inline zone VFX render cleanly in 
   assert.ok(fillCalls > 500 && strokeCalls > 500, 'Expected substantial draw calls across all skill VFX renderers');
   assert.equal(shadowBlurWrites, 0, 'All dedicated world skill renderers and inline zone VFX must have zero shadowBlur writes');
 });
+
+test('Ultimate VFX overhaul helpers (wind ribbons, afterimages, warp rings, ultimate sequences, cosmic tears, 3-tier impact bursts) render cleanly in color and monochrome', async () => {
+  const wr = await import('./weaponRenderer.js');
+
+  let shadowBlurWrites = 0;
+  let fillCalls = 0;
+  let strokeCalls = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {},
+    arc() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() { fillCalls++; }, stroke() { strokeCalls++; }, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  for (const isMono of [false, true]) {
+    for (const enableAdditive of [true, false]) {
+      assert.doesNotThrow(() => {
+        wr.drawWindRibbon(ctxStub, {
+          points: [
+            { x: 180, y: 200 },
+            { x: 220, y: 192 },
+            { x: 265, y: 208 },
+            { x: 310, y: 196 },
+            { x: 355, y: 204 },
+          ],
+          color: '#22D3EE',
+          accentColor: '#A78BFA',
+          width: 14,
+          swirl: 1.1,
+          life: 0.12,
+          maxLife: 0.36,
+        }, 1.8, isMono, enableAdditive);
+
+        wr.drawStylizedAfterimage(ctxStub, {
+          x: 280,
+          y: 260,
+          facing: 0.45,
+          radius: 22,
+          color: '#C084FC',
+          accentColor: '#38BDF8',
+          life: 0.1,
+          maxLife: 0.28,
+        }, isMono, enableAdditive);
+
+        wr.drawWarpRing(ctxStub, {
+          x: 320,
+          y: 280,
+          startRadius: 12,
+          maxRadius: 150,
+          color: '#A855F7',
+          accentColor: '#38BDF8',
+          thickness: 5,
+          tilt: 0.65,
+          angle: 0.3,
+          life: 0.14,
+          maxLife: 0.42,
+        }, isMono, enableAdditive);
+
+        for (const f of [0.08, 0.28, 0.52, 0.84]) {
+          const maxLife = 1.0;
+          wr.drawUltimateSequence(ctxStub, {
+            x: 360,
+            y: 300,
+            radius: 170,
+            color: '#C084FC',
+            accentColor: '#38BDF8',
+            angle: 0.4,
+            kind: 'ult_overhaul',
+            life: f * maxLife,
+            maxLife,
+          }, 2.4, isMono, enableAdditive);
+        }
+
+        wr.drawCosmicSpatialTear(ctxStub, {
+          x1: 220,
+          y1: 240,
+          x2: 410,
+          y2: 330,
+          width: 16,
+          color: '#E11D48',
+          accentColor: '#A855F7',
+          offsets: [-7, 9, -11, 8, -5],
+          subRifts: [
+            { x: 290, y: 270, angle: 0.7, len: 34 },
+            { x: 345, y: 300, angle: -0.9, len: 28 },
+          ],
+          life: 0.18,
+          maxLife: 0.85,
+        }, 2.1, isMono, enableAdditive);
+
+        for (const tier of ['light', 'heavy', 'finisher']) {
+          wr.drawImpactBurst(ctxStub, {
+            x: 340,
+            y: 310,
+            color: '#F59E0B',
+            accentColor: '#FEF08A',
+            tier,
+            isCrit: tier !== 'light',
+            angle: 0.6,
+            radius: tier === 'finisher' ? 54 : tier === 'heavy' ? 34 : 20,
+            life: 0.08,
+            maxLife: tier === 'finisher' ? 0.36 : 0.22,
+          }, isMono, enableAdditive);
+        }
+      }, `Ultimate VFX helper failed for isMono=${isMono}, enableAdditive=${enableAdditive}`);
+    }
+  }
+
+  assert.ok(fillCalls > 80 && strokeCalls > 80, `Expected substantial draw calls from ultimate VFX helpers (got fill=${fillCalls}, stroke=${strokeCalls})`);
+  assert.equal(shadowBlurWrites, 0, 'Ultimate VFX helpers must never write non-zero shadowBlur');
+});
+
+test('GameEngine VFX pooling, performance tier caps, finisher bursts, remote VFX sync, and all 24 heroes C3 ultimate sequences work without errors', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+
+  let shadowBlurWrites = 0;
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, bezierCurveTo() {},
+    arc() {}, ellipse() {},
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() {}, stroke() {}, clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    const engine: any = new GameEngine({
+      width: 1280,
+      height: 720,
+      getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+      getContext: () => ctxStub,
+    });
+    engine.startNewGame(Mi[0]);
+
+    // 1. Object pool reuse verification across particles, flameParticles, redCrystals, smokePuffs
+    engine.spawnParticles(100, 100, '#38BDF8', 8, 40, 120, 4, 0.25, 'spark');
+    engine.spawnFlameParticles(120, 120, 'blue', 4, 30, 100);
+    engine.spawnRedCrystals(140, 140, 4);
+    engine.spawnSmokePuff(160, 160, 7, '#94A3B8');
+    const firstParticleRef = engine.particles[0];
+    assert.ok(engine.particles.length >= 2, 'Should spawn initial particles');
+
+    for (let i = 0; i < 6; i++) {
+      engine.updateVFX(0.35);
+    }
+    assert.ok(engine._vfxPools.particles.length > 0, 'Expired particles should return to _vfxPools.particles');
+    assert.ok(engine._vfxPools.flameParticles.length > 0, 'Expired flames should return to _vfxPools.flameParticles');
+    assert.ok(engine._vfxPools.redCrystals.length > 0, 'Expired redCrystals should return to _vfxPools.redCrystals');
+    assert.ok(engine._vfxPools.smokePuffs.length > 0, 'Expired smokePuffs should return to _vfxPools.smokePuffs');
+
+    const poolSizeBeforeReuse = engine._vfxPools.particles.length;
+    engine.spawnParticles(100, 100, '#38BDF8', 1, 40, 120, 4, 0.25, 'spark');
+    assert.equal(engine._vfxPools.particles.length, poolSizeBeforeReuse - 1, 'spawnParticles should reuse pooled object');
+    assert.ok(firstParticleRef && engine.particles.length >= 1, 'Reused particle object should be active');
+
+    // 2. Performance tier cap scaling (saver vs high)
+    engine.applyPerformanceSettings({ qualityMode: 'saver' });
+    engine.windRibbons = [];
+    engine.warpRings = [];
+    for (let i = 0; i < 45; i++) {
+      engine.spawnWindRibbon(0, 0, 60, 15, '#22D3EE', '#A78BFA', 10, 0.4, 1, false);
+      engine.spawnWarpRing(200, 200, 120, '#A855F7', '#38BDF8', 0.4, 0, 0.72);
+    }
+    const saverWindCount = engine.windRibbons.length;
+    const saverWarpCount = engine.warpRings.length;
+    assert.equal(saverWindCount, 12, 'Saver tier should cap windRibbons at 12');
+    assert.equal(saverWarpCount, 14, 'Saver tier should cap warpRings at 14');
+
+    engine.applyPerformanceSettings({ qualityMode: 'high' });
+    engine.windRibbons = [];
+    engine.warpRings = [];
+    for (let i = 0; i < 45; i++) {
+      engine.spawnWindRibbon(0, 0, 60, 15, '#22D3EE', '#A78BFA', 10, 0.4, 1, false);
+      engine.spawnWarpRing(200, 200, 120, '#A855F7', '#38BDF8', 0.4, 0, 0.72);
+    }
+    assert.equal(engine.windRibbons.length, 40, 'High tier should cap windRibbons at 40');
+    assert.equal(engine.warpRings.length, 28, 'High tier should cap warpRings at 28');
+
+    // 3. Finisher impact bursts on handleEnemyKilled
+    engine.impactBursts = [];
+    engine.warpRings = [];
+    engine.particles = [];
+    engine.handleEnemyKilled({ id: 999, kind: 'brute', x: 300, y: 300, radius: 22, hp: 0, maxHp: 500, isElite: true }, 180, false);
+    assert.ok(engine.impactBursts.some((b: any) => b.tier === 'finisher'), 'handleEnemyKilled should spawn a finisher impact burst');
+    assert.ok(engine.warpRings.length >= 1, 'handleEnemyKilled should spawn a warp ring');
+    assert.ok(engine.particles.some((p: any) => p.shape === 'star'), 'handleEnemyKilled should emit star spirit wisps');
+
+    // 4. Remote VFX sync handler
+    engine.windRibbons = [];
+    engine.warpRings = [];
+    engine.ultimateSequences = [];
+    engine.impactBursts = [];
+    engine.applyRemoteVfx('luan', [
+      { type: 'wind_ribbon', sx: 10, sy: 10, tx: 60, ty: 20, color: '#22D3EE', accentColor: '#A78BFA', width: 12, maxLife: 0.35, side: 1 },
+      { type: 'warp_ring', x: 100, y: 100, maxRadius: 130, color: '#A855F7', accentColor: '#38BDF8', maxLife: 0.4, angle: 0, tiltY: 0.72 },
+      { type: 'ult_seq', heroId: 'luan', x: 140, y: 140, radius: 160, angle: 0.5, maxLife: 0.9 },
+      { type: 'impact_tier', x: 180, y: 180, color: '#F59E0B', angle: 0.2, tier: 'finisher' },
+    ]);
+    assert.equal(engine.windRibbons.length, 1, 'applyRemoteVfx should handle wind_ribbon');
+    assert.ok(engine.warpRings.length >= 3, 'applyRemoteVfx should handle warp_ring, ult_seq ring, and finisher impact_tier ring');
+    assert.equal(engine.ultimateSequences.length, 1, 'applyRemoteVfx should handle ult_seq');
+    assert.ok(engine.impactBursts.some((b: any) => b.tier === 'finisher'), 'applyRemoteVfx should handle impact_tier');
+
+    // 5. Cast C1, C2, C3 (+ C4 for thien) across ALL 24 heroes and render in color + monochrome
+    assert.equal(Mi.length, 24, 'Expected 24 heroes in roster');
+    for (const hero of Mi) {
+      const heroEngine: any = new GameEngine({
+        width: 1280,
+        height: 720,
+        getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+        getContext: () => ctxStub,
+      });
+      heroEngine.startNewGame(hero);
+      const px = heroEngine.player.x;
+      const py = heroEngine.player.y;
+      heroEngine.enemies = [
+        { id: 1001, kind: 'brute', x: px + 110, y: py, vx: 0, vy: 0, radius: 24, hp: 9000, maxHp: 9000, speed: 90 },
+        { id: 1002, kind: 'mage', x: px + 160, y: py + 45, vx: 0, vy: 0, radius: 20, hp: 9000, maxHp: 9000, speed: 95 },
+      ];
+
+      const skillIndices = hero.id === 'thien' ? [0, 1, 2, 3] : [0, 1, 2];
+      for (const idx of skillIndices) {
+        heroEngine.player.cooldowns[idx] = 0;
+        if (heroEngine.player.mana !== undefined) heroEngine.player.mana = 9999;
+        assert.doesNotThrow(() => {
+          heroEngine.castSkill(idx, 0, px + 130, py);
+        }, `castSkill(${idx}) failed for hero ${hero.id}`);
+      }
+
+      assert.ok(
+        heroEngine.ultimateSequences.length > 0,
+        `Hero ${hero.id} C3 cast should spawn an ultimateSequence`,
+      );
+
+      assert.doesNotThrow(() => {
+        heroEngine.update(0.016);
+      }, `GameEngine.update failed after skills for hero ${hero.id}`);
+
+      for (const isMono of [false, true]) {
+        heroEngine.player.tin_monochrome_realm_timer = isMono ? 1.5 : 0;
+        assert.doesNotThrow(() => {
+          heroEngine.render();
+        }, `GameEngine.render failed for hero ${hero.id} (isMono=${isMono})`);
+      }
+    }
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+
+  assert.equal(shadowBlurWrites, 0, 'GameEngine VFX overhaul must have zero shadowBlur writes across all 24 heroes');
+});
+
+test('PROJECT VFX REBIRTH: All 24 heroes bespoke drawUltimateSequence, drawHeroPassiveAura & drawEnemyStatusVfx execute cleanly with zero shadowBlur', async () => {
+  const { Mi } = await import('./gameData.js');
+  const wr: any = await import('./weaponRenderer.js');
+
+  assert.equal(Mi.length, 24);
+  let shadowBlurWrites = 0;
+  let drawCountsByHero: Record<string, number> = {};
+  let activeOps = 0;
+
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    set shadowBlur(v: number) {
+      if (v > 0) shadowBlurWrites++;
+    },
+    get shadowBlur() {
+      return 0;
+    },
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+    beginPath() {}, closePath() {},
+    moveTo() { activeOps++; },
+    lineTo() { activeOps++; },
+    quadraticCurveTo() { activeOps++; },
+    bezierCurveTo() { activeOps++; },
+    arc() { activeOps++; },
+    ellipse() { activeOps++; },
+    rect() {}, roundRect() {}, fillRect() {}, strokeRect() {}, clearRect() {},
+    fill() { activeOps++; },
+    stroke() { activeOps++; },
+    clip() {}, setTransform() {}, setLineDash() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  for (const hero of Mi) {
+    let heroStartOps = activeOps;
+    for (const isMono of [false, true]) {
+      for (const enableAdditive of [true, false]) {
+        for (const f of [0.08, 0.22, 0.42, 0.62, 0.85]) {
+          assert.doesNotThrow(() => {
+            wr.drawUltimateSequence(ctxStub, {
+              heroId: hero.id,
+              x: 360,
+              y: 300,
+              radius: 200,
+              color: hero.color,
+              accentColor: hero.accentColor,
+              angle: 0.5,
+              life: f * 1.35,
+              maxLife: 1.35,
+            }, 3.1, isMono, enableAdditive);
+          }, `drawUltimateSequence failed for hero ${hero.id}`);
+        }
+
+        assert.doesNotThrow(() => {
+          wr.drawHeroPassiveAura(ctxStub, {
+            heroId: hero.id,
+            x: 360,
+            y: 300,
+            radius: 22,
+            facing: 0.4,
+            elapsedTime: 2.5,
+            isMono,
+            enableAdditive,
+            player: {
+              hp: 400,
+              maxHp: 1000,
+              tin_resonance_stacks: 4,
+              tin_empowered: true,
+              tin_basicCount: 2,
+              bao_stealthTimer: 1.2,
+              bao_emergeTimer: 0.18,
+              longhoi_nextAtkBonus: 1,
+              chargeState: { active: true, elapsed: 0.8, maxDur: 1.0 },
+              dung_passive: 5,
+              kin_passive: 4,
+              kin_c2_lifestealTimer: 2,
+              trung_passive: 3,
+              eohyen_passive: 4,
+              duccong_passive: 3,
+              gau_rage: 95,
+              taidu_basicCount: 2,
+              nguyen_rescueFlashTimer: 0.4,
+              nhi_ammoType: 'green',
+              ducanh_passiveHotTimer: 1.5,
+            },
+          });
+        }, `drawHeroPassiveAura failed for hero ${hero.id}`);
+      }
+    }
+    drawCountsByHero[hero.id] = activeOps - heroStartOps;
+    assert.ok(drawCountsByHero[hero.id] > 60, `Expected rich bespoke VFX draw ops for hero ${hero.id} (got ${drawCountsByHero[hero.id]})`);
+  }
+
+  // Verify drawEnemyStatusVfx across all burn tiers & Tin Ma Thạch marks
+  for (const isMono of [false, true]) {
+    for (const burnStacks of [4, 15, 45]) {
+      assert.doesNotThrow(() => {
+        wr.drawEnemyStatusVfx(ctxStub, {
+          x: 420,
+          y: 260,
+          radius: 24,
+          longhoiBurnStacks: burnStacks,
+          longhoiBurnAmpTimer: burnStacks >= 25 ? 1.5 : 0,
+          tin_hasMark: burnStacks === 45,
+          tin_hits: burnStacks === 4 ? 2 : 0,
+        }, 2.8, isMono, true);
+      }, `drawEnemyStatusVfx failed for burnStacks=${burnStacks}, isMono=${isMono}`);
+    }
+  }
+
+  assert.equal(shadowBlurWrites, 0, 'Project VFX Rebirth helpers must never write non-zero shadowBlur');
+});
+
+

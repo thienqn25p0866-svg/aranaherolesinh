@@ -105,6 +105,1542 @@ function drawFourPointStar(ctx, x, y, rOuter, rInner, color, strokeColor) {
 }
 
 // =====================================================================
+// AAA COMBAT VFX HELPERS (Zero ctx.shadowBlur, ctxStub-safe)
+// =====================================================================
+
+function getCosmicSwingEase(p) {
+  // Anticipation pullback (0..0.16) -> explosive snap (0.16..0.58) -> smooth follow-through
+  let t = clamp(p, 0, 1);
+  if (t < 0.16) {
+    let u = t / 0.16;
+    return -0.12 * Math.sin(u * Math.PI);
+  }
+  if (t < 0.58) {
+    let u = (t - 0.16) / 0.42;
+    return Math.sin(u * Math.PI * 0.5) * 1.06;
+  }
+  let u = (t - 0.58) / 0.42;
+  return 1.06 - u * 0.06;
+}
+
+function drawWeaponArcLightning(ctx, reach, intensity, elapsedTime, color, accentColor, isMono, enableAdditive = true) {
+  if (intensity <= 0.04) return;
+  let alpha = clamp(intensity, 0, 1);
+  ctx.save();
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  let segs = 6;
+  let phase = Math.floor(elapsedTime * 28);
+  for (let strand = 0; strand < 2; strand++) {
+    ctx.beginPath();
+    let startX = 6;
+    let startY = strand === 0 ? -4 : 4;
+    ctx.moveTo(startX, startY);
+    for (let i = 1; i <= segs; i++) {
+      let u = i / segs;
+      let jSeed = Math.sin(phase * 1.9 + i * 3.7 + strand * 5.3);
+      let px = startX + u * reach;
+      let py = startY * (1 - u) + jSeed * (4.5 + 3.5 * alpha) * Math.sin(u * Math.PI);
+      ctx.lineTo(px, py);
+    }
+    ctx.globalAlpha = alpha * (strand === 0 ? 0.55 : 0.4);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : (strand === 0 ? color : accentColor);
+    ctx.lineWidth = strand === 0 ? 3.4 : 2.4;
+    ctx.stroke();
+
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+  }
+  if (alpha > 0.35) {
+    let sparkAng = Math.sin(elapsedTime * 22) * 0.5;
+    let sx = 6 + reach * 0.82;
+    let sy = Math.sin(elapsedTime * 31) * 5;
+    ctx.globalAlpha = alpha * 0.8;
+    drawFourPointStar(ctx, sx, sy, 4.5 + alpha * 3, 1.4, "#FFFFFF", isMono ? "#000000" : accentColor);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + Math.cos(sparkAng) * 10, sy + Math.sin(sparkAng) * 10);
+    ctx.strokeStyle = isMono ? "#FFFFFF" : accentColor;
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawGlassShards(ctx, cx, cy, r, startAng, endAng, f, color, accentColor, isMono, seed = 1) {
+  let alpha = clamp(1 - f, 0, 1);
+  if (alpha <= 0.04) return;
+  let span = endAng - startAng;
+  let count = 6;
+  ctx.save();
+  for (let i = 0; i < count; i++) {
+    let t = (i + 0.5) / count;
+    let ang = startAng + span * t;
+    let drift = (0.85 + 0.45 * f) * r + Math.sin(i * 4.3 + seed) * 10 * f;
+    let sx = cx + Math.cos(ang) * drift;
+    let sy = cy + Math.sin(ang) * drift;
+    let sz = (3.2 + (i % 3) * 1.6) * (0.4 + 0.6 * alpha);
+    let rot = ang + f * (i % 2 === 0 ? 4.5 : -4.5) + seed;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(rot);
+    ctx.globalAlpha = alpha * 0.92;
+    ctx.fillStyle = isMono ? (i % 2 === 0 ? "#FFFFFF" : "#1E293B") : (i % 2 === 0 ? accentColor : color);
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0, -sz * 1.4);
+    ctx.lineTo(sz * 0.85, 0);
+    ctx.lineTo(0, sz * 1.1);
+    ctx.lineTo(-sz * 0.65, -sz * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawCosmicSlashLayer(ctx, opts) {
+  let {
+    cx = 0,
+    cy = 0,
+    radius = 100,
+    startAng = -0.8,
+    endAng = 0.8,
+    f = 0,
+    color = "#38BDF8",
+    accentColor = "#E879F9",
+    isMono = false,
+    enableAdditive = true,
+    tiltY = 0.86,
+    crackStrength = 1,
+    seed = 1
+  } = opts;
+  let alpha = clamp(1 - f, 0, 1);
+  let span = endAng - startAng;
+  if (Math.abs(span) < 0.05 || alpha <= 0.02) return;
+
+  ctx.save();
+  ctx.scale(1, tiltY);
+
+  // 1. Cosmic Glass Tear Cavity (deep nebula space void torn open behind the slash)
+  let steps = 14;
+  let tearThick = (9.5 * crackStrength) * Math.sin(Math.min(1, alpha * 1.15) * Math.PI * 0.5) + 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    let u = i / steps;
+    let ang = startAng + span * u;
+    let prof = Math.sin(Math.pow(u, 0.78) * Math.PI);
+    let jag = ((i % 2 === 0 ? 1 : -1) * 2.2) * prof;
+    let ro = radius + tearThick * 0.62 * prof + jag;
+    let px = cx + Math.cos(ang) * ro;
+    let py = cy + Math.sin(ang) * ro;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  for (let i = steps; i >= 0; i--) {
+    let u = i / steps;
+    let ang = startAng + span * u;
+    let prof = Math.sin(Math.pow(u, 0.78) * Math.PI);
+    let jag = ((i % 2 === 0 ? -1 : 1) * 1.8) * prof;
+    let ri = radius - tearThick * 0.58 * prof + jag;
+    let px = cx + Math.cos(ang) * ri;
+    let py = cy + Math.sin(ang) * ri;
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.globalAlpha = alpha * 0.88;
+  ctx.fillStyle = isMono ? "#020617" : "#060414";
+  ctx.fill();
+
+  // Twinkling cosmic micro-stars suspended inside the torn void cavity
+  ctx.globalAlpha = alpha * 0.95;
+  for (let si = 1; si <= 5; si++) {
+    let u = si / 6;
+    let ang = startAng + span * u;
+    let sr = radius + Math.sin(si * 3.1 + seed) * (tearThick * 0.25);
+    let px = cx + Math.cos(ang) * sr;
+    let py = cy + Math.sin(ang) * sr;
+    drawFourPointStar(ctx, px, py, (2.4 + (si % 2) * 1.4) * alpha + 0.8, 0.8, "#FFFFFF", isMono ? "#94A3B8" : accentColor);
+  }
+
+  // 2. Layered Additive Neon Edge Rim & Hot White Core
+  ctx.save();
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, Math.min(startAng, endAng), Math.max(startAng, endAng));
+  ctx.globalAlpha = alpha * 0.42;
+  ctx.strokeStyle = isMono ? "#CBD5E1" : color;
+  ctx.lineWidth = (12 + 4 * crackStrength) * alpha + 2;
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha * 0.78;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : accentColor;
+  ctx.lineWidth = (5.2 + 2 * crackStrength) * alpha + 1.2;
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = Math.max(1.4, 2.5 * alpha);
+  ctx.stroke();
+
+  // 3. Trailing Energy Wake Ribbon behind outer rim
+  ctx.globalAlpha = alpha * 0.58;
+  ctx.strokeStyle = isMono ? "#E2E8F0" : accentColor;
+  ctx.lineWidth = 1.6 * alpha + 0.6;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * (1.07 + 0.05 * f), Math.min(startAng, endAng), Math.max(startAng, endAng));
+  ctx.stroke();
+  ctx.restore();
+
+  // 4. Branching Spatial Edge Cracks sprouting from the tear
+  if (crackStrength >= 0.6 && alpha > 0.14) {
+    ctx.globalAlpha = alpha * 0.82;
+    ctx.lineCap = "round";
+    for (let bi = 1; bi <= 4; bi++) {
+      let u = bi / 5;
+      let ang = startAng + span * u;
+      let side = bi % 2 === 0 ? 1 : -1;
+      let bx = cx + Math.cos(ang) * radius;
+      let by = cy + Math.sin(ang) * radius;
+      let bLen = (12 + (bi % 2) * 8) * crackStrength * (0.6 + 0.4 * alpha);
+      let bAng = ang + side * 0.52;
+      let mx = bx + Math.cos(bAng) * bLen * 0.55;
+      let my = by + Math.sin(bAng) * bLen * 0.55;
+      let ex = bx + Math.cos(bAng - side * 0.28) * bLen;
+      let ey = by + Math.sin(bAng - side * 0.28) * bLen;
+      ctx.strokeStyle = isMono ? "#FFFFFF" : accentColor;
+      ctx.lineWidth = 2.0 * alpha + 0.6;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(mx, my);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 0.9 * alpha;
+      ctx.stroke();
+    }
+  }
+
+  // 5. Shattered Cosmic Glass Shards flying from blade arc
+  drawGlassShards(ctx, cx, cy, radius, startAng, endAng, f, color, accentColor, isMono, seed);
+
+  ctx.restore();
+}
+
+export function drawWindRibbon(ctx, r, elapsedTime, isMono, enableAdditive = true) {
+  let f = clamp((r.life || 0) / Math.max(0.08, r.maxLife || 0.42), 0, 1);
+  let alpha = (1 - f) * (r.alpha || 0.85);
+  if (alpha <= 0.02) return;
+
+  let sx = r.sx ?? r.x ?? 0;
+  let sy = r.sy ?? r.y ?? 0;
+  let tx = r.tx ?? (sx + Math.cos(r.angle || 0) * (r.len || 110));
+  let ty = r.ty ?? (sy + Math.sin(r.angle || 0) * (r.len || 110));
+  let dx = tx - sx, dy = ty - sy;
+  let len = Math.hypot(dx, dy) || 1;
+  let nx = -dy / len, ny = dx / len;
+  let mainCol = isMono ? "#E2E8F0" : (r.color || "#67E8F9");
+  let accentCol = isMono ? "#FFFFFF" : (r.accentColor || "#F8FAFC");
+  let waveSign = r.side || 1;
+  let waveAmp = (12 + Math.min(18, len * 0.14)) * (0.45 + 0.55 * Math.sin(f * Math.PI));
+
+  ctx.save();
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+  ctx.lineCap = "round";
+
+  // 3 layered sinuous Bezier wind filaments
+  for (let layer = 0; layer < 3; layer++) {
+    let shift = (layer - 1) * 7 * waveSign;
+    let c1x = sx + dx * 0.32 + nx * (waveAmp * waveSign + shift);
+    let c1y = sy + dy * 0.32 + ny * (waveAmp * waveSign + shift);
+    let c2x = sx + dx * 0.68 - nx * (waveAmp * 0.72 * waveSign - shift);
+    let c2y = sy + dy * 0.68 - ny * (waveAmp * 0.72 * waveSign - shift);
+
+    ctx.globalAlpha = alpha * (layer === 1 ? 0.86 : 0.48);
+    ctx.strokeStyle = layer === 1 ? accentCol : mainCol;
+    ctx.lineWidth = (layer === 1 ? 3.2 : 1.9) * (1 - f * 0.65) + 0.6;
+    ctx.beginPath();
+    ctx.moveTo(sx + nx * shift * 0.5, sy + ny * shift * 0.5);
+    ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx + nx * shift * 0.25, ty + ny * shift * 0.25);
+    ctx.stroke();
+  }
+
+  // Origin acceleration vortex curl
+  if (f < 0.75) {
+    let vr = (10 + (r.width || 10) * 0.4) * (0.6 + 0.6 * f);
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(elapsedTime * 9 * waveSign);
+    ctx.globalAlpha = alpha * 0.65;
+    ctx.strokeStyle = mainCol;
+    ctx.lineWidth = 1.8 * (1 - f) + 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, vr, 0, Math.PI * 1.35);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Swept dust/leaf/spark motes flowing along wind spine
+  for (let mi = 0; mi < 3; mi++) {
+    let u = clamp((mi * 0.28 + f * 0.55) % 1, 0.08, 0.96);
+    let mx = sx + dx * u + nx * Math.sin(u * Math.PI * 2 + elapsedTime * 12) * 8 * waveSign;
+    let my = sy + dy * u + ny * Math.sin(u * Math.PI * 2 + elapsedTime * 12) * 8 * waveSign;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillStyle = mi === 1 ? "#FFFFFF" : mainCol;
+    ctx.beginPath();
+    ctx.ellipse(mx, my, 3.2 * (1 - f * 0.5), 1.4, Math.atan2(dy, dx), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+export function drawStylizedAfterimage(ctx, img, isMono, enableAdditive = true) {
+  let f = clamp((img.life || 0) / Math.max(0.05, img.maxLife || 0.3), 0, 1);
+  let alpha = clamp((img.alpha || 0.7) * (1 - f), 0, 1);
+  if (alpha <= 0.02) return;
+
+  let r = (img.radius || 22) * (1 - f * 0.14);
+  let ang = img.facing || 0;
+  let fillCol = isMono ? "#0F172A" : (img.color || "#A855F7");
+  let rimCol = isMono ? "#FFFFFF" : (img.accentColor || "#E0F2FE");
+
+  ctx.save();
+  ctx.translate(img.x, img.y);
+  ctx.rotate(ang);
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+
+  // Swept cloak & shoulder motion streaks trailing behind facing vector
+  ctx.globalAlpha = alpha * 0.48;
+  ctx.fillStyle = fillCol;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.2, -r * 0.95);
+  ctx.quadraticCurveTo(-r * 1.45, -r * 0.72, -r * 2.15, -r * 0.18);
+  ctx.lineTo(-r * 1.65, 0);
+  ctx.lineTo(-r * 2.15, r * 0.18);
+  ctx.quadraticCurveTo(-r * 1.45, r * 0.72, -r * 0.2, r * 0.95);
+  ctx.closePath();
+  ctx.fill();
+
+  // Translucent hero silhouette & pauldron arcs
+  ctx.globalAlpha = alpha * 0.56;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2);
+  ctx.fillStyle = fillCol;
+  ctx.fill();
+  ctx.globalAlpha = alpha * 0.9;
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = 1.8 * (1 - f * 0.4) + 0.5;
+  ctx.stroke();
+
+  // Ghost weapon slash silhouette ahead of hero body
+  ctx.globalAlpha = alpha * 0.72;
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = 2.6 * (1 - f * 0.5) + 0.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(r * 0.22, 0, r * 1.05, -0.78, 0.78);
+  ctx.stroke();
+
+  // Trailing eye/core glint
+  ctx.globalAlpha = alpha * 0.85;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  ctx.arc(r * 0.34, -r * 0.22, 1.8, 0, Math.PI * 2);
+  ctx.arc(r * 0.34, r * 0.22, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+export function drawWarpRing(ctx, ring, isMono, enableAdditive = true) {
+  let f = clamp((ring.life || 0) / Math.max(0.08, ring.maxLife || 0.32), 0, 1);
+  let alpha = (1 - f) * (ring.alpha || 0.85);
+  if (alpha <= 0.02) return;
+
+  let maxR = ring.maxRadius || ring.radius || 110;
+  let r = maxR * (0.24 + 0.76 * Math.pow(f, 0.55));
+  let tilt = ring.tiltY || 0.72;
+  let col1 = isMono ? "#FFFFFF" : (ring.color || "#38BDF8");
+  let col2 = isMono ? "#94A3B8" : (ring.accentColor || "#E879F9");
+
+  ctx.save();
+  ctx.translate(ring.x, ring.y);
+  ctx.rotate(ring.angle || 0);
+  ctx.scale(1, tilt);
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+
+  // Chromatic aberration outer & inner spatial distortion ellipses
+  ctx.globalAlpha = alpha * 0.62;
+  ctx.strokeStyle = col2;
+  ctx.lineWidth = (4.5 * (1 - f)) + 1.2;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.04, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha * 0.88;
+  ctx.strokeStyle = col1;
+  ctx.lineWidth = (3.4 * (1 - f)) + 1.0;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha * 0.92;
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = Math.max(1.0, 2.0 * (1 - f));
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.94, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Radial spatial shear tick marks
+  ctx.globalAlpha = alpha * 0.7;
+  ctx.strokeStyle = col1;
+  ctx.lineWidth = 1.4;
+  for (let i = 0; i < 8; i++) {
+    let ang = (Math.PI / 4) * i + f * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(ang) * r * 0.86, Math.sin(ang) * r * 0.86);
+    ctx.lineTo(Math.cos(ang) * r * 1.12, Math.sin(ang) * r * 1.12);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawUltPolygon(ctx, cx, cy, sides, r, rot = 0) {
+  ctx.beginPath();
+  for (let i = 0; i <= sides; i++) {
+    let ang = rot + (Math.PI * 2 * i) / sides;
+    let px = cx + Math.cos(ang) * r;
+    let py = cy + Math.sin(ang) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+}
+
+function drawUltDiamondShard(ctx, x, y, len, wid, rot, fillCol, strokeCol) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.beginPath();
+  ctx.moveTo(len, 0);
+  ctx.lineTo(0, -wid);
+  ctx.lineTo(-len * 0.72, 0);
+  ctx.lineTo(0, wid);
+  ctx.closePath();
+  ctx.fillStyle = fillCol;
+  ctx.fill();
+  if (strokeCol) {
+    ctx.strokeStyle = strokeCol;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawUltPetal(ctx, ang, innerR, outerR, width, fillCol, strokeCol) {
+  ctx.save();
+  ctx.rotate(ang);
+  ctx.beginPath();
+  ctx.moveTo(innerR, 0);
+  ctx.quadraticCurveTo((innerR + outerR) * 0.5, -width, outerR, 0);
+  ctx.quadraticCurveTo((innerR + outerR) * 0.5, width, innerR, 0);
+  ctx.closePath();
+  ctx.fillStyle = fillCol;
+  ctx.fill();
+  if (strokeCol) {
+    ctx.strokeStyle = strokeCol;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawUltJaggedBolt(ctx, x1, y1, x2, y2, amp, segs, seed, strokeCol, width) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  let dx = x2 - x1;
+  let dy = y2 - y1;
+  let len = Math.hypot(dx, dy) || 1;
+  let nx = -dy / len;
+  let ny = dx / len;
+  for (let i = 1; i < segs; i++) {
+    let t = i / segs;
+    let off = Math.sin(seed * 2.7 + i * 4.1) * amp * Math.sin(t * Math.PI);
+    ctx.lineTo(x1 + dx * t + nx * off, y1 + dy * t + ny * off);
+  }
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = strokeCol;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+export function drawUltimateSequence(ctx, seq, elapsedTime, isMono, enableAdditive = true) {
+  let f = clamp((seq.life || 0) / Math.max(0.2, seq.maxLife || 1.35), 0, 1);
+  let r = seq.radius || 210;
+  let heroId = seq.heroId || "dung";
+  let mainCol = isMono ? "#FFFFFF" : (seq.color || "#FACC15");
+  let accentCol = isMono ? "#94A3B8" : (seq.accentColor || "#38BDF8");
+  let hotCol = isMono ? "#FFFFFF" : "#FEF9C3";
+
+  // 5-Stage Progression Envelopes:
+  // 1. Awakening (0.00..0.18), 2. Gathering (0.10..0.34), 3. Release (0.26..0.54),
+  // 4. Impact (0.42..0.78), 5. Aftermath (0.68..1.00)
+  let wakeW = f < 0.18 ? Math.sin(clamp(f / 0.18, 0, 1) * Math.PI) : 0;
+  let gatherW = f >= 0.08 && f <= 0.36 ? Math.sin(clamp((f - 0.08) / 0.28, 0, 1) * Math.PI) : 0;
+  let releaseW = f >= 0.24 && f <= 0.56 ? Math.sin(clamp((f - 0.24) / 0.32, 0, 1) * Math.PI) : 0;
+  let impactW = f >= 0.4 && f <= 0.8 ? Math.sin(clamp((f - 0.4) / 0.4, 0, 1) * Math.PI) : 0;
+  let afterW = f >= 0.66 ? clamp((f - 0.66) / 0.14, 0, 1) * clamp(1 - (f - 0.72) / 0.28, 0, 1) : 0;
+  let fadeOut = f > 0.72 ? clamp(1 - (f - 0.72) / 0.28, 0, 1) : 1;
+  let domainAlpha = (f < 0.12 ? f / 0.12 : fadeOut) * 0.85;
+  let baseAngle = seq.angle || 0;
+
+  ctx.save();
+  ctx.translate(seq.x, seq.y);
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+
+  switch (heroId) {
+    case "dung": {
+      // Tam Đầu Khuyển · Chiến Thần: Triple Cerberus fang jaws, chained storm spears & crackling arcs
+      let sr = r * (0.65 + 0.35 * Math.min(1, f * 2.2));
+      ctx.globalAlpha = domainAlpha * 0.75;
+      ctx.save();
+      ctx.rotate(elapsedTime * 1.8);
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([18, 8]);
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.88, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // 3 hound head lightning crest chevrons (120 deg apart)
+      for (let hi = 0; hi < 3; hi++) {
+        let ha = baseAngle + (Math.PI * 2 * hi) / 3 + (gatherW * 0.35);
+        let reach = sr * (0.48 + 0.54 * clamp(f * 1.8, 0, 1));
+        ctx.save();
+        ctx.rotate(ha);
+        ctx.globalAlpha = domainAlpha * 0.9;
+        ctx.fillStyle = isMono ? "#CBD5E1" : hi === 0 ? "#FDE047" : mainCol;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(reach * 0.96, 0);
+        ctx.lineTo(reach * 0.42, -22 * (0.7 + releaseW * 0.6));
+        ctx.lineTo(reach * 0.56, 0);
+        ctx.lineTo(reach * 0.42, 22 * (0.7 + releaseW * 0.6));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        if (gatherW > 0.05 || impactW > 0.05) {
+          drawUltJaggedBolt(ctx, 16, 0, reach * 0.95, 0, 14, 5, elapsedTime * 18 + hi * 3, accentCol, 2.6 * (gatherW + impactW));
+        }
+        ctx.restore();
+      }
+      if (releaseW > 0.05 || impactW > 0.05) {
+        let wave = Math.max(releaseW, impactW);
+        ctx.globalAlpha = wave * 0.9;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 4.2 * wave;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.35 + f * 0.72), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (afterW > 0.05) {
+        ctx.globalAlpha = afterW * 0.85;
+        for (let si = 0; si < 6; si++) {
+          let sa = (Math.PI / 3) * si + elapsedTime * 3;
+          drawUltJaggedBolt(ctx, Math.cos(sa) * r * 0.25, Math.sin(sa) * r * 0.25, Math.cos(sa) * r * 0.85, Math.sin(sa) * r * 0.85, 11, 4, elapsedTime * 20 + si, mainCol, 1.8 * afterW);
+        }
+      }
+      break;
+    }
+
+    case "tin": {
+      // Lãnh Địa Trắng Đen: Vạn Trảm — Crimson-obsidian X spatial fissure & shattered Ma Thạch shards
+      let tearLen = r * (0.55 + clamp(f * 2.1, 0, 1) * 0.62);
+      ctx.globalAlpha = domainAlpha * 0.82;
+      ctx.save();
+      ctx.rotate(-elapsedTime * 1.4);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
+      ctx.lineWidth = 2.2;
+      drawUltPolygon(ctx, 0, 0, 4, r * 0.76, Math.PI / 4);
+      ctx.stroke();
+      ctx.restore();
+
+      // Twin crossed dimensional slash tears
+      for (let xi = 0; xi < 2; xi++) {
+        let xa = baseAngle + (xi === 0 ? 0.62 : -0.62);
+        let openW = (8 + 20 * Math.max(releaseW, impactW)) * fadeOut;
+        ctx.save();
+        ctx.rotate(xa);
+        ctx.globalAlpha = domainAlpha;
+        ctx.fillStyle = isMono ? "#0F172A" : "#31102F";
+        ctx.strokeStyle = isMono ? "#FFFFFF" : "#F43F5E";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(-tearLen, 0);
+        ctx.quadraticCurveTo(0, -openW, tearLen, 0);
+        ctx.quadraticCurveTo(0, openW, -tearLen, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-tearLen * 0.92, 0);
+        ctx.lineTo(tearLen * 0.92, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Orbiting / shattering Ma Thạch shards
+      let shardCount = 8;
+      ctx.globalAlpha = domainAlpha * 0.92;
+      for (let si = 0; si < shardCount; si++) {
+        let sa = (Math.PI * 2 * si) / shardCount + elapsedTime * 2.6;
+        let dist = gatherW > 0.1
+          ? r * (0.95 - gatherW * 0.6)
+          : r * (0.35 + f * 0.72);
+        drawUltDiamondShard(
+          ctx,
+          Math.cos(sa) * dist,
+          Math.sin(sa) * dist,
+          14 * fadeOut + 4,
+          5.5 * fadeOut + 1.5,
+          sa + f * 3,
+          si % 2 === 0 ? mainCol : "#FFFFFF",
+          isMono ? "#0F172A" : "#9F1239"
+        );
+      }
+      if (wakeW > 0.05 || releaseW > 0.05) {
+        drawFourPointStar(ctx, 0, 0, r * 0.36 * (wakeW + releaseW) + 10, 4.5, "#FFFFFF", mainCol);
+      }
+      break;
+    }
+
+    case "kin": {
+      // Vạn Tiễn Thiên Không — Triple spiral emerald gale compass, crescent wind blades & arrow fan
+      ctx.globalAlpha = domainAlpha * 0.85;
+      for (let ring = 0; ring < 3; ring++) {
+        let rr = r * (0.36 + ring * 0.28) * (0.7 + 0.3 * clamp(f * 2, 0, 1));
+        let dir = ring % 2 === 0 ? 1 : -1;
+        ctx.save();
+        ctx.rotate(elapsedTime * (2.6 + ring * 1.1) * dir);
+        ctx.strokeStyle = ring === 1 ? accentCol : mainCol;
+        ctx.lineWidth = (3.4 - ring * 0.6) * fadeOut + 0.8;
+        for (let arc = 0; arc < 3; arc++) {
+          let a0 = (Math.PI * 2 * arc) / 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, rr, a0, a0 + 1.25);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // 8 Emerald Feather / Arrow Blades radiating in cyclone fan
+      for (let fi = 0; fi < 8; fi++) {
+        let fa = baseAngle + (Math.PI * 2 * fi) / 8 + f * 2.2;
+        let fr = r * (0.25 + clamp(f * 1.5, 0, 1) * 0.72);
+        ctx.save();
+        ctx.translate(Math.cos(fa) * fr, Math.sin(fa) * fr);
+        ctx.rotate(fa + 0.35);
+        ctx.globalAlpha = domainAlpha * 0.92;
+        ctx.fillStyle = fi % 2 === 0 ? mainCol : "#FFFFFF";
+        ctx.beginPath();
+        ctx.moveTo(18, 0);
+        ctx.lineTo(-8, -5.5);
+        ctx.lineTo(-3, 0);
+        ctx.lineTo(-8, 5.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      if (impactW > 0.05) {
+        drawFourPointStar(ctx, 0, 0, r * 0.3 * impactW + 10, 3.5, "#FFFFFF", mainCol);
+      }
+      break;
+    }
+
+    case "trung": {
+      // Đại Thiên Thạch Hủy Diệt — Tilted 3D Orbital Astrolabe + 6 Astral Planets + Supernova Core
+      ctx.globalAlpha = domainAlpha * 0.88;
+      for (let orbit = 0; orbit < 2; orbit++) {
+        ctx.save();
+        ctx.rotate(baseAngle + (orbit === 0 ? 0.42 : -0.42) + elapsedTime * (orbit === 0 ? 1.3 : -1.1));
+        ctx.scale(1, 0.56);
+        ctx.strokeStyle = orbit === 0 ? mainCol : accentCol;
+        ctx.lineWidth = 2.8 * fadeOut + 0.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.86 - orbit * 0.14), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // 6 Orbiting Astral Spheres collapsing then bursting outward
+      let orbitScale = gatherW > 0.05 ? 1 - gatherW * 0.55 : releaseW > 0.05 ? 0.45 + releaseW * 0.65 : 0.92 + afterW * 0.2;
+      for (let pi = 0; pi < 6; pi++) {
+        let pa = elapsedTime * 3.4 + (Math.PI * 2 * pi) / 6;
+        let px = Math.cos(pa) * r * 0.62 * orbitScale;
+        let py = Math.sin(pa) * r * 0.62 * orbitScale;
+        ctx.fillStyle = pi % 2 === 0 ? mainCol : accentCol;
+        ctx.beginPath();
+        ctx.arc(px, py, 8 * fadeOut + 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(px, py, 3.5 * fadeOut + 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Impact supernova meteor ring
+      if (impactW > 0.05 || releaseW > 0.05) {
+        let p = Math.max(impactW, releaseW);
+        ctx.globalAlpha = p * 0.92;
+        drawFourPointStar(ctx, 0, 0, r * 0.42 * p + 12, r * 0.1 * p + 3, "#FFFFFF", accentCol);
+        ctx.strokeStyle = accentCol;
+        ctx.lineWidth = 4.2 * p;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.28 + f * 0.78), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "eohyen": {
+      // Bão Băng Oanh Tạc — 6-branch Crystal Snowflake Mandala + Frost Shatter Hail
+      let sr = r * (0.48 + 0.52 * clamp(f * 1.9, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.9;
+      ctx.save();
+      ctx.rotate(elapsedTime * 0.9);
+      // 6 Glacial Crystal Branches with sub-twigs
+      for (let b = 0; b < 6; b++) {
+        let ba = (Math.PI / 3) * b;
+        ctx.save();
+        ctx.rotate(ba);
+        ctx.strokeStyle = b % 2 === 0 ? "#E0F2FE" : mainCol;
+        ctx.lineWidth = 2.8 * fadeOut + 0.8;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(sr * 0.94, 0);
+        ctx.moveTo(sr * 0.46, 0);
+        ctx.lineTo(sr * 0.64, -sr * 0.16);
+        ctx.moveTo(sr * 0.46, 0);
+        ctx.lineTo(sr * 0.64, sr * 0.16);
+        ctx.moveTo(sr * 0.7, 0);
+        ctx.lineTo(sr * 0.84, -sr * 0.11);
+        ctx.moveTo(sr * 0.7, 0);
+        ctx.lineTo(sr * 0.84, sr * 0.11);
+        ctx.stroke();
+        drawUltDiamondShard(ctx, sr * 0.96, 0, 10 * fadeOut + 3, 4.5, 0, "#FFFFFF", mainCol);
+        ctx.restore();
+      }
+      drawUltPolygon(ctx, 0, 0, 6, sr * 0.52, 0);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.restore();
+
+      if (impactW > 0.05) {
+        ctx.globalAlpha = impactW * 0.85;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 4 * impactW;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.4 + f * 0.65), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "longhoi": {
+      // Hỏa Hồ Liệt Diễm — 9-Tail Fox-Fire Lotus Petals unfurling + Swirling Solar Embers
+      ctx.globalAlpha = domainAlpha * 0.9;
+      let petalReach = r * (0.5 + 0.54 * clamp(f * 1.75, 0, 1));
+      ctx.save();
+      ctx.rotate(elapsedTime * 1.6);
+      for (let ti = 0; ti < 9; ti++) {
+        let ta = (Math.PI * 2 * ti) / 9 + Math.sin(elapsedTime * 5 + ti) * 0.08;
+        drawUltPetal(
+          ctx,
+          ta,
+          r * 0.16,
+          petalReach,
+          20 * (0.65 + releaseW * 0.55),
+          isMono ? "rgba(255,255,255,0.45)" : ti % 2 === 0 ? "rgba(249, 115, 22, 0.55)" : "rgba(239, 68, 68, 0.48)",
+          ti % 3 === 0 ? "#FFFFFF" : accentCol
+        );
+      }
+      ctx.restore();
+      // Blazing wildfire shock ring
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = (4.5 * Math.max(releaseW, impactW)) + 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * (0.34 + f * 0.72), 0, Math.PI * 2);
+      ctx.stroke();
+      drawFourPointStar(ctx, 0, 0, r * 0.24 * (0.5 + impactW) + 8, 4, "#FFFFFF", mainCol);
+      break;
+    }
+
+    case "duccong": {
+      // Thiên Hà Sụp Đổ — Dark Singularity Event Horizon + Tilted Accretion Disk + Inward Gravity Streaks
+      let pullR = r * (f < 0.45 ? 1.0 - f * 1.15 : 0.48 + (f - 0.45) * 1.1);
+      ctx.globalAlpha = domainAlpha * 0.92;
+      // Dark singularity pit (even in additive, crisp dark-violet ring contrast)
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = isMono ? "rgba(15, 23, 42, 0.62)" : "rgba(24, 6, 46, 0.65)";
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(18, r * 0.34 * (1 - gatherW * 0.35)), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Tilted twin accretion disks
+      for (let di = 0; di < 2; di++) {
+        ctx.save();
+        ctx.rotate(baseAngle + (di === 0 ? 0.3 : -0.55) + elapsedTime * (di === 0 ? 2.4 : -1.9));
+        ctx.scale(1.15, 0.42);
+        ctx.strokeStyle = di === 0 ? mainCol : accentCol;
+        ctx.lineWidth = (3.8 - di) * fadeOut + 1.1;
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(24, pullR * 0.85), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Swirling spiral gravity threads
+      for (let gi = 0; gi < 8; gi++) {
+        let ga = (Math.PI * 2 * gi) / 8 - elapsedTime * 3.8;
+        ctx.strokeStyle = gi % 2 === 0 ? accentCol : "#FFFFFF";
+        ctx.lineWidth = 2 * fadeOut + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ga) * r * 0.96, Math.sin(ga) * r * 0.96);
+        ctx.quadraticCurveTo(Math.cos(ga + 0.65) * r * 0.45, Math.sin(ga + 0.65) * r * 0.45, Math.cos(ga + 1.2) * 18, Math.sin(ga + 1.2) * 18);
+        ctx.stroke();
+      }
+      if (impactW > 0.05) {
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 4.5 * impactW;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.2 + (f - 0.4) * 1.45), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "gau": {
+      // Cuồng Hùng Giáng Lâm — Triple Amber Bear-Claw Tears + Seismic Anvil Impact Ring
+      ctx.globalAlpha = domainAlpha * 0.92;
+      let slamScale = f < 0.35 ? 1.25 - f * 1.4 : 0.76 + (f - 0.35) * 0.45;
+      ctx.save();
+      ctx.rotate(baseAngle);
+      // 3 deep parallel claw gouges
+      for (let ci = -1; ci <= 1; ci++) {
+        let oy = ci * 28;
+        let clen = r * (0.72 + clamp(f * 2.1, 0, 1) * 0.32);
+        ctx.strokeStyle = ci === 0 ? "#FFFFFF" : mainCol;
+        ctx.lineWidth = (ci === 0 ? 7.5 : 5.5) * fadeOut + 1.4;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-clen * 0.62, oy - 16);
+        ctx.quadraticCurveTo(0, oy + 6, clen * 0.72, oy - 6);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Jagged seismic anvil fracture ring
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 3.4 * fadeOut + 1;
+      ctx.beginPath();
+      for (let si = 0; si <= 16; si++) {
+        let sa = (Math.PI * 2 * si) / 16;
+        let sr = r * (si % 2 === 0 ? 0.88 : 0.72) * slamScale;
+        let sx = Math.cos(sa) * sr;
+        let sy = Math.sin(sa) * sr;
+        if (si === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    }
+
+    case "bao": {
+      // Vạn Ảnh Tàn Sát — Shattered Violet-Magenta Prism Mirrors + 6 Converging Phantom Daggers
+      ctx.globalAlpha = domainAlpha * 0.9;
+      for (let mi = 0; mi < 6; mi++) {
+        let ma = baseAngle + (Math.PI * 2 * mi) / 6 + elapsedTime * 1.4;
+        let rad = f < 0.4 ? r * (0.92 - f * 1.35) : r * (0.38 + (f - 0.4) * 1.05);
+        ctx.save();
+        ctx.translate(Math.cos(ma) * rad, Math.sin(ma) * rad);
+        ctx.rotate(ma + Math.PI);
+        // Mirror shard triangle + phantom dagger
+        ctx.fillStyle = isMono ? "rgba(255,255,255,0.45)" : mi % 2 === 0 ? "rgba(168, 85, 247, 0.55)" : "rgba(244, 63, 94, 0.5)";
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(22, 0);
+        ctx.lineTo(-10, -11);
+        ctx.lineTo(-4, 0);
+        ctx.lineTo(-10, 11);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Prism web connections
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 1.8 * fadeOut + 0.5;
+      drawUltPolygon(ctx, 0, 0, 6, r * (0.68 + releaseW * 0.22), elapsedTime * 1.2);
+      ctx.stroke();
+      if (impactW > 0.05) {
+        drawFourPointStar(ctx, 0, 0, r * 0.34 * impactW + 10, 3.2, "#FFFFFF", mainCol);
+      }
+      break;
+    }
+
+    case "danh": {
+      // Hóa Rồng · Chân Long Giáng Thế — Coiling Imperial Crimson-Gold Dragon Rune Wheel & Twin Crescent Claws
+      let sr = r * (0.58 + 0.42 * clamp(f * 1.8, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      ctx.save();
+      ctx.rotate(elapsedTime * 2.1);
+      // Coiling double-helix dragon energy arcs
+      for (let arc = 0; arc < 2; arc++) {
+        ctx.save();
+        ctx.rotate(arc * Math.PI);
+        ctx.strokeStyle = arc === 0 ? accentCol : mainCol;
+        ctx.lineWidth = 5.5 * fadeOut + 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, sr * 0.82, 0.15, Math.PI * 0.85);
+        ctx.stroke();
+        // Dragon head chevron at leading edge
+        let hx = Math.cos(0.15) * sr * 0.82;
+        let hy = Math.sin(0.15) * sr * 0.82;
+        drawUltDiamondShard(ctx, hx, hy, 16, 7, 0.15 - Math.PI / 2, "#FFFFFF", accentCol);
+        ctx.restore();
+      }
+      drawUltPolygon(ctx, 0, 0, 8, sr * 0.56, 0);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+      if (releaseW > 0.05 || impactW > 0.05) {
+        let p = Math.max(releaseW, impactW);
+        drawFourPointStar(ctx, 0, 0, r * 0.42 * p + 12, 5, "#FFFFFF", mainCol);
+      }
+      break;
+    }
+
+    case "luan": {
+      // Tia Hủy Diệt Phân Nhánh — Asymmetrical Fractured Dimensional Mirror Web + Prism Convergence Beams
+      ctx.globalAlpha = domainAlpha * 0.9;
+      let shardAngles = [0.2, 0.95, 1.85, 2.7, 3.55, 4.45, 5.3];
+      for (let i = 0; i < shardAngles.length; i++) {
+        let a1 = shardAngles[i] + baseAngle;
+        let a2 = shardAngles[(i + 1) % shardAngles.length] + baseAngle;
+        let r1 = r * (0.58 + (i % 3) * 0.14);
+        let r2 = r * (0.58 + ((i + 1) % 3) * 0.14);
+        ctx.strokeStyle = i % 2 === 0 ? mainCol : accentCol;
+        ctx.lineWidth = 2.2 * fadeOut + 0.6;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a1) * r1, Math.sin(a1) * r1);
+        ctx.lineTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
+        ctx.stroke();
+      }
+      // Primary directional laser split flash
+      ctx.save();
+      ctx.rotate(baseAngle);
+      for (let branch of [-0.42, 0, 0.42]) {
+        ctx.strokeStyle = branch === 0 ? "#FFFFFF" : accentCol;
+        ctx.lineWidth = (branch === 0 ? 5.5 : 3) * (0.4 + Math.max(releaseW, impactW));
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(branch) * r * 1.08, Math.sin(branch) * r * 1.08);
+        ctx.stroke();
+      }
+      ctx.restore();
+      break;
+    }
+
+    case "taidu": {
+      // Oanh Tạc Vệ Tinh — Tactical Hex Grid + Lock-On Crosshairs + Orbital Carpet Shock Rings
+      ctx.globalAlpha = domainAlpha * 0.9;
+      let sr = r * (0.64 + 0.36 * clamp(f * 2, 0, 1));
+      ctx.save();
+      ctx.rotate(elapsedTime * 1.2);
+      drawUltPolygon(ctx, 0, 0, 6, sr * 0.88, 0);
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 2.6;
+      ctx.stroke();
+      drawUltPolygon(ctx, 0, 0, 6, sr * 0.56, Math.PI / 6);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+      // 4 Tactical Target Brackets
+      for (let bi = 0; bi < 4; bi++) {
+        let ba = (Math.PI / 2) * bi + Math.PI / 4;
+        ctx.save();
+        ctx.rotate(ba);
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2.5 * fadeOut + 0.8;
+        ctx.beginPath();
+        ctx.moveTo(sr * 0.35, 0);
+        ctx.lineTo(sr * 1.02, 0);
+        ctx.moveTo(sr * 0.72, -12);
+        ctx.lineTo(sr * 0.82, 0);
+        ctx.lineTo(sr * 0.72, 12);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (impactW > 0.05) {
+        ctx.strokeStyle = accentCol;
+        ctx.lineWidth = 4.4 * impactW;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.25 + f * 0.8), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "nguyen": {
+      // Đại Hồi Phục — 8-Petal Emerald-Gold Sanctuary Lotus unfolding + Floating Life Seed Motes
+      ctx.globalAlpha = domainAlpha * 0.9;
+      let petalR = r * (0.45 + 0.52 * clamp(f * 1.7, 0, 1));
+      ctx.save();
+      ctx.rotate(elapsedTime * 0.8);
+      for (let pi = 0; pi < 8; pi++) {
+        let pa = (Math.PI / 4) * pi;
+        drawUltPetal(
+          ctx,
+          pa,
+          r * 0.14,
+          petalR,
+          24 * (0.7 + impactW * 0.4),
+          isMono ? "rgba(255,255,255,0.4)" : pi % 2 === 0 ? "rgba(16, 185, 129, 0.48)" : "rgba(250, 204, 21, 0.42)",
+          pi % 2 === 0 ? mainCol : accentCol
+        );
+      }
+      ctx.restore();
+      // Concentric protective sanctuary dome rings
+      for (let ri = 0; ri < 2; ri++) {
+        ctx.strokeStyle = ri === 0 ? mainCol : accentCol;
+        ctx.lineWidth = (3.2 - ri) * fadeOut + 0.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.58 + ri * 0.34) * (0.85 + Math.sin(f * Math.PI) * 0.15), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      drawFourPointStar(ctx, 0, 0, 18 * fadeOut + 6, 5, "#FFFFFF", mainCol);
+      break;
+    }
+
+    case "duy": {
+      // Bão Tiêu Diệt Thế — Spinning 8-Blade Jade-Crimson Shuriken Wheel & Blood-Seal Crosshairs
+      let spin = elapsedTime * 6.8;
+      let sr = r * (0.45 + 0.55 * clamp(f * 2, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      ctx.save();
+      ctx.rotate(spin);
+      for (let bi = 0; bi < 8; bi++) {
+        let ba = (Math.PI / 4) * bi;
+        ctx.save();
+        ctx.rotate(ba);
+        ctx.fillStyle = bi % 2 === 0 ? mainCol : accentCol;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(sr * 0.96, 0);
+        ctx.lineTo(sr * 0.38, -14);
+        ctx.lineTo(sr * 0.52, 0);
+        ctx.lineTo(sr * 0.32, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2.6 * fadeOut + 0.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.42, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+
+    case "phong": {
+      // Tử Thần Giáng Lâm — Twin Opposing Cyan-Crimson Crescent Blades forming Razor X-Cut
+      let sr = r * (0.52 + 0.52 * clamp(f * 1.9, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      for (let ci = 0; ci < 2; ci++) {
+        let ca = baseAngle + (ci === 0 ? 0.55 : -0.55) + f * 0.8 * (ci === 0 ? 1 : -1);
+        ctx.save();
+        ctx.rotate(ca);
+        ctx.strokeStyle = ci === 0 ? mainCol : accentCol;
+        ctx.lineWidth = 6.5 * fadeOut + 1.5;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.arc(0, 0, sr * 0.78, -0.95, 0.95);
+        ctx.stroke();
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2.4 * fadeOut + 0.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, sr * 0.78, -0.75, 0.75);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (releaseW > 0.05 || impactW > 0.05) {
+        drawFourPointStar(ctx, 0, 0, r * 0.36 * Math.max(releaseW, impactW) + 8, 3.8, "#FFFFFF", accentCol);
+      }
+      break;
+    }
+
+    case "dang": {
+      // Hổ Quyền Diệt Thế — Rotating Yin-Yang Taiji Ring + Opposing White & Black Tiger Fang Shockwaves
+      let sr = r * (0.52 + 0.48 * clamp(f * 1.85, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      ctx.save();
+      ctx.rotate(elapsedTime * 3.4);
+      // White Yang half-arc + Black Yin half-arc
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 6.2 * fadeOut + 1.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.82, 0, Math.PI);
+      ctx.stroke();
+      ctx.strokeStyle = isMono ? "#475569" : "#18181B";
+      ctx.lineWidth = 7.2 * fadeOut + 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.82, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "#CBD5E1";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.82, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      // Yin-Yang focus orbs
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(sr * 0.42, 0, 9 * fadeOut + 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = isMono ? "#1E293B" : "#090D16";
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(-sr * 0.42, 0, 9 * fadeOut + 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      if (impactW > 0.05) {
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 4 * impactW;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * (0.3 + f * 0.72), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "thanh": {
+      // Xà Linh Hộ Thể — Ouroboros Twin Emerald-Violet Serpent Coils + Venom Fang Core
+      let sr = r * (0.55 + 0.45 * clamp(f * 1.9, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.9;
+      ctx.save();
+      ctx.rotate(elapsedTime * 2.8);
+      for (let si = 0; si < 2; si++) {
+        ctx.save();
+        ctx.rotate(si * Math.PI);
+        ctx.strokeStyle = si === 0 ? mainCol : accentCol;
+        ctx.lineWidth = 5.2 * fadeOut + 1.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, sr * 0.78, 0.12, Math.PI * 0.92);
+        ctx.stroke();
+        // Serpent head fang silhouette
+        drawUltDiamondShard(ctx, Math.cos(0.12) * sr * 0.78, Math.sin(0.12) * sr * 0.78, 15, 6.5, 0.12 - Math.PI / 2, "#FFFFFF", mainCol);
+        ctx.restore();
+      }
+      ctx.restore();
+      // Venom ripple ring
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 2.2 * fadeOut + 0.6;
+      ctx.setLineDash([10, 7]);
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.48, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      break;
+    }
+
+    case "nhi": {
+      // Độc Tiễn Truy Sát — Tri-Elixir Alchemy Transmutation Circle (Purple/Green/Rose nodes at 120 deg)
+      let sr = r * (0.54 + 0.46 * clamp(f * 1.9, 0, 1));
+      let elixirCols = isMono ? ["#FFFFFF", "#CBD5E1", "#94A3B8"] : ["#C084FC", "#4ADE80", "#FB7185"];
+      ctx.globalAlpha = domainAlpha * 0.92;
+      ctx.save();
+      ctx.rotate(elapsedTime * 2.2);
+      drawUltPolygon(ctx, 0, 0, 3, sr * 0.82, 0);
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 2.8;
+      ctx.stroke();
+      drawUltPolygon(ctx, 0, 0, 3, sr * 0.82, Math.PI);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      for (let ei = 0; ei < 3; ei++) {
+        let ea = (Math.PI * 2 * ei) / 3;
+        let ex = Math.cos(ea) * sr * 0.82;
+        let ey = Math.sin(ea) * sr * 0.82;
+        ctx.fillStyle = elixirCols[ei];
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 9 * fadeOut + 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+      if (impactW > 0.05) {
+        drawFourPointStar(ctx, 0, 0, r * 0.28 * impactW + 8, 4, "#FFFFFF", elixirCols[1]);
+      }
+      break;
+    }
+
+    case "thien": {
+      // Vạn Giới Du Hành / Phán Quyết Sáng Thế — 12-Sword Celestial Sundial Halo + Golden Crown
+      let sr = r * (0.58 + 0.42 * clamp(f * 1.85, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.94;
+      ctx.save();
+      ctx.rotate(elapsedTime * 1.1);
+      for (let sw = 0; sw < 12; sw++) {
+        let sa = (Math.PI / 6) * sw;
+        let reach = sr * (sw % 2 === 0 ? 0.98 : 0.76);
+        drawUltDiamondShard(
+          ctx,
+          Math.cos(sa) * reach,
+          Math.sin(sa) * reach,
+          (sw % 2 === 0 ? 16 : 11) * fadeOut + 4,
+          4.2,
+          sa,
+          sw % 2 === 0 ? mainCol : accentCol,
+          "#FFFFFF"
+        );
+      }
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 3 * fadeOut + 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.64, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      drawFourPointStar(ctx, 0, 0, r * 0.32 * (0.55 + Math.max(releaseW, impactW)) + 10, 5, "#FFFFFF", mainCol);
+      break;
+    }
+
+    case "minh": {
+      // Thiên Lao Giáng Lâm — Heavenly Golden Lock Chains crisscrossing Sacred Bell Sigil + 6 Decree Pillars
+      let sr = r * (0.56 + 0.44 * clamp(f * 1.9, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      // 3 crisscrossing lock chains
+      for (let ci = 0; ci < 3; ci++) {
+        let ca = baseAngle + (Math.PI / 3) * ci;
+        ctx.save();
+        ctx.rotate(ca);
+        ctx.strokeStyle = ci === 0 ? mainCol : accentCol;
+        ctx.lineWidth = 3.2 * fadeOut + 0.8;
+        ctx.setLineDash([12, 6]);
+        ctx.beginPath();
+        ctx.moveTo(-sr, 0);
+        ctx.lineTo(sr, 0);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+      // 6 Sacred Decree Pillars
+      for (let pi = 0; pi < 6; pi++) {
+        let pa = (Math.PI / 3) * pi + elapsedTime * 0.7;
+        let px = Math.cos(pa) * sr * 0.85;
+        let py = Math.sin(pa) * sr * 0.85;
+        drawUltDiamondShard(ctx, px, py, 11 * fadeOut + 3, 5, pa + Math.PI / 2, mainCol, "#FFFFFF");
+      }
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2.8 * fadeOut + 0.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.85, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+
+    case "ducanh": {
+      // Thiên Thạch Lăn Cuồng Nộ — Interlocking Golden Siege-Gear Fortress Rings & Meteor Anvil Crosshair
+      let sr = r * (0.55 + 0.45 * clamp(f * 2, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      ctx.save();
+      ctx.rotate(elapsedTime * 2.2);
+      // Outer notched siege gear teeth
+      let teeth = 12;
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 4.2 * fadeOut + 1.2;
+      ctx.beginPath();
+      for (let ti = 0; ti <= teeth * 2; ti++) {
+        let ta = (Math.PI * ti) / teeth;
+        let tr = ti % 2 === 0 ? sr * 0.92 : sr * 0.78;
+        let tx = Math.cos(ta) * tr;
+        let ty = Math.sin(ta) * tr;
+        if (ti === 0) ctx.moveTo(tx, ty);
+        else ctx.lineTo(tx, ty);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+      // Inner molten anvil impact burst
+      if (impactW > 0.05 || releaseW > 0.05) {
+        let p = Math.max(impactW, releaseW);
+        ctx.strokeStyle = accentCol;
+        ctx.lineWidth = 4.6 * p;
+        ctx.beginPath();
+        ctx.arc(0, 0, sr * (0.28 + f * 0.68), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "bach": {
+      // Vạn Ảnh Tuyệt Diệt — 4 Gale-Petal Wind Talisman Seals rotating in opposing layers + Razor Slipstreams
+      let sr = r * (0.54 + 0.46 * clamp(f * 2, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      for (let layer = 0; layer < 2; layer++) {
+        ctx.save();
+        ctx.rotate(elapsedTime * (layer === 0 ? 4.2 : -3.4));
+        for (let si = 0; si < 4; si++) {
+          let sa = (Math.PI / 2) * si;
+          ctx.save();
+          ctx.rotate(sa);
+          ctx.strokeStyle = layer === 0 ? mainCol : accentCol;
+          ctx.lineWidth = (layer === 0 ? 4.4 : 3.2) * fadeOut + 0.8;
+          ctx.beginPath();
+          ctx.arc(0, 0, sr * (layer === 0 ? 0.86 : 0.56), 0.1, 1.12);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      drawFourPointStar(ctx, 0, 0, r * 0.34 * (0.5 + Math.max(releaseW, impactW)) + 8, 4.2, "#FFFFFF", accentCol);
+      break;
+    }
+
+    case "thai": {
+      // Đấu Trường Sinh Tử — Octagonal Gladiator Colosseum Ring + 8 War-Banners + Champion Crown
+      let sr = r * (0.68 + 0.32 * clamp(f * 2.2, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      drawUltPolygon(ctx, 0, 0, 8, sr * 0.92, Math.PI / 8);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 4 * fadeOut + 1.2;
+      ctx.stroke();
+      drawUltPolygon(ctx, 0, 0, 8, sr * 0.72, 0);
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 2.4 * fadeOut + 0.8;
+      ctx.stroke();
+      for (let bi = 0; bi < 8; bi++) {
+        let ba = (Math.PI / 4) * bi + Math.PI / 8;
+        drawUltDiamondShard(ctx, Math.cos(ba) * sr * 0.92, Math.sin(ba) * sr * 0.92, 12 * fadeOut + 3, 5, ba, accentCol, mainCol);
+      }
+      if (impactW > 0.05) {
+        drawFourPointStar(ctx, 0, 0, r * 0.36 * impactW + 10, 5, "#FFFFFF", accentCol);
+      }
+      break;
+    }
+
+    case "khair":
+    default: {
+      // Pháo Kích Giật Lùi — Precision Emerald-Gold Sniper Rangefinder Dial + Mach-Cone Shock Diamonds
+      let sr = r * (0.55 + 0.45 * clamp(f * 2, 0, 1));
+      ctx.globalAlpha = domainAlpha * 0.92;
+      ctx.save();
+      ctx.rotate(baseAngle);
+      // Sniper mil-dot reticle arcs
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 2.8 * fadeOut + 0.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.82, -0.7, 0.7);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, sr * 0.82, Math.PI - 0.7, Math.PI + 0.7);
+      ctx.stroke();
+      // Directional railgun cone & shock diamonds
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 3.2 * fadeOut + 0.8;
+      ctx.beginPath();
+      ctx.moveTo(-sr * 0.95, 0);
+      ctx.lineTo(sr * 1.05, 0);
+      ctx.moveTo(0, -sr * 0.75);
+      ctx.lineTo(0, sr * 0.75);
+      ctx.stroke();
+      drawUltDiamondShard(ctx, sr * 0.45, 0, 14 * fadeOut + 3, 5.5, 0, "#FFFFFF", accentCol);
+      drawUltDiamondShard(ctx, sr * 0.82, 0, 11 * fadeOut + 3, 4.2, 0, accentCol, mainCol);
+      ctx.restore();
+      if (impactW > 0.05) {
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 3.6 * impactW;
+        ctx.beginPath();
+        ctx.arc(0, 0, sr * (0.3 + f * 0.65), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+  }
+
+  // Subtle shared Stage 1 awakening spark & Stage 5 dissipating ember motes tuned to hero palette
+  if (wakeW > 0.08) {
+    ctx.globalAlpha = wakeW * 0.85;
+    ctx.strokeStyle = hotCol;
+    ctx.lineWidth = 2.4 * wakeW;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.22 * (1 + wakeW), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (afterW > 0.05) {
+    ctx.globalAlpha = afterW * 0.78;
+    for (let ei = 0; ei < 4; ei++) {
+      let ea = (Math.PI / 2) * ei - elapsedTime * 2.2 + baseAngle;
+      let er = r * (0.62 + (f - 0.66) * 0.65);
+      drawFourPointStar(ctx, Math.cos(ea) * er, Math.sin(ea) * er, 5 * afterW + 1.5, 1.5, "#FFFFFF", mainCol);
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawCosmicSpatialTear(ctx, h, elapsedTime, isMono, enableAdditive = true) {
+  let maxLife = Math.max(0.1, h.maxLife || 1.35);
+  let p = clamp((h.life || 0) / maxLife, 0, 1);
+  // Expand (0..0.14) -> Tremble/Vibrate (0.14..0.76) -> Snap shut (0.76..1.0)
+  let widthEnv = p < 0.14 ? p / 0.14 : p > 0.76 ? Math.max(0, 1 - (p - 0.76) / 0.24) : 1;
+  let alpha = p > 0.8 ? clamp(1 - (p - 0.8) / 0.2, 0, 1) : 1;
+  if (alpha <= 0.02 || widthEnv <= 0.02) return;
+
+  let dx = h.x2 - h.x1, dy = h.y2 - h.y1;
+  let len = Math.hypot(dx, dy) || 1;
+  let ang = Math.atan2(dy, dx);
+  let nx = -Math.sin(ang), ny = Math.cos(ang);
+  let offsets = h.offsets && h.offsets.length > 0 ? h.offsets : [-6, 9, -12, 8, -4];
+  let D = offsets.length;
+  let tremble = p >= 0.14 && p <= 0.78 ? Math.sin(elapsedTime * 42 + (h.x1 || 0)) * 2.2 : 0;
+  let baseW = (h.width || 12) * (0.35 + 0.65 * widthEnv);
+  let mainCol = isMono ? "#FFFFFF" : (h.color || "#F43F5E");
+  let rimCol = isMono ? "#CBD5E1" : (h.accentColor || "#E879F9");
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const traceSpine = (mult = 1) => {
+    ctx.beginPath();
+    ctx.moveTo(h.x1, h.y1);
+    for (let i = 0; i < D; i++) {
+      let u = (i + 1) / (D + 1);
+      let off = offsets[i] * mult + tremble * (i % 2 === 0 ? 1 : -1);
+      ctx.lineTo(h.x1 + dx * u + nx * off, h.y1 + dy * u + ny * off);
+    }
+    ctx.lineTo(h.x2, h.y2);
+  };
+
+  // Deep dark cosmic dimensional void cavity inside fissure
+  ctx.strokeStyle = isMono ? "#020617" : "#070312";
+  ctx.lineWidth = baseW * 2.15;
+  traceSpine(1.1);
+  ctx.stroke();
+
+  // Twinkling cosmic stars inside the tear void
+  let starCount = Math.min(5, Math.max(2, Math.floor(len / 48)));
+  for (let si = 0; si < starCount; si++) {
+    let u = (si + 0.5) / starCount;
+    let oi = Math.min(D - 1, Math.floor(u * D));
+    let sx = h.x1 + dx * u + nx * (offsets[oi] * 0.55);
+    let sy = h.y1 + dy * u + ny * (offsets[oi] * 0.55);
+    drawFourPointStar(ctx, sx, sy, 2.8 * widthEnv + 0.8, 0.9, "#FFFFFF", rimCol);
+  }
+
+  // Additive neon dimensional glow rim
+  ctx.save();
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+  ctx.strokeStyle = mainCol;
+  ctx.lineWidth = baseW * 1.15;
+  traceSpine(1.0);
+  ctx.stroke();
+
+  ctx.strokeStyle = rimCol;
+  ctx.lineWidth = Math.max(2.2, baseW * 0.58);
+  traceSpine(0.82);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = Math.max(1.5, baseW * 0.26);
+  traceSpine(0.65);
+  ctx.stroke();
+  ctx.restore();
+
+  // Branching jagged dimensional sub-cracks
+  if (h.subRifts && h.subRifts.length > 0) {
+    ctx.strokeStyle = rimCol;
+    ctx.lineWidth = 2.2 * widthEnv + 0.5;
+    for (let sr of h.subRifts) {
+      let mx = sr.x + Math.cos(sr.angle + 0.18) * sr.len * 0.52;
+      let my = sr.y + Math.sin(sr.angle + 0.18) * sr.len * 0.52;
+      let ex = sr.x + Math.cos(sr.angle) * sr.len;
+      let ey = sr.y + Math.sin(sr.angle) * sr.len;
+      ctx.beginPath();
+      ctx.moveTo(sr.x, sr.y);
+      ctx.lineTo(mx, my);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
+  }
+
+  // Orbiting shattered dimension crystal motes being pulled along tear
+  let P = (h.x1 || 0) * 0.05 + (h.y1 || 0) * 0.05;
+  for (let N = 0; N < 5; N++) {
+    let W = (N + 0.5) / 5;
+    let pull = (1 - widthEnv) * 10;
+    let V = h.x1 + dx * W + Math.sin(P + N * 2.3 + elapsedTime * 4) * Math.max(4, 15 - pull);
+    let oe = h.y1 + dy * W + Math.cos(P + N * 3.1 + elapsedTime * 4) * Math.max(4, 15 - pull);
+    let ye = elapsedTime * 6 + N * 1.5;
+    ctx.save();
+    ctx.translate(V, oe);
+    ctx.rotate(ye);
+    ctx.fillStyle = isMono ? "#FFFFFF" : rimCol;
+    ctx.beginPath();
+    ctx.moveTo(0, -5.8 * widthEnv);
+    ctx.lineTo(4.6 * widthEnv, 0);
+    ctx.lineTo(0, 6.2 * widthEnv);
+    ctx.lineTo(-4.0 * widthEnv, 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = isMono ? "#000000" : "#FFFFFF";
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// =====================================================================
 // HERO WEAPON RENDERERS (Local space: centered on player, rotated to aim)
 // =====================================================================
 
@@ -313,11 +1849,14 @@ function drawDungSpear(ctx, p, t, state, isMono) {
 }
 
 function drawTinBlades(ctx, p, t, state, isMono) {
-  // Hư Không Song Đao — Void-Rift Twin Blades
+  // Hư Không Song Đao — Void-Rift Twin Blades with Ma Thạch Resonance Veins
   let atkProg = state.atkProg;
   let hasAtk = state.hasAtk;
   let parity = state.parity;
-  let flare = clamp(state.skillAlpha + state.critAlpha * 0.9, 0, 1.2);
+  let resStacks = clamp(p.tin_resonance_stacks || 0, 0, 4);
+  let empowered = Boolean(p.tin_empowered);
+  let resRatio = resStacks / 4;
+  let flare = clamp(state.skillAlpha + state.critAlpha * 0.9 + resRatio * 0.35 + (empowered ? 0.45 : 0), 0, 1.5);
   let idleWave = Math.sin(t * 4.5) * 0.05;
   let walkSweep = state.moveAmt * 0.24;
 
@@ -341,11 +1880,11 @@ function drawTinBlades(ctx, p, t, state, isMono) {
     ctx.translate(anchorX, anchorY);
     ctx.rotate(side * (0.34 + idleWave - walkSweep) + swing);
 
-    // Subtle void trail during swing / skill
+    // Subtle void trail during swing / skill / overdrive
     if (hasAtk || flare > 0.2) {
-      ctx.globalAlpha = clamp(0.45 + flare * 0.4, 0, 0.9);
-      ctx.strokeStyle = isMono ? "#000000" : "#F43F5E";
-      ctx.lineWidth = 3.2;
+      ctx.globalAlpha = clamp(0.45 + flare * 0.4, 0, 0.92);
+      ctx.strokeStyle = isMono ? "#000000" : empowered ? "#FB7185" : "#F43F5E";
+      ctx.lineWidth = empowered ? 3.8 : 3.2;
       ctx.beginPath();
       ctx.moveTo(2, side * 1.5);
       ctx.quadraticCurveTo(18, -side * 7, 34, side * 2);
@@ -382,20 +1921,25 @@ function drawTinBlades(ctx, p, t, state, isMono) {
     ctx.fill();
     ctx.stroke();
 
-    // Sculpted Curved Void Blade (obsidian spine + luminous crimson edge)
+    // Sculpted Curved Void Blade (obsidian spine + luminous crimson-obsidian Ma Thạch veins)
     let bladeGrad = ctx.createLinearGradient(6, 0, 36, 0);
     if (isMono) {
       bladeGrad.addColorStop(0, "#111111");
       bladeGrad.addColorStop(0.6, "#666666");
       bladeGrad.addColorStop(1, "#FFFFFF");
+    } else if (empowered) {
+      bladeGrad.addColorStop(0, "#1E0922");
+      bladeGrad.addColorStop(0.38, "#BE123C");
+      bladeGrad.addColorStop(0.75, "#FB7185");
+      bladeGrad.addColorStop(1, "#FFF1F2");
     } else {
       bladeGrad.addColorStop(0, "#31102F");
       bladeGrad.addColorStop(0.45, "#E11D48");
       bladeGrad.addColorStop(1, "#FFE4E6");
     }
     ctx.fillStyle = bladeGrad;
-    ctx.strokeStyle = isMono ? "#000000" : "#FDA4AF";
-    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = isMono ? "#000000" : empowered ? "#FFF1F2" : "#FDA4AF";
+    ctx.lineWidth = empowered ? 1.7 : 1.4;
     ctx.beginPath();
     ctx.moveTo(6, -side * 2.2);
     ctx.quadraticCurveTo(20, -side * 6.5, 36, side * 1.5);
@@ -408,40 +1952,43 @@ function drawTinBlades(ctx, p, t, state, isMono) {
 
     // Glowing spatial-tear edge highlight
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#FFF1F2";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.4 + resRatio * 0.5;
     ctx.beginPath();
     ctx.moveTo(10, -side * 3.2);
     ctx.quadraticCurveTo(22, -side * 5.6, 35, side * 1.3);
     ctx.stroke();
 
-    // Void crystal in guard + spatial-rift rune glow
+    // Void crystal in guard + spatial-rift rune glow scaling with resonance stacks
     let gemHalo = ctx.createRadialGradient(6, 0, 0.5, 6, 0, 7 + flare * 3);
-    gemHalo.addColorStop(0, isMono ? "rgba(255,255,255,0.8)" : "rgba(251, 113, 133, 0.78)");
+    gemHalo.addColorStop(0, isMono ? "rgba(255,255,255,0.8)" : empowered ? "rgba(255, 228, 230, 0.9)" : "rgba(251, 113, 133, 0.78)");
     gemHalo.addColorStop(1, "rgba(225, 29, 72, 0)");
     ctx.fillStyle = gemHalo;
     ctx.beginPath();
     ctx.arc(6, 0, 7 + flare * 3, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = isMono ? "#FFFFFF" : "#FB7185";
+    ctx.fillStyle = isMono ? "#FFFFFF" : empowered ? "#FFF1F2" : "#FB7185";
     ctx.beginPath();
-    ctx.arc(6, 0, 2.4 + flare * 0.9, 0, Math.PI * 2);
+    ctx.arc(6, 0, 2.4 + flare * 0.85, 0, Math.PI * 2);
     ctx.fill();
 
-    // Engraved crimson-violet rune sigils along blade spine
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
-    ctx.lineWidth = 1.1;
+    // Engraved crimson-obsidian Ma Thạch vein sigils along blade spine
+    ctx.strokeStyle = isMono ? "#FFFFFF" : empowered ? "#FFFFFF" : resStacks > 0 ? "#FB7185" : "#FDA4AF";
+    ctx.lineWidth = 1.1 + resRatio * 0.7;
     ctx.beginPath();
     ctx.moveTo(13, 0);
-    ctx.lineTo(18, -side * 1.4);
+    ctx.lineTo(18, -side * 1.6);
     ctx.lineTo(23, 0);
-    ctx.lineTo(28, -side * 1.1);
+    ctx.lineTo(28, -side * 1.3);
+    if (resStacks >= 2 || empowered) {
+      ctx.lineTo(33, 0);
+    }
     ctx.stroke();
 
     // Flowing dark-rose mist ribbon trailing from pommel
     let mistW = Math.sin(t * 11 + side * 2) * 3.2;
-    ctx.strokeStyle = isMono ? "#333333" : "rgba(244, 63, 94, 0.72)";
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = isMono ? "#333333" : empowered ? "rgba(251, 113, 133, 0.88)" : "rgba(244, 63, 94, 0.72)";
+    ctx.lineWidth = empowered ? 2.1 : 1.6;
     ctx.beginPath();
     ctx.moveTo(-9, 0);
     ctx.quadraticCurveTo(-15, mistW, -21, -mistW * 0.7);
@@ -1498,22 +3045,23 @@ function drawDanhGreatsword(ctx, p, t, state, isMono) {
   ctx.fill();
   ctx.stroke();
 
-  // Central Blood-Fuller Groove & Glowing Dragon Runes
-  ctx.strokeStyle = isMono ? "#FFFFFF" : isBuffed ? "#FEF08A" : "#EF4444";
-  ctx.lineWidth = 2.1;
+  // Central Blood-Fuller Groove & Glowing Dragon Runes (progressively heats up while charging)
+  let heatCol = isMono ? "#FFFFFF" : chargeRatio >= 0.85 ? "#FFFFFF" : chargeRatio >= 0.45 ? "#FEF08A" : isBuffed ? "#FEF08A" : "#EF4444";
+  ctx.strokeStyle = heatCol;
+  ctx.lineWidth = 2.1 + chargeRatio * 1.6;
   ctx.beginPath();
   ctx.moveTo(12, 0);
   ctx.lineTo(44, 0);
   ctx.stroke();
 
   // Engraved draconic teeth runes along fuller
-  ctx.strokeStyle = isMono ? "#FFFFFF" : "#FEF08A";
-  ctx.lineWidth = 1.1;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : chargeRatio >= 0.6 ? "#FFFFFF" : "#FEF08A";
+  ctx.lineWidth = 1.1 + chargeRatio * 0.7;
   for (let rx = 18; rx <= 38; rx += 6.5) {
     ctx.beginPath();
-    ctx.moveTo(rx, -2.5);
+    ctx.moveTo(rx, -2.5 - chargeRatio * 0.9);
     ctx.lineTo(rx + 2.4, 0);
-    ctx.lineTo(rx, 2.5);
+    ctx.lineTo(rx, 2.5 + chargeRatio * 0.9);
     ctx.stroke();
   }
 
@@ -1540,16 +3088,16 @@ function drawDanhGreatsword(ctx, p, t, state, isMono) {
 
   if (flare > 0.2) {
     ctx.globalAlpha = clamp(flare * 0.85, 0, 1);
-    ctx.strokeStyle = isMono ? "#000000" : "#FEF08A";
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = isMono ? "#000000" : chargeRatio >= 0.85 ? "#FFFFFF" : "#FEF08A";
+    ctx.lineWidth = 1.8 + chargeRatio * 1.4;
     ctx.beginPath();
-    ctx.moveTo(14, -7.8);
-    ctx.quadraticCurveTo(34, -9 + Math.sin(t * 15) * 2.2, 55, 0);
-    ctx.quadraticCurveTo(34, 9 - Math.sin(t * 15) * 2.2, 14, 7.8);
+    ctx.moveTo(14, -7.8 - chargeRatio * 1.6);
+    ctx.quadraticCurveTo(34, -9 + Math.sin(t * 15) * 2.2, 55 + chargeRatio * 4, 0);
+    ctx.quadraticCurveTo(34, 9 - Math.sin(t * 15) * 2.2, 14, 7.8 + chargeRatio * 1.6);
     ctx.stroke();
   }
   if (state.critAlpha > 0.15 || isBuffed) {
-    let sc = Math.max(state.critAlpha, isBuffed ? 0.65 : 0);
+    let sc = Math.max(state.critAlpha, isBuffed ? 0.65 + chargeRatio * 0.55 : 0);
     drawFourPointStar(ctx, 54, 0, 8.5 * sc, 2.3 * sc, "#FEF08A", "#DC2626");
   }
   ctx.restore();
@@ -2484,7 +4032,8 @@ function drawNhiVenomCrossbow(ctx, p, elapsedTime, state, isMono) {
 export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
   let atkDur = Math.max(0.06, p.weaponAttackDuration || 0.22);
   let hasAtk = p.attackAnimTimer > 0;
-  let atkProg = hasAtk ? clamp(1 - p.attackAnimTimer / atkDur, 0, 1) : 0;
+  let rawAtkProg = hasAtk ? clamp(1 - p.attackAnimTimer / atkDur, 0, 1) : 0;
+  let atkProg = hasAtk ? clamp(getCosmicSwingEase(rawAtkProg), -0.15, 1.08) : 0;
   let skillDur = Math.max(0.08, p.weaponSkillDur || 0.45);
   let skillAlpha = p.weaponSkillTimer > 0 ? clamp(p.weaponSkillTimer / skillDur, 0, 1) : 0;
   let critAlpha = p.weaponCritTimer > 0 ? clamp(p.weaponCritTimer / 0.36, 0, 1) : 0;
@@ -2608,6 +4157,51 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       break;
     default:
       break;
+  }
+
+  // Crawling neon electrical arcs along weapon reach during skills/crits/ultimates + swing wake crescent
+  let arcPower = Math.max(skillAlpha * 0.9, critAlpha);
+  if (arcPower > 0.08) {
+    let wColors = {
+      dung: ["#38BDF8", "#FDE047"],
+      tin: ["#F43F5E", "#FDA4AF"],
+      kin: ["#34D399", "#FEF08A"],
+      trung: ["#818CF8", "#FDE047"],
+      eohyen: ["#38BDF8", "#E0F2FE"],
+      longhoi: ["#F97316", "#FEF08A"],
+      duccong: ["#C084FC", "#38BDF8"],
+      gau: ["#F59E0B", "#FEF08A"],
+      bao: ["#A855F7", "#F5D0FE"],
+      danh: ["#EF4444", "#FBBF24"],
+      luan: ["#C084FC", "#67E8F9"],
+      taidu: ["#38BDF8", "#F97316"],
+      nguyen: ["#10B981", "#FEF08A"],
+      duy: ["#14B8A6", "#F43F5E"],
+      phong: ["#22D3EE", "#F43F5E"],
+      dang: ["#F8FAFC", "#94A3B8"],
+      thien: ["#FACC15", "#38BDF8"],
+      thanh: ["#34D399", "#A78BFA"],
+      nhi: ["#4ADE80", "#E879F9"],
+      minh: ["#FACC15", "#38BDF8"],
+      ducanh: ["#F59E0B", "#FEF08A"],
+      bach: ["#22D3EE", "#E879F9"],
+      thai: ["#EF4444", "#FDE047"],
+      khair: ["#4ADE80", "#FACC15"]
+    }[heroId] || ["#38BDF8", "#FFFFFF"];
+    drawWeaponArcLightning(ctx, 32, arcPower, elapsedTime, wColors[0], wColors[1], isMono, true);
+  }
+  if (hasAtk && rawAtkProg > 0.14 && rawAtkProg < 0.85) {
+    let swingA = Math.sin((rawAtkProg - 0.14) / 0.71 * Math.PI);
+    ctx.save();
+    if (!isMono) ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = swingA * 0.45;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#E0F2FE";
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(10, 0, 26, -0.7 * state.parity, 0.7 * state.parity, state.parity < 0);
+    ctx.stroke();
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -4899,7 +6493,7 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   drawFourPointStar(ctx, 0, 0, pr * 0.85, pr * 0.28, "#FFFFFF", isMono ? "#000000" : h.color || "#38BDF8");
 }
 
-export function drawUpgradedSlash(ctx, h, f, isMono) {
+export function drawUpgradedSlash(ctx, h, f, isMono, enableAdditive = true) {
   let alpha = Math.max(0, 1 - f);
   if (h.kind === "shockwave") {
     let r = h.radius * (0.22 + 0.78 * Math.pow(f, 0.68));
@@ -4915,19 +6509,21 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
     ctx.fill();
 
-    // Primary shock ring
+    // Primary shock ring + additive neon pressure aura
+    ctx.save();
+    if (!isMono && enableAdditive) ctx.globalCompositeOperation = "lighter";
     ctx.beginPath();
     ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
     ctx.strokeStyle = main;
-    ctx.lineWidth = 6.2 * alpha + 1.4;
+    ctx.lineWidth = 6.6 * alpha + 1.5;
     ctx.stroke();
 
-    // Inner bright sonic pressure crest
     ctx.beginPath();
     ctx.arc(h.x, h.y, r * 0.84, 0, Math.PI * 2);
     ctx.strokeStyle = accent;
     ctx.lineWidth = 2.8 * alpha + 0.8;
     ctx.stroke();
+    ctx.restore();
 
     // Rotating arcane shock segments + outward speed rays
     ctx.save();
@@ -5069,6 +6665,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: h.radius * 0.96, startAng: startA, endAng: sweepEnd, f, color: "#9333EA", accentColor: "#E879F9", isMono, enableAdditive, tiltY: 0.84, crackStrength: h.crossed ? 1.15 : 0.78, seed: 3 });
     drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, 12.5 * alpha + 2, "#9333EA", "#F5D0FE", isMono);
     drawTaperedArc(ctx, 0, 0, h.radius * 0.76, startA * 0.85, sweepEnd * 0.9, 6.2 * alpha + 1, "#E879F9", "#FFFFFF", isMono);
     for (let si = -1; si <= 1; si++) {
@@ -5104,6 +6701,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: h.radius * 0.96, startAng: startA, endAng: sweepEnd, f, color: h.color || "#EF4444", accentColor: "#FBBF24", isMono, enableAdditive, tiltY: 0.86, crackStrength: h.empowered ? 1.15 : 0.72, seed: 5 });
     drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, (h.empowered ? 14.5 : 11.5) * alpha + 2, h.color, "#FEF08A", isMono);
     drawTaperedArc(ctx, 0, 0, h.radius * 0.78, startA * 0.85, sweepEnd * 0.88, 6.2 * alpha + 1, "#F59E0B", "#FFFFFF", isMono);
     for (let fi = -1; fi <= 1; fi++) {
@@ -5135,6 +6733,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: f * 18, cy: 0, radius: h.radius * 0.98, startAng: -h.spread / 2, endAng: h.spread / 2, f, color: h.color || "#EF4444", accentColor: "#FEF08A", isMono, enableAdditive, tiltY: 0.92, crackStrength: step === 3 ? 1.25 : 0.82, seed: step + 7 });
     drawTaperedArc(ctx, f * 18, 0, h.radius, -h.spread / 2, h.spread / 2, (step === 3 ? 15 : 11) * alpha + 2, h.color, "#FFFFFF", isMono);
     drawTaperedArc(ctx, f * 22, 0, h.radius * 0.8, -h.spread * 0.42, h.spread * 0.42, 6 * alpha + 1, "#FEF08A", "#FFFFFF", isMono);
     drawFourPointStar(ctx, f * 20 + h.radius, 0, (step === 3 ? 11 : 8) * alpha, 2.4 * alpha, "#FEF08A", isMono ? "#000000" : h.color);
@@ -5147,6 +6746,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     let dir = h.dir || 1;
     let startA = (-h.spread / 2) * dir;
     let sweepEnd = (-h.spread / 2 + h.spread * Math.min(1, f * 1.9 + 0.3)) * dir;
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: h.radius * 0.96, startAng: startA, endAng: sweepEnd, f, color: h.isCrit ? "#FACC15" : h.color || "#0EA5E9", accentColor: h.isCrit ? "#F43F5E" : "#67E8F9", isMono, enableAdditive, tiltY: 0.84, crackStrength: h.isCrit ? 1.22 : 0.82, seed: 11 });
     drawTaperedArc(ctx, 0, 0, h.radius, startA, sweepEnd, (h.isCrit ? 15.5 : 11) * alpha + 2, h.isCrit ? "#FACC15" : h.color || "#0EA5E9", "#67E8F9", isMono);
     drawTaperedArc(ctx, 0, 0, h.radius * 0.78, startA * 0.85, sweepEnd * 0.9, 6 * alpha + 1.2, "#22D3EE", "#FFFFFF", isMono);
     if (h.crossed) {
@@ -6255,6 +7855,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: r * 0.96, startAng: -h.spread * 0.56, endAng: h.spread * 0.56, f, color: h.color || "#22D3EE", accentColor: h.accentColor || "#E879F9", isMono, enableAdditive, tiltY: 0.85, crackStrength: 1.05, seed: 13 });
     drawTaperedArc(ctx, 0, 0, r, -h.spread * 0.56, h.spread * 0.56, 14 * alpha + 2.2, h.color || "#22D3EE", "#FFFFFF", isMono);
     drawTaperedArc(ctx, 0, 0, r * 0.82, h.spread * 0.52, -h.spread * 0.52, 10.5 * alpha + 1.8, h.accentColor || "#E879F9", "#A5F3FC", isMono);
     for (let wi = -2; wi <= 2; wi++) {
@@ -6285,6 +7886,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: r * 0.98, startAng: -h.spread * 0.54, endAng: h.spread * 0.54, f, color: "#EF4444", accentColor: "#FDE047", isMono, enableAdditive, tiltY: 0.88, crackStrength: h.empowered ? 1.25 : 0.85, seed: 17 });
     drawTaperedArc(ctx, 0, 0, r, -h.spread * 0.54, h.spread * 0.54, 18.5 * alpha + 2.8, "#EF4444", "#FDE047", isMono);
     drawTaperedArc(ctx, 0, 0, r * 0.78, -h.spread * 0.44, h.spread * 0.44, 10.5 * alpha + 1.8, "#FACC15", "#FFFFFF", isMono);
     if (h.empowered) {
@@ -6412,6 +8014,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.98, startAng: -sp / 2, endAng: sp / 2, f, color: "#E11D48", accentColor: "#FDA4AF", isMono, enableAdditive, tiltY: 0.84, crackStrength: 1.32, seed: 19 });
     drawTaperedArc(ctx, 0, 0, sr, -sp / 2, sp / 2, 15 * alpha + 2.4, "#E11D48", "#FDA4AF", isMono);
     drawTaperedArc(ctx, 0, 0, sr * 0.79, -sp * 0.44, sp * 0.44, 7.5 * alpha + 1.4, "#FB7185", "#FFFFFF", isMono);
     if (h.crossed) {
@@ -6453,6 +8056,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.97, startAng: -sp / 2, endAng: sp / 2, f, color: "#0284C7", accentColor: "#BAE6FD", isMono, enableAdditive, tiltY: 0.88, crackStrength: 0.95, seed: 23 });
     drawTaperedArc(ctx, 0, 0, sr, -sp / 2, sp / 2, 14 * alpha + 2.2, "#0284C7", "#E0F2FE", isMono);
     drawTaperedArc(ctx, 0, 0, sr * 0.78, -sp * 0.42, sp * 0.42, 7.0 * alpha + 1.3, "#7DD3FC", "#FFFFFF", isMono);
     for (let si = -2; si <= 2; si++) {
@@ -6488,6 +8092,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.96, startAng: -sp / 2, endAng: sp / 2, f, color: "#10B981", accentColor: "#FEF08A", isMono, enableAdditive, tiltY: 0.84, crackStrength: 0.78, seed: 29 });
     drawTaperedArc(ctx, 0, 0, sr, -sp / 2, sp / 2, 14 * alpha + 2.2, "#10B981", "#FEF08A", isMono);
     drawTaperedArc(ctx, 0, 0, sr * 0.78, -sp * 0.44, sp * 0.44, 7.2 * alpha + 1.4, "#6EE7B7", "#FFFFFF", isMono);
     for (let wi of [-1, 1]) {
@@ -6524,6 +8129,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.98, startAng: startA, endAng: sweepEnd, f, color: mainCol, accentColor: accentCol, isMono, enableAdditive, tiltY: 0.86, crackStrength: 1.18, seed: 31 });
     drawTaperedArc(ctx, 0, 0, sr, startA, sweepEnd, 16 * alpha + 2.4, mainCol, "#FFFFFF", isMono);
     drawTaperedArc(ctx, 0, 0, sr * 0.79, startA * 0.88, sweepEnd * 0.92, 8.8 * alpha + 1.6, accentCol, "#FEF08A", isMono);
     for (let si = -2; si <= 2; si++) {
@@ -6559,6 +8165,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     ctx.closePath();
     ctx.fill();
 
+    drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.96, startAng: startA, endAng: sweepEnd, f, color: "#D97706", accentColor: "#FEF08A", isMono, enableAdditive, tiltY: 0.84, crackStrength: 0.92, seed: 37 });
     drawTaperedArc(ctx, 0, 0, sr, startA, sweepEnd, 17 * alpha + 2.5, "#D97706", "#FEF08A", isMono);
     drawTaperedArc(ctx, 0, 0, sr * 0.76, startA * 0.85, sweepEnd * 0.88, 8.5 * alpha + 1.6, "#F59E0B", "#FFFFFF", isMono);
     for (let si = -2; si <= 2; si++) {
@@ -6574,7 +8181,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
     return;
   }
 
-  // Generic slash / crossed slash (fallback)
+  // Generic slash / crossed slash (fallback with Cosmic Slash layer)
   ctx.translate(h.x, h.y);
   ctx.rotate(h.angle);
   let sr = h.radius || 70;
@@ -6589,6 +8196,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
   ctx.closePath();
   ctx.fill();
 
+  drawCosmicSlashLayer(ctx, { cx: 0, cy: 0, radius: sr * 0.96, startAng: -h.spread / 2, endAng: h.spread / 2, f, color: h.color || "#38BDF8", accentColor: h.accentColor || "#E0F2FE", isMono, enableAdditive, tiltY: 0.88, crackStrength: h.crossed ? 1.08 : 0.65, seed: 41 });
   drawTaperedArc(ctx, 0, 0, sr, -h.spread / 2, h.spread / 2, 11.5 * alpha + 1.6, h.color, "#FFFFFF", isMono);
   drawTaperedArc(ctx, 0, 0, sr * 0.78, -h.spread * 0.38, h.spread * 0.38, 5.5 * alpha + 1.1, h.color, "#FFFFFF", isMono);
   for (let si = -1; si <= 1; si++) {
@@ -6607,7 +8215,7 @@ export function drawUpgradedSlash(ctx, h, f, isMono) {
   drawFourPointStar(ctx, Math.cos(tipAng) * sr, Math.sin(tipAng) * sr, 8.5 * alpha + 2, 2.3 * alpha + 0.8, "#FFFFFF", isMono ? "#000000" : h.color);
 }
 
-export function drawCurvedLightning(ctx, l, isMono) {
+export function drawCurvedLightning(ctx, l, isMono, enableAdditive = true) {
   let pts = l.points;
   if (!pts || pts.length < 2) return;
   let alpha = clamp(1 - l.life / l.maxLife, 0, 1);
@@ -6626,15 +8234,20 @@ export function drawCurvedLightning(ctx, l, isMono) {
     }
   };
 
-  // Pass 1: Subtle outer atmospheric ionization sheath (anti-glare, zero shadowBlur)
-  ctx.globalAlpha = alpha * 0.22;
+  // Pass 1: Layered additive electric plasma ionization sheath (zero shadowBlur)
+  ctx.save();
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+  ctx.globalAlpha = alpha * 0.32;
   traceJaggedBolt();
-  ctx.strokeStyle = isMono ? "#000000" : l.color;
-  ctx.lineWidth = w * 3.8;
+  ctx.strokeStyle = isMono ? "#FFFFFF" : l.color;
+  ctx.lineWidth = w * 4.2;
   ctx.stroke();
+  ctx.restore();
 
   // Pass 2: Saturated electric plasma body
-  ctx.globalAlpha = alpha * 0.9;
+  ctx.globalAlpha = alpha * 0.92;
   traceJaggedBolt();
   ctx.strokeStyle = isMono ? "#111111" : l.color;
   ctx.lineWidth = w * 1.55;
@@ -6702,64 +8315,158 @@ export function drawCurvedLightning(ctx, l, isMono) {
   ctx.restore();
 }
 
-export function drawImpactBurst(ctx, b, isMono) {
-  let f = clamp(b.life / b.maxLife, 0, 1);
-  let alpha = (1 - f) * 0.84;
-  let r = b.radius * (0.35 + 0.65 * Math.pow(f, 0.6));
+export function drawImpactBurst(ctx, b, isMono, enableAdditive = true) {
+  let f = clamp(b.life / Math.max(0.05, b.maxLife), 0, 1);
+  let tier = b.tier || (b.isCrit ? "heavy" : "light");
+  let isFinisher = tier === "finisher";
+  let isHeavy = tier === "heavy" || b.isCrit || isFinisher;
+  let alpha = (1 - Math.pow(f, 1.25)) * (isFinisher ? 0.96 : 0.86);
+  let r = b.radius * (0.28 + 0.72 * Math.pow(f, 0.55));
+  let mainCol = isMono ? "#CBD5E1" : (b.color || "#38BDF8");
+  let hotCol = isMono ? "#FFFFFF" : (isFinisher ? "#F43F5E" : isHeavy ? "#FDE047" : mainCol);
 
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(b.x, b.y);
   ctx.rotate(b.angle || 0);
 
-  // Soft radial impact flash
-  let iGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 1.15);
-  iGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.5)");
-  iGrad.addColorStop(0.55, isMono ? "rgba(180,180,180,0.2)" : `${b.color || "#38BDF8"}44`);
+  // Soft radial impact flash (stronger core flash at impact onset)
+  let iGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, r * (isFinisher ? 1.38 : 1.15));
+  iGrad.addColorStop(0, isMono ? "rgba(255,255,255,0.68)" : isFinisher ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.52)");
+  iGrad.addColorStop(0.5, isMono ? "rgba(180,180,180,0.22)" : `${mainCol}48`);
   iGrad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = iGrad;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 1.15, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * (isFinisher ? 1.38 : 1.15), 0, Math.PI * 2);
   ctx.fill();
 
-  // Expanding shock ring + soft inner ring
+  // Layered additive neon shockwave rings
+  ctx.save();
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.strokeStyle = isMono ? "#CBD5E1" : b.color;
-  ctx.lineWidth = (b.isCrit ? 3.4 : 2.3) * alpha + 0.6;
+  ctx.strokeStyle = mainCol;
+  ctx.lineWidth = (isFinisher ? 5.2 : isHeavy ? 3.8 : 2.3) * alpha + 0.6;
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 0.66, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(226, 232, 240, 0.6)";
-  ctx.lineWidth = 1.3 * alpha;
-  ctx.stroke();
-
-  // 6 radial staggered velocity needles
-  ctx.strokeStyle = isMono ? "#E2E8F0" : b.isCrit ? "#FDE047" : b.color;
-  ctx.lineWidth = 1.5 * alpha;
-  for (let i = 0; i < 6; i++) {
-    let sa = (Math.PI / 3) * i + 0.32;
-    let out = i % 2 === 0 ? 1.24 : 1.02;
+  if (isHeavy) {
     ctx.beginPath();
-    ctx.moveTo(Math.cos(sa) * r * 0.48, Math.sin(sa) * r * 0.48);
+    ctx.arc(0, 0, r * 0.68, 0, Math.PI * 2);
+    ctx.strokeStyle = isFinisher ? hotCol : "rgba(226, 232, 240, 0.72)";
+    ctx.lineWidth = (isFinisher ? 2.6 : 1.5) * alpha;
+    ctx.stroke();
+  }
+
+  // Finisher: 3D tilted ground shock ring + upward soul-shard wisps
+  if (isFinisher) {
+    ctx.save();
+    ctx.scale(1, 0.62);
+    ctx.strokeStyle = hotCol;
+    ctx.lineWidth = 3.2 * alpha + 0.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.24, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // Staggered directional velocity needles
+  let needleCount = isFinisher ? 10 : isHeavy ? 8 : 5;
+  ctx.strokeStyle = hotCol;
+  ctx.lineWidth = (isFinisher ? 2.1 : 1.5) * alpha + 0.4;
+  ctx.lineCap = "round";
+  for (let i = 0; i < needleCount; i++) {
+    let sa = (Math.PI * 2 / needleCount) * i + 0.24;
+    let out = i % 2 === 0 ? (isFinisher ? 1.42 : 1.25) : 1.04;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(sa) * r * 0.44, Math.sin(sa) * r * 0.44);
     ctx.lineTo(Math.cos(sa) * r * out, Math.sin(sa) * r * out);
     ctx.stroke();
   }
 
-  // Directional collision flare + twin X-cross crit slash
-  if (f < 0.74) {
-    let starScale = (1 - f / 0.74) * (b.isCrit ? 1.36 : 0.94);
-    drawFourPointStar(ctx, 0, 0, 12.5 * starScale, 2.5 * starScale, isMono ? "#E2E8F0" : "#FDE68A", isMono ? "#0F172A" : b.color);
-    if (b.isCrit) {
-      ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(254, 240, 138, 0.82)";
-      ctx.lineWidth = 2.1 * (1 - f);
+  // Spinning shattered cosmic shards for Heavy & Finisher tiers
+  if (isHeavy && f < 0.88) {
+    let sCount = isFinisher ? 6 : 3;
+    for (let si = 0; si < sCount; si++) {
+      let sa = (Math.PI * 2 / sCount) * si + f * 2.4;
+      let sd = r * (0.55 + f * 0.65);
+      let sx = Math.cos(sa) * sd;
+      let sy = Math.sin(sa) * sd;
+      let sz = (isFinisher ? 5.2 : 3.6) * (1 - f);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(sa + f * 6);
+      ctx.fillStyle = isMono ? "#FFFFFF" : (si % 2 === 0 ? hotCol : mainCol);
+      ctx.beginPath();
+      ctx.moveTo(0, -sz);
+      ctx.lineTo(sz * 0.7, 0);
+      ctx.lineTo(0, sz);
+      ctx.lineTo(-sz * 0.7, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Elemental / Hero signature silhouette micro-accent on impact
+  let sigCol = (b.color || "").toUpperCase();
+  if (f < 0.85) {
+    if (sigCol === "#F43F5E" || sigCol === "#E11D48" || b.heroId === "tin") {
+      // Crimson Ma Thạch razor X-splinters
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
+      ctx.lineWidth = (isHeavy ? 2.6 : 1.7) * (1 - f);
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.15, -r * 0.38);
+      ctx.lineTo(r * 1.15, r * 0.38);
+      ctx.moveTo(r * 0.38, -r * 1.05);
+      ctx.lineTo(-r * 0.38, r * 1.05);
+      ctx.stroke();
+    } else if (sigCol === "#38BDF8" || sigCol === "#7DD3FC" || b.heroId === "eohyen" || b.heroId === "dung") {
+      // Glacial/storm diamond facets
+      for (let fi = 0; fi < 4; fi++) {
+        let fa = (Math.PI / 2) * fi + f * 1.5;
+        drawUltDiamondShard(ctx, Math.cos(fa) * r * 0.88, Math.sin(fa) * r * 0.88, 6.5 * (1 - f) + 2, 2.4 * (1 - f) + 0.8, fa, "#FFFFFF", mainCol);
+      }
+    } else if (sigCol === "#34D399" || sigCol === "#22D3EE" || b.heroId === "kin" || b.heroId === "bach") {
+      // Twin gale crescent wakes
+      ctx.strokeStyle = isMono ? "#FFFFFF" : mainCol;
+      ctx.lineWidth = 2.2 * (1 - f) + 0.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.12, -0.75, 0.75);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.12, Math.PI - 0.75, Math.PI + 0.75);
+      ctx.stroke();
+    } else if (sigCol === "#A855F7" || sigCol === "#C084FC" || b.heroId === "duccong" || b.heroId === "bao" || b.heroId === "luan") {
+      // Singularity / mirror prism diamond bracket
+      ctx.strokeStyle = isMono ? "#FFFFFF" : mainCol;
+      ctx.lineWidth = 1.8 * (1 - f) + 0.5;
+      drawUltPolygon(ctx, 0, 0, 4, r * 0.84, f * 2);
+      ctx.stroke();
+    } else if (sigCol === "#F97316" || sigCol === "#EA580C" || b.heroId === "longhoi" || b.heroId === "danh") {
+      // Blazing solar ember petal flares
+      for (let pi = 0; pi < 3; pi++) {
+        let pa = (Math.PI * 2 * pi) / 3 + f * 1.2;
+        drawUltPetal(ctx, pa, r * 0.28, r * 1.12, 5.5 * (1 - f) + 1.5, isMono ? "rgba(255,255,255,0.5)" : "rgba(251, 146, 60, 0.6)", "#FEF08A");
+      }
+    }
+  }
+
+  // Directional collision flare + twin X-cross slash (Heavy & Finisher)
+  if (f < 0.78) {
+    let starScale = (1 - f / 0.78) * (isFinisher ? 1.75 : isHeavy ? 1.38 : 0.92);
+    drawFourPointStar(ctx, 0, 0, 12.5 * starScale, 2.5 * starScale, isMono ? "#E2E8F0" : "#FEF08A", isMono ? "#0F172A" : mainCol);
+    if (isHeavy) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : (isFinisher ? "#FFFFFF" : "rgba(254, 240, 138, 0.88)");
+      ctx.lineWidth = (isFinisher ? 3.2 : 2.1) * (1 - f);
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(-r * 1.28, -r * 0.62);
-      ctx.lineTo(r * 1.28, r * 0.62);
-      ctx.moveTo(-r * 0.88, r * 0.66);
-      ctx.lineTo(r * 0.88, -r * 0.66);
+      ctx.moveTo(-r * 1.32, -r * 0.64);
+      ctx.lineTo(r * 1.32, r * 0.64);
+      ctx.moveTo(-r * 0.92, r * 0.68);
+      ctx.lineTo(r * 0.92, -r * 0.68);
       ctx.stroke();
     }
   }
@@ -6912,15 +8619,16 @@ export function drawHeroBody(ctx, opts) {
   let darkInk = isMono ? "#111111" : "rgba(10, 16, 30, 0.58)";
   let moveAmt = clamp(moveSpeedFactor || 0, 0, 1);
   let sway = Math.sin(elapsedTime * (5.5 + moveAmt * 4.5) + walkCyclePhase * 0.5);
-  let atkProg = attackAnimTimer > 0 ? clamp(1 - attackAnimTimer / Math.max(0.06, weaponAttackDuration || 0.22), 0, 1) : 0;
-  let atkLunge = atkProg > 0 ? Math.sin(atkProg * Math.PI) * 3.8 : 0;
+  let rawAtkProg = attackAnimTimer > 0 ? clamp(1 - attackAnimTimer / Math.max(0.06, weaponAttackDuration || 0.22), 0, 1) : 0;
+  let atkProg = rawAtkProg > 0 ? clamp(getCosmicSwingEase(rawAtkProg), -0.1, 1.06) : 0;
+  let atkLunge = rawAtkProg > 0 ? Math.sin(Math.max(0, atkProg) * Math.PI) * 4.4 : 0;
   let skillProg = weaponSkillTimer > 0 ? clamp(1 - weaponSkillTimer / Math.max(0.08, weaponSkillDur || 0.46), 0, 1) : 0;
   let skillFlare = skillProg > 0 ? Math.sin(skillProg * Math.PI) : 0;
   let stride = moveAmt > 0.08 ? Math.sin(walkCyclePhase || elapsedTime * 11) * moveAmt : 0;
 
   ctx.save();
   ctx.rotate(facing);
-  if (atkLunge > 0.05) {
+  if (Math.abs(atkLunge) > 0.05) {
     ctx.translate(atkLunge, 0);
   }
   if (hitWhite) {
@@ -6928,20 +8636,35 @@ export function drawHeroBody(ctx, opts) {
   } else if (isDowned) {
     ctx.scale(1.12, 0.82);
   } else if (skillFlare > 0.05) {
-    ctx.scale(1 + skillFlare * 0.07, 1 + skillFlare * 0.07);
+    ctx.scale(1 + skillFlare * 0.075, 1 + skillFlare * 0.075);
   }
 
-  // Soft ambient glow + Ult orbital crown beneath circular hero body
+  // Soft ambient glow + Ult orbital crown + orbiting neon motes beneath circular hero body
   if (isUlt || skillFlare > 0.12) {
-    let auraR = radius * (isUlt ? 1.52 : 1.32);
+    let auraR = radius * (isUlt ? 1.58 : 1.36);
     let uGrad = ctx.createRadialGradient(0, 0, radius * 0.55, 0, 0, auraR);
     uGrad.addColorStop(0, "rgba(0,0,0,0)");
-    uGrad.addColorStop(0.55, isMono ? "rgba(255,255,255,0.22)" : isUlt ? "rgba(251, 191, 36, 0.28)" : `${fillAccent}38`);
+    uGrad.addColorStop(0.55, isMono ? "rgba(255,255,255,0.22)" : isUlt ? "rgba(251, 191, 36, 0.3)" : `${fillAccent}40`);
     uGrad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = uGrad;
     ctx.beginPath();
     ctx.arc(0, 0, auraR, 0, Math.PI * 2);
     ctx.fill();
+
+    if (!isDowned) {
+      ctx.save();
+      if (!isMono) ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = isUlt ? 0.65 : skillFlare * 0.65;
+      for (let mi = 0; mi < 3; mi++) {
+        let ma = elapsedTime * 4.8 + (Math.PI * 2 / 3) * mi;
+        let mr = radius * (isUlt ? 1.38 : 1.24);
+        ctx.fillStyle = isMono ? "#FFFFFF" : fillAccent;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ma) * mr, Math.sin(ma) * mr, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
   if (isUlt && !isDowned) {
     ctx.save();
@@ -10543,7 +12266,10 @@ export function drawLuanPortal(ctx, portal, elapsedTime, isMono) {
 }
 
 export function drawLuanRift(ctx, rift, isMono) {
-  let alpha = Math.max(0, 1 - (rift.life || 0) / Math.max(0.1, rift.maxLife || 2.8));
+  let maxLife = Math.max(0.1, rift.maxLife || 2.8);
+  let prog = clamp((rift.life || 0) / maxLife, 0, 1);
+  let widthEnv = prog < 0.12 ? prog / 0.12 : prog > 0.78 ? Math.max(0, 1 - (prog - 0.78) / 0.22) : 1;
+  let alpha = Math.max(0, 1 - prog);
   let dx = rift.x2 - rift.x1;
   let dy = rift.y2 - rift.y1;
   let len = Math.hypot(dx, dy) || 1;
@@ -10566,20 +12292,29 @@ export function drawLuanRift(ctx, rift, isMono) {
     ctx.lineTo(rift.x2, rift.y2);
   };
 
-  ctx.strokeStyle = isMono ? "rgba(0,0,0,0.68)" : "rgba(124, 58, 237, 0.56)";
-  ctx.lineWidth = (rift.width || 10) * 2.25;
-  trace(1.18);
+  // Cosmic dimensional void interior
+  ctx.strokeStyle = isMono ? "#020617" : "#070314";
+  ctx.lineWidth = (rift.width || 10) * 2.4 * (0.4 + 0.6 * widthEnv);
+  trace(1.2);
   ctx.stroke();
 
-  ctx.strokeStyle = isMono ? "#222222" : "#C084FC";
-  ctx.lineWidth = rift.width || 10;
+  ctx.save();
+  if (!isMono) ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(124, 58, 237, 0.62)";
+  ctx.lineWidth = (rift.width || 10) * 1.9 * (0.5 + 0.5 * widthEnv);
+  trace(1.12);
+  ctx.stroke();
+
+  ctx.strokeStyle = isMono ? "#CBD5E1" : "#C084FC";
+  ctx.lineWidth = (rift.width || 10) * (0.5 + 0.5 * widthEnv);
   trace(1.0);
   ctx.stroke();
 
   ctx.strokeStyle = isMono ? "#FFFFFF" : "#67E8F9";
-  ctx.lineWidth = Math.max(2.4, (rift.width || 10) * 0.38);
+  ctx.lineWidth = Math.max(2.2, (rift.width || 10) * 0.36);
   trace(0.8);
   ctx.stroke();
+  ctx.restore();
 
   // Branching hairline void fractures & floating mirror motes at vertices
   for (let i = 0; i < offsets.length; i++) {
@@ -10593,7 +12328,7 @@ export function drawLuanRift(ctx, rift, isMono) {
     ctx.moveTo(vx, vy);
     ctx.lineTo(vx + nx * dirSign * 16 + (dx / len) * 10, vy + ny * dirSign * 16 + (dy / len) * 10);
     ctx.stroke();
-    if (i % 2 === 0) drawFourPointStar(ctx, vx, vy, 6.2, 2.0, "#FFFFFF", isMono ? "#333333" : "#C084FC");
+    if (i % 2 === 0) drawFourPointStar(ctx, vx, vy, 6.2 * widthEnv + 1, 2.0, "#FFFFFF", isMono ? "#333333" : "#C084FC");
   }
 
   // Anchor rift star flares at endpoints
@@ -14273,11 +16008,21 @@ export function drawBachDashRifts(ctx, rifts, elapsedTime, isMono) {
     let nx = -dy / len, ny = dx / len;
     ctx.save();
     ctx.globalAlpha = alpha;
-
-    // Wide outer luminous wind-rift halo
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.34)" : (rf.color ? `${rf.color}55` : "rgba(34, 211, 238, 0.36)");
-    ctx.lineWidth = (rf.width || 16) * (2.1 - f * 0.9);
     ctx.lineCap = "round";
+
+    // Dark dimensional glass seam core
+    ctx.strokeStyle = isMono ? "#020617" : "#060414";
+    ctx.lineWidth = (rf.width || 16) * (2.25 - f * 0.9);
+    ctx.beginPath();
+    ctx.moveTo(rf.sx, rf.sy);
+    ctx.lineTo(rf.tx, rf.ty);
+    ctx.stroke();
+
+    // Wide outer luminous wind-rift halo + additive neon glow
+    ctx.save();
+    if (!isMono) ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.4)" : (rf.color ? `${rf.color}66` : "rgba(34, 211, 238, 0.46)");
+    ctx.lineWidth = (rf.width || 16) * (2.05 - f * 0.85);
     ctx.beginPath();
     ctx.moveTo(rf.sx, rf.sy);
     ctx.lineTo(rf.tx, rf.ty);
@@ -14290,6 +16035,7 @@ export function drawBachDashRifts(ctx, rifts, elapsedTime, isMono) {
     ctx.moveTo(rf.sx, rf.sy);
     ctx.lineTo(rf.tx, rf.ty);
     ctx.stroke();
+    ctx.restore();
 
     // Flanking twin wind ribbons + crescent phantom wind blades along dash wake
     for (let s of [-1, 1]) {
@@ -14533,4 +16279,449 @@ export function drawKhairRailBeams(ctx, beams, elapsedTime, isMono) {
     ctx.restore();
   }
 }
+
+export function drawHeroPassiveAura(ctx, opts = {}) {
+  let {
+    heroId,
+    x = 0,
+    y = 0,
+    radius = 22,
+    facing = 0,
+    elapsedTime = 0,
+    isMono = false,
+    enableAdditive = true,
+    player = null,
+    buffs = null
+  } = opts;
+  if (!heroId) return;
+
+  let p = player || {};
+  let b = buffs || {};
+  ctx.save();
+  ctx.translate(x, y);
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+
+  switch (heroId) {
+    case "tin": {
+      // Orbiting crimson-obsidian Ma Thạch crystals (0..4) + Overdrive crystalline ring
+      let stacks = clamp(p.tin_resonance_stacks ?? b.tin_resonance ?? 0, 0, 4);
+      let empowered = Boolean(p.tin_empowered ?? b.tin_empowered);
+      let thirdHitReady = (p.tin_basicCount || 0) >= 2;
+      if (stacks > 0 || empowered || thirdHitReady) {
+        let orbitR = radius + 15;
+        if (empowered) {
+          ctx.save();
+          ctx.rotate(-elapsedTime * 3.4);
+          ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
+          ctx.lineWidth = 2.4;
+          drawUltPolygon(ctx, 0, 0, 4, orbitR + 4, 0);
+          ctx.stroke();
+          ctx.strokeStyle = isMono ? "#94A3B8" : "#F43F5E";
+          ctx.lineWidth = 1.6;
+          drawUltPolygon(ctx, 0, 0, 4, orbitR + 4, Math.PI / 4);
+          ctx.stroke();
+          ctx.restore();
+        }
+        let count = Math.max(stacks, empowered ? 4 : 0);
+        for (let i = 0; i < count; i++) {
+          let ang = elapsedTime * (empowered ? 4.4 : 2.6) + (Math.PI * 2 * i) / Math.max(1, count);
+          let sx = Math.cos(ang) * orbitR;
+          let sy = Math.sin(ang) * orbitR;
+          drawUltDiamondShard(
+            ctx,
+            sx,
+            sy,
+            empowered ? 8.5 : 7,
+            empowered ? 4 : 3.2,
+            ang + Math.PI / 2,
+            isMono ? "#FFFFFF" : empowered ? "#FFF1F2" : "#F43F5E",
+            isMono ? "#0F172A" : "#9F1239"
+          );
+        }
+        if (thirdHitReady) {
+          ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDA4AF";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius + 9, facing - 0.55, facing + 0.55);
+          ctx.stroke();
+        }
+      }
+      break;
+    }
+
+    case "bao": {
+      // Refractive prism glass stealth arcs & inward converging emergence mirage shards
+      let isStealth = (p.bao_stealthTimer || 0) > 0 || (p.bao_stealthFade || 0) > 0.05 || Boolean(b.bao_stealth);
+      let emergeT = p.bao_emergeTimer || (b.bao_emerge ? 0.14 : 0);
+      if (isStealth) {
+        let pulse = 0.7 + 0.3 * Math.sin(elapsedTime * 7.5);
+        ctx.globalAlpha = 0.65 * pulse;
+        for (let arc = 0; arc < 3; arc++) {
+          let a0 = elapsedTime * (arc % 2 === 0 ? 2.8 : -2.2) + (Math.PI * 2 * arc) / 3;
+          ctx.strokeStyle = isMono ? "#FFFFFF" : arc === 0 ? "#E879F9" : "#38BDF8";
+          ctx.lineWidth = 2.1;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius + 11 + arc * 3, a0, a0 + 0.95);
+          ctx.stroke();
+        }
+      }
+      if (emergeT > 0) {
+        let ep = clamp(emergeT / 0.24, 0, 1);
+        ctx.globalAlpha = ep * 0.9;
+        for (let si = 0; si < 6; si++) {
+          let sa = (Math.PI / 3) * si + ep * 1.4;
+          let dist = radius + 6 + ep * 34;
+          drawUltDiamondShard(
+            ctx,
+            Math.cos(sa) * dist,
+            Math.sin(sa) * dist,
+            9 * ep + 3,
+            3.6,
+            sa + Math.PI,
+            isMono ? "#FFFFFF" : "#F5D0FE",
+            isMono ? "#111111" : "#A855F7"
+          );
+        }
+      }
+      break;
+    }
+
+    case "longhoi": {
+      // Orbiting Fox-Fire flame wisps + glowing nine-tail ready arc when C2/bonus shot primed
+      let hasBonus = (p.longhoi_nextAtkBonus || 0) > 0 || (p.longhoi_msBuffTimer || 0) > 0 || Boolean(b.longhoi_bonus);
+      let wispCount = hasBonus ? 5 : 3;
+      let orbitR = radius + (hasBonus ? 16 : 13);
+      for (let wi = 0; wi < wispCount; wi++) {
+        let wa = elapsedTime * (hasBonus ? 4.2 : 2.3) + (Math.PI * 2 * wi) / wispCount;
+        let wx = Math.cos(wa) * orbitR;
+        let wy = Math.sin(wa) * orbitR;
+        drawUltPetal(
+          ctx,
+          wa + Math.PI / 2,
+          orbitR - 4,
+          orbitR + (hasBonus ? 9 : 6),
+          hasBonus ? 4.5 : 3.2,
+          isMono ? "#FFFFFF" : wi % 2 === 0 ? "#F97316" : "#FEF08A",
+          isMono ? "#0F172A" : "#EA580C"
+        );
+        if (hasBonus && wi % 2 === 0) {
+          drawFourPointStar(ctx, wx, wy, 4.5, 1.5, "#FFFFFF", "#F97316");
+        }
+      }
+      break;
+    }
+
+    case "danh": {
+      // Progressive Dragon-Qi Charge Threads converging into blade when charging + empowered halo
+      let charging = p.chargeState?.active || (b.danh_charge || 0) > 0;
+      let cp = p.chargeState?.active
+        ? clamp(p.chargeState.elapsed / Math.max(0.1, p.chargeState.maxDur), 0, 1)
+        : clamp(b.danh_charge || 0, 0, 1);
+      if (charging && cp > 0.02) {
+        let threadCount = 6;
+        let col = isMono ? "#FFFFFF" : cp >= 0.85 ? "#FEF08A" : cp >= 0.45 ? "#F59E0B" : "#EF4444";
+        ctx.globalAlpha = 0.55 + cp * 0.4;
+        for (let ti = 0; ti < threadCount; ti++) {
+          let ta = (Math.PI * 2 * ti) / threadCount + elapsedTime * (2.5 + cp * 3.5);
+          let outerR = radius + 28 * (1 - (elapsedTime * 2 + ti * 0.2) % 1);
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1.6 + cp * 1.4;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(ta) * outerR, Math.sin(ta) * outerR);
+          ctx.quadraticCurveTo(Math.cos(ta + 0.5) * (radius + 6), Math.sin(ta + 0.5) * (radius + 6), Math.cos(facing) * 14, Math.sin(facing) * 14);
+          ctx.stroke();
+        }
+      }
+      break;
+    }
+
+    case "dung": {
+      // 0..5 Electric Cerberus Passive Stacks orbiting as cyan-gold storm sparks
+      let stacks = clamp(p.dung_passive ?? b.dung_passive ?? 0, 0, 5);
+      if (stacks > 0) {
+        let full = stacks >= 5;
+        let orbitR = radius + 14;
+        for (let i = 0; i < stacks; i++) {
+          let ang = elapsedTime * 3.1 + (Math.PI * 2 * i) / 5;
+          let sx = Math.cos(ang) * orbitR;
+          let sy = Math.sin(ang) * orbitR;
+          drawFourPointStar(ctx, sx, sy, full ? 6.2 : 4.5, 1.7, "#FFFFFF", isMono ? "#0F172A" : full ? "#FDE047" : "#38BDF8");
+        }
+      }
+      break;
+    }
+
+    case "kin": {
+      // 0..4 Emerald Wind Stacks orbiting + crimson-emerald lifesteal ring
+      let stacks = clamp(p.kin_passive ?? b.kin_passive ?? 0, 0, 4);
+      let lsActive = (p.kin_c2_lifestealTimer || 0) > 0 || Boolean(b.kin_ls);
+      if (stacks > 0) {
+        for (let i = 0; i < stacks; i++) {
+          let ang = elapsedTime * 3.8 + (Math.PI * 2 * i) / 4;
+          drawUltDiamondShard(ctx, Math.cos(ang) * (radius + 14), Math.sin(ang) * (radius + 14), 6.5, 2.6, ang + 0.5, isMono ? "#FFFFFF" : "#34D399", "#FFFFFF");
+        }
+      }
+      if (lsActive) {
+        ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 16, elapsedTime * 3, elapsedTime * 3 + Math.PI * 1.2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "trung": {
+      // 0..3 Astral Spell-Stack sigil pips
+      let stacks = clamp(p.trung_passive ?? b.trung_passive ?? 0, 0, 3);
+      if (stacks > 0) {
+        let ready = stacks >= 3;
+        for (let i = 0; i < stacks; i++) {
+          let ang = elapsedTime * 2.4 + (Math.PI * 2 * i) / 3;
+          let ox = Math.cos(ang) * (radius + 14);
+          let oy = Math.sin(ang) * (radius + 14);
+          ctx.fillStyle = isMono ? "#FFFFFF" : ready ? "#FDE047" : "#818CF8";
+          ctx.beginPath();
+          ctx.arc(ox, oy, ready ? 4.2 : 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+
+    case "eohyen": {
+      // 0..4 Glacial Frost Crystal Pips orbiting
+      let stacks = clamp(p.eohyen_passive ?? b.eohyen_passive ?? 0, 0, 4);
+      for (let i = 0; i < stacks; i++) {
+        let ang = -elapsedTime * 2.1 + (Math.PI * 2 * i) / 4;
+        drawUltDiamondShard(ctx, Math.cos(ang) * (radius + 15), Math.sin(ang) * (radius + 15), 6.5, 2.8, ang, "#E0F2FE", isMono ? "#0F172A" : "#38BDF8");
+      }
+      break;
+    }
+
+    case "duccong": {
+      // Orbiting Dark-Violet Singularity Motes + Siphon charge ring
+      let stacks = clamp(p.duccong_passive ?? b.duccong_passive ?? 0, 0, 3);
+      let count = Math.max(2, stacks + 1);
+      for (let i = 0; i < count; i++) {
+        let ang = -elapsedTime * 2.4 + (Math.PI * 2 * i) / count;
+        ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#C084FC" : "#38BDF8";
+        ctx.beginPath();
+        ctx.arc(Math.cos(ang) * (radius + 13), Math.sin(ang) * (radius + 13), 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case "gau": {
+      // Rage meter ember arc around feet (0..100)
+      let rage = clamp((p.gau_rage ?? b.gau_rage ?? 0) / 100, 0, 1);
+      if (rage > 0.05) {
+        ctx.strokeStyle = isMono ? "#FFFFFF" : rage >= 0.85 ? "#F97316" : "#FBBF24";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * rage);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "luan": {
+      // 3 Drifting Dimensional Mirror Prism Shards
+      for (let i = 0; i < 3; i++) {
+        let ang = elapsedTime * 2.2 + (Math.PI * 2 * i) / 3;
+        drawUltDiamondShard(ctx, Math.cos(ang) * (radius + 15), Math.sin(ang) * (radius + 15), 6, 2.4, ang + elapsedTime, isMono ? "#FFFFFF" : i === 0 ? "#67E8F9" : "#C084FC", "#FFFFFF");
+      }
+      break;
+    }
+
+    case "taidu": {
+      // 3rd-shot EMP capacitor lock glint
+      if ((p.taidu_basicCount || 0) >= 2) {
+        ctx.strokeStyle = isMono ? "#FFFFFF" : "#38BDF8";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 13, facing - 0.6, facing + 0.6);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "nguyen": {
+      // Low-HP Emergency Rescue Aura Shimmer
+      let lowHp = p.maxHp > 0 && p.hp / p.maxHp <= 0.45;
+      if (lowHp || (p.nguyen_rescueFlashTimer || 0) > 0) {
+        ctx.strokeStyle = isMono ? "#FFFFFF" : "#34D399";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 15 + Math.sin(elapsedTime * 8) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "phong": {
+      // Twin shadow-blade orbit wisps
+      for (let i = 0; i < 2; i++) {
+        let ang = elapsedTime * 4.2 + i * Math.PI;
+        ctx.strokeStyle = isMono ? "#FFFFFF" : i === 0 ? "#22D3EE" : "#F43F5E";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 13, ang, ang + 0.65);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case "nhi": {
+      // Active Tri-Elixir Ammo Indicator Pip (purple / green / life)
+      let ammo = p.nhi_ammoType || b.nhi_ammo || "purple";
+      let col = isMono ? "#FFFFFF" : ammo === "green" ? "#4ADE80" : ammo === "life" ? "#FB7185" : "#C084FC";
+      let ang = elapsedTime * 3.0;
+      ctx.fillStyle = col;
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ang) * (radius + 14), Math.sin(ang) * (radius + 14), 4.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case "minh": {
+      // Rotating Heavenly Decree Seal Halo
+      ctx.save();
+      ctx.rotate(elapsedTime * 1.6);
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#FACC15";
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([7, 7]);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 14, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      break;
+    }
+
+    case "ducanh": {
+      // Siege Armor Gear Aura + Molten Hot-Regen Sparks
+      let hot = (p.ducanh_passiveHotTimer || 0) > 0;
+      ctx.save();
+      ctx.rotate(-elapsedTime * (hot ? 3.2 : 1.2));
+      ctx.strokeStyle = isMono ? "#FFFFFF" : hot ? "#FEF08A" : "#F59E0B";
+      ctx.lineWidth = hot ? 2.6 : 1.8;
+      ctx.setLineDash([9, 6]);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 14, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      break;
+    }
+
+    case "duy":
+    case "dang":
+    case "thanh":
+    case "thien":
+    case "bach":
+    case "thai":
+    case "khair":
+    default: {
+      // Subtle signature directional trim arc so every hero has crisp ground presence
+      let trimCol = isMono ? "#FFFFFF" : {
+        duy: "#14B8A6",
+        dang: "#F8FAFC",
+        thanh: "#34D399",
+        thien: "#FACC15",
+        bach: "#22D3EE",
+        thai: "#FDE047",
+        khair: "#4ADE80"
+      }[heroId] || "#38BDF8";
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = trimCol;
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 13, facing - 0.5, facing + 0.5);
+      ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawEnemyStatusVfx(ctx, enemy, elapsedTime, isMono, enableAdditive = true) {
+  if (!enemy) return;
+  let r = enemy.radius || 20;
+  let ex = enemy.x || 0;
+  let ey = enemy.y || 0;
+
+  ctx.save();
+  ctx.translate(ex, ey);
+  if (!isMono && enableAdditive) {
+    ctx.globalCompositeOperation = "lighter";
+  }
+
+  // 1. Long Hói Burn Escalation (1..9 orange embers -> 10..24 crimson molten rings -> 25..100 bright yellow-white flares)
+  let burnStacks = enemy.longhoiBurnStacks || 0;
+  if (burnStacks > 0) {
+    let tier = burnStacks >= 25 ? 3 : burnStacks >= 10 ? 2 : 1;
+    let isAmp = (enemy.longhoiBurnAmpTimer || 0) > 0;
+    let flameCol = isMono ? "#FFFFFF" : tier === 3 ? "#FEF08A" : tier === 2 ? "#EF4444" : "#FB923C";
+    let rimCol = isMono ? "#CBD5E1" : tier === 3 ? "#FFFFFF" : tier === 2 ? "#F97316" : "#EA580C";
+
+    // Ground/collar thermal ring
+    ctx.save();
+    ctx.globalAlpha = tier === 3 ? 0.85 : tier === 2 ? 0.72 : 0.56;
+    ctx.strokeStyle = rimCol;
+    ctx.lineWidth = tier === 3 ? 3 : tier === 2 ? 2.2 : 1.5;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.52, r * 1.12, r * 0.46, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Rising flame wisps / flare sparks around enemy silhouette
+    let moteCount = tier === 3 ? 6 : tier === 2 ? 4 : 3;
+    for (let mi = 0; mi < moteCount; mi++) {
+      let ang = elapsedTime * (2.6 + tier * 1.1) + (Math.PI * 2 * mi) / moteCount;
+      let mx = Math.cos(ang) * (r * 0.88);
+      let my = Math.sin(ang) * (r * 0.45) - ((elapsedTime * 28 + mi * 9) % (r * 0.9));
+      if (tier === 3) {
+        drawFourPointStar(ctx, mx, my, isAmp ? 5.8 : 4.6, 1.5, "#FFFFFF", flameCol);
+      } else {
+        ctx.fillStyle = flameCol;
+        ctx.beginPath();
+        ctx.arc(mx, my, tier === 2 ? 3 : 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // 2. Tin Crimson-Obsidian Ma Thạch Mark (replaces bare emoji with crisp geometric sigil)
+  if (enemy.tin_hasMark) {
+    ctx.save();
+    ctx.translate(0, -r - 17);
+    ctx.rotate(elapsedTime * 2.2);
+    drawUltDiamondShard(ctx, 0, 0, 8.5, 4.5, 0, isMono ? "#FFFFFF" : "#F43F5E", isMono ? "#0F172A" : "#FFE4E6");
+    drawUltDiamondShard(ctx, 0, 0, 8.5, 4.5, Math.PI / 2, isMono ? "#CBD5E1" : "#9F1239", "#FFFFFF");
+    ctx.restore();
+  } else if ((enemy.tin_hits || 0) > 0) {
+    // Pre-mark hit pips (1..2)
+    ctx.save();
+    ctx.translate(0, -r - 16);
+    for (let hi = 0; hi < Math.min(2, enemy.tin_hits); hi++) {
+      let ox = (hi - 0.5) * 9;
+      ctx.fillStyle = isMono ? "#FFFFFF" : "#FB7185";
+      ctx.beginPath();
+      ctx.arc(ox, 0, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
 
