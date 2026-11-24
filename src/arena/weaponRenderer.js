@@ -16,6 +16,12 @@ import {
   drawEnergyVortexPillar,
   drawImpactCraterDecal,
 } from "./vfxMaterials";
+import {
+  HERO_SKILL_VFX_PROFILES,
+  drawHeroWeaponSkillAura,
+  drawHeroSkillSlash,
+  drawHeroImpactSignature,
+} from "./heroSkillVfx";
 
 function clamp(v, min, max) {
   return v < min ? min : v > max ? max : v;
@@ -3834,36 +3840,19 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       break;
   }
 
-  // Crawling neon electrical arcs along weapon reach during skills/crits/ultimates + swing wake crescent
-  let arcPower = Math.max(skillAlpha * 0.9, critAlpha);
+  // Stage 1 bespoke weapon skill aura (distinct energy signature per hero & skillIdx 1..4),
+  // plus crisp lightning crackle on critical strikes
+  const skillIdx1 = p.weaponSkillTimer > 0 && Number.isFinite(p.weaponSkillIdx) && p.weaponSkillIdx >= 0
+    ? p.weaponSkillIdx + 1
+    : 0;
+  const auraState = skillIdx1 > 0 ? { ...p, weaponSkillIdx: skillIdx1, facingAngle: 0 } : p;
+  const handledSkillAura = drawHeroWeaponSkillAura(ctx, heroId, auraState, elapsedTime, state, isMono);
+  let arcPower = handledSkillAura ? critAlpha : Math.max(skillAlpha * 0.9, critAlpha);
   if (arcPower > 0.08) {
-    let wColors = {
-      dung: ["#38BDF8", "#FDE047"],
-      tin: ["#F43F5E", "#FDA4AF"],
-      kin: ["#34D399", "#FEF08A"],
-      trung: ["#818CF8", "#FDE047"],
-      eohyen: ["#38BDF8", "#E0F2FE"],
-      longhoi: ["#F97316", "#FEF08A"],
-      duccong: ["#C084FC", "#38BDF8"],
-      gau: ["#F59E0B", "#FEF08A"],
-      bao: ["#A855F7", "#F5D0FE"],
-      danh: ["#EF4444", "#FBBF24"],
-      luan: ["#C084FC", "#67E8F9"],
-      taidu: ["#38BDF8", "#F97316"],
-      nguyen: ["#10B981", "#FEF08A"],
-      duy: ["#14B8A6", "#F43F5E"],
-      phong: ["#22D3EE", "#F43F5E"],
-      dang: ["#F8FAFC", "#94A3B8"],
-      thien: ["#FACC15", "#38BDF8"],
-      thanh: ["#34D399", "#A78BFA"],
-      nhi: ["#4ADE80", "#E879F9"],
-      minh: ["#FACC15", "#38BDF8"],
-      ducanh: ["#F59E0B", "#FEF08A"],
-      bach: ["#22D3EE", "#E879F9"],
-      thai: ["#EF4444", "#FDE047"],
-      khair: ["#4ADE80", "#FACC15"]
-    }[heroId] || ["#38BDF8", "#FFFFFF"];
-    drawWeaponArcLightning(ctx, 36, arcPower, elapsedTime, wColors[0], wColors[1], isMono, true);
+    const prof = HERO_SKILL_VFX_PROFILES[heroId];
+    const wCol0 = prof ? prof.primary : "#38BDF8";
+    const wCol1 = prof ? prof.secondary : "#FFFFFF";
+    drawWeaponArcLightning(ctx, 36, arcPower, elapsedTime, wCol0, wCol1, isMono, true);
   }
   ctx.restore();
 }
@@ -5971,9 +5960,10 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
   drawFourPointStar(ctx, 0, 0, pr * 0.85, pr * 0.28, "#FFFFFF", isMono ? "#000000" : h.color || "#38BDF8");
 }
 
-export function drawUpgradedSlash(ctx, h, f, isMono, enableAdditive = true) {
+export function drawUpgradedSlash(ctx, h, f, isMono, enableAdditive = true, elapsedTime = 0) {
   let alpha = f < 0.26 ? 1 : clamp(Math.pow((1 - f) / 0.74, 1.1), 0, 1);
   let motionF = Math.min(1, f * 1.9);
+  if (drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono)) return;
   if (h.kind === "shockwave") {
     let colU = String(h.color || "").toUpperCase();
     let elem =
@@ -8077,10 +8067,10 @@ export function drawImpactBurst(ctx, b, isMono, enableAdditive = true) {
     });
   }
 
-  // Elemental / Hero signature silhouette micro-accent on impact
-  let sigCol = (b.color || "").toUpperCase();
-  if (f < 0.85) {
-    if (sigCol === "#F43F5E" || sigCol === "#E11D48" || b.heroId === "tin") {
+  // Bespoke 24-hero Stage 3 impact signature geometry
+  if (f < 0.88 && !drawHeroImpactSignature(ctx, b, f, isMono)) {
+    let sigCol = (b.color || "").toUpperCase();
+    if (sigCol === "#F43F5E" || sigCol === "#E11D48") {
       ctx.strokeStyle = isMono ? "#FFFFFF" : "#FB7185";
       ctx.lineWidth = (isHeavy ? 3.2 : 2.1) * (1 - f);
       ctx.beginPath();
@@ -8089,15 +8079,8 @@ export function drawImpactBurst(ctx, b, isMono, enableAdditive = true) {
       ctx.moveTo(r * 0.38, -r * 1.05);
       ctx.lineTo(-r * 0.38, r * 1.05);
       ctx.stroke();
-    } else if (sigCol === "#38BDF8" || sigCol === "#7DD3FC" || b.heroId === "eohyen" || b.heroId === "dung") {
+    } else if (sigCol === "#38BDF8" || sigCol === "#7DD3FC") {
       drawBranchingArc(ctx, { x1: -r * 0.75, y1: 0, x2: r * 0.75, y2: 0, seed: f * 14, width: 1.6, color: mainCol, coreColor: "#FFFFFF", isMono });
-    } else if (sigCol === "#34D399" || sigCol === "#22D3EE" || b.heroId === "kin" || b.heroId === "bach") {
-      drawWindStreamRibbon(ctx, { x: -r * 0.6, y: 0, angle: 0, length: r * 1.25, width: 4.5 * (1 - f) + 1, phase: f * 10, color: mainCol, coreColor: "#FFFFFF", isMono });
-    } else if (sigCol === "#F97316" || sigCol === "#EA580C" || b.heroId === "longhoi" || b.heroId === "danh") {
-      for (let pi = 0; pi < 3; pi++) {
-        let pa = (Math.PI * 2 * pi) / 3 + f * 1.2;
-        drawUltPetal(ctx, pa, r * 0.25, r * 1.08, 5.8 * (1 - f) + 1.5, isMono ? "rgba(255,255,255,0.5)" : "rgba(251, 146, 60, 0.65)", "#FEF08A");
-      }
     }
   }
 
@@ -8280,7 +8263,8 @@ export function drawHeroBody(ctx, opts) {
     attackAnimTimer = 0,
     weaponAttackDuration = 0.22,
     weaponSkillTimer = 0,
-    weaponSkillDur = 0.46
+    weaponSkillDur = 0.46,
+    weaponSkillIdx = 0
   } = opts;
 
   let hitWhite = hitFlash > 0;
@@ -8370,11 +8354,21 @@ export function drawHeroBody(ctx, opts) {
     }
   }
   if (skillFlare > 0.15) {
-    ctx.strokeStyle = isMono ? "#FFFFFF" : fillAccent;
-    ctx.lineWidth = 2.0;
+    const skProf = HERO_SKILL_VFX_PROFILES[heroId];
+    const skPrimary = isMono ? "#FFFFFF" : (skProf ? (weaponSkillIdx === 2 ? skProf.secondary : skProf.primary) : fillAccent);
+    const skSpan = weaponSkillIdx === 3 ? 1.65 : weaponSkillIdx === 2 ? 1.3 : 0.95;
+    ctx.strokeStyle = skPrimary;
+    ctx.lineWidth = weaponSkillIdx >= 2 ? 2.6 : 2.0;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * (1.18 + skillFlare * 0.24), -0.95, 0.95);
+    ctx.arc(0, 0, radius * (1.18 + skillFlare * 0.24), -skSpan, skSpan);
     ctx.stroke();
+    if (weaponSkillIdx >= 1) {
+      ctx.strokeStyle = isMono ? "#CBD5E1" : (skProf ? skProf.highlight : "#FFFFFF");
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * (1.3 + skillFlare * 0.3), -skSpan * 0.6, skSpan * 0.6);
+      ctx.stroke();
+    }
   }
 
   // 0. Back/Outer Silhouette Layer (capes, tails, halos, shoulder armor — outside radius)

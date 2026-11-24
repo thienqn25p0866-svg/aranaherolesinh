@@ -13,6 +13,11 @@ import {
   drawWindStreamRibbon,
   drawStructuralExplosion,
 } from "./vfxMaterials";
+import {
+  spawnElementalDeathBurst,
+  renderElementalCorpseOverlay,
+  resolveHeroDamageElement,
+} from "./heroSkillVfx";
 
 export const DEATH_ARCHETYPES = [
   "flesh_beast",
@@ -497,15 +502,30 @@ export function spawnEnemyDeathVfx(engine, enemy, opts = {}) {
     engine.createCataclysmicExplosion(x, y, r * 3.1, prof.primary, "fire");
   }
 
+  // Cause-of-death killer elemental burst fusion
+  const killerHeroId = opts.killerHeroId || enemy.lastKillerHeroId || null;
+  const damageElement = opts.damageElement || enemy.lastDamageElement || null;
+  const elemInfo = killerHeroId ? resolveHeroDamageElement(killerHeroId, { element: damageElement }) : null;
+  if (killerHeroId) {
+    spawnElementalDeathBurst(engine, enemy, killerHeroId, damageElement, hitDir, perf);
+  }
+
   // Impact burst tuned to element & enemy rank
   if (typeof engine.spawnImpactBurst === "function") {
-    engine.spawnImpactBurst(x, y, prof.highlight, isBoss || isMini || isElite ? "finisher" : "heavy", hitDir);
+    engine.spawnImpactBurst(
+      x,
+      y,
+      elemInfo ? elemInfo.primary : prof.highlight,
+      isBoss || isMini || isElite ? "finisher" : "heavy",
+      hitDir,
+      killerHeroId ? { heroId: killerHeroId, skillIdx: opts.skillIdx || 3 } : null
+    );
   }
 
   // Spirit wisp release for elites, mini-bosses, arcane beings, and wave bosses (tuned to death archetype)
   if ((isBoss || isMini || isElite || prof.archetype === "celestial_arcane") && typeof engine.spawnParticles === "function") {
     const wispCount = isBoss ? 12 : isMini ? 7 : isElite ? 5 : 3;
-    engine.spawnParticles(x, y, prof.highlight, wispCount, 65, 220, isBoss ? 4.2 : 3.4, 0.48, "star", { drag: 0.91, gravity: -45, spin: 5, additive: true });
+    engine.spawnParticles(x, y, elemInfo ? elemInfo.highlight : prof.highlight, wispCount, 65, 220, isBoss ? 4.2 : 3.4, 0.48, "star", { drag: 0.91, gravity: -45, spin: 5, additive: true });
   }
 
   // 3. Push bespoke deadCorpse record for multi-stage collapse/shatter/unravel rendering
@@ -526,6 +546,9 @@ export function spawnEnemyDeathVfx(engine, enemy, opts = {}) {
       splatRadius: r * (isBoss ? 2.1 : 1.55),
       splatColor: prof.splatColor,
       deathProfile: prof,
+      killerHeroId,
+      damageElement: elemInfo ? elemInfo.element : damageElement,
+      seed: (x * 0.13 + y * 0.07) % 10,
     });
   }
 
@@ -846,6 +869,15 @@ export function renderDeadCorpse(ctx, corpse, isMono = false) {
     ctx.lineWidth = 1.8;
     ctx.stroke();
     ctx.restore();
+  }
+
+  // Cause-of-death killer elemental residue fused atop archetype corpse
+  if (corpse.killerHeroId) {
+    renderElementalCorpseOverlay(ctx, {
+      ...corpse,
+      life: corpse.timer,
+      angle: facing,
+    }, isMono);
   }
 
   ctx.restore();
