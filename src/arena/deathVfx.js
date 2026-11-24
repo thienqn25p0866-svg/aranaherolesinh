@@ -474,7 +474,7 @@ export function spawnEnemyDeathVfx(engine, enemy, opts = {}) {
   // Volumetric smoke / dust / frost mist / void ink clouds
   if (Array.isArray(engine.smokePuffs)) {
     const maxSmoke = perf?.maxSmoke ?? 60;
-    const rawPuffs = prof.archetype === "stone_construct" || prof.archetype === "shadow_void" || prof.archetype === "frost_crystal" || isBoss ? Math.round(5 * countScale) : 2;
+    const rawPuffs = prof.archetype === "stone_construct" || prof.archetype === "shadow_void" || prof.archetype === "frost_crystal" || isBoss ? Math.max(2, Math.round(5 * countScale * budgetScale)) : Math.max(1, Math.round(2 * budgetScale));
     const puffCount = Math.min(Math.max(0, maxSmoke - engine.smokePuffs.length), rawPuffs);
     for (let i = 0; i < puffCount; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -524,7 +524,7 @@ export function spawnEnemyDeathVfx(engine, enemy, opts = {}) {
 
   // Spirit wisp release for elites, mini-bosses, arcane beings, and wave bosses (tuned to death archetype)
   if ((isBoss || isMini || isElite || prof.archetype === "celestial_arcane") && typeof engine.spawnParticles === "function") {
-    const wispCount = isBoss ? 12 : isMini ? 7 : isElite ? 5 : 3;
+    const wispCount = Math.max(1, Math.round((isBoss ? 12 : isMini ? 7 : isElite ? 5 : 3) * budgetScale));
     engine.spawnParticles(x, y, elemInfo ? elemInfo.highlight : prof.highlight, wispCount, 65, 220, isBoss ? 4.2 : 3.4, 0.48, "star", { drag: 0.91, gravity: -45, spin: 5, additive: true });
   }
 
@@ -542,7 +542,7 @@ export function spawnEnemyDeathVfx(engine, enemy, opts = {}) {
       name: enemy.name || "",
       facing: hitDir,
       timer: 0,
-      maxLife: isBoss ? 4.2 : isMini ? 3.1 : 2.4,
+      maxLife: isBoss ? 5.5 : isMini ? 5.0 : 4.6,
       splatRadius: r * (isBoss ? 2.1 : 1.55),
       splatColor: prof.splatColor,
       deathProfile: prof,
@@ -561,8 +561,8 @@ export function spawnEnemyDeathVfx(engine, enemy, opts = {}) {
 export function renderDeadCorpse(ctx, corpse, isMono = false) {
   if (!ctx || !corpse) return;
   const prof = corpse.deathProfile || classifyEnemyDeathProfile(corpse);
-  const t = clamp(safeNum(corpse.timer, 0) / Math.max(0.1, safeNum(corpse.maxLife, 2.4)), 0, 1);
-  const fade = t < 0.68 ? 1 : Math.max(0, (1 - t) / 0.32);
+  const t = clamp(safeNum(corpse.timer, 0) / Math.max(0.1, safeNum(corpse.maxLife, 4.6)), 0, 1);
+  const fade = t < 0.58 ? 1 : Math.pow(Math.max(0, (1 - t) / 0.42), 1.15);
   if (fade <= 0.01) return;
 
   const x = safeNum(corpse.x, 0);

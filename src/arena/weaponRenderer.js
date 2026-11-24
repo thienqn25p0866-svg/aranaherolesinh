@@ -152,9 +152,6 @@ function drawWeaponArcLightning(ctx, reach, intensity, elapsedTime, color, accen
   if (intensity <= 0.04) return;
   let alpha = clamp(intensity, 0, 1);
   ctx.save();
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   let segs = 6;
@@ -299,9 +296,6 @@ function drawCosmicSlashLayer(ctx, opts) {
   drawTaperedArc(ctx, cx, cy, radius, startAng, endAng, (8.5 + 3.5 * crackStrength) * alpha + 2.2, color, "#FFFFFF", isMono);
   drawTaperedArc(ctx, cx, cy, radius * 0.94, startAng + span * 0.12, endAng, (4.2 + 1.6 * crackStrength) * alpha + 1.2, accentColor, "#FFFFFF", isMono);
   ctx.save();
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
   ctx.lineCap = "round";
 
   // 3. Trailing Energy Wake Ribbon behind outer rim
@@ -435,9 +429,6 @@ export function drawStylizedAfterimage(ctx, img, isMono, enableAdditive = true) 
   ctx.save();
   ctx.translate(img.x, img.y);
   ctx.rotate(ang);
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
 
   // Swept cloak & shoulder motion streaks trailing behind facing vector
   ctx.globalAlpha = alpha * 0.48;
@@ -3950,22 +3941,46 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.closePath();
     ctx.fill();
     if (isPierce) {
+      ctx.strokeStyle = isMono ? "#0F172A" : "rgba(2, 6, 23, 0.72)";
+      ctx.lineWidth = 4.0;
+      ctx.beginPath();
+      ctx.moveTo(22, 0);
+      ctx.lineTo(-2, -10.5);
+      ctx.moveTo(22, 0);
+      ctx.lineTo(-2, 10.5);
+      ctx.stroke();
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#6EE7B7";
+      ctx.lineWidth = 1.9;
+      ctx.beginPath();
+      ctx.moveTo(22, 0);
+      ctx.lineTo(-2, -10.5);
+      ctx.moveTo(22, 0);
+      ctx.lineTo(-2, 10.5);
+      ctx.stroke();
+
       ctx.strokeStyle = isMono ? "#FFFFFF" : "#6EE7B7";
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.arc(4, 0, 7.5, -1.2, 1.2);
       ctx.stroke();
-      ctx.strokeStyle = isMono ? "#CCCCCC" : "rgba(254, 240, 138, 0.78)";
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = isMono ? "#CCCCCC" : "rgba(254, 240, 138, 0.85)";
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(-24, -4.5);
       ctx.bezierCurveTo(-12, 6, 0, -6, 12, 0);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = isMono ? "#111111" : "rgba(6, 78, 59, 0.72)";
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(8, 0, 7.2, -0.9, 0.9);
       ctx.stroke();
     }
     // Sculpted emerald-gold arrowhead
     ctx.fillStyle = isMono ? "#FFFFFF" : "#FEF08A";
     ctx.strokeStyle = isMono ? "#000000" : "#10B981";
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(19, 0);
     ctx.lineTo(7, -5);
@@ -3974,7 +3989,7 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    drawFourPointStar(ctx, 15, 0, isPierce ? 6.4 : 4.2, isPierce ? 1.9 : 1.3, "#FFFFFF", isMono ? "#000000" : "#10B981");
+    drawFourPointStar(ctx, 15, 0, isPierce ? 6.6 : 4.2, isPierce ? 2.0 : 1.3, "#FFFFFF", isMono ? "#000000" : "#10B981");
     return;
   }
 
@@ -4191,7 +4206,14 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.lineWidth = 2.6;
     ctx.stroke();
 
-    // Orbiting nebula sparks + inner black hole heart
+    // Orbiting nebula sparks + inner black hole heart + pulsing detonation pressure fissure
+    const detPulse = 0.5 + 0.5 * Math.sin(elapsedTime * 19 + (h.id || 0));
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(244, 114, 182, ${(0.45 + detPulse * 0.45).toFixed(2)})`;
+    ctx.lineWidth = 2.0 + detPulse * 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(2, h.radius * (1.16 + detPulse * 0.22)), 0, Math.PI * 2);
+    ctx.stroke();
+
     for (let i = 0; i < 4; i++) {
       let a = spin * 1.2 + (Math.PI / 2) * i;
       ctx.fillStyle = isMono ? "#FFFFFF" : i % 2 === 0 ? "#67E8F9" : "#F472B6";
@@ -4203,7 +4225,7 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.arc(0, 0, h.radius * 0.42, 0, Math.PI * 2);
     ctx.fillStyle = "#030712";
     ctx.fill();
-    drawFourPointStar(ctx, 0, 0, h.radius * 0.62, 1.8, "#67E8F9", "#FFFFFF");
+    drawFourPointStar(ctx, 0, 0, h.radius * (0.58 + detPulse * 0.16), 1.9, "#67E8F9", "#FFFFFF");
     return;
   }
 
@@ -4231,10 +4253,20 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
       ctx.stroke();
     }
 
+    // Dark contrast underlay + supersonic pierce cone
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(15, 23, 42, 0.78)";
+    ctx.lineWidth = 4.6;
+    ctx.beginPath();
+    ctx.moveTo(35, 0);
+    ctx.lineTo(10, -24);
+    ctx.moveTo(35, 0);
+    ctx.lineTo(10, 24);
+    ctx.stroke();
+
     drawTaperedArc(ctx, -10, 0, 39, -1.16, 1.16, 15.5, "#DC2626", "#FEF08A", isMono);
     drawTaperedArc(ctx, -1, 0, 33, -1.02, 1.02, 8.5, "#F97316", "#FFFFFF", isMono);
     drawTaperedArc(ctx, 5, 0, 27, -0.82, 0.82, 4.2, "#FEF08A", "#FFFFFF", isMono);
-    drawFourPointStar(ctx, 32, 0, 9.5, 2.4, "#FFFFFF", isMono ? "#000000" : "#EF4444");
+    drawFourPointStar(ctx, 32, 0, 10.2, 2.6, "#FFFFFF", isMono ? "#000000" : "#EF4444");
     return;
   }
 
@@ -4491,9 +4523,18 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.arc(8, 0, 32, 0, Math.PI * 2);
     ctx.fill();
 
+    // Dark rail contrast jacket + supersonic pierce wake
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(2, 6, 23, 0.78)";
+    ctx.lineWidth = 14.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-58, 0);
+    ctx.lineTo(22, 0);
+    ctx.stroke();
+
     let wake = ctx.createLinearGradient(-56, 0, 22, 0);
     wake.addColorStop(0, "rgba(56, 189, 248, 0)");
-    wake.addColorStop(0.6, isMono ? "rgba(0,0,0,0.65)" : "rgba(56, 189, 248, 0.78)");
+    wake.addColorStop(0.6, isMono ? "rgba(0,0,0,0.65)" : "rgba(56, 189, 248, 0.82)");
     wake.addColorStop(1, isMono ? "#FFFFFF" : "#FEF08A");
     ctx.strokeStyle = wake;
     ctx.lineWidth = 11.5;
@@ -4528,27 +4569,27 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.stroke();
 
     // Mach shock cone + ionized rail prongs
-    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(254, 240, 138, 0.85)";
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "rgba(254, 240, 138, 0.9)";
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(26, 0);
-    ctx.lineTo(0, -14);
-    ctx.moveTo(26, 0);
-    ctx.lineTo(0, 14);
+    ctx.moveTo(28, 0);
+    ctx.lineTo(-2, -15);
+    ctx.moveTo(28, 0);
+    ctx.lineTo(-2, 15);
     ctx.stroke();
 
     ctx.fillStyle = isMono ? "#FFFFFF" : "#38BDF8";
     ctx.strokeStyle = isMono ? "#000000" : "#FEF08A";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(28, 0);
+    ctx.moveTo(29, 0);
     ctx.lineTo(6, -8);
     ctx.lineTo(11, 0);
     ctx.lineTo(6, 8);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    drawFourPointStar(ctx, 18, 0, 7.2, 2.2, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
+    drawFourPointStar(ctx, 18, 0, 7.6, 2.3, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
     return;
   }
 
@@ -4640,14 +4681,21 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.fill();
     ctx.stroke();
 
-    // Metallic dorsal stripe + glowing optical seeker lens
+    // Metallic dorsal stripe + glowing optical seeker lens + payload detonation pulse
+    const mPulse = 0.5 + 0.5 * Math.sin(elapsedTime * 24 + (h.id || 0));
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(249, 115, 22, ${(0.45 + mPulse * 0.45).toFixed(2)})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(8, 0, 9.5 + mPulse * 3.0, -1.1, 1.1);
+    ctx.stroke();
+
     ctx.fillStyle = isMono ? "#FFFFFF" : "#38BDF8";
     ctx.fillRect(-7, -1.8, 15, 3.6);
     ctx.fillStyle = isMono ? "#FFFFFF" : "#F97316";
     ctx.beginPath();
     ctx.arc(12, 0, 3.6, 0, Math.PI * 2);
     ctx.fill();
-    drawFourPointStar(ctx, 13, 0, 5.5, 1.6, "#FEF08A", isMono ? "#000000" : "#F97316");
+    drawFourPointStar(ctx, 13, 0, 5.5 + mPulse * 1.4, 1.6, "#FEF08A", isMono ? "#000000" : "#F97316");
     return;
   }
 
@@ -5255,6 +5303,27 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.arc(r * 0.3, -r * 0.24, r * 0.17, 0, Math.PI * 2);
     ctx.arc(r * 0.3, r * 0.24, r * 0.17, 0, Math.PI * 2);
     ctx.fill();
+
+    if (isC1) {
+      // Pierce shock chevron framing for C1 Spirit Serpent
+      ctx.strokeStyle = isMono ? "#000000" : "#042F2E";
+      ctx.lineWidth = 3.8;
+      ctx.beginPath();
+      ctx.moveTo(r * 1.75, 0);
+      ctx.lineTo(r * 0.2, -r * 1.15);
+      ctx.moveTo(r * 1.75, 0);
+      ctx.lineTo(r * 0.2, r * 1.15);
+      ctx.stroke();
+
+      ctx.strokeStyle = isMono ? "#FFFFFF" : finCol;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(r * 1.75, 0);
+      ctx.lineTo(r * 0.2, -r * 1.15);
+      ctx.moveTo(r * 1.75, 0);
+      ctx.lineTo(r * 0.2, r * 1.15);
+      ctx.stroke();
+    }
     return;
   }
 
@@ -5358,7 +5427,14 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.lineWidth = 1.1;
     ctx.fillRect(-2.6, -9.5, 5.2, 4.5);
     ctx.strokeRect(-2.6, -9.5, 5.2, 4.5);
-    // Specular glass reflection dot
+    // Specular glass reflection dot + unstable detonation hazard pulse ring
+    const flaskPulse = 0.5 + 0.5 * Math.sin(elapsedTime * 22 + (h.id || 0));
+    ctx.strokeStyle = isMono ? "#FFFFFF" : `rgba(216, 180, 254, ${(0.42 + flaskPulse * 0.45).toFixed(2)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 1.5, 11.2 + flaskPulse * 3.0, 0, Math.PI * 2);
+    ctx.stroke();
+
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
     ctx.arc(-2.5, 0, 1.6, 0, Math.PI * 2);
@@ -5772,9 +5848,18 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     ctx.arc(14, 0, 38, 0, Math.PI * 2);
     ctx.fill();
 
+    // Dark railgun contrast sheath behind sniper core
+    ctx.strokeStyle = isMono ? "#0F172A" : "rgba(2, 6, 23, 0.72)";
+    ctx.lineWidth = 24;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-185, 0);
+    ctx.lineTo(28, 0);
+    ctx.stroke();
+
     let wake = ctx.createLinearGradient(-185, 0, 36, 0);
     wake.addColorStop(0, "rgba(16, 185, 129, 0)");
-    wake.addColorStop(0.32, isMono ? "rgba(255,255,255,0.38)" : "rgba(74, 222, 128, 0.68)");
+    wake.addColorStop(0.32, isMono ? "rgba(255,255,255,0.38)" : "rgba(74, 222, 128, 0.72)");
     wake.addColorStop(0.75, isMono ? "rgba(255,255,255,0.82)" : "rgba(250, 204, 21, 0.96)");
     wake.addColorStop(1, "#FFFFFF");
     ctx.strokeStyle = wake;
@@ -8309,14 +8394,17 @@ export function drawHeroBody(ctx, opts) {
 
     if (!isDowned) {
       ctx.save();
-      if (!isMono) ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = isUlt ? 0.65 : skillFlare * 0.65;
+      ctx.globalAlpha = isUlt ? 0.85 : skillFlare * 0.85;
       for (let mi = 0; mi < 3; mi++) {
         let ma = elapsedTime * 4.8 + (Math.PI * 2 / 3) * mi;
         let mr = radius * (isUlt ? 1.38 : 1.24);
+        ctx.fillStyle = isMono ? "#0F172A" : "rgba(2, 6, 23, 0.75)";
+        ctx.beginPath();
+        ctx.arc(Math.cos(ma) * mr, Math.sin(ma) * mr, 3.3, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = isMono ? "#FFFFFF" : fillAccent;
         ctx.beginPath();
-        ctx.arc(Math.cos(ma) * mr, Math.sin(ma) * mr, 2.3, 0, Math.PI * 2);
+        ctx.arc(Math.cos(ma) * mr, Math.sin(ma) * mr, 2.2, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -8356,17 +8444,46 @@ export function drawHeroBody(ctx, opts) {
   if (skillFlare > 0.15) {
     const skProf = HERO_SKILL_VFX_PROFILES[heroId];
     const skPrimary = isMono ? "#FFFFFF" : (skProf ? (weaponSkillIdx === 2 ? skProf.secondary : skProf.primary) : fillAccent);
-    const skSpan = weaponSkillIdx === 3 ? 1.65 : weaponSkillIdx === 2 ? 1.3 : 0.95;
+    const skHighlight = isMono ? "#CBD5E1" : (skProf ? skProf.highlight : "#FFFFFF");
+    const skDark = isMono ? "#090D16" : (skProf ? (skProf.shadow || "#0F172A") : "#0F172A");
+    const skSpan = weaponSkillIdx >= 3 ? 1.72 : weaponSkillIdx === 2 ? 1.38 : 0.88;
+    const ringR = radius * (1.18 + skillFlare * 0.24);
+
+    // Dark contrast collar behind cast posture arc
+    ctx.strokeStyle = skDark;
+    ctx.lineWidth = (weaponSkillIdx >= 2 ? 4.4 : 3.6);
+    ctx.beginPath();
+    ctx.arc(0, 0, ringR, -skSpan, skSpan);
+    ctx.stroke();
+
     ctx.strokeStyle = skPrimary;
     ctx.lineWidth = weaponSkillIdx >= 2 ? 2.6 : 2.0;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * (1.18 + skillFlare * 0.24), -skSpan, skSpan);
+    ctx.arc(0, 0, ringR, -skSpan, skSpan);
     ctx.stroke();
-    if (weaponSkillIdx >= 1) {
-      ctx.strokeStyle = isMono ? "#CBD5E1" : (skProf ? skProf.highlight : "#FFFFFF");
-      ctx.lineWidth = 1.2;
+
+    if (weaponSkillIdx === 1) {
+      // C1 forward strike chevron flare
+      const tipX = ringR + 8 * skillFlare;
+      ctx.strokeStyle = skHighlight;
+      ctx.lineWidth = 2.0;
       ctx.beginPath();
-      ctx.arc(0, 0, radius * (1.3 + skillFlare * 0.3), -skSpan * 0.6, skSpan * 0.6);
+      ctx.moveTo(tipX - 7, -7.5);
+      ctx.lineTo(tipX, 0);
+      ctx.lineTo(tipX - 7, 7.5);
+      ctx.stroke();
+    } else if (weaponSkillIdx === 2) {
+      // C2 dual tactical counter-arcs
+      ctx.strokeStyle = skHighlight;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * (1.34 + skillFlare * 0.28), Math.PI - 0.95, Math.PI + 0.95);
+      ctx.stroke();
+    } else if (weaponSkillIdx >= 3) {
+      ctx.strokeStyle = skHighlight;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * (1.36 + skillFlare * 0.32), 0, Math.PI * 2);
       ctx.stroke();
     }
   }
@@ -12332,8 +12449,7 @@ export function drawLuanRift(ctx, rift, isMono) {
   ctx.stroke();
 
   ctx.save();
-  if (!isMono) ctx.globalCompositeOperation = "lighter";
-  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(124, 58, 237, 0.62)";
+  ctx.strokeStyle = isMono ? "rgba(255,255,255,0.45)" : "rgba(124, 58, 237, 0.72)";
   ctx.lineWidth = (rift.width || 10) * 1.9 * (0.5 + 0.5 * widthEnv);
   trace(1.12);
   ctx.stroke();
@@ -16210,10 +16326,9 @@ export function drawBachDashRifts(ctx, rifts, elapsedTime, isMono) {
     ctx.lineTo(rf.tx, rf.ty);
     ctx.stroke();
 
-    // Wide outer luminous wind-rift halo + additive neon glow
+    // Wide outer luminous wind-rift halo
     ctx.save();
-    if (!isMono) ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.4)" : (rf.color ? `${rf.color}66` : "rgba(34, 211, 238, 0.46)");
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.4)" : (rf.color ? `${rf.color}88` : "rgba(34, 211, 238, 0.58)");
     ctx.lineWidth = (rf.width || 16) * (2.05 - f * 0.85);
     ctx.beginPath();
     ctx.moveTo(rf.sx, rf.sy);
@@ -16501,9 +16616,6 @@ export function drawHeroPassiveAura(ctx, opts = {}) {
   let b = buffs || {};
   ctx.save();
   ctx.translate(x, y);
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
 
   switch (heroId) {
     case "tin": {
@@ -17188,9 +17300,6 @@ export function drawEnemyStatusVfx(ctx, enemy, elapsedTime, isMono, enableAdditi
 
   ctx.save();
   ctx.translate(ex, ey);
-  if (!isMono && enableAdditive) {
-    ctx.globalCompositeOperation = "lighter";
-  }
 
   // 1. Long Hói Burn Escalation (1..9 orange embers -> 10..24 crimson molten rings -> 25..100 bright yellow-white flares)
   let burnStacks = enemy.longhoiBurnStacks || 0;

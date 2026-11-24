@@ -19,6 +19,8 @@ import {
   drawArcaneMagicCircle,
   drawEnergyVortexPillar,
   drawImpactCraterDecal,
+  drawGroundLightPool,
+  drawStage4DissipationOverlay,
 } from "./vfxMaterials";
 
 const SAFE_MIN_R = 0.25;
@@ -387,6 +389,7 @@ export function resolveHeroDamageElement(heroId, opts = {}) {
 
 // ============================================================================
 // STAGE 1A: WEAPON SKILL AURA (Drawn at hero weapon mount during windup/buff)
+//Distinct C1 vs C2 vs Ult weapon charge + ground light reflection for 24 heroes
 // ============================================================================
 export function drawHeroWeaponSkillAura(ctx, heroId, p, elapsedTime, state = {}, isMono = false) {
   const skillIdx = Number(p?.weaponSkillIdx || 0);
@@ -397,224 +400,215 @@ export function drawHeroWeaponSkillAura(ctx, heroId, p, elapsedTime, state = {},
   const pal = resolvePalette(prof.primary, prof.highlight, prof.shadow, prof.rim, isMono);
   const sec = isMono ? "#E2E8F0" : prof.secondary;
   const t = safeNum(elapsedTime, 0);
-  const alpha = clamp(timer * 1.4, 0.28, 0.95);
+  const alpha = clamp(timer * 1.4, 0.28, 0.96);
   const radius = safeR(p?.radius, 22);
   const aimAng = safeNum(p?.facingAngle, 0);
-  const pulse = 1 + Math.sin(t * 14) * 0.12;
+  const pulse = 1 + Math.sin(t * 14) * 0.1;
 
   ctx.save();
   ctx.globalAlpha *= alpha;
 
-  // Skill intensity multiplier: C1 sharp focus, C2 surge/defense, C3/C4 cataclysm
-  const scale = skillIdx === 1 ? 1.0 : skillIdx === 2 ? 1.18 : 1.35;
-  const reach = radius * (1.28 + skillIdx * 0.16) * pulse;
+  const isC1 = skillIdx === 1;
+  const isC2 = skillIdx === 2;
+  const scale = isC1 ? 1.02 : isC2 ? 1.16 : 1.32;
+  const reach = radius * (1.28 + skillIdx * 0.14) * pulse;
+
+  // Stage 1 Ground light bounce beneath hero weapon stance
+  drawGroundLightPool(ctx, {
+    x: 0,
+    y: 4,
+    radius: reach * 1.35,
+    color: isC2 ? sec : pal.primary,
+    secondaryColor: pal.highlight,
+    alpha: 0.26 * alpha,
+    tiltY: 0.68,
+    isMono,
+  });
 
   switch (heroId) {
     case "dung": {
-      const fangs = skillIdx === 3 ? 3 : 2;
-      for (let i = 0; i < fangs; i++) {
-        const ang = aimAng + (i - (fangs - 1) * 0.5) * 0.48;
-        drawBranchingArc(ctx, {
-          x1: Math.cos(ang) * radius * 0.45,
-          y1: Math.sin(ang) * radius * 0.45,
-          x2: Math.cos(ang) * (reach + 14),
-          y2: Math.sin(ang) * (reach + 14),
-          color: i % 2 === 0 ? pal.primary : sec,
-          coreColor: pal.highlight,
-          width: 2.2 * scale,
-          seed: t * 24 + i * 7,
-          jaggedness: 9 * scale,
-          isMono,
-        });
+      if (isC1) {
+        // C1: Forward crackling thunder fang converging to jaw point
+        for (let i = -1; i <= 1; i += 2) {
+          drawBranchingArc(ctx, { x1: Math.cos(aimAng + i * 0.55) * radius * 0.6, y1: Math.sin(aimAng + i * 0.55) * radius * 0.6, x2: Math.cos(aimAng) * (reach + 16), y2: Math.sin(aimAng) * (reach + 16), color: i < 0 ? pal.primary : sec, coreColor: pal.highlight, width: 2.3, seed: t * 24 + i * 5, isMono });
+        }
+      } else if (isC2) {
+        // C2: Spinning golden-cyan berserker storm crown
+        drawSegmentedArcs(ctx, 0, 0, reach * 0.96, 4, 0.3, t * 5.2, pal.primary, 3.0, 0.68);
+        drawSegmentedArcs(ctx, 0, 0, reach * 0.72, 2, 0.6, -t * 4, sec, 2.2, 0.68);
+      } else {
+        for (let i = 0; i < 3; i++) {
+          const ang = aimAng + (i - 1) * 0.52;
+          drawBranchingArc(ctx, { x1: Math.cos(ang) * radius * 0.45, y1: Math.sin(ang) * radius * 0.45, x2: Math.cos(ang) * (reach + 18), y2: Math.sin(ang) * (reach + 18), color: i === 1 ? pal.primary : sec, coreColor: pal.highlight, width: 2.8, seed: t * 26 + i * 7, isMono });
+        }
       }
       break;
     }
     case "tin": {
-      drawStarFlare(ctx, Math.cos(aimAng) * radius * 0.9, Math.sin(aimAng) * radius * 0.9, 13 * scale, 3.5, 4, t * 5, pal.highlight, pal.primary, 1.5);
-      drawSegmentedArcs(ctx, 0, 0, radius * 1.35, 3, 0.7, t * 4.5, sec, 2.0);
+      if (isC1) {
+        drawStarFlare(ctx, Math.cos(aimAng) * radius * 1.05, Math.sin(aimAng) * radius * 1.05, 14, 3.8, 4, aimAng, pal.highlight, pal.primary, 1.6);
+        drawWindStreamRibbon(ctx, { x1: Math.cos(aimAng + Math.PI) * radius * 0.6, y1: Math.sin(aimAng + Math.PI) * radius * 0.6, x2: Math.cos(aimAng) * reach, y2: Math.sin(aimAng) * reach, color: pal.primary, coreColor: pal.highlight, width: 4.5, phase: t * 14, isMono });
+      } else {
+        drawSegmentedArcs(ctx, 0, 0, radius * 1.38, isC2 ? 2 : 4, 0.55, t * 4.8, sec, 2.4, 0.72);
+        for (let i = -1; i <= 1; i += 2) {
+          drawFacetedShard(ctx, { x: Math.cos(aimAng + i * 0.6) * reach * 0.85, y: Math.sin(aimAng + i * 0.6) * reach * 0.85, size: 7.5 * scale, rot: aimAng + t * 5, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+        }
+      }
       break;
     }
     case "kin": {
-      for (let i = -1; i <= 1; i += 2) {
-        drawWindStreamRibbon(ctx, {
-          x1: Math.cos(aimAng + i * 0.65) * radius * 0.85,
-          y1: Math.sin(aimAng + i * 0.65) * radius * 0.85,
-          x2: Math.cos(aimAng) * (reach + 12),
-          y2: Math.sin(aimAng) * (reach + 12),
-          color: pal.primary,
-          highlight: pal.highlight,
-          width: 3.2 * scale,
-          twist: Math.sin(t * 16 + i) * 7,
-          isMono,
-        });
+      if (isC1) {
+        // C1: Arrowhead wind-tunnel convergence ahead of bow
+        for (let i = -1; i <= 1; i += 2) {
+          drawWindStreamRibbon(ctx, { x1: Math.cos(aimAng + i * 0.65) * radius * 0.85, y1: Math.sin(aimAng + i * 0.65) * radius * 0.85, x2: Math.cos(aimAng) * (reach + 15), y2: Math.sin(aimAng) * (reach + 15), color: pal.primary, coreColor: pal.highlight, width: 3.6, phase: t * 16 + i, isMono });
+        }
+      } else {
+        // C2/Ult: Orbiting cyclone feather vortex around bowman
+        drawSegmentedArcs(ctx, 0, 0, reach * 0.94, 3, 0.42, t * 6.5, pal.primary, 2.6, 0.7);
+        drawStarFlare(ctx, Math.cos(aimAng) * reach * 0.78, Math.sin(aimAng) * reach * 0.78, 9 * scale, 2.8, 4, t * 5, sec, pal.highlight, 1.2);
       }
       break;
     }
     case "trung": {
-      drawPolygonRing(ctx, 0, 0, reach * 0.9, skillIdx === 3 ? 6 : 4, t * 3.5, pal.primary, 1.8);
-      drawPolygonRing(ctx, 0, 0, reach * 0.62, 3, -t * 5.2, sec, 1.4);
+      if (isC1) {
+        drawPolygonRing(ctx, Math.cos(aimAng) * radius * 0.7, Math.sin(aimAng) * radius * 0.7, 13, 3, aimAng + t * 4, sec, 2.0);
+        drawPolygonRing(ctx, 0, 0, reach * 0.82, 4, t * 3.5, pal.primary, 1.8);
+      } else {
+        drawPolygonRing(ctx, 0, 0, reach * 0.96, isC2 ? 6 : 8, t * 3.8, pal.primary, 2.1);
+        drawPolygonRing(ctx, 0, 0, reach * 0.66, 3, -t * 5.2, sec, 1.6);
+      }
       break;
     }
     case "eohyen": {
-      const shards = skillIdx + 2;
-      for (let i = 0; i < shards; i++) {
-        const a = aimAng + (i - (shards - 1) * 0.5) * 0.52 + Math.sin(t * 6 + i) * 0.08;
-        drawFacetedShard(ctx, {
-          x: Math.cos(a) * reach * 0.92,
-          y: Math.sin(a) * reach * 0.92,
-          size: 7.5 * scale,
-          rot: a + Math.PI * 0.5,
-          shape: "crystal",
-          primary: pal.primary,
-          highlight: pal.highlight,
-          shadow: pal.shadow,
-          rim: pal.rim,
-          isMono,
-        });
+      if (isC1) {
+        // C1: Forward razor frost lance shards aligned on strike vector
+        for (let i = -1; i <= 1; i++) {
+          const a = aimAng + i * 0.36;
+          drawFacetedShard(ctx, { x: Math.cos(a) * reach * 0.95, y: Math.sin(a) * reach * 0.95, size: 7.5, rot: a + Math.PI * 0.5, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, isMono });
+        }
+      } else {
+        // C2/Ult: Hexagonal ice crystal armor halo
+        const shards = isC2 ? 6 : 8;
+        drawPolygonRing(ctx, 0, 0, reach * 0.92, 6, t * 1.4, pal.rim, 1.8);
+        for (let i = 0; i < shards; i++) {
+          const a = t * 2.2 + (Math.PI * 2 * i) / shards;
+          drawFacetedShard(ctx, { x: Math.cos(a) * reach * 0.92, y: Math.sin(a) * reach * 0.92, size: 7 * scale, rot: a + Math.PI * 0.5, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+        }
       }
       break;
     }
     case "longhoi": {
-      const tails = skillIdx === 3 ? 5 : skillIdx + 2;
-      for (let i = 0; i < tails; i++) {
-        const a = aimAng + Math.PI + (i - (tails - 1) * 0.5) * 0.34;
-        const sway = Math.sin(t * 13 + i * 1.4) * 7;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * radius * 0.5, Math.sin(a) * radius * 0.5);
-        ctx.quadraticCurveTo(
-          Math.cos(a + 0.2) * reach * 0.85 + sway,
-          Math.sin(a + 0.2) * reach * 0.85,
-          Math.cos(a) * (reach + 14),
-          Math.sin(a) * (reach + 14)
-        );
-        ctx.strokeStyle = i % 2 === 0 ? pal.primary : sec;
-        ctx.lineWidth = 3.2 * scale;
-        ctx.lineCap = "round";
-        ctx.stroke();
+      if (isC1) {
+        // C1: 3 converging fox-fire tail tips aimed forward
+        for (let i = -1; i <= 1; i++) {
+          const a = aimAng + i * 0.28;
+          drawWindStreamRibbon(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * (reach + 14), y2: Math.sin(a) * (reach + 14), color: i === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 5.0, phase: t * 18 + i, isMono });
+        }
+      } else {
+        const tails = isC2 ? 4 : 6;
+        for (let i = 0; i < tails; i++) {
+          const a = aimAng + Math.PI + (i - (tails - 1) * 0.5) * 0.38;
+          const sway = Math.sin(t * 13 + i * 1.4) * 7;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * radius * 0.45, Math.sin(a) * radius * 0.45);
+          ctx.quadraticCurveTo(Math.cos(a + 0.2) * reach * 0.85 + sway, Math.sin(a + 0.2) * reach * 0.85, Math.cos(a) * (reach + 15), Math.sin(a) * (reach + 15));
+          ctx.strokeStyle = i % 2 === 0 ? pal.primary : sec;
+          ctx.lineWidth = 3.2 * scale;
+          ctx.lineCap = "round";
+          ctx.stroke();
+        }
       }
       break;
     }
     case "duccong": {
-      drawSegmentedArcs(ctx, 0, 0, reach, 4, 0.35, t * 4, pal.primary, 2.2, 0.56);
-      const orbAng = t * 5.5;
-      drawStarFlare(ctx, Math.cos(orbAng) * reach, Math.sin(orbAng) * reach * 0.56, 7 * scale, 2.2, 4, t * 6, pal.highlight, sec, 1.1);
+      if (isC1) {
+        drawSegmentedArcs(ctx, Math.cos(aimAng) * radius * 0.6, Math.sin(aimAng) * radius * 0.6, reach * 0.65, 2, 0.55, aimAng + t * 5, sec, 2.4, 0.7);
+        drawStarFlare(ctx, Math.cos(aimAng) * reach * 0.9, Math.sin(aimAng) * reach * 0.9, 10, 2.8, 4, t * 6, pal.highlight, pal.primary, 1.2);
+      } else {
+        drawSegmentedArcs(ctx, 0, 0, reach, 4, 0.35, t * 4, pal.primary, 2.4, 0.56);
+        drawSegmentedArcs(ctx, 0, 0, reach * 0.72, 3, 0.45, -t * 5.5, sec, 1.9, 0.56);
+        const orbAng = t * 5.5;
+        drawStarFlare(ctx, Math.cos(orbAng) * reach, Math.sin(orbAng) * reach * 0.56, 8 * scale, 2.4, 4, t * 6, pal.highlight, sec, 1.1);
+      }
       break;
     }
     case "gau":
     case "ducanh": {
-      drawSegmentedArcs(ctx, 0, 0, reach * 0.88, 6, 0.25, -t * 3.5, pal.primary, 2.8 * scale, 0.85);
-      for (let i = -1; i <= 1; i += 2) {
-        drawFacetedShard(ctx, {
-          x: Math.cos(aimAng + i * 0.45) * radius * 1.15,
-          y: Math.sin(aimAng + i * 0.45) * radius * 1.15,
-          size: 7.5 * scale,
-          rot: aimAng + t * 5,
-          shape: "rock",
-          primary: pal.primary,
-          highlight: pal.highlight,
-          shadow: pal.shadow,
-          rim: sec,
-          isMono,
-        });
+      if (isC1) {
+        for (let i = -1; i <= 1; i += 2) {
+          drawFacetedShard(ctx, { x: Math.cos(aimAng + i * 0.42) * radius * 1.18, y: Math.sin(aimAng + i * 0.42) * radius * 1.18, size: 8.5, rot: aimAng + t * 5, shape: "rock", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+        }
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: reach * 0.9, startAngle: aimAng - 0.65, endAngle: aimAng + 0.65, thickness: 8, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: 0.4, isMono });
+      } else {
+        // C2: Heavy octagonal iron bastion aura
+        drawPolygonRing(ctx, 0, 0, reach * 0.96, 8, -t * 2.5, pal.primary, 3.0);
+        drawSegmentedArcs(ctx, 0, 0, reach * 0.76, 4, 0.35, t * 3.5, sec, 2.4, 0.82);
       }
       break;
     }
     case "bao":
     case "phong":
     case "bach": {
-      for (let i = -1; i <= 1; i += 2) {
-        drawSculptedBladeSlash(ctx, {
-          x: 0,
-          y: 0,
-          radius: reach * 0.96,
-          startAngle: aimAng + i * 0.95 - 0.55,
-          endAngle: aimAng + i * 0.95 + 0.55,
-          thickness: 6.5 * scale,
-          primary: i < 0 ? pal.primary : sec,
-          highlight: pal.highlight,
-          shadow: pal.shadow,
-          rim: pal.rim,
-          progress: 0.42,
-          isMono,
-        });
+      if (isC1) {
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: reach * 0.95, startAngle: aimAng - 0.75, endAngle: aimAng + 0.75, thickness: 8.5, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: 0.35, isMono });
+      } else {
+        for (let i = -1; i <= 1; i += 2) {
+          drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: reach * 0.98, startAngle: aimAng + i * 0.95 - 0.55, endAngle: aimAng + i * 0.95 + 0.55, thickness: 7 * scale, primary: i < 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, progress: 0.44, isMono });
+        }
       }
       break;
     }
     case "danh":
     case "thai": {
-      drawSculptedBladeSlash(ctx, {
-        x: 0,
-        y: 0,
-        radius: reach * 1.08,
-        startAngle: aimAng - 1.15,
-        endAngle: aimAng + 1.15,
-        thickness: 9 * scale,
-        primary: pal.primary,
-        highlight: pal.highlight,
-        shadow: pal.shadow,
-        rim: sec,
-        progress: 0.45,
-        isMono,
-      });
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: reach * (isC1 ? 1.0 : 1.12), startAngle: aimAng - (isC1 ? 0.9 : 1.35), endAngle: aimAng + (isC1 ? 0.9 : 1.35), thickness: (isC1 ? 8 : 11) * scale, primary: isC2 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: 0.42, isMono });
+      if (isC2) drawSegmentedArcs(ctx, 0, 0, reach * 0.84, 4, 0.35, t * 4.5, pal.primary, 2.6, 0.72);
       break;
     }
     case "luan": {
-      for (let i = 0; i < 3; i++) {
-        const a = aimAng + (i - 1) * 0.68 + t * 2.2;
-        drawFacetedShard(ctx, {
-          x: Math.cos(a) * reach,
-          y: Math.sin(a) * reach,
-          size: 8.5 * scale,
-          rot: a + t * 4,
-          shape: "crystal",
-          primary: i === 1 ? sec : pal.primary,
-          highlight: pal.highlight,
-          shadow: pal.shadow,
-          rim: pal.rim,
-          isMono,
-        });
+      const prisms = isC1 ? 3 : isC2 ? 2 : 5;
+      for (let i = 0; i < prisms; i++) {
+        const a = isC1 ? aimAng + (i - 1) * 0.55 : t * 2.8 + (Math.PI * 2 * i) / prisms;
+        drawFacetedShard(ctx, { x: Math.cos(a) * reach, y: Math.sin(a) * reach, size: 8.5 * scale, rot: a + t * 4, shape: "crystal", primary: i % 2 === 1 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, isMono });
       }
       break;
     }
     case "taidu":
     case "khair": {
-      drawPolygonRing(ctx, Math.cos(aimAng) * radius * 0.9, Math.sin(aimAng) * radius * 0.9, 13 * scale, 6, t * 4.5, pal.primary, 1.9);
-      drawSegmentedArcs(ctx, 0, 0, reach * 0.92, 3, 0.55, aimAng - 0.5, sec, 2.0);
+      if (isC1) {
+        drawPolygonRing(ctx, Math.cos(aimAng) * radius * 0.95, Math.sin(aimAng) * radius * 0.95, 13, 6, t * 4.5, pal.primary, 2.0);
+        drawSegmentedArcs(ctx, 0, 0, reach * 0.9, 2, 0.75, aimAng - 0.5, sec, 2.2);
+      } else {
+        drawPolygonRing(ctx, 0, 0, reach * 0.96, 6, -t * 3, sec, 2.2);
+        drawStarFlare(ctx, Math.cos(aimAng) * reach * 0.95, Math.sin(aimAng) * reach * 0.95, 12 * scale, 3, 4, aimAng, pal.highlight, pal.primary, 1.4);
+      }
       break;
     }
     case "nguyen": {
-      for (let i = 0; i < 4; i++) {
-        const a = t * 2.8 + (Math.PI * 0.5 * i);
-        drawViscousDroplet(ctx, {
-          x: Math.cos(a) * reach * 0.9,
-          y: Math.sin(a) * reach * 0.9,
-          angle: a + Math.PI * 0.5,
-          length: 11 * scale,
-          width: 5 * scale,
-          primary: pal.primary,
-          highlight: pal.highlight,
-          shadow: pal.shadow,
-          isMono,
-        });
+      const petals = isC1 ? 3 : isC2 ? 6 : 8;
+      for (let i = 0; i < petals; i++) {
+        const a = (isC1 ? aimAng - 0.5 + i * 0.5 : t * 2.8 + (Math.PI * 2 * i) / petals);
+        drawViscousDroplet(ctx, { x: Math.cos(a) * reach * 0.9, y: Math.sin(a) * reach * 0.9, rot: a + Math.PI * 0.5, length: 11 * scale, width: 5 * scale, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
       }
       break;
     }
     case "duy": {
-      for (let i = 0; i < 3; i++) {
-        const a = t * 6.5 + (Math.PI * 2 * i) / 3;
-        drawStarFlare(ctx, Math.cos(a) * reach, Math.sin(a) * reach, 8.5 * scale, 2.8, 4, a + t * 8, pal.primary, pal.highlight, 1.2);
+      const count = isC1 ? 2 : isC2 ? 4 : 6;
+      for (let i = 0; i < count; i++) {
+        const a = t * 6.5 + (Math.PI * 2 * i) / count;
+        drawStarFlare(ctx, Math.cos(a) * reach, Math.sin(a) * reach, 8.5 * scale, 2.8, 4, a + t * 8, i % 2 === 0 ? pal.primary : sec, pal.highlight, 1.2);
       }
       break;
     }
     case "dang": {
-      const col = skillIdx === 2 ? (isMono ? "#94A3B8" : "#1E293B") : pal.primary;
-      const rimCol = skillIdx === 2 ? sec : pal.rim;
-      drawSegmentedArcs(ctx, 0, 0, reach * 0.95, 2, 0.85, aimAng - Math.PI * 0.5, col, 3.2 * scale);
+      const col = isC2 ? (isMono ? "#94A3B8" : "#1E293B") : pal.primary;
+      const rimCol = isC2 ? sec : pal.rim;
+      drawSegmentedArcs(ctx, 0, 0, reach * 0.95, isC2 ? 4 : 2, 0.55, aimAng - Math.PI * 0.5, col, 3.2 * scale);
       drawSegmentedArcs(ctx, 0, 0, reach * 0.78, 2, 0.95, aimAng + Math.PI * 0.3, rimCol, 2.0 * scale);
       break;
     }
     case "thien": {
-      const swCount = skillIdx + 2;
+      const swCount = isC1 ? 4 : isC2 ? 6 : 8;
+      if (isC2) drawSegmentedArcs(ctx, 0, 0, reach * 0.9, 12, 0.16, -t * 2, sec, 1.8, 0.72);
       for (let i = 0; i < swCount; i++) {
         const a = t * 3.8 + (Math.PI * 2 * i) / swCount;
         const sx = Math.cos(a) * reach;
@@ -639,25 +633,20 @@ export function drawHeroWeaponSkillAura(ctx, heroId, p, elapsedTime, state = {},
     }
     case "thanh":
     case "nhi": {
-      for (let i = 0; i < 4; i++) {
-        const a = t * 4.2 + i * 1.57;
-        drawViscousDroplet(ctx, {
-          x: Math.cos(a) * reach * 0.86,
-          y: Math.sin(a) * reach * 0.86,
-          angle: a + Math.PI * 0.4,
-          length: 10 * scale,
-          width: 4.5 * scale,
-          primary: i % 2 === 0 ? pal.primary : sec,
-          highlight: pal.highlight,
-          shadow: pal.shadow,
-          isMono,
-        });
+      const drops = isC1 ? 3 : 5;
+      for (let i = 0; i < drops; i++) {
+        const a = isC1 ? aimAng + (i - 1) * 0.45 : t * 4.2 + (Math.PI * 2 * i) / drops;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * reach * 0.88, y: Math.sin(a) * reach * 0.88, rot: a + Math.PI * 0.4, length: 10.5 * scale, width: 4.8 * scale, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
       }
       break;
     }
     case "minh": {
-      drawPolygonRing(ctx, 0, 0, reach * 0.92, 4, t * 2.5, pal.primary, 2.2);
-      drawSegmentedArcs(ctx, 0, 0, reach * 1.08, 4, 0.45, -t * 3.2, sec, 1.8);
+      if (isC1) {
+        drawPolygonRing(ctx, Math.cos(aimAng) * reach * 0.7, Math.sin(aimAng) * reach * 0.7, 11, 4, aimAng, pal.primary, 2.2);
+      } else {
+        drawPolygonRing(ctx, 0, 0, reach * 0.92, 4, t * 2.5, pal.primary, 2.3);
+        drawSegmentedArcs(ctx, 0, 0, reach * 1.08, 4, 0.45, -t * 3.2, sec, 1.9);
+      }
       break;
     }
     default: {
@@ -672,6 +661,7 @@ export function drawHeroWeaponSkillAura(ctx, heroId, p, elapsedTime, state = {},
 
 // ============================================================================
 // STAGE 1B: SKILL CAST WINDUP / ANTICIPATION (Ground lock & convergence)
+// Distinct C1 (directional aim/lunge lock) vs C2 (guard/nova/barrier) vs Ult
 // ============================================================================
 export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
   if (!w) return;
@@ -687,35 +677,69 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
   const rad = safeR(w.radius, 52);
   const ang = safeNum(w.angle, 0);
   const skillIdx = Number(w.skillIdx || 1);
-  const env = f < 0.28 ? f / 0.28 : 1 - (f - 0.28) / 0.72;
-  const converge = 1 - f * 0.62;
+  const isC1 = skillIdx === 1;
+  const isC2 = skillIdx === 2;
+  const env = f < 0.24 ? f / 0.24 : 1 - (f - 0.24) / 0.76;
+  const converge = 1 - f * 0.58;
   const t = safeNum(elapsedTime, 0);
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.globalAlpha *= clamp(env, 0, 1) * (skillIdx === 3 || skillIdx === 4 ? 0.92 : 0.78);
+  ctx.globalAlpha *= clamp(env, 0, 1) * (skillIdx >= 3 ? 0.94 : 0.84);
 
-  // Ground perspective aura base + unique hero telegraph geometry
+  // Dynamic ground illumination bouncing onto terrain during windup
+  drawGroundLightPool(ctx, {
+    x: 0,
+    y: 0,
+    radius: rad * 1.25 * (0.85 + 0.25 * env),
+    color: isC2 ? sec : pal.primary,
+    secondaryColor: pal.highlight,
+    alpha: (skillIdx >= 3 ? 0.42 : 0.34) * env,
+    tiltY: 0.68,
+    isMono,
+  });
+
+  // Ground perspective aura base
   drawPerspectiveZoneBase(ctx, {
     x: 0,
     y: 0,
     radius: rad * converge,
     tiltY: 0.68,
     primary: pal.primary,
-    highlight: pal.highlight,
-    shadow: pal.shadow,
-    rim: pal.rim,
+    secondary: sec,
+    darkRim: pal.shadow,
     pulse: 0.5 + f * 0.5,
+    segments: isC1 ? 3 : isC2 ? 4 : 6,
     isMono,
   });
+
+  // Skill-specific anticipation silhouette layer
+  if (isC1) {
+    // Directional forward lock guide + converging kinetic arc on cast vector
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.strokeStyle = colorWithAlpha("#020617", 0.55);
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(rad * 0.2, 0);
+    ctx.lineTo(rad * 1.15 * converge, 0);
+    ctx.stroke();
+    ctx.strokeStyle = pal.highlight;
+    ctx.lineWidth = 2.1;
+    ctx.stroke();
+    ctx.restore();
+  } else if (isC2) {
+    // Expanding/contracting tactical guard/nova double bracket
+    drawSegmentedArcs(ctx, 0, 0, rad * (0.72 + f * 0.28), 4, 0.36, ang + f * 1.8, sec, 2.8, 0.68);
+  }
 
   switch (prof.element) {
     case "lightning":
     case "chrono_sword":
     case "celestial_chain": {
-      drawSegmentedArcs(ctx, 0, 0, rad * converge, skillIdx === 3 ? 6 : 4, 0.34, t * 5 + f * 3, pal.primary, 2.4, 0.68);
+      drawSegmentedArcs(ctx, 0, 0, rad * converge, skillIdx >= 3 ? 6 : 4, 0.34, t * 5 + f * 3, pal.primary, 2.5, 0.68);
       for (let i = 0; i < 3; i++) {
-        const a = ang + (i - 1) * 1.15 + f * 1.2;
+        const a = ang + (i - 1) * (isC1 ? 0.68 : 1.15) + f * 1.2;
         drawBranchingArc(ctx, {
           x1: Math.cos(a) * rad * converge,
           y1: Math.sin(a) * rad * converge * 0.68,
@@ -723,9 +747,8 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
           y2: 0,
           color: i === 1 ? pal.primary : sec,
           coreColor: pal.highlight,
-          width: 2.0,
-          seed: w.seed + i * 11,
-          jaggedness: 10,
+          width: 2.1,
+          seed: (w.seed || 1) + i * 11,
           isMono,
         });
       }
@@ -736,7 +759,7 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
     case "blood_rift": {
       ctx.save();
       ctx.scale(1, 0.68);
-      drawPolygonRing(ctx, 0, 0, rad * converge, 6, ang + f * 1.4, pal.primary, 2.4, colorWithAlpha(pal.shadow, 0.24));
+      drawPolygonRing(ctx, 0, 0, rad * converge, isC1 ? 4 : 6, ang + f * 1.4, pal.primary, 2.4, colorWithAlpha(pal.shadow, 0.24));
       drawPolygonRing(ctx, 0, 0, rad * converge * 0.64, 3, -ang - f * 2.1, sec, 1.8);
       ctx.restore();
       break;
@@ -746,14 +769,13 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
     case "molten_anvil":
     case "iron_quake":
     case "gladiator_gold": {
-      // Converging directional wedge / molten pressure arc
       drawSculptedBladeSlash(ctx, {
         x: 0,
         y: 0,
         radius: rad * converge,
-        startAngle: ang - 0.95,
-        endAngle: ang + 0.95,
-        thickness: 9 * (1 - f * 0.45),
+        startAngle: ang - (isC1 ? 0.72 : 1.05),
+        endAngle: ang + (isC1 ? 0.72 : 1.05),
+        thickness: 10 * (1 - f * 0.4),
         primary: pal.primary,
         highlight: pal.highlight,
         shadow: pal.shadow,
@@ -762,14 +784,14 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
         isMono,
       });
       for (let i = 0; i < 4; i++) {
-        const a = ang + (i - 1.5) * 0.75;
-        const dist = rad * (1.1 - f * 0.75);
+        const a = ang + (i - 1.5) * 0.72;
+        const dist = rad * (1.08 - f * 0.72);
         drawFacetedShard(ctx, {
           x: Math.cos(a) * dist,
           y: Math.sin(a) * dist * 0.68,
           size: 6.5 * (1 - f * 0.3),
           rot: a,
-          shape: prof.debrisShape,
+          shape: prof.debrisShape === "ember" ? "crystal" : prof.debrisShape,
           primary: pal.primary,
           highlight: pal.highlight,
           shadow: pal.shadow,
@@ -784,7 +806,6 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
     case "reaper_dual":
     case "shadow_blade":
     case "shinobi_decoy": {
-      // Directional focus chevrons converging toward cast direction
       for (let i = 0; i < 3; i++) {
         const offset = (i - 1) * 0.55;
         drawWindStreamRibbon(ctx, {
@@ -793,9 +814,9 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
           x2: Math.cos(ang) * rad * 0.65,
           y2: Math.sin(ang) * rad * 0.44,
           color: i === 1 ? sec : pal.primary,
-          highlight: pal.highlight,
-          width: 4.2,
-          twist: offset * 14 * (1 - f),
+          coreColor: pal.highlight,
+          width: 4.4,
+          phase: offset * 14 * (1 - f),
           isMono,
         });
       }
@@ -810,21 +831,19 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
         y: 0,
         radius: rad * converge,
         rot: t * 3 + f * 2,
-        sides: prof.element === "mecha_emp" ? 6 : 5,
-        star: true,
+        sides: prof.element === "mecha_emp" ? 6 : isC1 ? 4 : 5,
+        starMode: true,
         primary: pal.primary,
         highlight: pal.highlight,
-        shadow: pal.shadow,
+        darkRim: pal.shadow,
         rim: sec,
-        nodeShape: prof.debrisShape,
-        alpha: 0.75,
+        nodeShape: prof.debrisShape === "shard" ? "crystal" : prof.debrisShape,
         isMono,
       });
       break;
     }
     default: {
-      // Flora / Serpent / Alchemy / Tiger Steel
-      drawSegmentedArcs(ctx, 0, 0, rad * converge, 5, 0.35, t * 4, pal.primary, 2.6, 0.68);
+      drawSegmentedArcs(ctx, 0, 0, rad * converge, isC1 ? 3 : 5, 0.35, t * 4, pal.primary, 2.6, 0.68);
       drawStarFlare(ctx, 0, 0, rad * 0.42 * (1 - f * 0.35), rad * 0.14, 5, t * 3, pal.highlight, sec, 1.3);
       break;
     }
@@ -863,6 +882,18 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
   ctx.save();
   ctx.translate(x, y);
   ctx.globalAlpha *= fade;
+
+  // Stage 2: Skill terrain illumination beneath slash/burst
+  drawGroundLightPool(ctx, {
+    x: 0,
+    y: 0,
+    radius: Math.min(220, maxR * 1.15),
+    color: pal.primary,
+    secondaryColor: sec,
+    alpha: 0.28 * fade,
+    tiltY: 0.68,
+    isMono,
+  });
 
   switch (kind) {
     // -----------------------------------------------------------------------
@@ -1388,24 +1419,22 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     // 10. DANH (HỎA LONG ĐẠI KIẾM)
     // -----------------------------------------------------------------------
     case "danh_kiem_khi_slash": {
-      // Heavy Greatsword Phá Sơn Flame Cleave + Dragon Fang Edge
       const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
       drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: ang - 1.25, endAngle: ang + 1.25, thickness: 22 * (1 - f * 0.35), primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
       for (let i = -2; i <= 2; i++) {
         const a = ang + i * 0.35;
-        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.96, y: Math.sin(a) * curR * 0.96, size: 10.5 * (1 - f * 0.4), rot: a, shape: "ember", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.96, y: Math.sin(a) * curR * 0.96, size: 9.5 * (1 - f * 0.4), rot: a, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       }
       ctx.restore();
       return true;
     }
     case "danh_c2_dragon_launch":
     case "danh_firebreath": {
-      // Forward roaring dragon jaw flame wave cone
       const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 24);
       ctx.save();
       ctx.rotate(ang);
       for (let i = -2; i <= 2; i++) {
-        drawWindStreamRibbon(ctx, { x1: 8, y1: i * 6, x2: curR, y2: i * 24, color: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, width: (i === 0 ? 13 : 8) * (1 - f * 0.35), twist: Math.sin(t * 20 + i) * 10, isMono });
+        drawWindStreamRibbon(ctx, { x1: 8, y1: i * 6, x2: curR, y2: i * 24, color: i % 2 === 0 ? pal.primary : sec, coreColor: pal.highlight, width: (i === 0 ? 13 : 8) * (1 - f * 0.35), phase: t * 20 + i, isMono });
       }
       ctx.restore();
       ctx.restore();
@@ -1415,7 +1444,7 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     case "danh_c3_dragon_nova":
     case "danh_sky_dragon_impact": {
       const curR = safeR(maxR * (0.4 + 0.6 * easeOut), 30);
-      drawStructuralExplosion(ctx, { x: 0, y: 0, radius: curR, progress: f, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "ember", isMono });
+      drawStructuralExplosion(ctx, { x: 0, y: 0, radius: curR, progress: f, element: "fire", color: pal.primary, isMono });
       drawSegmentedArcs(ctx, 0, 0, curR * 1.05, 5, 0.28, f * 3.5, sec, 3.8, 0.7);
       ctx.restore();
       return true;
@@ -1425,7 +1454,6 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     // 11. LUÂN (HƯ KHÔNG PHẢN CHIẾU)
     // -----------------------------------------------------------------------
     case "luan_c1_rift_fan": {
-      // 5-prism glass-void mirror fan
       const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 20);
       for (let i = -2; i <= 2; i++) {
         const a = ang + i * 0.24;
@@ -1464,75 +1492,112 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     }
 
     // -----------------------------------------------------------------------
-    // 12. TÀI DỰ (KỸ SƯ CƠ KHÍ / DRONE)
+    // 12. TÀI DỰ (KỸ SƯ CƠ KHÍ / DRONE) — C1 Hex Rail Blast vs C2 EMP Salvo vs C3 Orbital
     // -----------------------------------------------------------------------
-    case "taidu_hex_blast":
-    case "taidu_c2_emp_salvo":
-    case "taidu_c3_orbital_lock": {
+    case "taidu_hex_blast": {
       const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 20);
       ctx.save();
       ctx.scale(1, 0.72);
-      drawPolygonRing(ctx, 0, 0, curR, 6, f * 1.5, pal.primary, 3.2, colorWithAlpha(pal.shadow, 0.24));
-      drawPolygonRing(ctx, 0, 0, curR * 0.62, 6, -f * 2.0, sec, 2.0);
+      drawPolygonRing(ctx, 0, 0, curR, 6, f * 1.2, pal.primary, 3.4, colorWithAlpha(pal.shadow, 0.28));
+      drawPolygonRing(ctx, 0, 0, curR * 0.58, 6, -f * 1.8, pal.highlight, 2.0);
       ctx.restore();
-      if (kind === "taidu_c3_orbital_lock") {
-        drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: curR * 0.42, height: 220, progress: f, phase: t * 9, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "shard", isMono });
-      } else {
-        for (let i = 0; i < 4; i++) {
-          const a = (Math.PI * 0.5 * i) + f * 3;
-          drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * curR * 0.9, y2: Math.sin(a) * curR * 0.65, color: i % 2 === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 2.2, seed: i * 11 + x, jaggedness: 9, isMono });
-        }
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI * 0.5 * i) + f * 2.4;
+        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * curR * 0.92, y2: Math.sin(a) * curR * 0.66, color: pal.primary, coreColor: pal.highlight, width: 2.3, seed: i * 11 + x, isMono });
       }
+      ctx.restore();
+      return true;
+    }
+    case "taidu_c2_emp_salvo": {
+      // C2: Tactical angled missile pod barrage cone + radar lock chevrons
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
+      ctx.save();
+      ctx.rotate(ang);
+      for (let i = -2; i <= 2; i++) {
+        drawWindStreamRibbon(ctx, { x1: 4, y1: i * 7, x2: curR * (i === 0 ? 1.08 : 0.9), y2: i * 22, color: i % 2 === 0 ? sec : pal.primary, coreColor: pal.highlight, width: 5.8 * (1 - f * 0.35), phase: t * 22 + i, isMono });
+      }
+      ctx.restore();
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.76, 3, 0.45, ang - 0.55, sec, 2.8, 0.72);
+      ctx.restore();
+      return true;
+    }
+    case "taidu_c3_orbital_lock": {
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 24);
+      ctx.save();
+      ctx.scale(1, 0.72);
+      drawPolygonRing(ctx, 0, 0, curR, 6, f * 1.5, pal.primary, 3.6, colorWithAlpha(pal.shadow, 0.24));
+      drawPolygonRing(ctx, 0, 0, curR * 0.62, 6, -f * 2.0, sec, 2.2);
+      ctx.restore();
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: curR * 0.44, height: 225, progress: f, phase: t * 9, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "plate", isMono });
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 13. NGUYÊN (THÁNH ÂN / SINH MỆNH)
+    // 13. NGUYÊN (THÁNH ÂN / SINH MỆNH) — C1 Emerald Crescent vs C2 Lotus Ward vs C3 Bloom
     // -----------------------------------------------------------------------
-    case "nguyen_wave":
-    case "nguyen_c2_lotus_ward":
+    case "nguyen_wave": {
+      const curR = safeR(maxR * (0.34 + 0.66 * easeOut), 20);
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: ang - 1.05, endAngle: ang + 1.05, thickness: 15 * (1 - f * 0.35), primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
+      for (let i = -1; i <= 1; i++) {
+        const a = ang + i * 0.42;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.9, y: Math.sin(a) * curR * 0.9, rot: a, length: 13 * (1 - f * 0.35), width: 6, primary: i === 0 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      ctx.restore();
+      return true;
+    }
+    case "nguyen_c2_lotus_ward": {
+      const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 22);
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.72, primary: pal.primary, secondary: sec, darkRim: pal.shadow, pulse: 1 - f, segments: 6, isMono });
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI * 2 * i) / 6 + f * 1.1;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.76, y: Math.sin(a) * curR * 0.54, rot: a, length: curR * 0.36, width: curR * 0.13, primary: i % 2 === 0 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      ctx.restore();
+      return true;
+    }
     case "nguyen_lotus_boom":
     case "nguyen_c3_sanctuary_bloom": {
-      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 24);
       const petals = kind === "nguyen_c3_sanctuary_bloom" ? 8 : 6;
-      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, pulse: 1 - f, isMono });
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: pal.primary, secondary: sec, darkRim: pal.shadow, pulse: 1 - f, isMono });
       for (let i = 0; i < petals; i++) {
         const a = (Math.PI * 2 * i) / petals + f * 0.9;
-        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.74, y: Math.sin(a) * curR * 0.52, angle: a, length: curR * 0.42, width: curR * 0.14, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.74, y: Math.sin(a) * curR * 0.52, rot: a, length: curR * 0.42, width: curR * 0.14, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
       }
-      drawSegmentedArcs(ctx, 0, 0, curR * 0.98, 4, 0.25, -t * 3, pal.highlight, 2.6, 0.7);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.98, 4, 0.25, -t * 3, pal.highlight, 2.8, 0.7);
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 14. DUY (NHẪN GIẢ THẾ THÂN)
+    // 14. DUY (NHẪN GIẢ THẾ THÂN) — C1 Log Substitute vs C2 Shuriken Fan vs C3 Cyclone
     // -----------------------------------------------------------------------
     case "duy_c1_substitute_seal": {
-      // Shinobi log-substitute smoke + fluttering sealing talismans
       const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 20);
       for (let i = 0; i < 5; i++) {
         const a = (Math.PI * 2 * i) / 5 + f * 1.6;
         drawVolumetricSmokeLobe(ctx, { x: Math.cos(a) * curR * 0.48, y: Math.sin(a) * curR * 0.36, radius: curR * 0.28 * (1 - f * 0.3), primary: pal.rim, shadow: pal.shadow, highlight: pal.highlight, isMono });
-        ctx.save();
-        ctx.translate(Math.cos(a) * curR * 0.85, Math.sin(a) * curR * 0.6);
-        ctx.rotate(a + f * 4);
-        ctx.fillStyle = sec;
-        ctx.fillRect(-4, -9, 8, 18);
-        ctx.strokeStyle = pal.highlight;
-        ctx.lineWidth = 1.2;
-        ctx.strokeRect(-4, -9, 8, 18);
-        ctx.restore();
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.85, y: Math.sin(a) * curR * 0.6, size: 7.5 * (1 - f * 0.3), rot: a + f * 4, shape: "paper", primary: sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.primary, isMono });
       }
       ctx.restore();
       return true;
     }
-    case "duy_c2_shuriken_fan":
-    case "duy_c3_cyclone_storm": {
+    case "duy_c2_shuriken_fan": {
+      // C2: 5-point ninja shuriken throw fan + teal slash ribbons
       const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 20);
-      const blades = kind === "duy_c3_cyclone_storm" ? 6 : 4;
-      drawSegmentedArcs(ctx, 0, 0, curR, blades, 0.32, t * 8, pal.primary, 3.0, 0.72);
+      for (let i = -2; i <= 2; i++) {
+        const a = ang + i * 0.24;
+        drawWindStreamRibbon(ctx, { x1: 6, y1: 0, x2: Math.cos(a) * curR, y2: Math.sin(a) * curR, color: i === 0 ? sec : pal.primary, coreColor: pal.highlight, width: 5.5 * (1 - f * 0.35), phase: t * 18 + i, isMono });
+        drawStarFlare(ctx, Math.cos(a) * curR * 0.88, Math.sin(a) * curR * 0.88, 10 * (1 - f * 0.35), 3.2, 4, a + t * 14, i % 2 === 0 ? pal.primary : sec, pal.highlight, 1.3);
+      }
+      ctx.restore();
+      return true;
+    }
+    case "duy_c3_cyclone_storm": {
+      const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 22);
+      const blades = 6;
+      drawSegmentedArcs(ctx, 0, 0, curR, blades, 0.32, t * 8, pal.primary, 3.2, 0.72);
       for (let i = 0; i < blades; i++) {
         const a = (Math.PI * 2 * i) / blades + t * 9;
         drawStarFlare(ctx, Math.cos(a) * curR * 0.85, Math.sin(a) * curR * 0.62, 13 * (1 - f * 0.35), 4, 4, a + t * 12, i % 2 === 0 ? pal.primary : sec, pal.highlight, 1.4);
@@ -1545,7 +1610,6 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     // 15. PHONG (TỬ THẦN SONG ĐAO)
     // -----------------------------------------------------------------------
     case "phong_c1_shadow_slash": {
-      // Twin crimson-cyan death-scythe dash arcs
       const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 18);
       drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: ang - 1.1, endAngle: ang + 1.1, thickness: 15 * (1 - f * 0.35), primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
       drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR * 0.78, startAngle: ang + 0.9, endAngle: ang - 0.9, thickness: 9 * (1 - f * 0.4), primary: sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, progress: f, isMono });
@@ -1569,7 +1633,6 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     // -----------------------------------------------------------------------
     case "dang_punch":
     case "dang_c1_tiger_roar": {
-      // Triple claw-mark tiger crescent strike
       const curR = safeR(maxR * (0.34 + 0.66 * easeOut), 20);
       for (let c = -1; c <= 1; c++) {
         drawSculptedBladeSlash(ctx, {
@@ -1594,11 +1657,11 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     case "dang_c3_frenzy_sigil": {
       const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 24);
       const isBlack = kind === "dang_black_shield_boom";
-      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: isBlack ? "#1E293B" : pal.primary, highlight: pal.highlight, shadow: "#020617", rim: sec, pulse: 1 - f, isMono });
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: isBlack ? "#1E293B" : pal.primary, secondary: sec, darkRim: "#020617", pulse: 1 - f, isMono });
       drawSegmentedArcs(ctx, 0, 0, curR, 3, 0.38, ang + f * 3.5, sec, 4.2, 0.7);
       for (let i = 0; i < 3; i++) {
         const a = (Math.PI * 2 * i) / 3 + f * 2;
-        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.86, y: Math.sin(a) * curR * 0.6, size: 13 * (1 - f * 0.35), rot: a + Math.PI * 0.5, shape: "shard", primary: isBlack ? "#0F172A" : pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.86, y: Math.sin(a) * curR * 0.6, size: 13 * (1 - f * 0.35), rot: a + Math.PI * 0.5, shape: "plate", primary: isBlack ? "#0F172A" : pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       }
       ctx.restore();
       return true;
@@ -1612,7 +1675,7 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     case "thien_god_halo": {
       const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
       const count = kind === "thien_c1_sword_halo" ? 6 : 8;
-      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: t * 3, sides: count, star: true, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, alpha: 0.82, isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: t * 3, sides: count, starMode: true, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, isMono });
       for (let i = 0; i < count; i++) {
         const a = (Math.PI * 2 * i) / count + f * 1.4;
         ctx.save();
@@ -1636,11 +1699,9 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     }
     case "thien_c2_time_dome":
     case "thien_c2_time_shatter": {
-      // Clockwork time-reversal dome & glass fracture
       const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 26);
       drawSegmentedArcs(ctx, 0, 0, curR, 12, 0.16, -t * 2.5, pal.primary, 2.8, 0.72);
       drawPolygonRing(ctx, 0, 0, curR * 0.74, 4, t * 2, sec, 2.0);
-      // Clock hands
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(Math.cos(-t * 4) * curR * 0.68, Math.sin(-t * 4) * curR * 0.48);
@@ -1657,28 +1718,41 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     case "thien_c4_solar_judgement": {
       const curR = safeR(maxR * (0.4 + 0.6 * easeOut), 28);
       drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: curR * 0.42, height: kind === "thien_c4_solar_judgement" ? 260 : 185, progress: f, phase: t * 7, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "crystal", isMono });
-      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: -t * 3, sides: 6, star: true, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, alpha: 0.85, isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: -t * 3, sides: 6, starMode: true, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, isMono });
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 18. THANH (XÀ VƯƠNG)
+    // 18. THANH (XÀ VƯƠNG) — C1 Triple Viper Ribbon vs C2 Guard Scale Pulse vs C3 Devour
     // -----------------------------------------------------------------------
     case "thanh_snake_fan": {
-      // Triple sinusoidal venom-serpent launch ribbons
       const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 20);
       for (let i = -1; i <= 1; i++) {
         const a = ang + i * 0.28;
-        drawWindStreamRibbon(ctx, { x1: 6, y1: 0, x2: Math.cos(a) * curR, y2: Math.sin(a) * curR, color: i === 0 ? pal.primary : sec, highlight: pal.highlight, width: i === 0 ? 10 : 7, twist: Math.sin(t * 18 + i * 2) * 14, isMono });
+        drawWindStreamRibbon(ctx, { x1: 6, y1: 0, x2: Math.cos(a) * curR, y2: Math.sin(a) * curR, color: i === 0 ? pal.primary : sec, coreColor: pal.highlight, width: i === 0 ? 10 : 7, phase: t * 18 + i * 2, isMono });
       }
       ctx.restore();
       return true;
     }
-    case "thanh_devour_bite":
     case "thanh_shield_pulse": {
+      // C2: Coiled hexagonal serpent-scale shield barrier
+      const curR = safeR(maxR * (0.42 + 0.58 * easeOut), 22);
+      ctx.save();
+      ctx.scale(1, 0.72);
+      drawPolygonRing(ctx, 0, 0, curR, 6, t * 2.4, pal.primary, 3.6, colorWithAlpha(pal.shadow, 0.26));
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.78, 3, 0.42, -t * 3.8, sec, 2.8);
+      ctx.restore();
+      for (let i = 0; i < 4; i++) {
+        const a = t * 4 + (Math.PI * 0.5 * i);
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.85, y: Math.sin(a) * curR * 0.62, rot: a + Math.PI * 0.5, length: 12, width: 5.5, primary: sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      ctx.restore();
+      return true;
+    }
+    case "thanh_devour_bite": {
       const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 24);
-      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, pulse: 1 - f, isMono });
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: pal.primary, secondary: sec, darkRim: pal.shadow, pulse: 1 - f, isMono });
       for (let side = -1; side <= 1; side += 2) {
         drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR * 0.92, startAngle: ang + side * 0.4 - 0.8, endAngle: ang + side * 0.4 + 0.8, thickness: 13 * (1 - f * 0.35), primary: side < 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, progress: f, isMono });
       }
@@ -1687,41 +1761,52 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     }
 
     // -----------------------------------------------------------------------
-    // 19. NHI (ĐỘC NỎ / GIẢ KIM)
+    // 19. NHI (ĐỘC NỎ / GIẢ KIM) — C1 Snap vs C2 Vial Splash vs C3 Hunt Lock
     // -----------------------------------------------------------------------
-    case "nhi_c1_revolver_snap":
-    case "nhi_c2_flask_scatter":
+    case "nhi_c1_revolver_snap": {
+      const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 20);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.55, 3, 0.4, ang + f * 4, pal.primary, 3.0);
+      for (let i = -1; i <= 1; i++) {
+        const a = ang + i * 0.2;
+        drawWindStreamRibbon(ctx, { x1: 8, y1: 0, x2: Math.cos(a) * curR, y2: Math.sin(a) * curR, color: i === 0 ? sec : pal.primary, coreColor: pal.highlight, width: 6, phase: t * 18 + i, isMono });
+      }
+      ctx.restore();
+      return true;
+    }
+    case "nhi_c2_flask_scatter": {
+      // C2: Shattered reagent vial shards + violet/lime mist lobes
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.68, primary: pal.primary, secondary: sec, darkRim: pal.shadow, pulse: 1 - f, segments: 5, isMono });
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI * 2 * i) / 6 + f * 1.4;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.72, y: Math.sin(a) * curR * 0.5, rot: a, length: 14 * (1 - f * 0.3), width: 6.5, primary: i % 2 === 0 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
+        if (i % 2 === 0) drawFacetedShard(ctx, { x: Math.cos(a + 0.3) * curR * 0.55, y: Math.sin(a + 0.3) * curR * 0.38, size: 6.5 * (1 - f * 0.35), rot: a, shape: "crystal", primary: pal.highlight, highlight: "#FFFFFF", shadow: pal.shadow, rim: pal.rim, isMono });
+      }
+      ctx.restore();
+      return true;
+    }
     case "nhi_c3_hunt_lock":
     case "nhi_mist_pulse": {
-      const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 20);
-      if (kind === "nhi_c1_revolver_snap") {
-        // Ammo-revolver chamber snap + 3 toxic bolt wakes
-        drawSegmentedArcs(ctx, 0, 0, curR * 0.55, 3, 0.4, ang + f * 4, pal.primary, 3.0);
-        for (let i = -1; i <= 1; i++) {
-          const a = ang + i * 0.2;
-          drawWindStreamRibbon(ctx, { x1: 8, y1: 0, x2: Math.cos(a) * curR, y2: Math.sin(a) * curR, color: i === 0 ? sec : pal.primary, highlight: pal.highlight, width: 6, twist: i * 8, isMono });
-        }
-      } else {
-        drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, pulse: 1 - f, isMono });
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI * 2 * i) / 6 + f * 1.5;
-          drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.75, y: Math.sin(a) * curR * 0.54, angle: a, length: 14 * (1 - f * 0.3), width: 6.5, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
-        }
+      const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 22);
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.7, primary: pal.primary, secondary: sec, darkRim: pal.shadow, pulse: 1 - f, isMono });
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.92, 4, 0.32, t * 4, sec, 3.0, 0.7);
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI * 2 * i) / 6 + f * 1.5;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.75, y: Math.sin(a) * curR * 0.54, rot: a, length: 14 * (1 - f * 0.3), width: 6.5, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
       }
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 20. MINH (THIÊN LAO SCEPTER)
+    // 20. MINH (THIÊN LAO SCEPTER) — C1 Chain Corridor vs C2 Banishment vs C3 Jail
     // -----------------------------------------------------------------------
     case "minh_chain_rect": {
-      // Golden celestial chain corridor with interlocking diamond links
       const len = safeR(h.length || maxR, 180);
       const hw = safeR(h.halfWidth || 44, 24);
       ctx.save();
       ctx.rotate(ang);
-      ctx.fillStyle = colorWithAlpha(pal.shadow, 0.34);
+      ctx.fillStyle = colorWithAlpha(pal.shadow, 0.36);
       ctx.fillRect(0, -hw, len, hw * 2);
       ctx.strokeStyle = pal.primary;
       ctx.lineWidth = 2.8;
@@ -1735,31 +1820,52 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
       ctx.restore();
       return true;
     }
-    case "minh_c2_banishment_seal":
+    case "minh_c2_banishment_seal": {
+      // C2: Rising gold-cyan decree pillars & concentric displacement ring
+      const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 24);
+      drawSegmentedArcs(ctx, 0, 0, curR, 4, 0.28, -t * 3.8, sec, 3.8, 0.7);
+      drawPolygonRing(ctx, 0, 0, curR * 0.68, 4, t * 2.5, pal.primary, 2.6);
+      drawStarFlare(ctx, 0, 0, curR * 0.48, 6, 4, 0, pal.highlight, pal.primary, 1.5);
+      ctx.restore();
+      return true;
+    }
     case "minh_c3_celestial_jail": {
-      const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 26);
-      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: t * 2.4, sides: 8, star: true, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, alpha: 0.85, isMono });
+      const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 28);
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: t * 2.4, sides: 8, starMode: true, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, isMono });
       drawSegmentedArcs(ctx, 0, 0, curR * 1.06, 4, 0.3, -t * 3.5, sec, 3.6, 0.7);
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 21. ĐỨC ANH (THIẾT CẦU / LĂN BÚA)
+    // 21. ĐỨC ANH (THIẾT CẦU / LĂN BÚA) — C1 Flaming Wheel vs C2 Anvil Shield vs C3 Meteor
     // -----------------------------------------------------------------------
-    case "ducanh_c1_ignition_wheel":
-    case "ducanh_c2_anvil_bastion":
-    case "ducanh_c3_meteor_slam":
-    case "ducanh_passive_iron_shell": {
-      const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 22);
-      if (kind === "ducanh_c3_meteor_slam") {
-        drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: curR, alpha: clamp(fade * 1.1, 0, 1), tiltY: 0.72, seed: x * 0.2 + y, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "rock", isMono });
+    case "ducanh_c1_ignition_wheel": {
+      // C1: Spinning molten gear rim + rocket exhaust tongues
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
+      drawSegmentedArcs(ctx, 0, 0, curR, 6, 0.24, t * 7, pal.primary, 4.2, 0.74);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.68, 3, 0.45, -t * 5, sec, 2.8, 0.74);
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI * 0.5 * i) + t * 6;
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.92, y: Math.sin(a) * curR * 0.68, size: 9.5 * (1 - f * 0.35), rot: a, shape: "plate", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       }
+      ctx.restore();
+      return true;
+    }
+    case "ducanh_c2_anvil_bastion":
+    case "ducanh_passive_iron_shell": {
+      const curR = safeR(maxR * (0.4 + 0.6 * easeOut), 22);
       ctx.save();
       ctx.scale(1, 0.72);
-      drawPolygonRing(ctx, 0, 0, curR, 8, t * 4.5, pal.primary, 4.0, colorWithAlpha(pal.shadow, 0.26));
-      drawPolygonRing(ctx, 0, 0, curR * 0.7, 6, -t * 3.5, sec, 2.4);
+      drawPolygonRing(ctx, 0, 0, curR, 8, f * 0.9, pal.primary, 4.2, colorWithAlpha(pal.shadow, 0.28));
+      drawPolygonRing(ctx, 0, 0, curR * 0.72, 4, -f * 0.9, sec, 2.6);
       ctx.restore();
+      ctx.restore();
+      return true;
+    }
+    case "ducanh_c3_meteor_slam": {
+      const curR = safeR(maxR * (0.38 + 0.62 * easeOut), 26);
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: curR, alpha: clamp(fade * 1.1, 0, 1), tiltY: 0.72, seed: x * 0.2 + y, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "rock", isMono });
       for (let i = 0; i < 6; i++) {
         const a = (Math.PI * 2 * i) / 6 + f * 2;
         drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.9, y: Math.sin(a) * curR * 0.65, size: 11 * (1 - f * 0.35), rot: a + f * 3, shape: "rock", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
@@ -1769,72 +1875,97 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     }
 
     // -----------------------------------------------------------------------
-    // 22. BÁCH (PHONG ẢNH SONG ĐAO)
+    // 22. BÁCH (PHONG ẢNH SONG ĐAO) — C1 Terminus X vs C2 Recoil Fan vs C3 Matrix
     // -----------------------------------------------------------------------
     case "bach_cross_slash":
-    case "bach_c1_wind_terminus":
-    case "bach_c2_fan_recoil":
-    case "bach_c3_phantom_matrix": {
+    case "bach_c1_wind_terminus": {
       const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
-      const crossCount = kind === "bach_c3_phantom_matrix" ? 4 : 2;
-      for (let i = 0; i < crossCount; i++) {
-        const a = ang + (Math.PI / crossCount) * i + 0.52;
+      for (let i = 0; i < 2; i++) {
+        const a = ang + (i === 0 ? -0.58 : 0.58);
+        drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: a - 0.85, endAngle: a + 0.85, thickness: 13 * (1 - f * 0.35), primary: i === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, progress: f, isMono });
+      }
+      drawWindStreamRibbon(ctx, { x1: Math.cos(ang + Math.PI) * curR * 0.45, y1: Math.sin(ang + Math.PI) * curR * 0.45, x2: Math.cos(ang) * curR, y2: Math.sin(ang) * curR, color: sec, coreColor: pal.highlight, width: 6, phase: t * 18, isMono });
+      ctx.restore();
+      return true;
+    }
+    case "bach_c2_fan_recoil": {
+      // C2: Backdash razor-fan spread ribbons
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
+      for (let i = -2; i <= 2; i++) {
+        const a = ang + i * 0.22;
+        drawWindStreamRibbon(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * curR, y2: Math.sin(a) * curR, color: i % 2 === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 5.5 * (1 - f * 0.35), phase: t * 20 + i, isMono });
+      }
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.55, 2, 0.5, ang + Math.PI, sec, 2.8, 0.72);
+      ctx.restore();
+      return true;
+    }
+    case "bach_c3_phantom_matrix": {
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 24);
+      for (let i = 0; i < 4; i++) {
+        const a = ang + (Math.PI * 0.25 * i) + 0.52;
         drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: a - 0.85, endAngle: a + 0.85, thickness: 12 * (1 - f * 0.35), primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, progress: f, isMono });
       }
-      drawWindStreamRibbon(ctx, { x1: Math.cos(ang + Math.PI) * curR * 0.5, y1: Math.sin(ang + Math.PI) * curR * 0.5, x2: Math.cos(ang) * curR * 0.95, y2: Math.sin(ang) * curR * 0.95, color: sec, highlight: pal.highlight, width: 5.5, twist: 12, isMono });
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 23. THÁI (ĐẤU SĨ BÁ CHỦ)
+    // 23. THÁI (ĐẤU SĨ BÁ CHỦ) — C1 Heavy Cleave vs C2 Cyclone Whirl vs C3 Colosseum
     // -----------------------------------------------------------------------
-    case "thai_arena_cleave":
-    case "thai_cyclone_ring":
-    case "thai_c3_colosseum_brand": {
+    case "thai_arena_cleave": {
       const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 24);
-      if (kind === "thai_arena_cleave") {
-        drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: ang - 1.35, endAngle: ang + 1.35, thickness: 20 * (1 - f * 0.35), primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
-      } else {
-        drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.72, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, pulse: 1 - f, isMono });
-        drawSegmentedArcs(ctx, 0, 0, curR, 8, 0.22, t * 4, pal.primary, 4.0, 0.72);
-        drawSegmentedArcs(ctx, 0, 0, curR * 0.72, 4, 0.35, -t * 5, sec, 2.8, 0.72);
-      }
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR, startAngle: ang - 1.35, endAngle: ang + 1.35, thickness: 20 * (1 - f * 0.35), primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
+      ctx.restore();
+      return true;
+    }
+    case "thai_cyclone_ring": {
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 24);
+      drawSegmentedArcs(ctx, 0, 0, curR, 6, 0.25, t * 8, pal.primary, 4.2, 0.72);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.68, 3, 0.38, -t * 6, sec, 3.0, 0.72);
+      ctx.restore();
+      return true;
+    }
+    case "thai_c3_colosseum_brand": {
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 26);
+      drawPerspectiveZoneBase(ctx, { x: 0, y: 0, radius: curR, tiltY: 0.72, primary: pal.primary, secondary: sec, darkRim: pal.shadow, pulse: 1 - f, isMono });
+      drawSegmentedArcs(ctx, 0, 0, curR, 8, 0.22, t * 4, pal.primary, 4.0, 0.72);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.72, 4, 0.35, -t * 5, sec, 2.8, 0.72);
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // 24. KHAIR (XẠ THỦ BẮN TỈA)
+    // 24. KHAIR (XẠ THỦ BẮN TỈA) — C1 Beacon vs C2 Sniper Muzzle vs C3 Recoil
     // -----------------------------------------------------------------------
-    case "khair_c1_beacon_deploy":
+    case "khair_c1_beacon_deploy": {
+      const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 18);
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: t * 2.5, sides: 6, starMode: false, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, isMono });
+      ctx.restore();
+      return true;
+    }
     case "khair_sniper_muzzle":
     case "khair_recoil_blast": {
       const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 18);
-      if (kind === "khair_c1_beacon_deploy") {
-        drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR, rot: t * 2.5, sides: 6, star: false, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, alpha: 0.8, isMono });
-      } else {
-        // Supersonic emerald railgun muzzle cone + shock rings
-        ctx.save();
-        ctx.rotate(ang);
-        for (let r = 0; r < 3; r++) {
-          const rx = (r + 1) * curR * 0.34;
-          const ry = (r + 1) * 14 * (1 - f * 0.3);
-          ctx.beginPath();
-          ctx.ellipse(rx, 0, Math.max(2.5, ry * 0.34), Math.max(4, ry), 0, 0, Math.PI * 2);
-          ctx.strokeStyle = r === 0 ? pal.highlight : pal.primary;
-          ctx.lineWidth = 2.6 - r * 0.5;
-          ctx.stroke();
-        }
-        drawWindStreamRibbon(ctx, { x1: -12, y1: 0, x2: curR * 1.25, y2: 0, color: sec, highlight: pal.highlight, width: 7 * (1 - f * 0.35), twist: 4, isMono });
-        ctx.restore();
+      ctx.save();
+      ctx.rotate(ang);
+      const ringCount = kind === "khair_sniper_muzzle" ? 3 : 2;
+      for (let r = 0; r < ringCount; r++) {
+        const rx = (r + 1) * curR * 0.34;
+        const ry = (r + 1) * 14 * (1 - f * 0.3);
+        ctx.beginPath();
+        ctx.ellipse(rx, 0, Math.max(2.5, ry * 0.34), Math.max(4, ry), 0, 0, Math.PI * 2);
+        ctx.strokeStyle = r === 0 ? pal.highlight : pal.primary;
+        ctx.lineWidth = 2.6 - r * 0.5;
+        ctx.stroke();
       }
+      drawWindStreamRibbon(ctx, { x1: -12, y1: 0, x2: curR * 1.25, y2: 0, color: sec, coreColor: pal.highlight, width: 7 * (1 - f * 0.35), phase: t * 22, isMono });
+      ctx.restore();
       ctx.restore();
       return true;
     }
 
     // -----------------------------------------------------------------------
-    // SHARED SYSTEM UTILITIES (Non-hero item/levelup)
+    // SHARED SYSTEM UTILITIES
     // -----------------------------------------------------------------------
     case "shield_burst":
     case "levelup_halo": {
@@ -1852,7 +1983,7 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
 }
 
 // ============================================================================
-// STAGE 3A: BESPOKE PER-HERO IMPACT SIGNATURES (Inside drawImpactBurst)
+// STAGE 3A: BESPOKE PER-HERO x SKILL IMPACT SIGNATURES (ALL 24 HEROES)
 // ============================================================================
 export function drawHeroImpactSignature(ctx, b, f, isMono = false) {
   if (!b || !b.heroId) return false;
@@ -1866,87 +1997,189 @@ export function drawHeroImpactSignature(ctx, b, f, isMono = false) {
   const fade = clamp(1 - f, 0, 1);
   const ang = safeNum(b.angle, 0);
   const skillIdx = Number(b.skillIdx || 0);
-  const scale = skillIdx === 3 || skillIdx === 4 ? 1.25 : skillIdx === 2 ? 1.12 : 1.0;
+  const isC1 = skillIdx === 1;
+  const isC2 = skillIdx === 2;
+  const isUlt = skillIdx >= 3;
+  const scale = isUlt ? 1.24 : isC2 ? 1.12 : 1.0;
 
   ctx.save();
   ctx.globalAlpha *= clamp(fade * 1.15, 0, 1);
 
-  switch (prof.element) {
-    case "lightning":
-    case "mecha_emp": {
-      for (let i = 0; i < 3; i++) {
-        const a = ang + (i - 1) * 1.45 + f * 0.8;
-        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * curR * scale, y2: Math.sin(a) * curR * scale, color: i === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 2.3, seed: (b.x || 0) + i * 17, jaggedness: 9, isMono });
+  // Dark contrast backing + localized light pool (zero strobe flash)
+  drawGroundLightPool(ctx, { x: 0, y: 0, radius: curR * 1.15 * scale, color: isC2 ? sec : pal.primary, secondaryColor: pal.highlight, alpha: 0.3 * fade, tiltY: 0.78, isMono });
+  ctx.beginPath();
+  ctx.arc(0, 0, safeR(curR * 0.62 * scale, 4), 0, Math.PI * 2);
+  ctx.strokeStyle = colorWithAlpha("#020617", 0.45 * fade);
+  ctx.lineWidth = 3.2;
+  ctx.stroke();
+
+  switch (b.heroId) {
+    case "dung": {
+      if (isC2) {
+        drawPolygonRing(ctx, 0, 0, curR * 0.78, 6, ang + f * 1.8, sec, 2.2);
+      } else {
+        for (let i = -1; i <= 1; i += 2) {
+          drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR * scale, startAngle: ang + i * 0.45 - 0.55, endAngle: ang + i * 0.45 + 0.55, thickness: 8.5 * fade, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
+        }
       }
-      drawPolygonRing(ctx, 0, 0, curR * 0.52 * scale, 6, ang, pal.highlight, 1.6);
-      break;
-    }
-    case "frost":
-    case "void_prism":
-    case "blood_rift": {
-      const count = 4;
-      for (let i = 0; i < count; i++) {
-        const a = ang + (Math.PI * 0.5 * i) + 0.4;
-        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.72 * scale, y: Math.sin(a) * curR * 0.72 * scale, size: 7.5 * scale * (1 - f * 0.4), rot: a + Math.PI * 0.5, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
-      }
-      drawStarFlare(ctx, 0, 0, curR * 0.65 * scale, 3, 4, ang + Math.PI * 0.25, pal.highlight, pal.primary, 1.3);
-      break;
-    }
-    case "fox_fire":
-    case "dragon_fire": {
-      for (let i = 0; i < 5; i++) {
-        const a = ang + (Math.PI * 2 * i) / 5 + f * 0.9;
-        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.65 * scale, y: Math.sin(a) * curR * 0.65 * scale, angle: a, length: 12 * scale * (1 - f * 0.4), width: 5.5, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      for (let i = 0; i < (isUlt ? 4 : 3); i++) {
+        const a = ang + (i - 1) * 1.35 + f * 0.9;
+        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * curR * scale, y2: Math.sin(a) * curR * scale, color: i === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 2.4, seed: (b.x || 0) + i * 17, isMono });
       }
       break;
     }
-    case "iron_quake":
-    case "molten_anvil":
-    case "gladiator_gold":
-    case "tiger_steel": {
-      for (let i = 0; i < 5; i++) {
-        const a = ang + (i - 2) * 0.65;
-        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.8 * scale, y: Math.sin(a) * curR * 0.8 * scale, size: 8.5 * scale * (1 - f * 0.35), rot: a + f * 5, shape: "rock", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+    case "tin": {
+      const shards = isC2 ? 5 : 4;
+      for (let i = 0; i < shards; i++) {
+        const a = ang + (Math.PI * 2 * i) / shards + (isC1 ? 0 : f * 0.8);
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.76 * scale, y: Math.sin(a) * curR * 0.76 * scale, size: 7.5 * scale * fade, rot: a + Math.PI * 0.5, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       }
-      drawSegmentedArcs(ctx, 0, 0, curR * 0.85 * scale, 4, 0.35, ang, sec, 2.8);
-      break;
-    }
-    case "gale":
-    case "wind_phantom":
-    case "reaper_dual":
-    case "shadow_blade":
-    case "shinobi_decoy": {
-      for (let i = -1; i <= 1; i += 2) {
+      if (isC1 || isUlt) {
         ctx.save();
-        ctx.rotate(ang + i * 0.68);
+        ctx.rotate(ang);
         ctx.beginPath();
-        ctx.moveTo(-curR * 0.9 * scale, 0);
-        ctx.lineTo(0, -4.5 * (1 - f * 0.45));
-        ctx.lineTo(curR * 0.9 * scale, 0);
-        ctx.lineTo(0, 4.5 * (1 - f * 0.45));
+        ctx.moveTo(-curR * scale, 0);
+        ctx.lineTo(0, -4.5 * fade);
+        ctx.lineTo(curR * scale, 0);
+        ctx.lineTo(0, 4.5 * fade);
         ctx.closePath();
         ctx.fillStyle = pal.highlight;
         ctx.fill();
-        ctx.strokeStyle = i < 0 ? pal.primary : sec;
-        ctx.lineWidth = 1.8;
-        ctx.stroke();
         ctx.restore();
       }
       break;
     }
-    case "abyss_serpent":
-    case "alchemy_toxin":
-    case "sanctuary_flora": {
-      for (let i = 0; i < 5; i++) {
-        const a = (Math.PI * 2 * i) / 5 + f * 1.2;
-        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.72 * scale, y: Math.sin(a) * curR * 0.72 * scale, angle: a, length: 10 * scale, width: 5, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+    case "kin": {
+      for (let i = -1; i <= 1; i++) {
+        const a = ang + i * (isC2 ? 0.52 : 0.25);
+        drawWindStreamRibbon(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * curR * 1.15 * scale, y2: Math.sin(a) * curR * 1.15 * scale, color: i === 0 ? sec : pal.primary, coreColor: pal.highlight, width: 4.5 * fade, phase: f * 14 + i, isMono });
+      }
+      if (isC2 || isUlt) drawSegmentedArcs(ctx, 0, 0, curR * 0.75 * scale, 3, 0.5, ang + f * 3, pal.primary, 2.4);
+      break;
+    }
+    case "trung": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.8 * scale, isC1 ? 3 : 6, ang + f * 1.5, pal.primary, 2.2);
+      drawStarFlare(ctx, 0, 0, curR * 0.65 * scale, curR * 0.16 * scale, 4, -ang, pal.highlight, sec, 1.3);
+      break;
+    }
+    case "eohyen": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.78 * scale, 6, ang + f * 0.6, pal.rim, 2.0);
+      for (let i = 0; i < (isC2 ? 6 : 4); i++) {
+        const a = ang + (Math.PI * 2 * i) / (isC2 ? 6 : 4);
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.74 * scale, y: Math.sin(a) * curR * 0.74 * scale, size: 7.5 * scale * fade, rot: a + Math.PI * 0.5, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       }
       break;
     }
+    case "longhoi": {
+      const flames = isUlt ? 7 : isC2 ? 5 : 3;
+      for (let i = 0; i < flames; i++) {
+        const a = isC1 ? ang + (i - 1) * 0.42 : (Math.PI * 2 * i) / flames + f * 1.1;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.72 * scale, y: Math.sin(a) * curR * 0.72 * scale, rot: a, length: 13 * scale * fade, width: 5.5, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      break;
+    }
+    case "duccong": {
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.82 * scale, 3, 0.35, ang + f * 3.5, pal.primary, 2.4, 0.62);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.54 * scale, 2, 0.6, -ang - f * 4.5, sec, 2.0, 0.62);
+      drawStarFlare(ctx, 0, 0, curR * 0.42 * scale, 3, 4, f * 3, pal.highlight, sec, 1.2);
+      break;
+    }
+    case "gau":
+    case "ducanh": {
+      for (let i = 0; i < (isC2 ? 6 : 4); i++) {
+        const a = ang + (i - 1.5) * (isC1 ? 0.55 : 1.05);
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.8 * scale, y: Math.sin(a) * curR * 0.8 * scale, size: 8.5 * scale * fade, rot: a + f * 5, shape: isC2 && b.heroId === "ducanh" ? "plate" : "rock", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+      }
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.85 * scale, isC2 ? 8 : 4, 0.3, ang, sec, 2.8);
+      break;
+    }
+    case "bao":
+    case "phong":
+    case "bach": {
+      const cuts = isC2 ? 3 : 2;
+      for (let i = 0; i < cuts; i++) {
+        const a = ang + (i - (cuts - 1) * 0.5) * 0.72;
+        ctx.save();
+        ctx.rotate(a);
+        ctx.beginPath();
+        ctx.moveTo(-curR * 0.95 * scale, 0);
+        ctx.lineTo(0, -4.8 * fade);
+        ctx.lineTo(curR * 0.95 * scale, 0);
+        ctx.lineTo(0, 4.8 * fade);
+        ctx.closePath();
+        ctx.fillStyle = pal.highlight;
+        ctx.fill();
+        ctx.strokeStyle = i % 2 === 0 ? pal.primary : sec;
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (isC2 && b.heroId === "bao") {
+        drawVolumetricSmokeLobe(ctx, { x: 0, y: -6 * f, radius: curR * 0.46, primary: pal.primary, shadow: pal.shadow, highlight: pal.rim, isMono });
+      }
+      break;
+    }
+    case "danh":
+    case "thai": {
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, radius: curR * 0.88 * scale, startAngle: ang - 1.05, endAngle: ang + 1.05, thickness: 11 * scale * fade, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, progress: f, isMono });
+      for (let i = -1; i <= 1; i++) {
+        const a = ang + i * 0.5;
+        drawFacetedShard(ctx, { x: Math.cos(a) * curR * 0.85 * scale, y: Math.sin(a) * curR * 0.85 * scale, size: 7.5 * fade, rot: a, shape: b.heroId === "thai" ? "plate" : "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+      }
+      break;
+    }
+    case "luan": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.75 * scale, 3, ang + f * 2, pal.primary, 2.4);
+      drawPolygonRing(ctx, 0, 0, curR * 0.62 * scale, 3, -ang - f * 2 + Math.PI, sec, 1.8);
+      break;
+    }
+    case "taidu":
+    case "khair": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.72 * scale, 6, ang, pal.primary, 2.2);
+      for (let i = -1; i <= 1; i += 2) {
+        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(ang + i * 0.5) * curR * scale, y2: Math.sin(ang + i * 0.5) * curR * scale, color: sec, coreColor: pal.highlight, width: 2.2, seed: (b.x || 1) + i * 9, isMono });
+      }
+      break;
+    }
+    case "nguyen": {
+      for (let i = 0; i < (isC2 ? 6 : 4); i++) {
+        const a = (Math.PI * 2 * i) / (isC2 ? 6 : 4) + f * 0.9;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.7 * scale, y: Math.sin(a) * curR * 0.7 * scale, rot: a, length: 11 * scale * fade, width: 4.8, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      break;
+    }
+    case "duy": {
+      drawStarFlare(ctx, 0, 0, curR * 0.82 * scale, curR * 0.25 * scale, 4, ang + f * 5, pal.primary, pal.highlight, 1.5);
+      drawFacetedShard(ctx, { x: Math.cos(ang + 0.6) * curR * 0.6, y: Math.sin(ang + 0.6) * curR * 0.6, size: 7 * fade, rot: f * 6, shape: "paper", primary: sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.primary, isMono });
+      break;
+    }
+    case "dang": {
+      for (let i = -1; i <= 1; i++) {
+        const a = ang + i * 0.28;
+        drawWindStreamRibbon(ctx, { x1: -curR * 0.2, y1: i * 6, x2: Math.cos(a) * curR * 0.95 * scale, y2: Math.sin(a) * curR * 0.95 * scale, color: isC2 ? "#1E293B" : pal.primary, coreColor: sec, width: 5 * fade, phase: f * 12, isMono });
+      }
+      break;
+    }
+    case "thien": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.76 * scale, isC2 ? 12 : 4, ang + f * 2, pal.primary, 2.0);
+      drawStarFlare(ctx, 0, 0, curR * 0.84 * scale, 3.5, 4, ang, pal.highlight, sec, 1.4);
+      break;
+    }
+    case "thanh":
+    case "nhi": {
+      for (let i = 0; i < (isC2 ? 6 : 4); i++) {
+        const a = (Math.PI * 2 * i) / (isC2 ? 6 : 4) + f * 1.1;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * curR * 0.74 * scale, y: Math.sin(a) * curR * 0.74 * scale, rot: a, length: 11 * scale * fade, width: 5, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      break;
+    }
+    case "minh": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.78 * scale, 4, ang, pal.primary, 2.4);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.92 * scale, 2, 0.55, ang + Math.PI * 0.5, sec, 2.6);
+      break;
+    }
     default: {
-      // cosmos, arcane_meteor, chrono_sword, celestial_chain, emerald_rail
       drawStarFlare(ctx, 0, 0, curR * 0.85 * scale, curR * 0.2 * scale, 4, ang + f, pal.highlight, pal.primary, 1.5);
-      drawSegmentedArcs(ctx, 0, 0, curR * 0.75 * scale, 3, 0.4, ang - f * 2, sec, 2.2);
       break;
     }
   }
@@ -1979,12 +2212,14 @@ export function drawEnemyHitReaction(ctx, react, elapsedTime, isMono = false) {
 
   switch (prof.element) {
     case "frost":
+    case "void_prism":
       drawPolygonRing(ctx, 0, 0, rad * (0.95 + f * 0.32), 6, ang + f * 0.8, pal.highlight, 2.1);
       drawFacetedShard(ctx, { x: Math.cos(ang) * rad * 0.7, y: Math.sin(ang) * rad * 0.7, size: 8 * fade, rot: ang, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       break;
     case "lightning":
     case "mecha_emp":
-      drawBranchingArc(ctx, { x1: -rad * 0.85, y1: -rad * 0.4, x2: rad * 0.85, y2: rad * 0.4, color: pal.primary, coreColor: pal.highlight, width: 2.4, seed: elapsedTime * 30 + x, jaggedness: 9, isMono });
+    case "emerald_rail":
+      drawBranchingArc(ctx, { x1: -rad * 0.85, y1: -rad * 0.4, x2: rad * 0.85, y2: rad * 0.4, color: pal.primary, coreColor: pal.highlight, width: 2.4, seed: elapsedTime * 30 + x, isMono });
       break;
     case "fox_fire":
     case "dragon_fire":
@@ -1992,15 +2227,23 @@ export function drawEnemyHitReaction(ctx, react, elapsedTime, isMono = false) {
       drawVolumetricSmokeLobe(ctx, { x: Math.cos(ang) * 4, y: -rad * 0.4 - f * 12, radius: rad * 0.45 * fade, primary: pal.primary, shadow: pal.shadow, highlight: pal.highlight, isMono });
       drawStarFlare(ctx, 0, -4, rad * 0.7 * fade, 3, 4, ang, pal.highlight, pal.primary, 1.3);
       break;
+    case "iron_quake":
+    case "gladiator_gold":
+    case "tiger_steel":
+      for (let i = -1; i <= 1; i++) {
+        const a = ang + i * 0.55;
+        drawFacetedShard(ctx, { x: Math.cos(a) * rad * (0.65 + f * 0.45), y: Math.sin(a) * rad * (0.65 + f * 0.45), size: 7.5 * fade, rot: a + f * 3, shape: "rock", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+      }
+      break;
     case "alchemy_toxin":
     case "abyss_serpent":
+    case "sanctuary_flora":
       for (let i = 0; i < 3; i++) {
         const a = ang + (i - 1) * 0.9;
-        drawViscousDroplet(ctx, { x: Math.cos(a) * rad * (0.65 + f * 0.4), y: Math.sin(a) * rad * (0.65 + f * 0.4), angle: a, length: 9 * fade, width: 4.5, primary: i === 1 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
+        drawViscousDroplet(ctx, { x: Math.cos(a) * rad * (0.65 + f * 0.4), y: Math.sin(a) * rad * (0.65 + f * 0.4), rot: a, length: 9 * fade, width: 4.5, primary: i === 1 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
       }
       break;
     default:
-      // Directional kinetic recoil cut / shock flare
       ctx.save();
       ctx.rotate(ang);
       ctx.beginPath();
@@ -2022,11 +2265,12 @@ export function drawEnemyHitReaction(ctx, react, elapsedTime, isMono = false) {
 }
 
 // ============================================================================
-// STAGE 4: PERSISTENT GROUND AFTERMATH DECALS (heroSkillDecals)
+// STAGE 4: PERSISTENT ~5s GROUND AFTERMATH DECALS (heroSkillDecals)
+// Layered cooling fade: Phase A hot core (0..0.24) -> Phase B drift (0.15..0.85) -> Phase C ground stain (0..1)
 // ============================================================================
 export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
   if (!d) return;
-  const maxLife = Math.max(0.25, safeNum(d.maxLife, 2.4));
+  const maxLife = Math.max(0.25, safeNum(d.maxLife, 5.0));
   const f = clamp(safeNum(d.life, 0) / maxLife, 0, 1);
   if (f >= 1) return;
 
@@ -2037,26 +2281,30 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
   const y = safeCoord(d.y, 0);
   const rad = safeR(d.radius, 44);
   const ang = safeNum(d.angle, 0);
-  const alpha = (f < 0.1 ? f / 0.1 : clamp(1 - (f - 0.1) / 0.9, 0, 1)) * clamp(safeNum(d.alpha, 0.78), 0.1, 1);
+  // Crisp entry (0..0.06), steady visible scar (~3s), gentle layered cooling dissolve (~2s)
+  const envFade = f < 0.06 ? f / 0.06 : f < 0.52 ? 1 - (f - 0.06) * 0.35 : Math.pow(clamp((1 - f) / 0.48, 0, 1), 1.15) * 0.84;
+  const alpha = clamp(envFade * clamp(safeNum(d.alpha, 0.82), 0.1, 1), 0, 1);
+  if (alpha <= 0.01) return;
+
+  const coreHot = clamp(1 - f / 0.32, 0, 1);
+  const motif = d.motif || prof.element;
 
   ctx.save();
   ctx.translate(x, y);
   ctx.globalAlpha *= alpha;
 
-  switch (d.motif || prof.element) {
+  switch (motif) {
     case "molten_tread":
-    case "molten_anvil":
-    case "iron_quake":
-    case "gladiator_gold": {
+    case "molten_anvil": {
       ctx.save();
       ctx.rotate(ang);
       ctx.scale(1, 0.72);
-      ctx.fillStyle = isMono ? "rgba(15,23,42,0.48)" : "rgba(18, 8, 4, 0.52)";
+      ctx.fillStyle = isMono ? "rgba(15,23,42,0.52)" : "rgba(22, 10, 4, 0.58)";
       ctx.beginPath();
       ctx.ellipse(0, 0, rad * 0.9, rad * 0.52, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = colorWithAlpha(pal.primary, 0.78);
-      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = colorWithAlpha(pal.primary, 0.42 + 0.48 * coreHot);
+      ctx.lineWidth = 2.6;
       ctx.beginPath();
       ctx.moveTo(-rad * 0.65, -rad * 0.18);
       ctx.lineTo(rad * 0.65, -rad * 0.18);
@@ -2064,28 +2312,41 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
       ctx.lineTo(rad * 0.65, rad * 0.18);
       ctx.stroke();
       ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "ember", isMono });
+      break;
+    }
+    case "iron_quake":
+    case "gladiator_gold": {
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: rad, alpha: alpha * 0.9, tiltY: 0.7, seed: d.seed || x, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "rock", isMono });
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.8, progress: f, seed: d.seed || y, primary: pal.primary, secondary: sec, kind: "spark", isMono });
       break;
     }
     case "frost": {
       ctx.save();
       ctx.scale(1, 0.68);
-      drawPolygonRing(ctx, 0, 0, rad * 0.9, 6, ang, colorWithAlpha(pal.primary, 0.65), 2.2, colorWithAlpha(pal.shadow, 0.34));
+      drawPolygonRing(ctx, 0, 0, rad * 0.9, 6, ang, colorWithAlpha(pal.primary, 0.4 + 0.4 * coreHot), 2.3, colorWithAlpha(pal.shadow, 0.36));
       for (let i = 0; i < 6; i++) {
         const a = ang + (Math.PI * 2 * i) / 6;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(Math.cos(a) * rad * 0.88, Math.sin(a) * rad * 0.88);
-        ctx.strokeStyle = colorWithAlpha(pal.highlight, 0.55);
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = colorWithAlpha(pal.highlight, 0.32 + 0.38 * coreHot);
+        ctx.lineWidth = 1.6;
         ctx.stroke();
       }
       ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: pal.highlight, kind: "frost", isMono });
       break;
     }
-    case "fox_fire":
+    case "fox_fire": {
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: rad, alpha: alpha * 0.84, tiltY: 0.68, seed: d.seed || x, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "crystal", isMono });
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.9, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "ember", isMono });
+      break;
+    }
     case "dragon_fire":
     case "arcane_meteor": {
-      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: rad, alpha: alpha * 0.85, tiltY: 0.68, seed: d.seed || x, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "ember", isMono });
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: rad, alpha: alpha * 0.9, tiltY: 0.68, seed: d.seed || x, primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, debrisShape: "rock", isMono });
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.95, progress: f, seed: d.seed || y, primary: pal.primary, secondary: sec, kind: "ember", isMono });
       break;
     }
     case "lightning":
@@ -2093,15 +2354,16 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
     case "emerald_rail": {
       ctx.save();
       ctx.scale(1, 0.68);
-      ctx.fillStyle = "rgba(4, 9, 20, 0.45)";
+      ctx.fillStyle = "rgba(4, 9, 20, 0.5)";
       ctx.beginPath();
-      ctx.arc(0, 0, rad * 0.82, 0, Math.PI * 2);
+      ctx.arc(0, 0, rad * 0.84, 0, Math.PI * 2);
       ctx.fill();
-      for (let i = 0; i < 4; i++) {
-        const a = ang + (Math.PI * 0.5 * i) + 0.3;
-        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * rad * 0.9, y2: Math.sin(a) * rad * 0.9, color: i % 2 === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 1.8, seed: (d.seed || 1) + i * 7, jaggedness: 7, isMono });
+      for (let i = 0; i < (motif === "mecha_emp" ? 6 : 4); i++) {
+        const a = ang + (Math.PI * 2 * i) / (motif === "mecha_emp" ? 6 : 4) + 0.3;
+        drawBranchingArc(ctx, { x1: 0, y1: 0, x2: Math.cos(a) * rad * 0.9, y2: Math.sin(a) * rad * 0.9, color: i % 2 === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 1.8 * (0.55 + 0.45 * coreHot), seed: (d.seed || 1) + i * 7, isMono });
       }
       ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "spark", isMono });
       break;
     }
     case "alchemy_toxin":
@@ -2109,7 +2371,7 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
       ctx.save();
       ctx.scale(1, 0.68);
       const puddle = ctx.createRadialGradient(0, 0, rad * 0.1, 0, 0, rad);
-      puddle.addColorStop(0, colorWithAlpha(sec, 0.48));
+      puddle.addColorStop(0, colorWithAlpha(sec, 0.3 + 0.25 * coreHot));
       puddle.addColorStop(0.65, colorWithAlpha(pal.primary, 0.34));
       puddle.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = puddle;
@@ -2117,39 +2379,85 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
       ctx.arc(0, 0, rad, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.8, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "spore", isMono });
       break;
     }
     case "blood_rift":
     case "void_prism":
     case "shadow_blade":
-    case "reaper_dual":
-    case "wind_phantom":
-    case "gale": {
-      // Ground slash scar gouge + fading prism/gale residue
+    case "reaper_dual": {
       ctx.save();
       ctx.rotate(ang);
       ctx.scale(1, 0.72);
       ctx.beginPath();
       ctx.moveTo(-rad, 0);
-      ctx.lineTo(0, -6.5);
+      ctx.lineTo(0, -7.2);
       ctx.lineTo(rad, 0);
-      ctx.lineTo(0, 6.5);
+      ctx.lineTo(0, 7.2);
       ctx.closePath();
-      ctx.fillStyle = isMono ? "rgba(0,0,0,0.65)" : "rgba(6, 6, 16, 0.68)";
+      ctx.fillStyle = isMono ? "rgba(0,0,0,0.7)" : "rgba(6, 6, 16, 0.72)";
       ctx.fill();
-      ctx.strokeStyle = colorWithAlpha(pal.primary, 0.72);
-      ctx.lineWidth = 2.0;
+      ctx.strokeStyle = colorWithAlpha(pal.primary, 0.5 + 0.4 * coreHot);
+      ctx.lineWidth = 2.2;
       ctx.stroke();
+      ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "void", isMono });
+      break;
+    }
+    case "wind_phantom":
+    case "gale": {
+      ctx.save();
+      ctx.rotate(ang);
+      ctx.scale(1, 0.72);
+      drawSegmentedArcs(ctx, 0, 0, rad * 0.78, 3, 0.45, f * 0.8, colorWithAlpha(pal.primary, 0.55), 2.0);
+      ctx.beginPath();
+      ctx.moveTo(-rad * 0.9, 0);
+      ctx.lineTo(rad * 0.9, 0);
+      ctx.strokeStyle = colorWithAlpha(sec, 0.65);
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || y, primary: pal.primary, secondary: sec, kind: "spark", isMono });
+      break;
+    }
+    case "sanctuary_flora": {
+      ctx.save();
+      ctx.scale(1, 0.68);
+      drawPolygonRing(ctx, 0, 0, rad * 0.82, 6, ang, colorWithAlpha(pal.primary, 0.52), 2.0, colorWithAlpha(pal.shadow, 0.24));
+      for (let i = 0; i < 6; i++) {
+        const a = ang + (Math.PI * 2 * i) / 6;
+        drawViscousDroplet(ctx, { x: Math.cos(a) * rad * 0.52, y: Math.sin(a) * rad * 0.52, rot: a, length: rad * 0.34, width: rad * 0.12, primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, isMono });
+      }
+      ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.8, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "spore", isMono });
+      break;
+    }
+    case "tiger_steel": {
+      ctx.save();
+      ctx.rotate(ang);
+      ctx.scale(1, 0.72);
+      for (let c = -1; c <= 1; c++) {
+        ctx.beginPath();
+        ctx.moveTo(-rad * 0.82, c * 8);
+        ctx.lineTo(rad * 0.82, c * 8);
+        ctx.strokeStyle = "#09090B";
+        ctx.lineWidth = 4.2;
+        ctx.stroke();
+        ctx.strokeStyle = colorWithAlpha(c === 0 ? sec : pal.primary, 0.78);
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
       ctx.restore();
       break;
     }
     default: {
-      // cosmos, sanctuary_flora, chrono_sword, celestial_chain, shinobi_decoy, tiger_steel
+      // cosmos, chrono_sword, celestial_chain, shinobi_decoy
       ctx.save();
       ctx.scale(1, 0.68);
-      drawPolygonRing(ctx, 0, 0, rad * 0.85, 6, ang + safeNum(elapsedTime, 0) * 0.35, colorWithAlpha(pal.primary, 0.58), 2.0, colorWithAlpha(pal.shadow, 0.22));
-      drawSegmentedArcs(ctx, 0, 0, rad * 0.62, 3, 0.45, -ang, colorWithAlpha(sec, 0.55), 1.6);
+      drawPolygonRing(ctx, 0, 0, rad * 0.85, motif === "chrono_sword" ? 12 : 6, ang + safeNum(elapsedTime, 0) * 0.25, colorWithAlpha(pal.primary, 0.45 + 0.35 * coreHot), 2.1, colorWithAlpha(pal.shadow, 0.26));
+      drawSegmentedArcs(ctx, 0, 0, rad * 0.62, 4, 0.4, -ang, colorWithAlpha(sec, 0.6), 1.8);
       ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "spark", isMono });
       break;
     }
   }
@@ -2158,7 +2466,7 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
 }
 
 // ============================================================================
-// STAGE 5: CAUSE-OF-DEATH ENEMY BURST & CORPSE RESIDUE
+// STAGE 5: CAUSE-OF-DEATH ENEMY BURST & CORPSE RESIDUE (24 Bespoke Styles)
 // ============================================================================
 export function spawnElementalDeathBurst(engine, enemy, killerHeroId, damageElement, hitDir = 0, perf = {}) {
   if (!engine || !enemy) return;
@@ -2166,7 +2474,8 @@ export function spawnElementalDeathBurst(engine, enemy, killerHeroId, damageElem
   const x = safeCoord(enemy.x, 0);
   const y = safeCoord(enemy.y, 0);
   const rad = safeR(enemy.radius, 18);
-  const count = perf.particlesScale ? Math.max(3, Math.round(7 * perf.particlesScale)) : 6;
+  const budget = perf?.particleBudgetScale ?? 1;
+  const count = Math.max(3, Math.round((perf.particlesScale ? 7 * perf.particlesScale : 6) * budget));
 
   if (Array.isArray(engine.particles)) {
     for (let i = 0; i < count; i++) {
@@ -2180,7 +2489,7 @@ export function spawnElementalDeathBurst(engine, enemy, killerHeroId, damageElem
         radius: 3 + Math.random() * 4.5,
         color: i % 2 === 0 ? resolved.primary : resolved.secondary,
         life: 0,
-        maxLife: 0.35 + Math.random() * 0.25,
+        maxLife: 0.4 + Math.random() * 0.3,
         shape: resolved.debrisShape,
       });
     }
@@ -2190,14 +2499,14 @@ export function spawnElementalDeathBurst(engine, enemy, killerHeroId, damageElem
     engine.spawnSkillDecal({
       x,
       y,
-      radius: Math.min(54, rad * 1.45),
+      radius: Math.min(58, rad * 1.55),
       angle: hitDir,
       heroId: resolved.heroId,
       motif: resolved.element,
       color: resolved.primary,
       secondaryColor: resolved.secondary,
-      maxLife: 2.2,
-      alpha: 0.65,
+      maxLife: 4.8,
+      alpha: 0.72,
     });
   }
 }
@@ -2207,47 +2516,91 @@ export function renderElementalCorpseOverlay(ctx, corpse, isMono = false) {
   const resolved = resolveHeroDamageElement(corpse.killerHeroId, { element: corpse.damageElement });
   const pal = resolvePalette(resolved.primary, resolved.highlight, resolved.shadow, resolved.rim, isMono);
   const sec = isMono ? "#CBD5E1" : resolved.secondary;
-  const f = clamp(safeNum(corpse.life, 0) / Math.max(0.5, safeNum(corpse.maxLife, 1.8)), 0, 1);
+  const f = clamp(safeNum(corpse.life, 0) / Math.max(0.5, safeNum(corpse.maxLife, 4.8)), 0, 1);
   const fade = clamp(1 - f, 0, 1);
   const rad = safeR(corpse.radius, 18);
+  const ang = safeNum(corpse.angle, 0);
 
   ctx.save();
-  ctx.globalAlpha *= fade * 0.78;
+  ctx.globalAlpha *= fade * 0.85;
 
   switch (resolved.deathStyle) {
     case "frost_shatter":
     case "crystal_shatter":
     case "void_fracture": {
-      for (let i = 0; i < 4; i++) {
-        const a = (Math.PI * 0.5 * i) + (corpse.seed || 0.4);
-        drawFacetedShard(ctx, { x: Math.cos(a) * rad * 0.55, y: Math.sin(a) * rad * 0.4, size: 6.5 * fade, rot: a, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+      const count = resolved.deathStyle === "void_fracture" ? 5 : 4;
+      for (let i = 0; i < count; i++) {
+        const a = (Math.PI * 2 * i) / count + (corpse.seed || 0.4);
+        drawFacetedShard(ctx, { x: Math.cos(a) * rad * 0.6, y: Math.sin(a) * rad * 0.42, size: 7 * fade, rot: a, shape: "crystal", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
       }
       break;
     }
     case "fox_incinerate":
     case "dragon_cremate":
     case "arcane_vaporize": {
-      drawVolumetricSmokeLobe(ctx, { x: 0, y: -f * 16, radius: rad * 0.48 * fade, primary: pal.primary, shadow: pal.shadow, highlight: pal.highlight, isMono });
+      drawVolumetricSmokeLobe(ctx, { x: 0, y: -f * 20, radius: rad * 0.55 * fade, primary: pal.primary, shadow: pal.shadow, highlight: pal.highlight, isMono });
+      drawStage4DissipationOverlay(ctx, { radius: rad, progress: f, seed: corpse.seed || 1, primary: pal.primary, secondary: sec, kind: "ember", isMono });
       break;
     }
     case "electro_char":
-    case "emp_overload": {
-      drawBranchingArc(ctx, { x1: -rad * 0.6, y1: -4, x2: rad * 0.6, y2: 4, color: sec, coreColor: pal.highlight, width: 1.6, seed: (corpse.x || 0) + f * 10, jaggedness: 6, isMono });
+    case "emp_overload":
+    case "rail_pierce": {
+      drawBranchingArc(ctx, { x1: -rad * 0.65, y1: -4, x2: rad * 0.65, y2: 4, color: sec, coreColor: pal.highlight, width: 1.8 * fade, seed: (corpse.x || 0) + f * 12, isMono });
+      if (resolved.deathStyle === "rail_pierce") {
+        ctx.save();
+        ctx.rotate(ang);
+        ctx.strokeStyle = pal.highlight;
+        ctx.lineWidth = 2.0 * fade;
+        ctx.beginPath();
+        ctx.moveTo(-rad * 1.1, 0);
+        ctx.lineTo(rad * 1.1, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
       break;
     }
     case "venom_dissolve":
-    case "acid_melt": {
+    case "acid_melt":
+    case "petal_purify": {
       ctx.save();
       ctx.scale(1, 0.68);
       ctx.fillStyle = colorWithAlpha(pal.primary, 0.42);
       ctx.beginPath();
-      ctx.arc(0, 0, rad * 0.85, 0, Math.PI * 2);
+      ctx.arc(0, 0, rad * 0.88, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.9, progress: f, seed: corpse.seed || 2, primary: pal.primary, secondary: sec, kind: "spore", isMono });
+      break;
+    }
+    case "seismic_crush":
+    case "anvil_shatter":
+    case "arena_execute": {
+      for (let i = 0; i < 4; i++) {
+        const a = ang + i * 1.45;
+        drawFacetedShard(ctx, { x: Math.cos(a) * rad * 0.58, y: Math.sin(a) * rad * 0.42, size: 7 * fade, rot: a, shape: resolved.deathStyle === "arena_execute" ? "plate" : "rock", primary: pal.primary, highlight: pal.highlight, shadow: pal.shadow, rim: sec, isMono });
+      }
+      break;
+    }
+    case "paper_seal_burst": {
+      for (let i = 0; i < 3; i++) {
+        const a = (Math.PI * 2 * i) / 3 + f * 1.5;
+        drawFacetedShard(ctx, { x: Math.cos(a) * rad * 0.65, y: Math.sin(a) * rad * 0.45 - f * 14, size: 6.2 * fade, rot: a + f * 3, shape: "paper", primary: sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.primary, isMono });
+      }
+      break;
+    }
+    case "shadow_dissolve":
+    case "soul_reap":
+    case "steel_rend":
+    case "gale_rend":
+    case "wind_disperse": {
+      drawSegmentedArcs(ctx, 0, 0, rad * 0.78, 2, 0.6, ang + f, colorWithAlpha(pal.primary, 0.72), 2.2, 0.68);
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: corpse.seed || 3, primary: pal.primary, secondary: sec, kind: resolved.deathStyle === "shadow_dissolve" ? "void" : "spark", isMono });
       break;
     }
     default: {
-      drawSegmentedArcs(ctx, 0, 0, rad * 0.72, 3, 0.55, corpse.angle || 0, colorWithAlpha(pal.primary, 0.6), 1.8, 0.68);
+      // gravity_collapse, chrono_erasure, judgment_seal
+      drawPolygonRing(ctx, 0, 0, rad * 0.72, resolved.deathStyle === "judgment_seal" ? 4 : 6, ang + f * 1.2, colorWithAlpha(pal.primary, 0.68), 1.9);
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: corpse.seed || 4, primary: pal.primary, secondary: sec, kind: "spark", isMono });
       break;
     }
   }

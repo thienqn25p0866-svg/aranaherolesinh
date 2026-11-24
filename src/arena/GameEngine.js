@@ -2708,7 +2708,7 @@ export class GameEngine {
       alpha: opts.alpha ?? 0.56,
       seed: opts.seed ?? Math.random() * 1000,
       life: 0,
-      maxLife: opts.maxLife || 2.8,
+      maxLife: opts.maxLife || 4.8,
     };
     this.heroSkillDecals.push(rec);
     opts.sync && this.queueVfx("skill_decal", { x: rec.x, y: rec.y, radius: rec.radius, angle: rec.angle, heroId: rec.heroId, motif: rec.motif, color: rec.color, secondaryColor: rec.secondaryColor, alpha: rec.alpha, maxLife: rec.maxLife });
@@ -2859,10 +2859,13 @@ export class GameEngine {
     }
     h.push({ x: l, y: m }), this.lightnings.push({ points: h, color: c, life: 0, maxLife: 0.42, width: g });
   }
-  createCataclysmicExplosion(s, a, l = 140, m = "#EF4444", element = null) {
+  createCataclysmicExplosion(s, a, l = 140, m = "#EF4444", element = null, opts = null) {
     let prof = this.getPerformanceProfile();
     if (this.cataclysmicExplosions.length >= prof.maxExplosions) this.cataclysmicExplosions.shift();
-    this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 1.05, color: m, element }), this.addShake(16, 0.4), this.screenFlashWhite = Math.max(this.screenFlashWhite, 0.05), R.playExplosion(), this.spawnFlameParticles(s, a, "red", 18, 60, 240), this.spawnRedCrystals(s, a, 12, 80, 260);
+    let shake = opts && typeof opts.shake === "number" ? opts.shake : 16;
+    let shakeDur = opts && typeof opts.shakeDur === "number" ? opts.shakeDur : 0.4;
+    let flash = opts && typeof opts.flash === "number" ? opts.flash : 0.05;
+    this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 1.05, color: m, element }), shake > 0 && this.addShake(shake, shakeDur), flash > 0 && (this.screenFlashWhite = Math.max(this.screenFlashWhite, flash)), R.playExplosion(), this.spawnFlameParticles(s, a, "red", 18, 60, 240), this.spawnRedCrystals(s, a, 12, 80, 260);
     for (let c = 0; c < 6; c++) this.spawnSmokePuff(s + (Math.random() - 0.5) * 40, a + (Math.random() - 0.5) * 40, 12 + Math.random() * 9);
   }
   spawnGroundCrack(s, a, l, m, c = "#EA580C", g = "#FEF08A") {
@@ -2904,9 +2907,9 @@ export class GameEngine {
   createFrostExplosion(s, a, l = 110) {
     this.cataclysmicExplosions.push({ x: s, y: a, radius: 0, maxRadius: l, life: 0, maxLife: 0.92, color: "#38BDF8", element: "frost" }), this.spawnParticles(s, a, "#E0F2FE", 16, 60, 220, 3.8, 0.45), this.spawnFlameParticles(s, a, "blue", 10, 40, 140), this.spawnGroundCrack(s, a, Math.random() * Math.PI * 2, l * 0.8, "#38BDF8", "#E0F2FE"), R.playIceShatter();
   }
-  fireRocket(s, a, l, m, c, g = false, p = "#F97316") {
+  fireRocket(s, a, l, m, c, g = false, p = "#F97316", meta = null) {
     let h = Math.atan2(m - a, l - s), f = g ? 600 : 340;
-    this.rocketProjectiles.push({ id: this.nextEntityId++, x: s, y: a, vx: Math.cos(h) * f, vy: Math.sin(h) * f, angle: h, damage: c, isFromPlayer: g, color: p, radius: 9, distanceTraveled: 0, maxDistance: Math.hypot(l - s, m - a) + 40, smokeTimer: 0 }), R.playFire(0.22, 0.18);
+    this.rocketProjectiles.push({ id: this.nextEntityId++, x: s, y: a, vx: Math.cos(h) * f, vy: Math.sin(h) * f, angle: h, damage: c, isFromPlayer: g, color: p, radius: 9, distanceTraveled: 0, maxDistance: Math.hypot(l - s, m - a) + 40, smokeTimer: 0, heroId: meta?.heroId, skillIdx: meta?.skillIdx, skillKey: meta?.skillKey }), R.playFire(0.22, 0.18);
   }
   summonGiantMeteor(s, a, l, m = 215, c = true, g, p = 0, h = "#F97316", f = 46, v = 0.65) {
     this.giantMeteors.push({ id: this.nextEntityId++, startX: s - 280, startY: a - 560, targetX: s, targetY: a, currentX: s - 280, currentY: a - 560, timer: 0, duration: v, damage: l, radius: m, meteorSize: f, fromPlayer: c, ccType: g, ccDur: p, color: h }), R.playFire(0.45, 0.22);
@@ -2928,7 +2931,7 @@ export class GameEngine {
     return warn;
   }
   summonGalaxyVortex(s, a, l, m, c, g, p = false, h = true, k = -1, ccDur = 0) {
-    R.playBlackHole(), this.galaxyVortices.push({ id: this.nextEntityId++, x: s, y: a, radius: l, duration: m, timer: 0, tickTimer: 0, tickInterval: 0.4, damagePerTick: c, finalBurstDmg: g, isGalaxy: p, fromPlayer: h, skillIdx: k, ccDur, pullHealAccum: 0, pullHealTick: 0, rotation: 0, stars: Array.from({ length: p ? 45 : 25 }, () => ({ distRatio: 0.15 + Math.random() * 0.82, angle: Math.random() * Math.PI * 2, size: 1.5 + Math.random() * 2.5, color: Math.random() < 0.35 ? "#F472B6" : Math.random() < 0.6 ? "#67E8F9" : "#C084FC" })), refundedEnemyIds: /* @__PURE__ */ new Set() });
+    R.playBlackHole(), this.galaxyVortices.push({ id: this.nextEntityId++, x: s, y: a, radius: l, duration: m, timer: 0, tickTimer: 0, tickInterval: 0.4, damagePerTick: c, finalBurstDmg: g, isGalaxy: p, fromPlayer: h, skillIdx: k, heroId: h ? "duccong" : undefined, skillKey: h ? (p ? "c3" : "c2") : undefined, ccDur, pullHealAccum: 0, pullHealTick: 0, rotation: 0, stars: Array.from({ length: p ? 45 : 25 }, () => ({ distRatio: 0.15 + Math.random() * 0.82, angle: Math.random() * Math.PI * 2, size: 1.5 + Math.random() * 2.5, color: Math.random() < 0.35 ? "#F472B6" : Math.random() < 0.6 ? "#67E8F9" : "#C084FC" })), refundedEnemyIds: /* @__PURE__ */ new Set() });
   }
   findNearestEnemy(s = 1 / 0, a = this.player.x, l = this.player.y) {
     let m = null, c = s;
@@ -2949,6 +2952,13 @@ export class GameEngine {
       let diff = Math.abs(Math.atan2(Math.sin(atkAng - (s.facing || 0)), Math.cos(atkAng - (s.facing || 0))));
       if (diff < 0.95) f = Math.max(1, Math.round(f * 0.7));
     }
+    let killerId = p?.heroId || this.currentHero?.id || "dung";
+    let damageElemRaw = resolveHeroDamageElement(killerId, p || {});
+    let damageElem = typeof damageElemRaw === "string" ? damageElemRaw : (damageElemRaw?.element || "lightning");
+    let skillKeyMap = { atk: 0, c1: 1, c2: 2, c3: 3, c4: 4 };
+    let impactSkillIdx = (p?.skillKey && skillKeyMap[p.skillKey] !== undefined)
+      ? skillKeyMap[p.skillKey]
+      : (p?.skillIdx ?? (c ? (this.player?.weaponSkillIdx >= 0 ? this.player.weaponSkillIdx + 1 : 1) : 0));
     if (c) {
       if (h.matk > 0 && (f += Math.round(h.matk * 0.8)), h.skillBurstChance > 0 && Math.random() < h.skillBurstChance) {
         let C = h.skillBurstDmg || 40;
@@ -2960,7 +2970,7 @@ export class GameEngine {
         h.critExtraDmg > 0 && (f += h.critExtraDmg);
         this.player.weaponCritTimer = 0.36;
         this.spawnRedCrystals(s.x, s.y, 4, 60, 150);
-        this.spawnImpactBurst(s.x, s.y, isDung && (this.player.dung_c3_buff_timer || 0) > 0 ? "#FDE047" : "#F59E0B", true, Math.atan2(s.y - this.player.y, s.x - this.player.x), { heroId: this.currentHero?.id, skillIdx: this.player?.weaponSkillIdx >= 0 ? this.player.weaponSkillIdx + 1 : 1 });
+        this.spawnImpactBurst(s.x, s.y, isDung && (this.player.dung_c3_buff_timer || 0) > 0 ? "#FDE047" : "#F59E0B", true, Math.atan2(s.y - this.player.y, s.x - this.player.x), { heroId: killerId, skillIdx: impactSkillIdx });
       }
       if (isDung && this.player.hp > 0) {
         let dungSkillSteal = DUNG_BASE_LIFESTEAL * (this.player.dung_c3_buff_timer > 0 ? 1.5 : 1);
@@ -2976,7 +2986,7 @@ export class GameEngine {
     } else {
       let critProb = isDung ? dungCrit.critChance : h.crit;
       let critMult = isDung ? dungCrit.critDmgRatio : (this.currentHero.critDmgRatio || 1.5);
-      if (v = Math.random() < critProb, v && (f = Math.round(f * critMult), h.critExtraDmg > 0 && (f += h.critExtraDmg), this.player.weaponCritTimer = 0.36, this.spawnRedCrystals(s.x, s.y, 4, 60, 150), this.spawnImpactBurst(s.x, s.y, isDung && (this.player.dung_c3_buff_timer || 0) > 0 ? "#FDE047" : "#F59E0B", true, Math.atan2(s.y - this.player.y, s.x - this.player.x))), h.lightningChance > 0 && Math.random() < h.lightningChance) {
+      if (v = Math.random() < critProb, v && (f = Math.round(f * critMult), h.critExtraDmg > 0 && (f += h.critExtraDmg), this.player.weaponCritTimer = 0.36, this.spawnRedCrystals(s.x, s.y, 4, 60, 150), this.spawnImpactBurst(s.x, s.y, isDung && (this.player.dung_c3_buff_timer || 0) > 0 ? "#FDE047" : "#F59E0B", true, Math.atan2(s.y - this.player.y, s.x - this.player.x), { heroId: killerId, skillIdx: impactSkillIdx })), h.lightningChance > 0 && Math.random() < h.lightningChance) {
         let H = h.lightningDmg || 35;
         f += H, R.playElectricZap(), this.createBranchingLightning(this.player.x, this.player.y, s.x, s.y, "#FCD34D", 2.8), this.queueVfx("lightning", { x1: this.player.x, y1: this.player.y, x2: s.x, y2: s.y, color: "#FCD34D", width: 2.8 }), this.addFloatingText(s.x, s.y - 20, `SẤM +${H}`, "#FCD34D", 13);
       }
@@ -3006,9 +3016,6 @@ export class GameEngine {
       let skKey = p?.skillKey && ["atk", "c1", "c2", "c3", "c4"].includes(p.skillKey) ? p.skillKey : c ? "c1" : "atk";
       bd[skKey] = (bd[skKey] || 0) + T;
     }
-    let killerId = p?.heroId || this.currentHero?.id || "dung";
-    let damageElem = resolveHeroDamageElement(killerId, p || {});
-    let impactSkillIdx = p?.skillIdx ?? (c ? (this.player?.weaponSkillIdx >= 0 ? this.player.weaponSkillIdx + 1 : 1) : 0);
     if (this.multiplayer.active) {
       let predictedKill = s.hp - f <= 0;
       s.hp = Math.max(1, s.hp - f), s.hitFlash = 0.12, this.player.totalDamage += T;
@@ -3458,15 +3465,15 @@ export class GameEngine {
   executeBaoAmbush(s) {
     if (this.currentHero.id !== "bao" || this.player.bao_stealthTimer <= 0) return false;
     let a = this.getHeroGearStats("bao");
-    this.player.bao_stealthTimer = 0, this.player.bao_stealthLockTimer = 0, this.player.bao_emergeTimer = 0.24, this.player.weaponSkillTimer = 0.45, this.player.weaponSkillDur = 0.45, this.player.cooldowns[1] = (this.currentHero.skills[1]?.cooldown || 8) * (1 - a.cdr);
+    this.player.bao_stealthTimer = 0, this.player.bao_stealthLockTimer = 0, this.player.bao_emergeTimer = 0.24, this.player.weaponSkillTimer = 0.45, this.player.weaponSkillDur = 0.45, this.player.weaponSkillIdx = 1, this.spawnSkillWindup({ x: this.player.x, y: this.player.y, radius: 74, angle: s, heroId: "bao", skillIdx: 2, maxLife: 0.24 }), this.player.cooldowns[1] = (this.currentHero.skills[1]?.cooldown || 8) * (1 - a.cdr);
     for (let k = 0; k < 7; k++) this.spawnSmokePuff(this.player.x + (Math.random() - 0.5) * 28, this.player.y + (Math.random() - 0.5) * 28, 12, "rgba(147, 51, 234, 0.52)");
     this.queueVfx("particles", { x: this.player.x, y: this.player.y, smoke: true, color: "rgba(147, 51, 234, 0.52)", count: 7, size: 12 });
     let l = this.findNearestEnemy(280), m = this.getEffectiveDamage(), c = 0, g = 0;
     if (l) {
       let p = Math.atan2(l.y - this.player.y, l.x - this.player.x);
-      this.afterimages.push({ x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, life: 0, maxLife: 0.38, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, maxLife: 0.38 }), this.moveEntityWithObstacles(this.player, l.x + Math.cos(p) * (l.radius + 22), l.y + Math.sin(p) * (l.radius + 22), 14, true), this.player.facing = p + Math.PI, this.spawnSpatialTear(this.player.x - 24, this.player.y - 24, l.x, l.y, "#E879F9", 10), this.queueVfx("tear", { x1: this.player.x - 24, y1: this.player.y - 24, x2: l.x, y2: l.y, color: "#E879F9", width: 10 }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", life: 0, maxLife: 0.22, kind: "bao_slash" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", maxLife: 0.22, kind: "bao_slash" });
+      this.afterimages.push({ x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, life: 0, maxLife: 0.38, radius: this.player.radius }), this.queueVfx("afterimage", { x: this.player.x, y: this.player.y, facing: p, color: "#9333EA", alpha: 0.85, maxLife: 0.38 }), this.moveEntityWithObstacles(this.player, l.x + Math.cos(p) * (l.radius + 22), l.y + Math.sin(p) * (l.radius + 22), 14, true), this.player.facing = p + Math.PI, this.spawnSpatialTear(this.player.x - 24, this.player.y - 24, l.x, l.y, "#E879F9", 10), this.queueVfx("tear", { x1: this.player.x - 24, y1: this.player.y - 24, x2: l.x, y2: l.y, color: "#E879F9", width: 10 }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", life: 0, maxLife: 0.22, kind: "bao_slash", heroId: "bao" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: this.player.facing, radius: 96, spread: 1.7, dir: 1, color: "#E879F9", maxLife: 0.22, kind: "bao_slash", heroId: "bao" }), this.spawnSkillDecal({ x: l.x, y: l.y, radius: 70, angle: p, heroId: "bao", maxLife: 4.8, sync: true });
       let h = (l.bao_marks || 0) >= 2 ? 45 : 0, f = Math.round(65 + 1.15 * m + h);
-      g += f, c = 1, this.damageEnemy(l, f, 0, 0, true), l.hp > 0 && this.applyBaoMark(l, 1), h > 0 && this.addFloatingText(l.x, l.y - 24, `🗡️ ÁM SÁT +${h}!`, "#E879F9", 15);
+      g += f, c = 1, this.damageEnemy(l, f, 0, 0, true, null, { heroId: "bao", skillIdx: 2, skillKey: "c2" }), l.hp > 0 && this.applyBaoMark(l, 1), h > 0 && this.addFloatingText(l.x, l.y - 24, `🗡️ ÁM SÁT +${h}!`, "#E879F9", 15);
       let bHeal = Math.round(this.player.maxHp * (h > 0 ? 0.08 : 0.05));
       this.healPlayer(bHeal, "HEAL", `+${bHeal} HP (ÁM SÁT)`);
     } else this.moveEntityWithObstacles(this.player, this.player.x + Math.cos(s) * 165, this.player.y + Math.sin(s) * 165, 14, true);
@@ -3477,14 +3484,14 @@ export class GameEngine {
   executeGauC2Slam() {
     if (this.currentHero.id !== "gau" || this.player.gau_c2_guardTimer <= 0) return;
     let s = this.getHeroGearStats("gau"), a = this.player.gau_c2_stacks, l = this.player.gau_cuongHungTimer > 0, m = this.player.gau_c1_afterStep3Timer > 0, c = this.getEffectiveDamage();
-    this.player.gau_c2_guardTimer = 0, this.player.gau_c2_stacks = 0, this.player.gau_c2_recastLock = 0, this.player.gau_c1_afterStep3Timer = 0, this.player.gau_animKind = "c2_slam", this.player.gau_animDur = 0.26, this.player.gau_animTimer = 0.26, this.player.gau_animAngle = this.player.facing, this.player.weaponSkillTimer = 0.46, this.player.weaponSkillDur = 0.46, this.player.cooldowns[1] = (this.currentHero.skills[1]?.cooldown || 8.5) * (1 - s.cdr);
+    this.player.gau_c2_guardTimer = 0, this.player.gau_c2_stacks = 0, this.player.gau_c2_recastLock = 0, this.player.gau_c1_afterStep3Timer = 0, this.player.gau_animKind = "c2_slam", this.player.gau_animDur = 0.26, this.player.gau_animTimer = 0.26, this.player.gau_animAngle = this.player.facing, this.player.weaponSkillTimer = 0.46, this.player.weaponSkillDur = 0.46, this.player.weaponSkillIdx = 1, this.spawnSkillWindup({ x: this.player.x, y: this.player.y, radius: 88, angle: this.player.facing, heroId: "gau", skillIdx: 2, maxLife: 0.26 }), this.player.cooldowns[1] = (this.currentHero.skills[1]?.cooldown || 8.5) * (1 - s.cdr);
     let g = 150 * (l ? 1.2 : 1), p = Math.round(70 + 1.15 * c + 30 * a + (m ? 40 : 0));
-    R.playEarthSlam(), this.addShake(m || a >= 2 ? 11 : 7, 0.28), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: g, spread: Math.PI * 2, color: l ? "#FBBF24" : "#F59E0B", life: 0, maxLife: 0.34, kind: "gau_shockring", heavy: true, heroId: "gau" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: g, spread: Math.PI * 2, color: l ? "#FBBF24" : "#F59E0B", maxLife: 0.34, kind: "gau_shockring", heavy: true, heroId: "gau" }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: g * 0.72, spread: Math.PI * 2, color: "#FEF08A", life: 0, maxLife: 0.24, kind: "gau_c2_counter_guard", heroId: "gau" }), this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: g * 0.78, angle: this.player.facing, heroId: "gau", maxLife: 2.6, sync: true }), this.spawnParticles(this.player.x, this.player.y, "#FBBF24", 16, 70, 210, 3.5, 0.38), this.spawnGroundCrack(this.player.x, this.player.y, this.player.facing, g * 0.75, "#D97706", "#FEF08A"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: this.player.facing, len: g * 0.75, color: "#D97706", glowColor: "#FEF08A" });
+    R.playEarthSlam(), this.addShake(m || a >= 2 ? 11 : 7, 0.28), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: g, spread: Math.PI * 2, color: l ? "#FBBF24" : "#F59E0B", life: 0, maxLife: 0.34, kind: "gau_shockring", heavy: true, heroId: "gau" }), this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: g, spread: Math.PI * 2, color: l ? "#FBBF24" : "#F59E0B", maxLife: 0.34, kind: "gau_shockring", heavy: true, heroId: "gau" }), this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: g * 0.72, spread: Math.PI * 2, color: "#FEF08A", life: 0, maxLife: 0.24, kind: "gau_c2_counter_guard", heroId: "gau" }), this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: g * 0.78, angle: this.player.facing, heroId: "gau", maxLife: 4.8, sync: true }), this.spawnParticles(this.player.x, this.player.y, "#FBBF24", 16, 70, 210, 3.5, 0.38), this.spawnGroundCrack(this.player.x, this.player.y, this.player.facing, g * 0.75, "#D97706", "#FEF08A"), this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle: this.player.facing, len: g * 0.75, color: "#D97706", glowColor: "#FEF08A" });
     let h = 0;
     for (let f of [...this.enemies]) if (Math.hypot(f.x - this.player.x, f.y - this.player.y) <= g + f.radius) {
       h++;
       let v = Math.atan2(f.y - this.player.y, f.x - this.player.x);
-      this.damageEnemy(f, p, Math.cos(v) * 20, Math.sin(v) * 20, true);
+      this.damageEnemy(f, p, Math.cos(v) * 20, Math.sin(v) * 20, true, null, { heroId: "gau", skillIdx: 2, skillKey: "c2" });
     }
     if (h > 0) {
       this.grantGauRage(12);
@@ -3521,15 +3528,15 @@ export class GameEngine {
       target.duy_marks = 0, target.duy_markTimer = 0;
       R.playDeathSeal();
       let sealDmg = Math.round(45 + 0.75 * this.getEffectiveDamage());
-      this.slashes.push({ x: target.x, y: target.y, angle: 0, radius: 75, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.34, kind: "duy_heal_lotus" });
-      this.queueVfx("slash", { x: target.x, y: target.y, angle: 0, radius: 75, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.34, kind: "duy_heal_lotus" });
+      this.slashes.push({ x: target.x, y: target.y, angle: 0, radius: 75, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.34, kind: "duy_heal_lotus", heroId: "duy" });
+      this.queueVfx("slash", { x: target.x, y: target.y, angle: 0, radius: 75, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.34, kind: "duy_heal_lotus", heroId: "duy" });
       this.spawnParticles(target.x, target.y, "#34D399", 10, 55, 175, 3.2, 0.35);
       this.spawnRedCrystals(target.x, target.y, 6, 55, 165);
       this.addFloatingText(target.x, target.y - target.radius - 22, `\u{1FA78} HUY\u1EBET \u1EA4N +${sealDmg}!`, "#2DD4BF", 15);
-      this.damageEnemy(target, sealDmg, 0, 0, true);
+      this.damageEnemy(target, sealDmg, 0, 0, true, null, { heroId: "duy", skillIdx: 0 });
       for (let spl of [...this.enemies]) {
         if (spl !== target && spl.hp > 0 && Math.hypot(spl.x - target.x, spl.y - target.y) <= 75 + spl.radius) {
-          this.damageEnemy(spl, Math.round(sealDmg * 0.55), 0, 0, true);
+          this.damageEnemy(spl, Math.round(sealDmg * 0.55), 0, 0, true, null, { heroId: "duy", skillIdx: 0 });
         }
       }
       let orbHeal = Math.max(24, Math.round(this.player.maxHp * 0.035));
@@ -3564,19 +3571,20 @@ export class GameEngine {
     let blastR = decoy.blastRadius || DUY_DECOY_BLAST_RADIUS;
     let rawDmg = computeDuyDecoyBlastDamage(decoy.absorbedDamage, decoy.passiveMult || 1, decoy.effAtk || this.getEffectiveDamage());
     R.playDecoyDetonate();
-    this.addShake(14, 0.36);
-    this.createCataclysmicExplosion(decoy.x, decoy.y, blastR * 0.82, "#14B8A6");
-    this.slashes.push({ x: decoy.x, y: decoy.y, angle: 0, radius: blastR, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.44, kind: "duy_decoy_boom" });
-    this.queueVfx("slash", { x: decoy.x, y: decoy.y, angle: 0, radius: blastR, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.44, kind: "duy_decoy_boom" });
-    this.slashes.push({ x: decoy.x, y: decoy.y, angle: 0, radius: blastR * 0.65, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.36, kind: "duy_heal_lotus" });
-    this.queueVfx("slash", { x: decoy.x, y: decoy.y, angle: 0, radius: blastR * 0.65, spread: Math.PI * 2, color: "#34D399", maxLife: 0.36, kind: "duy_heal_lotus" });
+    this.addShake(9, 0.26);
+    this.createCataclysmicExplosion(decoy.x, decoy.y, blastR * 0.82, "#14B8A6", "substitute_seal", { shake: 0, flash: 0 });
+    this.slashes.push({ x: decoy.x, y: decoy.y, angle: 0, radius: blastR, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.44, kind: "duy_decoy_boom", heroId: "duy" });
+    this.queueVfx("slash", { x: decoy.x, y: decoy.y, angle: 0, radius: blastR, spread: Math.PI * 2, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.44, kind: "duy_decoy_boom", heroId: "duy" });
+    this.slashes.push({ x: decoy.x, y: decoy.y, angle: 0, radius: blastR * 0.65, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.36, kind: "duy_heal_lotus", heroId: "duy" });
+    this.queueVfx("slash", { x: decoy.x, y: decoy.y, angle: 0, radius: blastR * 0.65, spread: Math.PI * 2, color: "#34D399", maxLife: 0.36, kind: "duy_heal_lotus", heroId: "duy" });
+    this.spawnSkillDecal({ x: decoy.x, y: decoy.y, radius: blastR * 0.72, angle: 0, heroId: "duy", maxLife: 4.8, sync: true });
     this.queueVfx("duy_decoy_pop_vis", { x: decoy.x, y: decoy.y, radius: blastR });
     let hitCnt = 0;
     for (let e of [...this.enemies]) {
       if (e.hp > 0 && Math.hypot(e.x - decoy.x, e.y - decoy.y) <= blastR + e.radius) {
         hitCnt++;
         let ang = Math.atan2(e.y - decoy.y, e.x - decoy.x);
-        this.damageEnemy(e, rawDmg, Math.cos(ang) * 28, Math.sin(ang) * 28, true);
+        this.damageEnemy(e, rawDmg, Math.cos(ang) * 28, Math.sin(ang) * 28, true, null, { heroId: "duy", skillIdx: 1, skillKey: "c1" });
       }
     }
     let baseHeal = Math.max(45, Math.round(this.player.maxHp * 0.08));
@@ -3648,7 +3656,7 @@ export class GameEngine {
         let ang = q.angle + jitter;
         let sx = this.player.x + Math.cos(ang) * 20, sy = this.player.y + Math.sin(ang) * 20;
         let vx = Math.cos(ang) * 880, vy = Math.sin(ang) * 880;
-        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_shuriken", x: sx, y: sy, vx, vy, radius: 11, damage: q.dmg, color: "#14B8A6", angle: ang, distanceTraveled: 0, maxDistance: q.range + 90, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_shuriken", heroId: "duy", skillIdx: 2, skillKey: "c2", x: sx, y: sy, vx, vy, radius: 11, damage: q.dmg, color: "#14B8A6", angle: ang, distanceTraveled: 0, maxDistance: q.range + 90, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
         this.queueVfx("proj_vis", { kind: "duy_shuriken", x: sx, y: sy, vx, vy, radius: 11, color: "#14B8A6", angle: ang, maxDistance: q.range + 90, pierceLeft: 1 });
         q.thrownCount % 2 === 0 && (R.playShurikenThrow(), this.spawnParticles(sx, sy, "#2DD4BF", 3, 45, 130, 2.2, 0.18, "spark"));
         q.thrownCount++;
@@ -3662,7 +3670,7 @@ export class GameEngine {
           this.player.dashVx = Math.cos(q.angle) * spd, this.player.dashVy = Math.sin(q.angle) * spd, this.player.facing = q.angle;
           this.slashes.push({ x: this.player.x, y: this.player.y, angle: q.angle, radius: 135, spread: 1.5, color: "#14B8A6", accentColor: "#F43F5E", life: 0, maxLife: 0.28, kind: "duy_dash_cut", heroId: "duy" });
           this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: q.angle, radius: 135, spread: 1.5, color: "#14B8A6", accentColor: "#F43F5E", maxLife: 0.28, kind: "duy_dash_cut", heroId: "duy" });
-          this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: 68, angle: q.angle, heroId: "duy", maxLife: 2.2, sync: true });
+          this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: 68, angle: q.angle, heroId: "duy", maxLife: 4.6, sync: true });
         }
         this.duyC2Queues.splice(i, 1);
       }
@@ -3680,7 +3688,7 @@ export class GameEngine {
         let ang = b.angle + lane * 0.5 + (Math.random() - 0.5) * 0.12;
         let sx = this.player.x + Math.cos(ang) * 22, sy = this.player.y + Math.sin(ang) * 22;
         let vx = Math.cos(ang) * 920, vy = Math.sin(ang) * 920;
-        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_c3_shuriken", x: sx, y: sy, vx, vy, radius: 10, damage: b.dmgPerHit, color: "#14B8A6", angle: ang, distanceTraveled: 0, maxDistance: b.range, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "duy_c3_shuriken", heroId: "duy", skillIdx: 3, skillKey: "c3", x: sx, y: sy, vx, vy, radius: 10, damage: b.dmgPerHit, color: "#14B8A6", angle: ang, distanceTraveled: 0, maxDistance: b.range, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
         if (idx % 2 === 0 || b.total <= 45) {
           this.queueVfx("proj_vis", { kind: "duy_c3_shuriken", x: sx, y: sy, vx, vy, radius: 10, color: "#14B8A6", angle: ang, maxDistance: b.range, pierceLeft: 1 });
         }
@@ -3715,6 +3723,11 @@ export class GameEngine {
     let moved = this.moveEntityWithObstacles(this.player, rawNx, rawNy, 14, false);
     let nx = moved.x, ny = moved.y;
     this.player.facing = angle;
+    if (step > 0) {
+      this.player.weaponSkillTimer = 0.28;
+      this.player.weaponSkillDur = 0.28;
+      this.player.weaponSkillIdx = 0;
+    }
     for (let k = 0; k < 3; k++) {
       let f = k / 3;
       let ax = sx + (nx - sx) * f, ay = sy + (ny - sy) * f;
@@ -3730,14 +3743,14 @@ export class GameEngine {
     let midX = (sx + nx) / 2, midY = (sy + ny) / 2;
     this.slashes.push({ x: midX, y: midY, angle, radius: isCritStep ? 98 : 78, spread: isCritStep ? 2.15 : 1.55, dir: step % 2 === 0 ? 1 : -1, crossed: isCritStep, isCrit: isCritStep, color: isCritStep ? "#FACC15" : "#0EA5E9", life: 0, maxLife: 0.24, kind: "phong_c1_shadow_slash", heroId: "phong" });
     this.queueVfx("slash", { x: midX, y: midY, angle, radius: isCritStep ? 98 : 78, spread: isCritStep ? 2.15 : 1.55, dir: step % 2 === 0 ? 1 : -1, crossed: isCritStep, isCrit: isCritStep, color: isCritStep ? "#FACC15" : "#0EA5E9", maxLife: 0.24, kind: "phong_c1_shadow_slash", heroId: "phong" });
-    isCritStep && this.spawnSkillDecal({ x: nx, y: ny, radius: 74, angle, heroId: "phong", maxLife: 2.3, sync: true });
+    isCritStep && this.spawnSkillDecal({ x: nx, y: ny, radius: 74, angle, heroId: "phong", maxLife: 4.6, sync: true });
     this.spawnParticles(nx, ny, isCritStep ? "#FACC15" : "#22D3EE", isCritStep ? 12 : 6, 40, 150, 2.8, 0.3);
     let hits = 0;
     for (let e of [...this.enemies]) {
       if (e.hp <= 0) continue;
       if (this.pointToSegmentDist(e.x, e.y, sx, sy, nx, ny) <= 58 + e.radius) {
         hits++;
-        this.damageEnemy(e, baseSlashDmg, Math.cos(angle) * 14, Math.sin(angle) * 14, true, 0, isCritStep ? { forceCrit: true } : null);
+        this.damageEnemy(e, baseSlashDmg, Math.cos(angle) * 14, Math.sin(angle) * 14, true, 0, isCritStep ? { forceCrit: true, heroId: "phong", skillIdx: 1, skillKey: "c1" } : { heroId: "phong", skillIdx: 1, skillKey: "c1" });
       }
     }
     if (isCritStep) {
@@ -3759,10 +3772,13 @@ export class GameEngine {
       this.moveEntityWithObstacles(this.player, cx - Math.cos(stepAngle) * 34, cy - Math.sin(stepAngle) * 34, 14, true);
     }
     this.player.facing = atkAng;
+    this.player.weaponSkillTimer = 0.26;
+    this.player.weaponSkillDur = 0.26;
+    this.player.weaponSkillIdx = 2;
     let rad = 145, isFinisher = step === 3;
     R.playPhongDash(step % 3);
-    this.slashes.push({ x: cx, y: cy, angle: atkAng + step * 0.8, radius: rad * 0.82, spread: 2.25, dir: step % 2 === 0 ? 1 : -1, crossed: step % 2 === 1, isCrit: isFinisher, color: isFinisher ? "#F43F5E" : "#22D3EE", life: 0, maxLife: 0.26, kind: "phong_slash" });
-    this.queueVfx("slash", { x: cx, y: cy, angle: atkAng + step * 0.8, radius: rad * 0.82, spread: 2.25, dir: step % 2 === 0 ? 1 : -1, crossed: step % 2 === 1, isCrit: isFinisher, color: isFinisher ? "#F43F5E" : "#22D3EE", maxLife: 0.26, kind: "phong_slash" });
+    this.slashes.push({ x: cx, y: cy, angle: atkAng + step * 0.8, radius: rad * 0.82, spread: 2.25, dir: step % 2 === 0 ? 1 : -1, crossed: step % 2 === 1, isCrit: isFinisher, color: isFinisher ? "#F43F5E" : "#22D3EE", life: 0, maxLife: 0.26, kind: "phong_slash", heroId: "phong" });
+    this.queueVfx("slash", { x: cx, y: cy, angle: atkAng + step * 0.8, radius: rad * 0.82, spread: 2.25, dir: step % 2 === 0 ? 1 : -1, crossed: step % 2 === 1, isCrit: isFinisher, color: isFinisher ? "#F43F5E" : "#22D3EE", maxLife: 0.26, kind: "phong_slash", heroId: "phong" });
     let baseSlash = Math.round(74 + 0.98 * this.getEffectiveDamage() + 0.6 * this.getEffectiveAP());
     let hits = 0;
     for (let e of [...this.enemies]) {
@@ -3771,13 +3787,13 @@ export class GameEngine {
         hits++;
         e.phong_c3_marked = Math.max(e.phong_c3_marked || 0, 2.6);
         let scaledDmg = computePhongC3SlashDamage({ baseDamage: baseSlash, targetHp: e.hp, targetMaxHp: e.maxHp, isBoss: e.kind === "boss" });
-        this.damageEnemy(e, scaledDmg, Math.cos(atkAng) * 8, Math.sin(atkAng) * 8, true);
+        this.damageEnemy(e, scaledDmg, Math.cos(atkAng) * 8, Math.sin(atkAng) * 8, true, null, { heroId: "phong", skillIdx: 3, skillKey: "c3" });
       }
     }
     if (isFinisher) {
       this.slashes.push({ x: cx, y: cy, angle: 0, radius: rad, spread: Math.PI * 2, color: "#22D3EE", life: 0, maxLife: 0.34, kind: "phong_c3_death_ring", heroId: "phong" });
       this.queueVfx("slash", { x: cx, y: cy, angle: 0, radius: rad, spread: Math.PI * 2, color: "#22D3EE", maxLife: 0.34, kind: "phong_c3_death_ring", heroId: "phong" });
-      this.spawnSkillDecal({ x: cx, y: cy, radius: rad * 0.78, angle: atkAng, heroId: "phong", maxLife: 3.0, sync: true });
+      this.spawnSkillDecal({ x: cx, y: cy, radius: rad * 0.78, angle: atkAng, heroId: "phong", maxLife: 5.0, sync: true });
       this.spawnSpatialTear(cx - 85, cy - 85, cx + 85, cy + 85, "#22D3EE", 11);
       this.spawnSpatialTear(cx + 85, cy - 85, cx - 85, cy + 85, "#F43F5E", 11);
       this.queueVfx("tear", { x1: cx - 85, y1: cy - 85, x2: cx + 85, y2: cy + 85, color: "#22D3EE", width: 11 });
@@ -3799,8 +3815,8 @@ export class GameEngine {
       this.player.dang_rage = DANG_RAGE_MAX;
       this.player.dang_rageReady = true;
       R.playDangTigerRoar();
-      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 96, spread: Math.PI * 2, color: "#F8FAFC", life: 0, maxLife: 0.32, kind: "dang_black_shield_boom" });
-      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 96, spread: Math.PI * 2, color: "#F8FAFC", maxLife: 0.32, kind: "dang_black_shield_boom" });
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 96, spread: Math.PI * 2, color: "#F8FAFC", life: 0, maxLife: 0.32, kind: "dang_black_shield_boom", heroId: "dang" });
+      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 96, spread: Math.PI * 2, color: "#F8FAFC", maxLife: 0.32, kind: "dang_black_shield_boom", heroId: "dang" });
       this.addFloatingText(this.player.x, this.player.y - 36, "\u{1F42F} H\u1ED4 QUY\u1EC0N S\u1EB4N S\xC0NG!", "#F8FAFC", 16);
     }
     return gain;
@@ -3809,6 +3825,10 @@ export class GameEngine {
     if (this.currentHero.id !== "dang" || (this.player.dang_c2_timer || 0) <= 0) return;
     this.player.dang_c2_timer = 0;
     this.player.dang_c2_recastLock = 0;
+    this.player.weaponSkillTimer = 0.42;
+    this.player.weaponSkillDur = 0.42;
+    this.player.weaponSkillIdx = 1;
+    this.spawnSkillWindup({ x: this.player.x, y: this.player.y, radius: 88, angle: this.player.facing, heroId: "dang", skillIdx: 2, maxLife: 0.24 });
     let g = this.currentHero.skills[1], p = this.getHeroGearStats("dang");
     this.player.cooldowns[1] = g.cooldown * (1 - p.cdr);
     let rad = g.radius || 165;
@@ -3817,7 +3837,7 @@ export class GameEngine {
     this.addShake(10, 0.25);
     this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: rad, spread: Math.PI * 2, color: "#F8FAFC", life: 0, maxLife: 0.36, kind: "dang_black_shield_boom", heroId: "dang" });
     this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: rad, spread: Math.PI * 2, color: "#F8FAFC", maxLife: 0.36, kind: "dang_black_shield_boom", heroId: "dang" });
-    this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: rad * 0.72, angle: this.player.facing, heroId: "dang", maxLife: 2.5, sync: true });
+    this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: rad * 0.72, angle: this.player.facing, heroId: "dang", maxLife: 4.8, sync: true });
     for (let ci = 0; ci < 4; ci++) {
       let cAng = ci * (Math.PI / 2);
       this.spawnGroundCrack(this.player.x, this.player.y, cAng, 85, "#18181B", "#F8FAFC");
@@ -3831,7 +3851,7 @@ export class GameEngine {
       if (d <= rad + e.radius) {
         hits++;
         let kbAng = d > 1 ? Math.atan2(dy, dx) : this.player.facing;
-        this.damageEnemy(e, boomDmg, Math.cos(kbAng) * 52, Math.sin(kbAng) * 52, true, null, { fromDangPassive: true });
+        this.damageEnemy(e, boomDmg, Math.cos(kbAng) * 52, Math.sin(kbAng) * 52, true, null, { fromDangPassive: true, heroId: "dang", skillIdx: 2, skillKey: "c2" });
       }
     }
     if (hits > 0) {
@@ -3846,20 +3866,23 @@ export class GameEngine {
     this.player.facing = angle;
     this.player.attackAnimTimer = 0.16;
     this.player.attackAnimAngle = angle;
+    this.player.weaponSkillTimer = 0.28;
+    this.player.weaponSkillDur = 0.28;
+    this.player.weaponSkillIdx = 2;
     this.player.dang_basicStep = (this.player.dang_basicStep || 0) + 1;
     let punchDir = step % 2 === 0 ? 1 : -1;
     if (step < 4) {
       R.playDangTigerPunch(step % 3);
       this.moveEntityWithObstacles(this.player, this.player.x + Math.cos(angle) * 14, this.player.y + Math.sin(angle) * 14, 14, false);
-      this.slashes.push({ x: this.player.x, y: this.player.y, angle, radius: 120, spread: 1.25, dir: punchDir, color: "#F8FAFC", life: 0, maxLife: 0.2, kind: "dang_punch" });
-      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle, radius: 120, spread: 1.25, dir: punchDir, color: "#F8FAFC", maxLife: 0.2, kind: "dang_punch" });
+      this.slashes.push({ x: this.player.x, y: this.player.y, angle, radius: 120, spread: 1.25, dir: punchDir, color: "#F8FAFC", life: 0, maxLife: 0.2, kind: "dang_punch", heroId: "dang" });
+      this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle, radius: 120, spread: 1.25, dir: punchDir, color: "#F8FAFC", maxLife: 0.2, kind: "dang_punch", heroId: "dang" });
       let punchDmg = Math.round(50 + 0.65 * atk + 0.4 * ap);
       let hits = 0;
       for (let e of [...this.enemies]) {
         let dx = e.x - this.player.x, dy = e.y - this.player.y, d = Math.hypot(dx, dy) - e.radius;
         if (d <= 125 && (Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - angle), Math.cos(Math.atan2(dy, dx) - angle))) <= 1.05 || d < 36)) {
           hits++;
-          this.damageEnemy(e, punchDmg, Math.cos(angle) * 10, Math.sin(angle) * 10, true);
+          this.damageEnemy(e, punchDmg, Math.cos(angle) * 10, Math.sin(angle) * 10, true, null, { heroId: "dang", skillIdx: 3, skillKey: "c3" });
         }
       }
       this.grantDangRage(4);
@@ -3869,10 +3892,10 @@ export class GameEngine {
       this.addShake(12, 0.35);
       let sx = this.player.x + Math.cos(angle) * 28, sy = this.player.y + Math.sin(angle) * 28;
       let headDmg = Math.round(300 + 2.4 * atk + 1.65 * ap);
-      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "dang_tiger_head", x: sx, y: sy, vx: Math.cos(angle) * 880, vy: Math.sin(angle) * 880, radius: 52, damage: headDmg, color: "#F8FAFC", angle, distanceTraveled: 0, maxDistance: range || 480, pierceLeft: 99, hitIds: /* @__PURE__ */ new Set() });
+      this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "dang_tiger_head", heroId: "dang", skillIdx: 3, skillKey: "c3", x: sx, y: sy, vx: Math.cos(angle) * 880, vy: Math.sin(angle) * 880, radius: 52, damage: headDmg, color: "#F8FAFC", angle, distanceTraveled: 0, maxDistance: range || 480, pierceLeft: 99, hitIds: /* @__PURE__ */ new Set() });
       this.queueVfx("proj_vis", { kind: "dang_tiger_head", x: sx, y: sy, vx: Math.cos(angle) * 880, vy: Math.sin(angle) * 880, radius: 52, color: "#F8FAFC", angle, maxDistance: range || 480, pierceLeft: 99 });
       this.slashes.push({ x: this.player.x, y: this.player.y, angle, radius: 135, spread: 1.45, dir: 1, color: "#F8FAFC", life: 0, maxLife: 0.28, kind: "dang_c3_frenzy_sigil", heroId: "dang" });
-      this.spawnSkillDecal({ x: sx, y: sy, radius: 96, angle, heroId: "dang", maxLife: 2.8, sync: true });
+      this.spawnSkillDecal({ x: sx, y: sy, radius: 96, angle, heroId: "dang", maxLife: 5.0, sync: true });
       this.spawnGroundCrack(this.player.x, this.player.y, angle, 190, "#18181B", "#F8FAFC");
       this.queueVfx("crack", { x: this.player.x, y: this.player.y, angle, len: 190, color: "#18181B", glowColor: "#F8FAFC" });
       let healAmt = Math.round(this.player.maxHp * 0.18 + 1.3 * ap);
@@ -3917,7 +3940,7 @@ export class GameEngine {
             ill.facing = ang;
             let boltDmg = Math.round(28 + 0.55 * this.getEffectiveDamage() + 0.45 * this.getEffectiveAP());
             let sx = ill.x + Math.cos(ang) * 14, sy = ill.y + Math.sin(ang) * 14;
-            this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "phong_illusion_bolt", x: sx, y: sy, vx: Math.cos(ang) * 780, vy: Math.sin(ang) * 780, radius: 9, damage: boltDmg, color: "#22D3EE", angle: ang, distanceTraveled: 0, maxDistance: 390, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+            this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "phong_illusion_bolt", heroId: "phong", skillIdx: 1, x: sx, y: sy, vx: Math.cos(ang) * 780, vy: Math.sin(ang) * 780, radius: 9, damage: boltDmg, color: "#22D3EE", angle: ang, distanceTraveled: 0, maxDistance: 390, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
             this.queueVfx("proj_vis", { kind: "phong_illusion_bolt", x: sx, y: sy, vx: Math.cos(ang) * 780, vy: Math.sin(ang) * 780, radius: 9, color: "#22D3EE", angle: ang, maxDistance: 390, pierceLeft: 1 });
           } else {
             ill.fireTimer = 0.2;
@@ -4002,9 +4025,13 @@ export class GameEngine {
     let z = idx >= 0 ? this.thienTimeZones.splice(idx, 1)[0] : null;
     this.player.thien_c2ZoneId = null;
     this.player.thien_c2RecastLock = 0;
+    this.player.weaponSkillTimer = 0.42;
+    this.player.weaponSkillDur = 0.42;
+    this.player.weaponSkillIdx = 1;
     let p = this.getHeroGearStats("thien");
     this.player.cooldowns[1] = (this.currentHero.skills[1]?.cooldown || 9) * (1 - p.cdr);
     if (!z) return;
+    this.spawnSkillWindup({ x: z.x, y: z.y, radius: Math.min(126, (z.radius || 180) * 0.65), angle: 0, heroId: "thien", skillIdx: 2, maxLife: 0.24 });
     let det = computeThienC2Detonation({
       storedDamage: z.storedDamage || 0,
       atk: this.getEffectiveDamage(),
@@ -4014,10 +4041,10 @@ export class GameEngine {
     this.healPlayer(det.heal, "HEAL", `+${det.heal} HP (\u0110\u1EA2O CHI\u1EC0U)`);
     this.addPlayerShield(det.shield, 5.0);
     R.playThienTimeZone();
-    this.addShake(11, 0.32);
-    this.createCataclysmicExplosion(z.x, z.y, z.radius * 0.92, "#38BDF8");
+    this.addShake(9, 0.26);
+    this.createCataclysmicExplosion(z.x, z.y, z.radius * 0.92, "#38BDF8", "celestial_chrono", { shake: 0, flash: 0 });
     this.slashes.push({ x: z.x, y: z.y, angle: 0, radius: z.radius + 30, spread: Math.PI * 2, color: "#FACC15", accentColor: "#38BDF8", life: 0, maxLife: 0.38, kind: "thien_c2_time_shatter", heroId: "thien" });
-    this.spawnSkillDecal({ x: z.x, y: z.y, radius: z.radius * 0.72, angle: 0, heroId: "thien", maxLife: 2.8, sync: true });
+    this.spawnSkillDecal({ x: z.x, y: z.y, radius: z.radius * 0.72, angle: 0, heroId: "thien", maxLife: 4.8, sync: true });
     this.queueVfx("thien_timezone_pop_vis", { x: z.x, y: z.y, radius: z.radius });
     let hits = 0;
     for (let e of [...this.enemies]) {
@@ -4038,6 +4065,9 @@ export class GameEngine {
     this.player.thien_c3PortalTimer = 0;
     this.player.thien_c3RecastLock = 0;
     this.player.thien_c3Origin = null;
+    this.player.weaponSkillTimer = 0.42;
+    this.player.weaponSkillDur = 0.42;
+    this.player.weaponSkillIdx = 2;
     this.thienPortals = this.thienPortals.filter((pt) => pt.visualOnly);
     let p = this.getHeroGearStats("thien");
     this.player.cooldowns[2] = (this.currentHero.skills[2]?.cooldown || 8) * (1 - p.cdr);
@@ -4050,9 +4080,10 @@ export class GameEngine {
     this.resolveEntityObstacles(this.player, 14);
     this.tapDestination = null;
     R.playThienPortal();
+    this.spawnSkillWindup({ x: this.player.x, y: this.player.y, radius: 96, angle: this.player.facing, heroId: "thien", skillIdx: 3, maxLife: 0.24 });
     this.spawnSpatialTear(oldX, oldY, this.player.x, this.player.y, "#38BDF8", 12);
     this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 155, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.34, kind: "thien_c3_gate_return", heroId: "thien" });
-    this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: 96, angle: this.player.facing, heroId: "thien", maxLife: 2.6, sync: true });
+    this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: 96, angle: this.player.facing, heroId: "thien", maxLife: 5.0, sync: true });
     this.queueVfx("thien_portal_pop_vis", { x1: oldX, y1: oldY, x2: this.player.x, y2: this.player.y });
     let atk = this.getEffectiveDamage(), ap = this.getEffectiveAP();
     let dmg = Math.round(160 + 1.0 * atk + 1.35 * ap), hits = 0;
@@ -4228,15 +4259,24 @@ export class GameEngine {
     e.poisonTimer = Math.max(e.poisonTimer || 0, duration);
     e.poisonEffAp = Math.max(e.poisonEffAp || 0, this.getEffectiveAP());
     e.poisonEffAtk = Math.max(e.poisonEffAtk || 0, this.getEffectiveDamage());
+    e.lastKillerHeroId = this.currentHero?.id || "nhi";
+    e.lastDamageElement = "venom";
   }
   executeThanhC1(angle, isEcho = false, originX = null, originY = null) {
     let ap = this.getEffectiveAP(), atk = this.getEffectiveDamage();
     let ox = originX ?? this.player.x, oy = originY ?? this.player.y;
     let spd = 820, range = isEcho ? 380 : 410;
     let castBatch = { isEcho, hitCounts: /* @__PURE__ */ new Map(), healedSoFar: 0 };
+    if (isEcho) {
+      this.player.weaponSkillTimer = 0.34;
+      this.player.weaponSkillDur = 0.34;
+      this.player.weaponSkillIdx = 0;
+      this.spawnSkillWindup({ x: ox, y: oy, radius: 58, angle, heroId: "thanh", skillIdx: 1, maxLife: 0.2 });
+    }
     isEcho ? R.playThanhSnakeCast(true) : R.playThanhSnakeCast(false);
     this.slashes.push({ x: ox, y: oy, angle, radius: isEcho ? 58 : 74, spread: 1.1, color: isEcho ? "#A78BFA" : "#10B981", isEcho, life: 0, maxLife: 0.24, kind: "thanh_snake_fan", heroId: "thanh" });
     this.queueVfx("slash", { x: ox, y: oy, angle, radius: isEcho ? 58 : 74, spread: 1.1, color: isEcho ? "#A78BFA" : "#10B981", maxLife: 0.24, kind: "thanh_snake_fan", heroId: "thanh" });
+    !isEcho && this.spawnSkillDecal({ x: ox + Math.cos(angle) * 95, y: oy + Math.sin(angle) * 95, radius: 62, angle, heroId: "thanh", maxLife: 4.6, sync: true });
     this.spawnParticles(ox + Math.cos(angle) * 20, oy + Math.sin(angle) * 20, isEcho ? "#A78BFA" : "#34D399", 7, 45, 145, 2.8, 0.28);
     for (let off of [-0.24, 0, 0.24]) {
       let fa = angle + off;
@@ -4246,6 +4286,8 @@ export class GameEngine {
         fromPlayer: true,
         kind: "thanh_c1_snake",
         style: "thanh_c1_snake",
+        heroId: "thanh",
+        skillIdx: 1,
         isEcho,
         castBatch,
         skillKey: "c1",
@@ -4270,13 +4312,19 @@ export class GameEngine {
     let ap = this.getEffectiveAP(), atk = this.getEffectiveDamage();
     let rad = isEcho ? 115 : 145;
     let cx = Math.max(60, Math.min(this.mapWidth - 60, tx)), cy = Math.max(60, Math.min(this.mapHeight - 60, ty));
+    if (isEcho) {
+      this.player.weaponSkillTimer = 0.34;
+      this.player.weaponSkillDur = 0.34;
+      this.player.weaponSkillIdx = 1;
+      this.spawnSkillWindup({ x: cx, y: cy, radius: Math.min(96, rad * 0.68), angle: 0, heroId: "thanh", skillIdx: 2, maxLife: 0.22 });
+    }
     R.playThanhDevour();
     this.addShake(isEcho ? 5 : 10, isEcho ? 0.16 : 0.28);
     this.thanhDevourSerpents.push({ id: this.nextEntityId++, x: cx, y: cy, radius: rad, life: 0, maxLife: 0.72, visualOnly: false });
     this.queueVfx("thanh_devour_vis", { x: cx, y: cy, radius: rad, maxLife: 0.72 });
     this.slashes.push({ x: cx, y: cy, angle: 0, radius: rad, spread: Math.PI * 2, color: isEcho ? "#A78BFA" : "#10B981", life: 0, maxLife: 0.38, kind: "thanh_devour_bite", heroId: "thanh" });
     this.queueVfx("slash", { x: cx, y: cy, angle: 0, radius: rad, spread: Math.PI * 2, color: isEcho ? "#A78BFA" : "#10B981", maxLife: 0.38, kind: "thanh_devour_bite", heroId: "thanh" });
-    !isEcho && this.spawnSkillDecal({ x: cx, y: cy, radius: rad * 0.72, angle: 0, heroId: "thanh", maxLife: 3.0, sync: true });
+    !isEcho && this.spawnSkillDecal({ x: cx, y: cy, radius: rad * 0.72, angle: 0, heroId: "thanh", maxLife: 4.8, sync: true });
     this.spawnParticles(cx, cy, isEcho ? "#A78BFA" : "#34D399", 14, 55, 175, 3.2, 0.36);
     let swallowed = 0, hits = 0, totDmg = 0;
     for (let e of [...this.enemies]) {
@@ -4287,13 +4335,13 @@ export class GameEngine {
           swallowed++;
           let swallowDmg = Math.max(1, e.hp + 9999);
           totDmg += e.hp;
-          this.damageEnemy(e, swallowDmg, 0, 0, true);
+          this.damageEnemy(e, swallowDmg, 0, 0, true, null, { heroId: "thanh", skillIdx: 2, skillKey: "c2" });
           this.addFloatingText(e.x, e.y - 18, "\u{1F40D} TH\u00D4N THI\u00CAN!", "#34D399", 13);
         } else {
           let isLarge = e.kind === "boss" || e.kind === "brute" || e.kind === "shield_knight" || (e.radius || 0) > 21 || Boolean(e.isMiniBoss);
           let dmg = computeThanhC2Damage({ ap, atk, isLargeOrBoss: isLarge, isEcho });
           totDmg += dmg;
-          this.damageEnemy(e, dmg, 0, 0, true);
+          this.damageEnemy(e, dmg, 0, 0, true, null, { heroId: "thanh", skillIdx: 2, skillKey: "c2" });
           this.applyEnemyPoison(e, 2.5, 1);
         }
       }
@@ -4308,7 +4356,7 @@ export class GameEngine {
         if (idx >= 0) this.zones.splice(idx, 1);
       }
       let zoneDmg = Math.max(14, Math.round(16 + ap * 0.32));
-      this.zones.push({ id: this.nextEntityId++, kind: "thanh_poison_zone", x: cx, y: cy, radius: rad, timer: 0, duration: THANH_C2_ZONE_DURATION, tickTimer: 0, tickInterval: 0.5, damagePerTick: zoneDmg, slowFactor: THANH_C2_ZONE_SLOW, rotation: 0 });
+      this.zones.push({ id: this.nextEntityId++, kind: "thanh_poison_zone", heroId: "thanh", skillKey: "c2", x: cx, y: cy, radius: rad, timer: 0, duration: THANH_C2_ZONE_DURATION, tickTimer: 0, tickInterval: 0.5, damagePerTick: zoneDmg, slowFactor: THANH_C2_ZONE_SLOW, rotation: 0 });
       this.queueVfx("zone_vis", { kind: "thanh_poison_zone", x: cx, y: cy, radius: rad, duration: THANH_C2_ZONE_DURATION });
     }
     this.comboManager.record({ heroId: "thanh", action: isEcho ? "c2_echo" : "c2", hitCount: Math.max(1, hits), damageDealt: totDmg });
@@ -4317,13 +4365,17 @@ export class GameEngine {
     if (isEcho) {
       let ap = this.getEffectiveAP(), atk = this.getEffectiveDamage();
       let boltDmg = Math.max(14, Math.round((28 + ap * 0.46 + atk * 0.25) * THANH_ECHO_DMG_RATIO));
+      this.player.weaponSkillTimer = 0.34;
+      this.player.weaponSkillDur = 0.34;
+      this.player.weaponSkillIdx = 2;
+      this.spawnSkillWindup({ x: this.player.x, y: this.player.y, radius: 74, angle: this.player.facing || 0, heroId: "thanh", skillIdx: 3, maxLife: 0.22 });
       R.playThanhSnakeCast(true);
       for (let i = 0; i < 4; i++) {
         let ang = (this.player.thanh_companionAngle || 0) + (Math.PI * 2 / 4) * i;
         let sx = this.player.x + Math.cos(ang) * 32, sy = this.player.y + Math.sin(ang) * 32;
         let tgt = this.findNearestEnemy(380);
         let fa = tgt ? Math.atan2(tgt.y - sy, tgt.x - sx) : ang;
-        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "thanh_guard_bolt", style: "thanh_guard_bolt", isEcho: true, x: sx, y: sy, vx: Math.cos(fa) * 760, vy: Math.sin(fa) * 760, radius: 7, damage: boltDmg, color: "#A78BFA", angle: fa, distanceTraveled: 0, maxDistance: 360, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+        this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "thanh_guard_bolt", style: "thanh_guard_bolt", heroId: "thanh", skillIdx: 3, skillKey: "c3", isEcho: true, x: sx, y: sy, vx: Math.cos(fa) * 760, vy: Math.sin(fa) * 760, radius: 7, damage: boltDmg, color: "#A78BFA", angle: fa, distanceTraveled: 0, maxDistance: 360, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
         this.queueVfx("proj_vis", { kind: "thanh_guard_bolt", style: "thanh_guard_bolt", isEcho: true, x: sx, y: sy, vx: Math.cos(fa) * 760, vy: Math.sin(fa) * 760, radius: 7, color: "#A78BFA", angle: fa, maxDistance: 360, pierceLeft: 1 });
       }
       return;
@@ -4346,7 +4398,7 @@ export class GameEngine {
     }
     this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: 68, spread: Math.PI * 2, color: "#34D399", life: 0, maxLife: 0.34, kind: "thanh_shield_pulse", heroId: "thanh" });
     this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: 68, spread: Math.PI * 2, color: "#34D399", maxLife: 0.34, kind: "thanh_shield_pulse", heroId: "thanh" });
-    this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: 72, angle: this.player.facing || 0, heroId: "thanh", maxLife: 2.8, sync: true });
+    this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: 72, angle: this.player.facing || 0, heroId: "thanh", maxLife: 5.0, sync: true });
     this.spawnParticles(this.player.x, this.player.y, "#34D399", 12, 48, 155, 3, 0.35);
     this.spawnUltimateSequence("thanh", this.player.x, this.player.y, this.player.facing || 0, 155);
     this.addFloatingText(this.player.x, this.player.y - 36, "\u{1F40D} 4 LINH X\u00C0 H\u1ED8 TH\u1EC2 7s!", "#34D399", 15);
@@ -4397,7 +4449,7 @@ export class GameEngine {
           if (tgt) {
             let fa = Math.atan2(tgt.y - sn.y, tgt.x - sn.x);
             let boltDmg = Math.max(12, Math.round(24 + this.getEffectiveAP() * 0.42 + this.getEffectiveDamage() * 0.22));
-            this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "thanh_guard_bolt", style: "thanh_guard_bolt", x: sn.x, y: sn.y, vx: Math.cos(fa) * 760, vy: Math.sin(fa) * 760, radius: 7, damage: boltDmg, color: "#34D399", angle: fa, distanceTraveled: 0, maxDistance: 340, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
+            this.projectiles.push({ id: this.nextEntityId++, fromPlayer: true, kind: "thanh_guard_bolt", style: "thanh_guard_bolt", heroId: "thanh", skillIdx: 3, skillKey: "c3", x: sn.x, y: sn.y, vx: Math.cos(fa) * 760, vy: Math.sin(fa) * 760, radius: 7, damage: boltDmg, color: "#34D399", angle: fa, distanceTraveled: 0, maxDistance: 340, pierceLeft: 1, hitIds: /* @__PURE__ */ new Set() });
             this.queueVfx("proj_vis", { kind: "thanh_guard_bolt", style: "thanh_guard_bolt", x: sn.x, y: sn.y, vx: Math.cos(fa) * 760, vy: Math.sin(fa) * 760, radius: 7, color: "#34D399", angle: fa, maxDistance: 340, pierceLeft: 1 });
           }
         }
@@ -4421,7 +4473,7 @@ export class GameEngine {
           let mistDmg = Math.max(10, Math.round(14 + ap * 0.28 + atk * 0.16));
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - ms.x, e.y - ms.y) <= ms.radius + e.radius) {
-              this.damageEnemy(e, mistDmg, 0, 0, true);
+              this.damageEnemy(e, mistDmg, 0, 0, true, null, { heroId: "nhi", skillIdx: 2, skillKey: "c2" });
               this.applyEnemyPoison(e, 2.0, 1);
               this.isBossImmune(e) || (e.slowFactor = Math.max(e.slowFactor || 0, NHI_PASSIVE_SLOW), e.slowTimer = Math.max(e.slowTimer || 0, 0.8));
             }
@@ -4459,7 +4511,7 @@ export class GameEngine {
           for (let pair of pairs) {
             for (let e of [...this.enemies]) {
               if (e.hp > 0 && this.pointToSegmentDist(e.x, e.y, pair.a.x, pair.a.y, pair.b.x, pair.b.y) <= 22 + e.radius) {
-                this.damageEnemy(e, beamDmg, 0, 0, true);
+                this.damageEnemy(e, beamDmg, 0, 0, true, null, { heroId: "nhi", skillIdx: 2, skillKey: "c2" });
                 this.applyEnemyPoison(e, 2.0, 1);
               }
             }
@@ -4492,7 +4544,7 @@ export class GameEngine {
           if (e.hp <= 0) continue;
           let inZone = Math.hypot(e.x - sanc.x, e.y - sanc.y) <= sanc.radius + e.radius;
           if (inZone) {
-            doTickDmg && this.damageEnemy(e, tickDmg, 0, 0, true);
+            doTickDmg && this.damageEnemy(e, tickDmg, 0, 0, true, null, { heroId: "minh", skillIdx: 2, skillKey: "c2" });
             if (!sanc.frozenAppliedIds.has(e.id)) {
               sanc.frozenAppliedIds.add(e.id);
               if (e.kind === "boss") {
@@ -4563,14 +4615,15 @@ export class GameEngine {
         if (!pr.visualOnly) {
           R.playMinhPrisonDetonate();
           this.addShake(11, 0.28);
-          this.slashes.push({ x: pr.x, y: pr.y, angle: 0, radius: pr.radius, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.4, kind: "minh_seal_boom" });
-          this.queueVfx("slash", { x: pr.x, y: pr.y, angle: 0, radius: pr.radius, spread: Math.PI * 2, color: "#FACC15", maxLife: 0.4, kind: "minh_seal_boom" });
+          this.slashes.push({ x: pr.x, y: pr.y, angle: 0, radius: pr.radius, spread: Math.PI * 2, color: "#FACC15", life: 0, maxLife: 0.4, kind: "minh_seal_boom", heroId: "minh" });
+          this.queueVfx("slash", { x: pr.x, y: pr.y, angle: 0, radius: pr.radius, spread: Math.PI * 2, color: "#FACC15", maxLife: 0.4, kind: "minh_seal_boom", heroId: "minh" });
+          this.spawnSkillDecal({ x: pr.x, y: pr.y, radius: pr.radius * 0.78, angle: 0, heroId: "minh", maxLife: 5.0, sync: true });
           this.spawnParticles(pr.x, pr.y, "#FDE047", 14, 65, 210, 3.2, 0.38);
           this.spawnParticles(pr.x, pr.y, "#38BDF8", 9, 45, 160, 2.6, 0.32);
           let detDmg = computeMinhC3DetonateDamage({ atk: this.getEffectiveDamage(), ap: this.getEffectiveAP() });
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - pr.x, e.y - pr.y) <= pr.radius + e.radius) {
-              this.damageEnemy(e, detDmg, 0, 0, true);
+              this.damageEnemy(e, detDmg, 0, 0, true, null, { heroId: "minh", skillIdx: 3, skillKey: "c3" });
             }
           }
           if (this.player.hp > 0 && Math.hypot(this.player.x - pr.x, this.player.y - pr.y) <= pr.radius + this.player.radius) {
@@ -4616,10 +4669,10 @@ export class GameEngine {
             this.player.ducanh_c1HitCds.set(e.id, 0.55);
             let kbAng = d > 1 ? Math.atan2(dy, dx) : this.player.facing;
             if (e.kind === "boss") {
-              this.damageEnemy(e, rollDmg, 0, 0, true);
+              this.damageEnemy(e, rollDmg, 0, 0, true, null, { heroId: "ducanh", skillIdx: 1, skillKey: "c1" });
               this.applyEnemyHardCC(e, "stun", DUCANH_C1_BOSS_STUN);
             } else {
-              this.damageEnemy(e, rollDmg, Math.cos(kbAng) * 58, Math.sin(kbAng) * 58, true);
+              this.damageEnemy(e, rollDmg, Math.cos(kbAng) * 58, Math.sin(kbAng) * 58, true, null, { heroId: "ducanh", skillIdx: 1, skillKey: "c1" });
             }
             R.playDucAnhSmash();
             this.spawnParticles(e.x, e.y, "#F59E0B", 7, 35, 130, 3, 0.25);
@@ -4655,15 +4708,16 @@ export class GameEngine {
           R.playExplosion();
           R.playDucAnhSmash();
           this.addShake(11, 0.26);
-          this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: rad, spread: Math.PI * 2, color: "#F59E0B", life: 0, maxLife: 0.36, kind: "ducanh_fortress_boom" });
-          this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: rad, spread: Math.PI * 2, color: "#F59E0B", maxLife: 0.36, kind: "ducanh_fortress_boom" });
+          this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: rad, spread: Math.PI * 2, color: "#F59E0B", life: 0, maxLife: 0.36, kind: "ducanh_fortress_boom", heroId: "ducanh" });
+          this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: rad, spread: Math.PI * 2, color: "#F59E0B", maxLife: 0.36, kind: "ducanh_fortress_boom", heroId: "ducanh" });
+          this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: rad * 0.72, angle: 0, heroId: "ducanh", maxLife: 4.8, sync: true });
           this.spawnParticles(this.player.x, this.player.y, "#F59E0B", 14, 60, 200, 3.2, 0.36);
           for (let e of [...this.enemies]) {
             if (e.hp <= 0) continue;
             let dx = e.x - this.player.x, dy = e.y - this.player.y, d = Math.hypot(dx, dy);
             if (d <= rad + e.radius) {
               let kb = d > 1 ? Math.atan2(dy, dx) : this.player.facing;
-              this.damageEnemy(e, boomDmg, Math.cos(kb) * 42, Math.sin(kb) * 42, true);
+              this.damageEnemy(e, boomDmg, Math.cos(kb) * 42, Math.sin(kb) * 42, true, null, { heroId: "ducanh", skillIdx: 2, skillKey: "c2" });
             }
           }
           this.emitAllySupport({ x: this.player.x, y: this.player.y, radius: rad + 60, exact: true, healPct: DUCANH_C2_END_ALLY_HEAL, shieldPct: DUCANH_C2_END_ALLY_SHIELD, shieldDur: 5, label: "\u{1F6E1}\uFE0F PH\xC1O \u0110\xC0I (+12% HP \xB7 +10% GI\xC1P)", color: "#F59E0B" });
@@ -4689,8 +4743,9 @@ export class GameEngine {
           R.playDucAnhMeteor();
           R.playEarthSlam();
           this.addShake(15, 0.36);
-          this.slashes.push({ x: lp.tx, y: lp.ty, angle: 0, radius: lp.radius, spread: Math.PI * 2, color: "#F97316", life: 0, maxLife: 0.42, kind: "ducanh_meteor_boom" });
-          this.queueVfx("slash", { x: lp.tx, y: lp.ty, angle: 0, radius: lp.radius, spread: Math.PI * 2, color: "#F97316", maxLife: 0.42, kind: "ducanh_meteor_boom" });
+          this.slashes.push({ x: lp.tx, y: lp.ty, angle: 0, radius: lp.radius, spread: Math.PI * 2, color: "#F97316", life: 0, maxLife: 0.42, kind: "ducanh_meteor_boom", heroId: "ducanh" });
+          this.queueVfx("slash", { x: lp.tx, y: lp.ty, angle: 0, radius: lp.radius, spread: Math.PI * 2, color: "#F97316", maxLife: 0.42, kind: "ducanh_meteor_boom", heroId: "ducanh" });
+          this.spawnSkillDecal({ x: lp.tx, y: lp.ty, radius: lp.radius * 0.78, angle: 0, heroId: "ducanh", maxLife: 5.2, sync: true });
           this.spawnFlameParticles(lp.tx, lp.ty, "red", 12, 55, 190);
           this.spawnParticles(lp.tx, lp.ty, "#FDE047", 12, 60, 210, 3.2, 0.38);
           for (let ci = 0; ci < 4; ci++) {
@@ -4703,7 +4758,7 @@ export class GameEngine {
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - lp.tx, e.y - lp.ty) <= lp.radius + e.radius) {
               hitCount++;
-              this.damageEnemy(e, impactDmg, 0, 0, true);
+              this.damageEnemy(e, impactDmg, 0, 0, true, null, { heroId: "ducanh", skillIdx: 3, skillKey: "c3" });
               this.applyEnemyHardCC(e, e.kind === "boss" ? "stun" : "knockup", e.kind === "boss" ? DUCANH_C3_BOSS_STUN : DUCANH_C3_MOB_KNOCKUP);
             }
           }
@@ -4766,8 +4821,8 @@ export class GameEngine {
           this.afterimages.push({ x: sx, y: sy, facing: ang, color: col, alpha: 0.75, life: 0, maxLife: 0.32, radius: this.player.radius });
           this.afterimages.push({ x: tx, y: ty, facing: ang + Math.PI, color: "#E879F9", alpha: 0.7, life: 0, maxLife: 0.32, radius: this.player.radius });
           this.queueVfx("afterimage", { x: sx, y: sy, facing: ang, color: col, alpha: 0.75, maxLife: 0.32 });
-          this.slashes.push({ x: center.x, y: center.y, angle: ang, radius: rad * (isFinal ? 1.08 : 0.92), spread: isFinal ? Math.PI * 2 : 2.15, crossed: true, color: col, accentColor: "#FFFFFF", life: 0, maxLife: isFinal ? 0.36 : 0.25, kind: "bach_cross_slash" });
-          this.queueVfx("slash", { x: center.x, y: center.y, angle: ang, radius: rad * (isFinal ? 1.08 : 0.92), spread: isFinal ? Math.PI * 2 : 2.15, crossed: true, color: col, accentColor: "#FFFFFF", maxLife: isFinal ? 0.36 : 0.25, kind: "bach_cross_slash" });
+          this.slashes.push({ x: center.x, y: center.y, angle: ang, radius: rad * (isFinal ? 1.08 : 0.92), spread: isFinal ? Math.PI * 2 : 2.15, crossed: true, color: col, accentColor: "#FFFFFF", life: 0, maxLife: isFinal ? 0.36 : 0.25, kind: "bach_cross_slash", heroId: "bach" });
+          this.queueVfx("slash", { x: center.x, y: center.y, angle: ang, radius: rad * (isFinal ? 1.08 : 0.92), spread: isFinal ? Math.PI * 2 : 2.15, crossed: true, color: col, accentColor: "#FFFFFF", maxLife: isFinal ? 0.36 : 0.25, kind: "bach_cross_slash", heroId: "bach" });
           this.spawnParticles(center.x, center.y, col, isFinal ? 16 : 8, 55, 185, 2.9, 0.32);
           let atk = this.getEffectiveDamage(), ap = this.getEffectiveAP();
           let slashDmg = Math.round((isFinal ? 145 : 92) + atk * (isFinal ? 1.6 : 1.12) + ap * (isFinal ? 0.45 : 0.30));
@@ -4775,7 +4830,7 @@ export class GameEngine {
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - center.x, e.y - center.y) <= rad + e.radius) {
               hitCnt++;
-              this.damageEnemy(e, slashDmg, Math.cos(ang) * 12, Math.sin(ang) * 12, isFinal);
+              this.damageEnemy(e, slashDmg, Math.cos(ang) * 12, Math.sin(ang) * 12, isFinal, null, { heroId: "bach", skillIdx: 3, skillKey: "c3" });
               e.hp > 0 && this.applyBachWindMark(e, 1);
             }
           }
@@ -4818,10 +4873,11 @@ export class GameEngine {
           R.playBachSealDetonate();
           this.addShake(7, 0.2);
           let blastRad = sl.radius || 145;
-          this.slashes.push({ x: sl.x, y: sl.y, angle: 0, radius: blastRad * 1.05, spread: Math.PI * 2, crossed: true, color: "#E879F9", accentColor: "#22D3EE", life: 0, maxLife: 0.3, kind: "bach_cross_slash" });
-          this.queueVfx("slash", { x: sl.x, y: sl.y, angle: 0, radius: blastRad * 1.05, spread: Math.PI * 2, crossed: true, color: "#E879F9", accentColor: "#22D3EE", maxLife: 0.3, kind: "bach_cross_slash" });
+          this.slashes.push({ x: sl.x, y: sl.y, angle: 0, radius: blastRad * 1.05, spread: Math.PI * 2, crossed: true, color: "#E879F9", accentColor: "#22D3EE", life: 0, maxLife: 0.3, kind: "bach_cross_slash", heroId: "bach" });
+          this.queueVfx("slash", { x: sl.x, y: sl.y, angle: 0, radius: blastRad * 1.05, spread: Math.PI * 2, crossed: true, color: "#E879F9", accentColor: "#22D3EE", maxLife: 0.3, kind: "bach_cross_slash", heroId: "bach" });
           this.slashes.push({ x: sl.x, y: sl.y, angle: 0, radius: blastRad, spread: Math.PI * 2, color: "#22D3EE", accentColor: "#E879F9", life: 0, maxLife: 0.28, kind: "bach_c1_wind_terminus", heroId: "bach" });
           this.queueVfx("slash", { x: sl.x, y: sl.y, angle: 0, radius: blastRad, spread: Math.PI * 2, color: "#22D3EE", accentColor: "#E879F9", maxLife: 0.28, kind: "bach_c1_wind_terminus", heroId: "bach" });
+          this.spawnSkillDecal({ x: sl.x, y: sl.y, radius: blastRad * 0.72, angle: 0, heroId: "bach", maxLife: 4.8, sync: true });
           this.spawnParticles(sl.x, sl.y, "#E879F9", 12, 55, 175, 2.8, 0.32);
           let atk = sl.atkSnapshot || this.getEffectiveDamage(), ap = sl.apSnapshot || this.getEffectiveAP();
           let sealDmg = Math.round(95 + atk * 1.15 + ap * 0.45);
@@ -4829,7 +4885,7 @@ export class GameEngine {
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - sl.x, e.y - sl.y) <= blastRad + e.radius) {
               hitCnt++;
-              this.damageEnemy(e, sealDmg, 0, 0, true);
+              this.damageEnemy(e, sealDmg, 0, 0, true, null, { heroId: "bach", skillIdx: 1, skillKey: "c1" });
               if (e.hp > 0) {
                 if (!this.isBossImmune(e)) {
                   e.slowFactor = Math.max(e.slowFactor || 0, 0.4);
@@ -4862,13 +4918,13 @@ export class GameEngine {
           let atk = this.getEffectiveDamage(), ap = this.getEffectiveAP();
           let pulseDmg = Math.round(35 + atk * 0.40 + ap * 0.30);
           let pRad = ar.radius || THAI_ARENA_RADIUS;
-          this.slashes.push({ x: ar.x, y: ar.y, angle: 0, radius: pRad * 0.94, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", life: 0, maxLife: 0.34, kind: "thai_cyclone_ring" });
-          this.queueVfx("slash", { x: ar.x, y: ar.y, angle: 0, radius: pRad * 0.94, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", maxLife: 0.34, kind: "thai_cyclone_ring" });
+          this.slashes.push({ x: ar.x, y: ar.y, angle: 0, radius: pRad * 0.94, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", life: 0, maxLife: 0.34, kind: "thai_cyclone_ring", heroId: "thai" });
+          this.queueVfx("slash", { x: ar.x, y: ar.y, angle: 0, radius: pRad * 0.94, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", maxLife: 0.34, kind: "thai_cyclone_ring", heroId: "thai" });
           let hitCnt = 0;
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - ar.x, e.y - ar.y) <= pRad + e.radius) {
               hitCnt++;
-              this.damageEnemy(e, pulseDmg, 0, 0, true);
+              this.damageEnemy(e, pulseDmg, 0, 0, true, null, { heroId: "thai", skillIdx: 3, skillKey: "c3" });
               if (e.hp > 0 && !this.isBossImmune(e)) {
                 e.slowFactor = Math.max(e.slowFactor || 0, 0.25);
                 e.slowTimer = Math.max(e.slowTimer || 0, 1.2);
@@ -4903,8 +4959,9 @@ export class GameEngine {
         this.player.thai_c2SecondStrike = null;
         R.playThaiSlam(true);
         this.addShake(11, 0.28);
-        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: st.radius, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", life: 0, maxLife: 0.36, kind: "thai_cyclone_ring" });
-        this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: st.radius, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", maxLife: 0.36, kind: "thai_cyclone_ring" });
+        this.slashes.push({ x: this.player.x, y: this.player.y, angle: 0, radius: st.radius, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", life: 0, maxLife: 0.36, kind: "thai_cyclone_ring", heroId: "thai" });
+        this.queueVfx("slash", { x: this.player.x, y: this.player.y, angle: 0, radius: st.radius, spread: Math.PI * 2, empowered: true, color: "#FDE047", accentColor: "#EF4444", maxLife: 0.36, kind: "thai_cyclone_ring", heroId: "thai" });
+        this.spawnSkillDecal({ x: this.player.x, y: this.player.y, radius: st.radius * 0.68, angle: this.player.facing, heroId: "thai", maxLife: 4.8, sync: true });
         for (let ci = 0; ci < 4; ci++) {
           let ca = (Math.PI / 2) * ci + 0.39;
           this.spawnGroundCrack(this.player.x, this.player.y, ca, st.radius * 0.65, "#991B1B", "#FDE047");
@@ -4913,7 +4970,7 @@ export class GameEngine {
         let secDmg = Math.round(st.dmg * 0.82);
         for (let e of [...this.enemies]) {
           if (e.hp > 0 && Math.hypot(e.x - this.player.x, e.y - this.player.y) <= st.radius + e.radius) {
-            this.damageEnemy(e, secDmg, 0, 0, true);
+            this.damageEnemy(e, secDmg, 0, 0, true, null, { heroId: "thai", skillIdx: 2, skillKey: "c2" });
           }
         }
         let secHeal = Math.max(1, Math.round(this.player.maxHp * 0.065));
@@ -4936,7 +4993,7 @@ export class GameEngine {
           this.queueVfx("slash", { x: bc.x, y: bc.y, angle: 0, radius: bcRad * 0.96, spread: Math.PI * 2, color: "#4ADE80", accentColor: "#FACC15", maxLife: 0.32, kind: "khair_c1_beacon_deploy", heroId: "khair" });
           for (let e of [...this.enemies]) {
             if (e.hp > 0 && Math.hypot(e.x - bc.x, e.y - bc.y) <= bcRad + e.radius) {
-              this.damageEnemy(e, bcDmg, 0, 0, true);
+              this.damageEnemy(e, bcDmg, 0, 0, true, null, { heroId: "khair", skillIdx: 1, skillKey: "c1" });
               if (e.hp > 0 && !this.isBossImmune(e)) {
                 e.slowFactor = Math.max(e.slowFactor || 0, KHAIR_C1_ENEMY_SLOW);
                 e.slowTimer = Math.max(e.slowTimer || 0, 1.6);

@@ -63,6 +63,153 @@ export function resolvePalette(primary, highlight, shadow, rim, isMono = false) 
   };
 }
 
+// ============================================================================
+// BOUNDED OFFSCREEN SPRITE-STAMP CACHE (Mobile/Android FPS optimization)
+// Strictly safe when `document` is undefined (Node test environment).
+// ============================================================================
+const STAMP_CACHE_MAX = 96;
+const stampCache = new Map();
+
+function getCachedStamp(key, sizePx, painter) {
+  if (typeof document === "undefined") return null;
+  if (stampCache.has(key)) {
+    const hit = stampCache.get(key);
+    // Refresh LRU order
+    stampCache.delete(key);
+    stampCache.set(key, hit);
+    return hit;
+  }
+  try {
+    const dim = Math.max(16, Math.min(256, Math.round(sizePx)));
+    const canvas = document.createElement("canvas");
+    canvas.width = dim;
+    canvas.height = dim;
+    const c2d = canvas.getContext("2d");
+    if (!c2d) return null;
+    painter(c2d, dim);
+    if (stampCache.size >= STAMP_CACHE_MAX) {
+      const oldestKey = stampCache.keys().next().value;
+      if (oldestKey !== undefined) stampCache.delete(oldestKey);
+    }
+    stampCache.set(key, canvas);
+    return canvas;
+  } catch {
+    return null;
+  }
+}
+
+export function drawCachedGlowPool(ctx, x, y, radius, color, alpha = 0.25, tiltY = 0.68, isMono = false) {
+  const rad = safeRadius(radius, 4);
+  const a = clamp(safeNum(alpha, 0.25), 0, 0.85);
+  if (a <= 0.01) return;
+  const col = isMono ? "#CBD5E1" : (color || "#38BDF8");
+  const cx = safeNum(x, 0);
+  const cy = safeNum(y, 0);
+  const ty = clamp(safeNum(tiltY, 0.68), 0.35, 1.15);
+
+  // Quantize radius into 4 buckets for high cache hit-rate on Android
+  const bucket = rad < 36 ? 64 : rad < 72 ? 96 : rad < 120 ? 128 : 160;
+  const stamp = typeof ctx.drawImage === "function"
+    ? getCachedStamp(`glow:${col}:${bucket}`, bucket, (sCtx, dim) => {
+        const half = dim * 0.5;
+        const g = sCtx.createRadialGradient(half, half, 0, half, half, half);
+        g.addColorStop(0, colorWithAlpha(col, 0.85));
+        g.addColorStop(0.42, colorWithAlpha(col, 0.34));
+        g.addColorStop(0.78, colorWithAlpha(col, 0.09));
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        sCtx.fillStyle = g;
+        sCtx.beginPath();
+        sCtx.arc(half, half, half, 0, Math.PI * 2);
+        sCtx.fill();
+      })
+    : null;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, ty);
+  ctx.globalAlpha *= a;
+  if (stamp) {
+    ctx.drawImage(stamp, -rad, -rad, rad * 2, rad * 2);
+  } else {
+    const g = ctx.createRadialGradient(0, 0, rad * 0.05, 0, 0, rad);
+    g.addColorStop(0, colorWithAlpha(col, 0.85));
+    g.addColorStop(0.45, colorWithAlpha(col, 0.32));
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+export function drawGroundLightPool(ctx, opts = {}) {
+  const x = safeNum(opts.x, 0);
+  const y = safeNum(opts.y, 0);
+  const radius = safeRadius(opts.radius, 36);
+  const tiltY = clamp(safeNum(opts.tiltY, 0.68), 0.35, 1.05);
+  const isMono = Boolean(opts.isMono);
+  const alpha = clamp(safeNum(opts.alpha, 0.34), 0, 0.72);
+  if (alpha <= 0.01) return;
+  const col = opts.color || "#38BDF8";
+  const sec = opts.secondaryColor || col;
+
+  // Soft outer ambient pool + crisp inner focal bounce
+  drawCachedGlowPool(ctx, x, y, radius, col, alpha * 0.65, tiltY, isMono);
+  drawCachedGlowPool(ctx, x, y, radius * 0.56, sec, alpha * 0.55, tiltY, isMono);
+}
+
+export function drawStage4DissipationOverlay(ctx, opts = {}) {
+  const radius = safeRadius(opts.radius, 36);
+  const f = clamp(safeNum(opts.progress, 0.5), 0, 1);
+  const seed = safeNum(opts.seed, 1);
+  const isMono = Boolean(opts.isMono);
+  const primary = isMono ? "#CBD5E1" : (opts.primary || "#F97316");
+  const secondary = isMono ? "#F8FAFC" : (opts.secondary || "#FDE047");
+  const count = Math.max(2, Math.min(8, Math.floor(safeNum(opts.count, 5))));
+  const kind = opts.kind || "ember"; // ember | frost | spore | void | spark
+
+  // Peak atmospheric drift during cooling phase (0.18..0.85)
+  const driftEnv = f < 0.15 ? f / 0.15 : Math.pow(clamp((1 - f) / 0.85, 0, 1), 1.1);
+  if (driftEnv <= 0.02) return;
+
+  ctx.save();
+  for (let i = 0; i < count; i++) {
+    const frac = (i + 0.5) / count;
+    const a = seed * 1.7 + frac * Math.PI * 2 + f * (kind === "void" ? -1.1 : 0.9);
+    const dist = radius * (0.28 + ((i * 29) % 7) * 0.09);
+    const lift = f * radius * (kind === "frost" ? 0.14 : 0.42) + Math.sin(seed + i * 2.1) * 4;
+    const px = Math.cos(a) * dist;
+    const py = Math.sin(a) * dist * 0.68 - lift;
+    const sz = Math.max(1.2, radius * 0.055 * (1 - f * 0.55));
+    ctx.globalAlpha = driftEnv * (0.45 + (i % 2) * 0.25);
+
+    if (kind === "frost") {
+      ctx.fillStyle = i % 2 === 0 ? primary : secondary;
+      ctx.beginPath();
+      ctx.moveTo(px, py - sz * 1.3);
+      ctx.lineTo(px + sz, py);
+      ctx.lineTo(px, py + sz * 1.3);
+      ctx.lineTo(px - sz, py);
+      ctx.closePath();
+      ctx.fill();
+    } else if (kind === "spark") {
+      ctx.strokeStyle = i % 2 === 0 ? secondary : primary;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.moveTo(px - sz, py - sz * 0.5);
+      ctx.lineTo(px + sz, py + sz * 0.5);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = i % 2 === 0 ? secondary : primary;
+      ctx.beginPath();
+      ctx.arc(px, py, sz, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 /**
  * Draw a 3D multi-plane faceted shard (ice crystal, rock boulder, steel armor plate,
  * obsidian mirror glass, celestial prism, or crimson blood crystal).
@@ -292,9 +439,9 @@ export function drawVolumetricSmokeLobe(ctx, opts = {}) {
   const alpha = clamp(Math.min(0.24, rawAlpha), 0, 0.24);
   if (alpha <= 0.008) return;
 
-  const baseCol = isMono ? "#475569" : (opts.color || "#64748B");
-  const shadowCol = isMono ? "#1E293B" : (opts.shadowColor || "#334155");
-  const rimCol = isMono ? "#CBD5E1" : (opts.rimColor || "#94A3B8");
+  const baseCol = isMono ? "#475569" : (opts.color || opts.primary || "#64748B");
+  const shadowCol = isMono ? "#1E293B" : (opts.shadowColor || opts.shadow || "#334155");
+  const rimCol = isMono ? "#CBD5E1" : (opts.rimColor || opts.highlight || "#94A3B8");
   const swirl = lifeRatio * 2.4 + seed;
 
   ctx.save();
@@ -339,16 +486,20 @@ export function drawVolumetricSmokeLobe(ctx, opts = {}) {
 export function drawViscousDroplet(ctx, opts = {}) {
   const x = safeNum(opts.x, 0);
   const y = safeNum(opts.y, 0);
+  const hasEndVec = opts.vx !== undefined || opts.vy !== undefined;
   const vx = safeNum(opts.vx, 0);
   const vy = safeNum(opts.vy, 0);
-  const radius = safeRadius(opts.radius, 1.8);
+  const fallbackWidth = opts.width !== undefined ? safeRadius(opts.width, 2) * 0.55 : 2.2;
+  const radius = safeRadius(opts.radius, fallbackWidth);
   const isMono = Boolean(opts.isMono);
   const speed = Math.hypot(vx, vy);
-  const ang = speed > 6 ? Math.atan2(vy, vx) : safeNum(opts.rot, 0);
-  const stretch = speed > 18 ? clamp(1 + speed / 260, 1.05, 2.35) : 1.05;
+  const ang = hasEndVec && speed > 6 ? Math.atan2(vy, vx) : safeNum(opts.rot ?? opts.angle, 0);
+  const stretch = opts.length !== undefined
+    ? clamp(safeRadius(opts.length, 6) / Math.max(2, radius * 1.45), 1.05, 3.2)
+    : speed > 18 ? clamp(1 + speed / 260, 1.05, 2.35) : 1.05;
 
-  const bodyCol = isMono ? "#0F172A" : (opts.color || "#991B1B");
-  const rimCol = isMono ? "#E2E8F0" : (opts.rimColor || "#FCA5A5");
+  const bodyCol = isMono ? "#0F172A" : (opts.color || opts.primary || "#991B1B");
+  const rimCol = isMono ? "#E2E8F0" : (opts.rimColor || opts.highlight || "#FCA5A5");
 
   ctx.save();
   ctx.translate(x, y);
@@ -379,14 +530,19 @@ export function drawViscousDroplet(ctx, opts = {}) {
  * Draw an aerodynamic tapered wind stream S-ribbon with vacuum shadow crease + bright slipstream core.
  */
 export function drawWindStreamRibbon(ctx, opts = {}) {
-  const x = safeNum(opts.x, 0);
-  const y = safeNum(opts.y, 0);
-  const angle = safeNum(opts.angle, 0);
-  const length = safeRadius(opts.length, 24);
+  const hasEndpoints = opts.x1 !== undefined && opts.x2 !== undefined;
+  const x1 = safeNum(opts.x1, 0);
+  const y1 = safeNum(opts.y1, 0);
+  const x2 = safeNum(opts.x2, 24);
+  const y2 = safeNum(opts.y2, 0);
+  const x = hasEndpoints ? (x1 + x2) * 0.5 : safeNum(opts.x, 0);
+  const y = hasEndpoints ? (y1 + y2) * 0.5 : safeNum(opts.y, 0);
+  const angle = hasEndpoints ? Math.atan2(y2 - y1, x2 - x1) : safeNum(opts.angle, 0);
+  const length = hasEndpoints ? safeRadius(Math.hypot(x2 - x1, y2 - y1), 10) : safeRadius(opts.length, 24);
   const width = safeRadius(opts.width, 6);
-  const phase = safeNum(opts.phase, 0);
+  const phase = safeNum(opts.phase !== undefined ? opts.phase : opts.twist, 0);
   const isMono = Boolean(opts.isMono);
-  const pal = resolvePalette(opts.color || "#34D399", opts.coreColor || "#ECFDF5", "#064E3B", "#6EE7B7", isMono);
+  const pal = resolvePalette(opts.color || opts.primary || "#34D399", opts.coreColor || opts.highlight || "#ECFDF5", "#064E3B", "#6EE7B7", isMono);
 
   ctx.save();
   ctx.translate(x, y);
@@ -523,10 +679,10 @@ export function drawPerspectiveZoneBase(ctx, opts = {}) {
   const y = safeNum(opts.y, 0);
   const radius = safeRadius(opts.radius, 24);
   const tiltY = clamp(safeNum(opts.tiltY, 0.86), 0.45, 1.0);
-  const rot = safeNum(opts.rot, 0);
+  const rot = safeNum(opts.rot !== undefined ? opts.rot : (opts.pulse !== undefined ? opts.pulse * 1.4 : 0), 0);
   const primary = opts.isMono ? "#E2E8F0" : (opts.primary || "#38BDF8");
-  const secondary = opts.isMono ? "#94A3B8" : (opts.secondary || "#0284C7");
-  const darkRim = opts.isMono ? "#0F172A" : (opts.darkRim || "#020617");
+  const secondary = opts.isMono ? "#94A3B8" : (opts.secondary || opts.rim || "#0284C7");
+  const darkRim = opts.isMono ? "#0F172A" : (opts.darkRim || opts.shadow || "#020617");
   const segments = Math.max(3, Math.min(8, Math.floor(safeNum(opts.segments, 4))));
 
   ctx.save();
@@ -597,9 +753,11 @@ export function drawPerspectiveZoneBase(ctx, opts = {}) {
 export function drawSculptedBladeSlash(ctx, opts = {}) {
   const x = safeNum(opts.x, 0);
   const y = safeNum(opts.y, 0);
-  const angle = safeNum(opts.angle, 0);
+  const hasStartEnd = opts.startAngle !== undefined && opts.endAngle !== undefined;
+  const angle = hasStartEnd ? (safeNum(opts.startAngle, -1) + safeNum(opts.endAngle, 1)) * 0.5 : safeNum(opts.angle, 0);
   const radius = safeRadius(opts.radius, 36);
-  const spread = clamp(safeNum(opts.spread, 2.2), 0.35, Math.PI * 1.92);
+  const rawSpread = hasStartEnd ? Math.abs(safeNum(opts.endAngle, 1) - safeNum(opts.startAngle, -1)) : safeNum(opts.spread, 2.2);
+  const spread = clamp(rawSpread, 0.35, Math.PI * 1.92);
   const p = clamp(safeNum(opts.progress, 0.35), 0, 1);
   const style = opts.style || "steel";
   const isMono = Boolean(opts.isMono);
@@ -1183,9 +1341,9 @@ export function drawArcaneMagicCircle(ctx, opts = {}) {
   const tiltY = clamp(safeNum(opts.tiltY, 0.72), 0.42, 1.0);
   const rot = safeNum(opts.rot, 0);
   const sides = Math.max(3, Math.min(8, Math.floor(safeNum(opts.sides, 6))));
-  const starMode = opts.starMode !== false;
+  const starMode = opts.starMode !== undefined ? opts.starMode !== false : opts.star !== false;
   const isMono = Boolean(opts.isMono);
-  const pal = resolvePalette(opts.primary || "#38BDF8", opts.highlight || "#FFFFFF", opts.darkRim || "#020617", opts.rim || "#BAE6FD", isMono);
+  const pal = resolvePalette(opts.primary || "#38BDF8", opts.highlight || "#FFFFFF", opts.darkRim || opts.shadow || "#020617", opts.rim || "#BAE6FD", isMono);
 
   ctx.save();
   ctx.translate(x, y);
