@@ -219,6 +219,30 @@ import {
   computeKhairSniperZoom,
   computeKhairC2Damage,
   computeKhairSniperHeal,
+  UYEN_PASSIVE_CDR_RATE,
+  UYEN_DEATH_SAVE_CD,
+  UYEN_DEATH_SAVE_HP_FLOOR,
+  UYEN_C1_RETURN_REFUND_CAP,
+  UYEN_C2_MAX_CHARGE,
+  computeUyenCooldownTickRate,
+  evaluateUyenDeathSave,
+  computeUyenBoomerangStats,
+  computeUyenDomeBurst,
+  HAU_VITAL_BURST_MS_BONUS,
+  HAU_C2_PARRY_STUN_SEC,
+  normalizeAngleDiff,
+  isHitOnVitalFlank,
+  rotateHauVitalAngle,
+  computeHauVitalShatter,
+  evaluateHauC1HookOutcome,
+  evaluateHauParryRiposte,
+  LAM_SEAL_ORDER,
+  LAM_ANCHOR_LINK_RANGE,
+  LAM_SCROLL_CDR_HASTE,
+  cycleLamSeal,
+  evaluateLamSealReaction,
+  computeLamAnchorLinkPairs,
+  computeLamRefractedShardDamage,
 } from './combatLogic.ts';
 import {
   DAILY_CHECKIN_REWARD,
@@ -891,15 +915,15 @@ test('Tai Du drone cycling, Luan portal boost, item parry/reflect, and Danh Drag
   assert.equal(dragonOn.transformsC1C2ToFireBreath, true);
 });
 
-test('Upgraded Arena Hero roster (23 standard + 1 secret Founder = 24 heroes) and 220-item catalog satisfy exact design specs', async () => {
+test('Upgraded Arena Hero roster (26 standard + 1 secret Founder = 27 heroes) and 220-item catalog satisfy exact design specs', async () => {
   const { Mi, zr, Ff } = await import('./gameData.js');
   const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
 
-  assert.equal(Mi.length, 24, 'Must preserve all 23 standard heroes + secret Founder hero Thien');
-  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 23, 'Standard unlocked roster must be 23 heroes');
+  assert.equal(Mi.length, 27, 'Must preserve all 26 standard heroes + secret Founder hero Thien');
+  assert.equal(Mi.filter((h: any) => !h.isSecretFounder).length, 26, 'Standard unlocked roster must be 26 heroes');
   const heroIds = new Set(Mi.map((h: any) => h.id));
-  assert.equal(heroIds.size, 24);
-  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'bach', 'thai', 'khair', 'thien']) {
+  assert.equal(heroIds.size, 27);
+  for (const id of ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'duccong', 'gau', 'bao', 'danh', 'luan', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'bach', 'thai', 'khair', 'uyen', 'hau', 'lam', 'thien']) {
     assert.ok(heroIds.has(id), `Missing hero ${id}`);
   }
 
@@ -1775,9 +1799,9 @@ test('Waves 15-27 upgraded bosses render bodies/weapons safely across phases/ani
   }
 });
 
-test('MOBA hero role classification & filtering covers all 24 champions accurately', async () => {
+test('MOBA hero role classification & filtering covers all 27 champions accurately', async () => {
   const { Mi } = await import('./gameData.js');
-  assert.equal(Mi.length, 24);
+  assert.equal(Mi.length, 27);
   assert.deepEqual(HERO_ROLE_ORDER, ['all', 'fighter', 'assassin', 'marksman', 'mage', 'tank']);
 
   const allFiltered = filterHeroesByRole(Mi, 'all');
@@ -1802,7 +1826,7 @@ test('SoundEngine lobby, UI, combat SFX & music modes execute cleanly with and w
   const prevWindow = (globalThis as any).window;
 
   const invokeAllSounds = () => {
-    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'bach', 'thai', 'khair', 'thien'];
+    const heroIds = ['dung', 'tin', 'kin', 'trung', 'eohyen', 'longhoi', 'gau', 'duccong', 'bao', 'luan', 'danh', 'taidu', 'nguyen', 'duy', 'phong', 'dang', 'thanh', 'nhi', 'minh', 'ducanh', 'bach', 'thai', 'khair', 'uyen', 'hau', 'lam', 'thien'];
     for (const id of heroIds) {
       R.lastCooldowns.clear();
       R.playHeroSelect(id);
@@ -4567,7 +4591,7 @@ test('Cổ Thành Huyết Táng interactive Easter eggs (Tin, Bảo, and Combine
   assert.equal(doneTarget, null);
 });
 
-test('Dark Fantasy lore covers all 24 heroes, all 9 bosses, and Citadel dossier summaries cleanly', async () => {
+test('Dark Fantasy lore covers all 27 heroes, all 9 bosses, and Citadel dossier summaries cleanly', async () => {
   const { Mi, hm } = await import('./gameData.js');
 
   assert.ok(CHRONICLE_CHAPTERS.length >= 3);
@@ -4576,7 +4600,7 @@ test('Dark Fantasy lore covers all 24 heroes, all 9 bosses, and Citadel dossier 
     assert.ok(ch.paragraphs.vi.length >= 2 && ch.paragraphs.en.length >= 2);
   }
 
-  assert.equal(Mi.length, 24);
+  assert.equal(Mi.length, 27);
   for (const hero of Mi) {
     const entry = HERO_CHRONICLES[hero.id];
     assert.ok(entry, `Missing HERO_CHRONICLES entry for ${hero.id}`);
@@ -8415,7 +8439,7 @@ test('Runtime & VFX end-to-end: Bách, Thái, và Khải thực thi đầy đủ
   }
 });
 
-test('Full visual upgrade smoke test: all 24 circular heroes, 14 monster kinds, 5 void variants, mini-bosses, Wave 3-27 bosses, and map bosses render cleanly with zero shadowBlur', async () => {
+test('Full visual upgrade smoke test: all 27 circular heroes, 14 monster kinds, 5 void variants, mini-bosses, Wave 3-27 bosses, and map bosses render cleanly with zero shadowBlur', async () => {
   const { Mi } = await import('./gameData.js');
   const { GameEngine } = await import('./GameEngine.js');
   const {
@@ -8458,7 +8482,7 @@ test('Full visual upgrade smoke test: all 24 circular heroes, 14 monster kinds, 
     createLinearGradient: () => ({ addColorStop() {} }),
   };
 
-  assert.equal(Mi.length, 24, 'Expected 24 heroes');
+  assert.equal(Mi.length, 27, 'Expected 27 heroes');
   for (const hero of Mi) {
     for (const isUlt of [false, true]) {
       for (const isMono of [false, true]) {
@@ -8846,6 +8870,8 @@ test('All dedicated world skill renderers and inline zone VFX render cleanly in 
     'luan_orb', 'luan_shard', 'taidu_rail', 'bach_gale_blade', 'bach_dagger',
     'thai_arena_wave', 'khair_bullet', 'khair_c2_sniper', 'khair_c3_shell',
     'dang_tiger_wave', 'thanh_c1_snake', 'nhi_c2_flask', 'nhi_c3_arrow',
+    'uyen_note', 'uyen_boomerang', 'hau_chain',
+    'lam_ink_bolt', 'lam_pincer_left', 'lam_pincer_right', 'lam_star_shard',
   ];
   for (const kind of skillProjKinds) {
     for (const isMono of [false, true]) {
@@ -9152,7 +9178,7 @@ test('Ultimate VFX overhaul helpers (wind ribbons, afterimages, warp rings, ulti
   assert.equal(shadowBlurWrites, 0, 'Ultimate VFX helpers must never write non-zero shadowBlur');
 });
 
-test('GameEngine VFX pooling, performance tier caps, finisher bursts, remote VFX sync, and all 24 heroes C3 ultimate sequences work without errors', async () => {
+test('GameEngine VFX pooling, performance tier caps, finisher bursts, remote VFX sync, and all 27 heroes C3 ultimate sequences work without errors', async () => {
   const { Mi } = await import('./gameData.js');
   const { GameEngine } = await import('./GameEngine.js');
 
@@ -9268,8 +9294,8 @@ test('GameEngine VFX pooling, performance tier caps, finisher bursts, remote VFX
     assert.equal(engine.ultimateSequences.length, 1, 'applyRemoteVfx should handle ult_seq');
     assert.ok(engine.impactBursts.some((b: any) => b.tier === 'finisher'), 'applyRemoteVfx should handle impact_tier');
 
-    // 5. Cast C1, C2, C3 (+ C4 for thien) across ALL 24 heroes and render in color + monochrome
-    assert.equal(Mi.length, 24, 'Expected 24 heroes in roster');
+    // 5. Cast C1, C2, C3 (+ C4 for thien) across ALL 27 heroes and render in color + monochrome
+    assert.equal(Mi.length, 27, 'Expected 27 heroes in roster');
     for (const hero of Mi) {
       const heroEngine: any = new GameEngine({
         width: 1280,
@@ -9317,14 +9343,14 @@ test('GameEngine VFX pooling, performance tier caps, finisher bursts, remote VFX
     (globalThis as any).cancelAnimationFrame = prevCaf;
   }
 
-  assert.equal(shadowBlurWrites, 0, 'GameEngine VFX overhaul must have zero shadowBlur writes across all 24 heroes');
+  assert.equal(shadowBlurWrites, 0, 'GameEngine VFX overhaul must have zero shadowBlur writes across all 27 heroes');
 });
 
-test('PROJECT VFX REBIRTH: All 24 heroes bespoke drawUltimateSequence, drawHeroPassiveAura & drawEnemyStatusVfx execute cleanly with zero shadowBlur', async () => {
+test('PROJECT VFX REBIRTH: All 27 heroes bespoke drawUltimateSequence, drawHeroPassiveAura & drawEnemyStatusVfx execute cleanly with zero shadowBlur', async () => {
   const { Mi } = await import('./gameData.js');
   const wr: any = await import('./weaponRenderer.js');
 
-  assert.equal(Mi.length, 24);
+  assert.equal(Mi.length, 27);
   let shadowBlurWrites = 0;
   let drawCountsByHero: Record<string, number> = {};
   let activeOps = 0;
@@ -9829,7 +9855,7 @@ test('PHASE 2 ULTIMATE SCULPTED MOBA VFX: arcane circles, vortex pillars, impact
   assert.equal(setLineDashCalls, 0, 'Ultimate MOBA VFX & GameEngine render must never call setLineDash');
 });
 
-test('WEAPON ARCHETYPES, ENLARGED/SYNCED WEAPONS & DANH TRUE DRAGON TRANSFORMATION: zero shadowBlur, zero setLineDash & finite geometry across all 24 heroes', async () => {
+test('WEAPON ARCHETYPES, ENLARGED/SYNCED WEAPONS & DANH TRUE DRAGON TRANSFORMATION: zero shadowBlur, zero setLineDash & finite geometry across all 27 heroes', async () => {
   const wr: any = await import('./weaponRenderer.js');
   const { Mi } = await import('./gameData.js');
   const { GameEngine } = await import('./GameEngine.js');
@@ -9898,7 +9924,7 @@ test('WEAPON ARCHETYPES, ENLARGED/SYNCED WEAPONS & DANH TRUE DRAGON TRANSFORMATI
     createLinearGradient: () => ({ addColorStop() {} }),
   };
 
-  // 1. All 24 heroes drawHeroWeapon during active attack swing/thrust/punch/shot
+  // 1. All 27 heroes drawHeroWeapon during active attack swing/thrust/punch/shot
   for (const hero of Mi) {
     for (const isMono of [false, true]) {
       for (const parity of [1, -1]) {
@@ -10371,5 +10397,334 @@ test('Classic Sanctum Colosseum renderer, refined blade slash gradients, and upg
   assert.equal(shadowBlurWrites, 0, 'Must never set non-zero shadowBlur');
   assert.equal(setLineDashCalls, 0, 'Must never call setLineDash');
 });
+
+test('UYÊN, HẬU, LÂM: pure combat mechanics, world renderers, status VFX, and GameEngine runtime kit work cleanly', async () => {
+  const { Mi } = await import('./gameData.js');
+  const { GameEngine } = await import('./GameEngine.js');
+  const { HERO_SKILL_ICONS } = await import('./skillIcons.js');
+  const wr: any = await import('./weaponRenderer.js');
+
+  // 1. Roster, role mapping & skill icons
+  for (const [id, expectedRole] of [
+    ['uyen', 'tank'],
+    ['hau', 'assassin'],
+    ['lam', 'mage'],
+  ] as const) {
+    const hero = Mi.find((h: any) => h.id === id);
+    assert.ok(hero, `Hero ${id} must exist in Mi`);
+    assert.equal(getHeroRoleKey(id), expectedRole);
+    assert.ok(
+      HERO_SKILL_ICONS[id]?.atk &&
+        HERO_SKILL_ICONS[id]?.passive &&
+        HERO_SKILL_ICONS[id]?.c1 &&
+        HERO_SKILL_ICONS[id]?.c2 &&
+        HERO_SKILL_ICONS[id]?.c3,
+      `Missing skill icons for ${id}`,
+    );
+  }
+
+  // 2. Uyên pure combatLogic
+  assert.equal(computeUyenCooldownTickRate({ tethered: false, symphonyActive: false }), 1);
+  assert.equal(computeUyenCooldownTickRate({ tethered: true, symphonyActive: false }), UYEN_PASSIVE_CDR_RATE);
+  assert.ok(computeUyenCooldownTickRate({ tethered: true, symphonyActive: true }) > UYEN_PASSIVE_CDR_RATE);
+
+  const nonLethalSave = evaluateUyenDeathSave({ currentHp: 800, incomingDamage: 200, maxHp: 1220, deathSaveCd: 0 });
+  assert.equal(nonLethalSave.triggered, false);
+
+  const lethalOnCd = evaluateUyenDeathSave({ currentHp: 100, incomingDamage: 500, maxHp: 1220, deathSaveCd: 15, symphonyActive: false });
+  assert.equal(lethalOnCd.triggered, false);
+
+  const lethalReady = evaluateUyenDeathSave({ currentHp: 100, incomingDamage: 500, maxHp: 1220, deathSaveCd: 0, symphonyActive: false });
+  assert.equal(lethalReady.triggered, true);
+  assert.equal(lethalReady.survivingHp, Math.round(1220 * UYEN_DEATH_SAVE_HP_FLOOR));
+  assert.ok(lethalReady.healAmt > 0 && lethalReady.shieldAmt > 0);
+  assert.equal(lethalReady.nextCd, UYEN_DEATH_SAVE_CD);
+
+  const lethalSymphonyOverride = evaluateUyenDeathSave({ currentHp: 100, incomingDamage: 500, maxHp: 1220, deathSaveCd: 20, symphonyActive: true });
+  assert.equal(lethalSymphonyOverride.triggered, true);
+
+  const boomOut = computeUyenBoomerangStats({ atk: 30, ap: 60, isReturn: false, returnHitCount: 3 });
+  assert.equal(boomOut.cdrRefundSec, 0);
+  const boomRet = computeUyenBoomerangStats({ atk: 30, ap: 60, isReturn: true, returnHitCount: 99 });
+  assert.equal(boomRet.cdrRefundSec, UYEN_C1_RETURN_REFUND_CAP);
+  assert.ok(boomRet.damage > boomOut.damage);
+
+  const domeZero = computeUyenDomeBurst({ ap: 60, atk: 30, maxHp: 1200, interceptCharge: 0 });
+  const domeMax = computeUyenDomeBurst({ ap: 60, atk: 30, maxHp: 1200, interceptCharge: UYEN_C2_MAX_CHARGE + 4 });
+  assert.equal(domeMax.chargeUsed, UYEN_C2_MAX_CHARGE);
+  assert.ok(domeMax.burstDmg > domeZero.burstDmg && domeMax.healAmt > domeZero.healAmt && domeMax.shieldAmt > domeZero.shieldAmt);
+
+  // 3. Hậu pure combatLogic
+  assert.ok(Math.abs(normalizeAngleDiff(0, Math.PI * 2)) < 1e-6);
+  assert.equal(
+    isHitOnVitalFlank({ attackerX: 200, attackerY: 100, targetX: 100, targetY: 100, vitalAngle: 0 }),
+    true,
+  );
+  assert.equal(
+    isHitOnVitalFlank({ attackerX: 0, attackerY: 100, targetX: 100, targetY: 100, vitalAngle: 0 }),
+    false,
+  );
+  assert.equal(
+    isHitOnVitalFlank({ attackerX: 0, attackerY: 100, targetX: 100, targetY: 100, vitalAngle: 0, allVitalsOpen: true }),
+    true,
+  );
+  assert.ok(Math.abs(rotateHauVitalAngle(0, 1) - Math.PI / 2) < 0.01);
+
+  const shatterNormal = computeHauVitalShatter({ atk: 70, targetMaxHp: 1200, playerMaxHp: 1000, isBoss: false, isUltActive: false });
+  const shatterUlt = computeHauVitalShatter({ atk: 70, targetMaxHp: 1200, playerMaxHp: 1000, isBoss: false, isUltActive: true });
+  assert.ok(shatterUlt.trueBleedDmg >= shatterNormal.trueBleedDmg && shatterUlt.healAmt > shatterNormal.healAmt);
+
+  const hookBoss = evaluateHauC1HookOutcome({ isBossOrMini: true, targetX: 400, targetY: 300, vitalAngle: 0, playerX: 100, playerY: 300 });
+  assert.equal(hookBoss.mode, 'grapple_to_vital');
+  assert.ok(hookBoss.destX > 400);
+
+  const hookMob = evaluateHauC1HookOutcome({ isBossOrMini: false, targetX: 400, targetY: 300, vitalAngle: 0, playerX: 100, playerY: 300 });
+  assert.equal(hookMob.mode, 'yank_mob');
+  assert.ok(hookMob.destX < 400);
+
+  const parryStruck = evaluateHauParryRiposte({ atk: 80, maxHp: 1000, wasStruckDuringParry: true });
+  const parryDry = evaluateHauParryRiposte({ atk: 80, maxHp: 1000, wasStruckDuringParry: false });
+  assert.equal(parryStruck.resetC1Cooldown, true);
+  assert.equal(parryStruck.stunDur, HAU_C2_PARRY_STUN_SEC);
+  assert.equal(parryDry.resetC1Cooldown, false);
+  assert.ok(parryStruck.damage > parryDry.damage);
+  assert.ok(HAU_VITAL_BURST_MS_BONUS > 0);
+
+  // 4. Lâm pure combatLogic
+  assert.deepEqual(LAM_SEAL_ORDER, ['hoa', 'loi', 'huyen']);
+  assert.equal(cycleLamSeal('hoa'), 'loi');
+  assert.equal(cycleLamSeal('loi'), 'huyen');
+  assert.equal(cycleLamSeal('huyen'), 'hoa');
+
+  const sameSeal = evaluateLamSealReaction({ existingSeal: 'hoa', incomingSeal: 'hoa', ap: 80, targetMaxHp: 1000, playerMaxHp: 900 });
+  assert.equal(sameSeal.triggered, false);
+
+  const overload = evaluateLamSealReaction({ existingSeal: 'hoa', incomingSeal: 'loi', ap: 80, targetMaxHp: 1000, playerMaxHp: 900 });
+  assert.equal(overload.triggered, true);
+  assert.equal(overload.reactionKind, 'overload_blast');
+
+  const thunderWeb = evaluateLamSealReaction({ existingSeal: 'loi', incomingSeal: 'huyen', ap: 80, targetMaxHp: 1000, playerMaxHp: 900 });
+  assert.equal(thunderWeb.triggered, true);
+  assert.equal(thunderWeb.reactionKind, 'thunder_web');
+  assert.equal(thunderWeb.chainCount, 5);
+
+  const soulScorch = evaluateLamSealReaction({ existingSeal: 'huyen', incomingSeal: 'hoa', ap: 80, targetMaxHp: 1000, playerMaxHp: 900 });
+  assert.equal(soulScorch.triggered, true);
+  assert.equal(soulScorch.reactionKind, 'soul_scorch');
+  assert.ok(soulScorch.healAmt > overload.healAmt);
+
+  const pairs = computeLamAnchorLinkPairs(
+    [
+      { id: 1, x: 0, y: 0 },
+      { id: 2, x: 200, y: 0 },
+      { id: 3, x: LAM_ANCHOR_LINK_RANGE + 300, y: 0 },
+    ],
+    LAM_ANCHOR_LINK_RANGE,
+  );
+  assert.equal(pairs.length, 1);
+  assert.equal(pairs[0].a.id, 1);
+  assert.equal(pairs[0].b.id, 2);
+  assert.ok(computeLamRefractedShardDamage({ ap: 80, baseProjDmg: 60 }) > 0);
+  assert.ok(LAM_SCROLL_CDR_HASTE > 1);
+
+  // 5. Strict Canvas checks for world renderers & status VFX
+  let shadowBlurWrites = 0;
+  let setLineDashCalls = 0;
+  let drawOps = 0;
+  const assertNum = (v: number, label: string) => {
+    assert.ok(Number.isFinite(v), `${label} must be finite, got ${v}`);
+  };
+  const ctxStub: any = {
+    canvas: { width: 1280, height: 720 },
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    fillStyle: '#fff',
+    strokeStyle: '#fff',
+    lineWidth: 1,
+    lineCap: 'round',
+    lineJoin: 'round',
+    font: '12px sans-serif',
+    textAlign: 'left',
+    set shadowBlur(v: number) { if (v > 0) shadowBlurWrites++; },
+    get shadowBlur() { return 0; },
+    save() {}, restore() {},
+    translate(x: number, y: number) { assertNum(x, 'tx'); assertNum(y, 'ty'); },
+    rotate(a: number) { assertNum(a, 'rot'); },
+    scale(x: number, y: number) { assertNum(x, 'sx'); assertNum(y, 'sy'); },
+    beginPath() {}, closePath() {},
+    moveTo(x: number, y: number) { assertNum(x, 'mx'); assertNum(y, 'my'); drawOps++; },
+    lineTo(x: number, y: number) { assertNum(x, 'lx'); assertNum(y, 'ly'); drawOps++; },
+    quadraticCurveTo(cx: number, cy: number, x: number, y: number) { assertNum(cx, 'qcx'); assertNum(cy, 'qcy'); assertNum(x, 'qx'); assertNum(y, 'qy'); drawOps++; },
+    bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) { assertNum(c1x, 'b1'); assertNum(c1y, 'b2'); assertNum(c2x, 'b3'); assertNum(c2y, 'b4'); assertNum(x, 'b5'); assertNum(y, 'b6'); drawOps++; },
+    arc(x: number, y: number, r: number, s: number, e: number) {
+      assertNum(x, 'ax'); assertNum(y, 'ay'); assertNum(s, 'as'); assertNum(e, 'ae');
+      assert.ok(Number.isFinite(r) && r >= 0.25, `arc.r >= 0.25, got ${r}`);
+      drawOps++;
+    },
+    ellipse(x: number, y: number, rx: number, ry: number, rot: number, s: number, e: number) {
+      assertNum(x, 'ex'); assertNum(y, 'ey'); assertNum(rot, 'er'); assertNum(s, 'es'); assertNum(e, 'ee');
+      assert.ok(Number.isFinite(rx) && rx >= 0.25 && Number.isFinite(ry) && ry >= 0.25, `ellipse radii >= 0.25, got ${rx},${ry}`);
+      drawOps++;
+    },
+    rect(x: number, y: number, w: number, h: number) { assertNum(x, 'rx'); assertNum(y, 'ry'); assertNum(w, 'rw'); assertNum(h, 'rh'); drawOps++; },
+    roundRect(x: number, y: number, w: number, h: number) { assertNum(x, 'rrx'); assertNum(y, 'rry'); assertNum(w, 'rrw'); assertNum(h, 'rrh'); drawOps++; },
+    fillRect(x: number, y: number, w: number, h: number) { assertNum(x, 'frx'); assertNum(y, 'fry'); assertNum(w, 'frw'); assertNum(h, 'frh'); drawOps++; },
+    strokeRect(x: number, y: number, w: number, h: number) { assertNum(x, 'srx'); assertNum(y, 'sry'); assertNum(w, 'srw'); assertNum(h, 'srh'); drawOps++; },
+    clearRect() {},
+    fill() { drawOps++; }, stroke() { drawOps++; }, clip() {}, setTransform() {},
+    setLineDash() { setLineDashCalls++; },
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 24 }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+  };
+
+  for (const isMono of [false, true]) {
+    wr.drawUyenWorldEffects(
+      ctxStub,
+      {
+        player: {
+          heroId: 'uyen',
+          x: 400,
+          y: 360,
+          uyen_domeTimer: 2.5,
+          uyen_domeRadius: 175,
+          uyen_domeCharge: 3,
+          uyen_c3Timer: 3.0,
+          uyen_c3Radius: 260,
+        },
+        remotePlayers: new Map([['ally1', { x: 460, y: 380, hp: 400, maxHp: 1000, isDowned: false }]]),
+      },
+      2.4,
+      isMono,
+    );
+    wr.drawHauWorldEffects(
+      ctxStub,
+      {
+        hau_execZones: [{ x: 460, y: 360, radius: 195, life: 3.0, maxLife: 6.0 }],
+      },
+      2.4,
+      isMono,
+    );
+    wr.drawLamWorldEffects(
+      ctxStub,
+      {
+        lam_anchors: [
+          { id: 1, x: 350, y: 320, seal: 'hoa', life: 4.0, maxLife: 8.0 },
+          { id: 2, x: 520, y: 350, seal: 'loi', life: 4.5, maxLife: 8.0 },
+        ],
+        lam_baguaRings: [{ x: 440, y: 340, radius: 165, angle: 0.3, life: 2.5, maxLife: 5.0 }],
+        lam_scrollDomains: [{ x: 450, y: 350, radius: 250, life: 3.0, maxLife: 5.0 }],
+      },
+      2.4,
+      isMono,
+    );
+    for (const seal of ['hoa', 'loi', 'huyen'] as const) {
+      wr.drawEnemyStatusVfx(
+        ctxStub,
+        {
+          x: 420,
+          y: 260,
+          radius: 24,
+          uyen_discordTimer: 2.0,
+          hau_vitalAngle: 0.5,
+          hau_allVitalsOpen: true,
+          hau_vitalFlashTimer: 0.15,
+          lam_seal: seal,
+          lam_sealTimer: 4.0,
+        },
+        2.4,
+        isMono,
+        true,
+      );
+    }
+  }
+
+  assert.ok(drawOps > 200, `Expected substantial draw ops for Uyên/Hậu/Lâm renderers, got ${drawOps}`);
+  assert.equal(shadowBlurWrites, 0, 'Uyên/Hậu/Lâm renderers must never write shadowBlur > 0');
+  assert.equal(setLineDashCalls, 0, 'Uyên/Hậu/Lâm renderers must never call setLineDash');
+
+  // 6. GameEngine runtime integration for Uyên, Hậu, Lâm
+  const prevWindow = (globalThis as any).window;
+  const prevLocalStorage = (globalThis as any).localStorage;
+  const prevRaf = (globalThis as any).requestAnimationFrame;
+  const prevCaf = (globalThis as any).cancelAnimationFrame;
+  (globalThis as any).window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { protocol: 'http:', host: 'localhost:3000', origin: 'http://localhost:3000' },
+  };
+  (globalThis as any).localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  (globalThis as any).requestAnimationFrame = () => 1;
+  (globalThis as any).cancelAnimationFrame = () => {};
+
+  try {
+    // Uyên C1 boomerang, C2 dome detonation recast, C3 symphony, Passive death save
+    const uyenEngine: any = new GameEngine({ width: 1280, height: 720, getBoundingClientRect: () => ({ width: 1280, height: 720 }), getContext: () => ctxStub });
+    uyenEngine.startNewGame(Mi.find((h: any) => h.id === 'uyen'));
+    const upx = uyenEngine.player.x;
+    const upy = uyenEngine.player.y;
+    uyenEngine.enemies = [{ id: 1, kind: 'brute', x: upx + 120, y: upy, vx: 0, vy: 0, radius: 22, hp: 3000, maxHp: 3000, speed: 90 }];
+    uyenEngine.triggerBasicAttack(0);
+    assert.ok(uyenEngine.projectiles.some((p: any) => p.kind === 'uyen_note'), 'Uyên basic attack emits uyen_note');
+    uyenEngine.player.cooldowns = [0, 0, 0];
+    uyenEngine.castSkill(0, 0, upx + 120, upy);
+    assert.ok(uyenEngine.projectiles.some((p: any) => p.kind === 'uyen_boomerang'), 'Uyên C1 emits uyen_boomerang');
+    uyenEngine.castSkill(1, 0, upx + 120, upy);
+    assert.ok(uyenEngine.player.uyen_domeTimer > 0, 'Uyên C2 activates dome');
+    uyenEngine.player.uyen_domeRecastLock = 0;
+    uyenEngine.castSkill(1, 0, upx + 120, upy);
+    assert.equal(uyenEngine.player.uyen_domeTimer, 0, 'Uyên C2 recast detonates dome early');
+    uyenEngine.castSkill(2, 0, upx + 120, upy);
+    assert.ok(uyenEngine.player.uyen_c3Timer > 0, 'Uyên C3 activates symphony');
+    uyenEngine.player.hp = 50;
+    uyenEngine.damagePlayer(99999);
+    assert.ok(uyenEngine.player.hp >= 1, 'Uyên passive death save prevents lethal hit');
+
+    // Hậu C1 chain, C2 parry recast, C3 exec zone & vital shatter
+    const hauEngine: any = new GameEngine({ width: 1280, height: 720, getBoundingClientRect: () => ({ width: 1280, height: 720 }), getContext: () => ctxStub });
+    hauEngine.startNewGame(Mi.find((h: any) => h.id === 'hau'));
+    const hpx = hauEngine.player.x;
+    const hpy = hauEngine.player.y;
+    hauEngine.enemies = [{ id: 2, kind: 'brute', x: hpx + 100, y: hpy, vx: 0, vy: 0, radius: 22, hp: 3000, maxHp: 3000, speed: 90, hau_vitalAngle: Math.PI }];
+    hauEngine.player.cooldowns = [0, 0, 0];
+    hauEngine.castSkill(0, 0, hpx + 100, hpy);
+    assert.ok(hauEngine.projectiles.some((p: any) => p.kind === 'hau_chain'), 'Hậu C1 fires hau_chain');
+    hauEngine.castSkill(1, 0, hpx + 100, hpy);
+    assert.ok(hauEngine.player.hau_parryTimer > 0, 'Hậu C2 enters parry stance');
+    hauEngine.damagePlayer(500);
+    assert.ok(hauEngine.player.hau_parryTriggered, 'Incoming damage during parry flags riposte counter');
+    hauEngine.castSkill(2, 0, hpx + 100, hpy);
+    assert.equal(hauEngine.hau_execZones.length, 1, 'Hậu C3 spawns execution zone');
+
+    // Lâm seal cycling, anchors, bagua ring, pentagram scroll
+    const lamEngine: any = new GameEngine({ width: 1280, height: 720, getBoundingClientRect: () => ({ width: 1280, height: 720 }), getContext: () => ctxStub });
+    lamEngine.startNewGame(Mi.find((h: any) => h.id === 'lam'));
+    const lpx = lamEngine.player.x;
+    const lpy = lamEngine.player.y;
+    lamEngine.enemies = [{ id: 3, kind: 'brute', x: lpx + 120, y: lpy, vx: 0, vy: 0, radius: 22, hp: 3000, maxHp: 3000, speed: 90 }];
+    const startSeal = lamEngine.player.lam_queuedSeal;
+    lamEngine.triggerBasicAttack(0);
+    assert.notEqual(lamEngine.player.lam_queuedSeal, startSeal, 'Lâm basic attack cycles active element seal');
+    assert.ok(lamEngine.projectiles.some((p: any) => p.kind === 'lam_ink_bolt'), 'Lâm basic attack emits lam_ink_bolt');
+    lamEngine.player.cooldowns = [0, 0, 0];
+    lamEngine.castSkill(0, 0, lpx + 120, lpy);
+    assert.ok(
+      lamEngine.projectiles.some((p: any) => p.kind === 'lam_pincer_left') &&
+        lamEngine.projectiles.some((p: any) => p.kind === 'lam_pincer_right'),
+      'Lâm C1 fires twin pincer brush strokes',
+    );
+    lamEngine.castSkill(1, 0, lpx + 140, lpy);
+    assert.equal(lamEngine.lam_baguaRings.length, 1, 'Lâm C2 deploys Bagua refraction mirror');
+    lamEngine.castSkill(2, 0, lpx + 140, lpy);
+    assert.equal(lamEngine.lam_scrollDomains.length, 1, 'Lâm C3 deploys 5-pillar pentagram scroll domain');
+  } finally {
+    (globalThis as any).window = prevWindow;
+    (globalThis as any).localStorage = prevLocalStorage;
+    (globalThis as any).requestAnimationFrame = prevRaf;
+    (globalThis as any).cancelAnimationFrame = prevCaf;
+  }
+});
+
 
 

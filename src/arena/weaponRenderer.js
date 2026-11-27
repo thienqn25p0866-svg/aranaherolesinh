@@ -1075,6 +1075,30 @@ export function drawUltimateSequence(ctx, seq, elapsedTime, isMono, enableAdditi
       }
       break;
     }
+
+    case "uyen": {
+      // Thiên Đàn Giao Hưởng — Jade-Gold Celestial Lyre Domain + Harmonic Light Pillars
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.94, alpha: domainAlpha * 0.86, primary: "#2DD4BF", highlight: "#FDE68A", shadow: "#0F3D3E", debrisShape: "petal", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.9, tiltY: 0.72, rot: elapsedTime * 0.85, sides: 6, starMode: true, primary: "#2DD4BF", highlight: "#FDE68A", darkRim: "#0F3D3E", rim: "#99F6E4", coreWash: "rgba(45, 212, 191, 0.2)", isMono });
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.34, height: r * 1.32, progress: f, phase: elapsedTime * 6, primary: "#2DD4BF", highlight: "#FDE68A", shadow: "#0F3D3E", rim: "#FDE68A", isMono });
+      break;
+    }
+
+    case "hau": {
+      // Tứ Tượng Đoạt Hồn Trận — 4-Quadrant Crimson-Steel Compass & Cross-Chain Sever
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.94, alpha: domainAlpha * 0.88, primary: "#E11D48", highlight: "#CBD5E1", shadow: "#4C0519", debrisShape: "shard", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.88, tiltY: 0.72, rot: baseAngle + elapsedTime * 1.1, sides: 4, starMode: true, primary: "#E11D48", highlight: "#FFF1F2", darkRim: "#4C0519", rim: "#CBD5E1", coreWash: "rgba(225, 29, 72, 0.22)", isMono });
+      drawSculptedBladeSlash(ctx, { x: 0, y: 0, angle: baseAngle, radius: r * 0.9, spread: 2.2, progress: slashProg, style: "blood_crystal", primary: "#E11D48", highlight: "#FFFFFF", shadow: "#4C0519", rim: "#CBD5E1", tiltY: 0.8, isMono });
+      break;
+    }
+
+    case "lam": {
+      // Ngũ Trụ Thiên Thư — 5-Pillar Celestial Calligraphy Scroll & Constellation Matrix
+      drawImpactCraterDecal(ctx, { x: 0, y: 0, radius: r * 0.94, alpha: domainAlpha * 0.86, primary: "#2563EB", highlight: "#FBBF24", shadow: "#172554", debrisShape: "paper", isMono });
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: r * 0.92, tiltY: 0.72, rot: -elapsedTime * 0.75, sides: 5, starMode: true, primary: "#2563EB", highlight: "#EFF6FF", darkRim: "#172554", rim: "#FBBF24", coreWash: "rgba(37, 99, 235, 0.2)", isMono });
+      drawEnergyVortexPillar(ctx, { x: 0, y: 0, radius: r * 0.32, height: r * 1.34, progress: f, phase: elapsedTime * 7, primary: "#2563EB", highlight: "#FBBF24", shadow: "#172554", rim: "#93C5FD", isMono });
+      break;
+    }
   }
 
   // Stage 1 awakening ring & Stage 5 dissipating faceted soul shards
@@ -3746,7 +3770,10 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
     ducanh: 1.54,
     bach: 1.50,
     thai: 1.58,
-    khair: 1.52
+    khair: 1.52,
+    uyen: 1.48,
+    hau: 1.54,
+    lam: 1.50
   };
   let sc = scaleMap[heroId] || 1.48;
   ctx.save();
@@ -3826,6 +3853,15 @@ export function drawHeroWeapon(ctx, heroId, p, elapsedTime, isMono) {
       break;
     case "khair":
       drawKhairRailSniper(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "uyen":
+      drawUyenCelestialHarp(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "hau":
+      drawHauChainSickles(ctx, p, elapsedTime, state, isMono);
+      break;
+    case "lam":
+      drawLamCalligraphyBrush(ctx, p, elapsedTime, state, isMono);
       break;
     default:
       break;
@@ -6007,6 +6043,94 @@ export function drawUpgradedProjectile(ctx, h, elapsedTime, isMono) {
     drawTaperedArc(ctx, -2, 0, 28, -1.08, 1.08, 10.5, "#38BDF8", "#FACC15", isMono);
     drawTaperedArc(ctx, 4, 0, 24, -0.88, 0.88, 5.4, "#FACC15", "#FFFFFF", isMono);
     drawFourPointStar(ctx, 22, 0, 8.2, 2.3, "#FFFFFF", isMono ? "#000000" : "#38BDF8");
+    return;
+  }
+
+  if (h.kind === "uyen_note") {
+    let pr = Math.max(4, h.radius || 9);
+    let col = isMono ? "#FFFFFF" : "#2DD4BF";
+    let gold = isMono ? "#CBD5E1" : "#FDE68A";
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-pr * 2.2, 0);
+    ctx.quadraticCurveTo(-pr, Math.sin(elapsedTime * 16) * 6, 0, 0);
+    ctx.stroke();
+    ctx.fillStyle = gold;
+    ctx.beginPath();
+    ctx.arc(0, 0, pr * 0.72, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, pr * 1.15, pr * 0.34, "#FFFFFF", col);
+    return;
+  }
+
+  if (h.kind === "uyen_boomerang") {
+    let spin = elapsedTime * 15;
+    let isRet = Boolean(h.uyenReturning);
+    ctx.save();
+    ctx.rotate(spin);
+    drawTaperedArc(ctx, 0, 0, 20, -1.35, 1.35, 7.2, isRet ? "#FDE68A" : "#2DD4BF", "#FFFFFF", isMono);
+    drawTaperedArc(ctx, 0, 0, 15, Math.PI - 1.2, Math.PI + 1.2, 5.2, "#5EEAD4", "#FDE68A", isMono);
+    drawFourPointStar(ctx, 0, 0, 9.5, 2.8, "#FFFFFF", isMono ? "#222222" : "#2DD4BF");
+    ctx.restore();
+    return;
+  }
+
+  if (h.kind === "hau_chain") {
+    ctx.strokeStyle = isMono ? "#CBD5E1" : "#CBD5E1";
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-28, 0);
+    ctx.lineTo(2, 0);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#E11D48";
+    ctx.strokeStyle = "#090D16";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.lineTo(-2, -9);
+    ctx.lineTo(3, 0);
+    ctx.lineTo(-2, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+
+  if (h.kind === "lam_ink_bolt" || h.kind === "lam_pincer_left" || h.kind === "lam_pincer_right") {
+    let seal = h.lamSeal || "hoa";
+    let sCol = isMono ? "#FFFFFF" : seal === "hoa" ? "#F97316" : seal === "loi" ? "#38BDF8" : "#A855F7";
+    let inkGrad = ctx.createLinearGradient(-32, 0, 12, 0);
+    inkGrad.addColorStop(0, "rgba(37, 99, 235, 0)");
+    inkGrad.addColorStop(0.6, isMono ? "rgba(255,255,255,0.6)" : "rgba(37, 99, 235, 0.78)");
+    inkGrad.addColorStop(1, sCol);
+    ctx.strokeStyle = inkGrad;
+    ctx.lineWidth = h.kind === "lam_ink_bolt" ? 7.5 : 10;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-30, 0);
+    ctx.lineTo(6, 0);
+    ctx.stroke();
+    drawFourPointStar(ctx, 8, 0, 9, 2.8, "#FFFFFF", sCol);
+    return;
+  }
+
+  if (h.kind === "lam_star_shard") {
+    let col = isMono ? "#FFFFFF" : h.color || "#FBBF24";
+    ctx.fillStyle = col;
+    ctx.strokeStyle = isMono ? "#111111" : "#2563EB";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(11, 0);
+    ctx.lineTo(-4, -5.5);
+    ctx.lineTo(-1, 0);
+    ctx.lineTo(-4, 5.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
     return;
   }
 
@@ -8345,6 +8469,9 @@ export function drawHeroBody(ctx, opts) {
     bachDashing = false,
     thaiInArena = false,
     khairAiming = false,
+    uyenActive = false,
+    hauParrying = false,
+    lamSeal = "hoa",
     attackAnimTimer = 0,
     weaponAttackDuration = 0.22,
     weaponSkillTimer = 0,
@@ -9478,6 +9605,65 @@ export function drawHeroBody(ctx, opts) {
       ctx.fill();
       ctx.stroke();
     }
+  } else if (heroId === "uyen") {
+    // Uyên — Celestial Jade-Gold Silk Ribbons & Twin Flowing Shawls
+    for (let s of [-1, 1]) {
+      ctx.strokeStyle = isMono ? "#FFFFFF" : uyenActive ? "#FDE68A" : "#2DD4BF";
+      ctx.lineWidth = uyenActive ? 3.2 : 2.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.25, s * radius * 0.68);
+      ctx.quadraticCurveTo(-radius * 1.15, s * radius * (1.1 + sway * 0.16), -radius * 1.75, s * radius * (0.65 - sway * 0.22));
+      ctx.stroke();
+    }
+    ctx.fillStyle = isMono ? "#1F2937" : "#0F3D3E";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FDE68A";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.35, -radius * 0.72);
+    ctx.quadraticCurveTo(-radius * 1.35, sway * 3, -radius * 1.48, sway * 2);
+    ctx.quadraticCurveTo(-radius * 1.35, radius * 0.72, -radius * 0.35, radius * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (heroId === "hau") {
+    // Hậu — Crimson-Obsidian Assassin Scarf & Twin Spiked Steel Pauldrons
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#E11D48";
+    ctx.lineWidth = 4.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.35, 0);
+    ctx.quadraticCurveTo(-radius * 1.25, sway * 6, -radius * 1.85, -sway * 5);
+    ctx.stroke();
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = isMono ? "#262626" : "#1E293B";
+      ctx.strokeStyle = isMono ? "#FFFFFF" : hauParrying ? "#FFF1F2" : "#E11D48";
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(4, s * radius * 0.62);
+      ctx.lineTo(-4, s * radius * 1.22);
+      ctx.lineTo(-12, s * radius * 0.86);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else if (heroId === "lam") {
+    // Lâm — Scholar Azure Coat, Gold Scroll Mantle & Floating Ink Seal Collar
+    ctx.fillStyle = isMono ? "#171717" : "#172554";
+    ctx.strokeStyle = isMono ? "#FFFFFF" : "#FBBF24";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.32, -radius * 0.78);
+    ctx.quadraticCurveTo(-radius * 1.38, -radius * 0.7 + sway * 2.5, -radius * 1.62, sway * 2);
+    ctx.quadraticCurveTo(-radius * 1.38, radius * 0.7 + sway * 2.5, -radius * 0.32, radius * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    let sCol = isMono ? "#FFFFFF" : lamSeal === "hoa" ? "#F97316" : lamSeal === "loi" ? "#38BDF8" : "#A855F7";
+    ctx.fillStyle = sCol;
+    ctx.beginPath();
+    ctx.arc(-radius * 0.85, 0, 4.2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // 1. Clean circular hero body with multi-stop 3D sphere shading & specular rim
@@ -10218,6 +10404,22 @@ export function drawHeroBody(ctx, opts) {
     ctx.beginPath();
     ctx.arc(radius * 0.59, radius * 0.21, 0.95, 0, Math.PI * 2);
     ctx.fill();
+  } else if (heroId === "uyen" || heroId === "hau" || heroId === "lam") {
+    let eyeCol = isMono ? "#FFFFFF" : heroId === "uyen" ? "#5EEAD4" : heroId === "hau" ? "#F43F5E" : "#93C5FD";
+    for (let s of [-1, 1]) {
+      ctx.fillStyle = darkInk;
+      ctx.beginPath();
+      ctx.ellipse(radius * 0.56, s * radius * 0.22, 3.8, 2.3, s * -0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = eyeCol;
+      ctx.beginPath();
+      ctx.ellipse(radius * 0.58, s * radius * 0.22, 2.5, 1.4, s * -0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(radius * 0.61, s * radius * 0.22 - 0.3, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (heroId === "taidu") {
     // Cybernetic wraparound tactical HUD visor
     ctx.strokeStyle = isMono ? "#FFFFFF" : "#020617";
@@ -16597,6 +16799,345 @@ export function drawKhairRailBeams(ctx, beams, elapsedTime, isMono) {
   }
 }
 
+// =====================================================================
+// HEROES: UYÊN, HẬU, LÂM — WEAPONS & WORLD EFFECTS RENDERERS
+// =====================================================================
+
+export function drawUyenCelestialHarp(ctx, p, elapsedTime, state, isMono) {
+  let { hasAtk, atkProg, parity = 1, skillAlpha = 0 } = state || {};
+  let swing = hasAtk ? Math.sin(atkProg * Math.PI) * 0.38 * parity : 0;
+  let hover = Math.sin(elapsedTime * 3.4) * 2.2;
+  let teal = isMono ? "#FFFFFF" : "#2DD4BF";
+  let gold = isMono ? "#CBD5E1" : "#FDE68A";
+
+  ctx.save();
+  ctx.translate(10, 11 + hover);
+  ctx.rotate(0.28 + swing);
+
+  // Crescent astral lyre frame
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = 3.2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(0, 0, 13.5, -Math.PI * 0.68, Math.PI * 0.68);
+  ctx.stroke();
+
+  // Inner crossbar & 4 harmonic strings
+  ctx.strokeStyle = teal;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(4, -11.5);
+  ctx.lineTo(4, 11.5);
+  ctx.stroke();
+
+  for (let i = -1; i <= 1; i++) {
+    ctx.strokeStyle = i === 0 ? "#FFFFFF" : teal;
+    ctx.lineWidth = 1.2 + skillAlpha * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(i * 2.8 + 1, -9);
+    ctx.lineTo(i * 2.8 + 1, 9);
+    ctx.stroke();
+  }
+  drawFourPointStar(ctx, 13, 0, 5.2 + skillAlpha * 2.5, 1.6, "#FFFFFF", teal);
+  ctx.restore();
+}
+
+export function drawHauChainSickles(ctx, p, elapsedTime, state, isMono) {
+  let { hasAtk, atkProg, parity = 1, skillAlpha = 0 } = state || {};
+  let steel = isMono ? "#E2E8F0" : "#CBD5E1";
+  let crimson = isMono ? "#FFFFFF" : "#E11D48";
+  let swing = hasAtk ? (atkProg - 0.35) * 2.1 * parity : Math.sin(elapsedTime * 2.6) * 0.1;
+
+  for (let s of [-1, 1]) {
+    ctx.save();
+    ctx.translate(8, s * 12);
+    ctx.rotate(s * 0.45 + swing * s);
+
+    // Handle + steel chain links
+    ctx.strokeStyle = "#0F172A";
+    ctx.lineWidth = 4.4;
+    ctx.beginPath();
+    ctx.moveTo(-6, 0);
+    ctx.lineTo(13, 0);
+    ctx.stroke();
+    ctx.strokeStyle = steel;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+
+    // Hooked crescent sickle head
+    ctx.fillStyle = crimson;
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(11, 0);
+    ctx.quadraticCurveTo(22, -s * 12, 8, -s * 15);
+    ctx.quadraticCurveTo(16, -s * 7, 10, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    if (skillAlpha > 0.1) {
+      drawFourPointStar(ctx, 15, -s * 8, 4.5 + skillAlpha * 2.5, 1.4, "#FFFFFF", crimson);
+    }
+    ctx.restore();
+  }
+}
+
+export function drawLamCalligraphyBrush(ctx, p, elapsedTime, state, isMono) {
+  let { hasAtk, atkProg, parity = 1, skillAlpha = 0 } = state || {};
+  let seal = p?.lam_queuedSeal || "hoa";
+  let sealCol = isMono ? "#FFFFFF" : seal === "hoa" ? "#F97316" : seal === "loi" ? "#38BDF8" : "#A855F7";
+  let swing = hasAtk ? Math.sin(atkProg * Math.PI) * 1.15 * parity : Math.sin(elapsedTime * 2.2) * 0.08;
+
+  ctx.save();
+  ctx.translate(6, 8);
+  ctx.rotate(-0.42 + swing);
+
+  // Lacquered golden-blue bamboo shaft
+  ctx.strokeStyle = "#090D16";
+  ctx.lineWidth = 5.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-16, 0);
+  ctx.lineTo(16, 0);
+  ctx.stroke();
+  ctx.strokeStyle = isMono ? "#CBD5E1" : "#FBBF24";
+  ctx.lineWidth = 3.0;
+  ctx.stroke();
+
+  // Flowing calligraphy ink-tip
+  ctx.fillStyle = isMono ? "#FFFFFF" : "#2563EB";
+  ctx.strokeStyle = sealCol;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(15, -3.8);
+  ctx.quadraticCurveTo(25, -2.6, 30, 0);
+  ctx.quadraticCurveTo(25, 2.6, 15, 3.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  drawFourPointStar(ctx, 29, 0, 5.4 + skillAlpha * 3, 1.6, "#FFFFFF", sealCol);
+  ctx.restore();
+}
+
+export function drawUyenWorldEffects(ctx, engine, elapsedTime, isMono) {
+  if (!engine) return;
+  const p = engine.player;
+
+  // 1. Live Fate-Thread Tether to lowest-HP Co-op ally (or solo Spirit Lyre Orb)
+  if (p && p.heroId === "uyen") {
+    let targetX = p.x + Math.cos(elapsedTime * 2.2) * 44;
+    let targetY = p.y + Math.sin(elapsedTime * 2.2) * 36;
+    let hasAlly = false;
+    if (engine.remotePlayers && typeof engine.remotePlayers.forEach === "function") {
+      let bestRatio = 999;
+      engine.remotePlayers.forEach((rp) => {
+        if (!rp || rp.isDowned || (rp.hp || 0) <= 0) return;
+        const r = (rp.hp || 0) / Math.max(1, rp.maxHp || 1);
+        if (r < bestRatio && Math.hypot(rp.x - p.x, rp.y - p.y) <= 900) {
+          bestRatio = r;
+          targetX = rp.x;
+          targetY = rp.y;
+          hasAlly = true;
+        }
+      });
+    }
+    ctx.save();
+    ctx.strokeStyle = isMono ? "rgba(255,255,255,0.65)" : hasAlly ? "rgba(253, 230, 138, 0.72)" : "rgba(45, 212, 191, 0.65)";
+    ctx.lineWidth = hasAlly ? 2.6 : 2.0;
+    ctx.beginPath();
+    const mx = (p.x + targetX) * 0.5;
+    const my = (p.y + targetY) * 0.5 + Math.sin(elapsedTime * 6) * 14;
+    ctx.moveTo(p.x, p.y);
+    ctx.quadraticCurveTo(mx, my, targetX, targetY);
+    ctx.stroke();
+    ctx.fillStyle = isMono ? "#FFFFFF" : "#FDE68A";
+    ctx.beginPath();
+    ctx.arc(targetX, targetY, hasAlly ? 5.2 : 6.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 2. C2 Resonance Barrier Dome (uyen_domeActive)
+  if (p && p.heroId === "uyen" && (p.uyen_domeTimer || 0) > 0) {
+    const domeR = Math.max(20, p.uyen_domeRadius || 175);
+    const charge = p.uyen_domeCharge || 0;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    drawPerspectiveZoneBase(ctx, {
+      x: 0,
+      y: 0,
+      radius: domeR,
+      tiltY: 0.74,
+      rot: elapsedTime * 1.4,
+      primary: "#2DD4BF",
+      secondary: "#FDE68A",
+      darkRim: "#0F3D3E",
+      coreWash: "rgba(45, 212, 191, 0.14)",
+      midWash: "rgba(253, 230, 138, 0.10)",
+      segments: 6,
+      isMono,
+    });
+    for (let ci = 0; ci < charge; ci++) {
+      const ca = elapsedTime * 3.2 + (Math.PI * 2 * ci) / Math.max(1, charge);
+      drawFourPointStar(ctx, Math.cos(ca) * domeR * 0.78, Math.sin(ca) * domeR * 0.78 * 0.74, 6.2, 1.9, "#FFFFFF", isMono ? "#222222" : "#FDE68A");
+    }
+    ctx.restore();
+  }
+
+  // 3. C3 Celestial Symphony Aura (uyen_c3Timer)
+  if (p && p.heroId === "uyen" && (p.uyen_c3Timer || 0) > 0) {
+    const symR = Math.max(24, p.uyen_c3Radius || 260);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: symR,
+      tiltY: 0.72,
+      rot: -elapsedTime * 0.85,
+      sides: 6,
+      starMode: true,
+      primary: "#FDE68A",
+      highlight: "#FFFFFF",
+      darkRim: "#0F3D3E",
+      rim: "#2DD4BF",
+      coreWash: "rgba(253, 230, 138, 0.1)",
+      isMono,
+    });
+    ctx.restore();
+  }
+}
+
+export function drawHauWorldEffects(ctx, engine, elapsedTime, isMono) {
+  if (!engine) return;
+  const zones = engine.hau_execZones || [];
+  for (let z of zones) {
+    const rad = Math.max(20, z.radius || 195);
+    const fade = clamp((z.life || 1) / Math.max(0.5, z.maxLife || 6), 0.2, 1);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(z.x, z.y);
+    drawPerspectiveZoneBase(ctx, {
+      x: 0,
+      y: 0,
+      radius: rad,
+      tiltY: 0.72,
+      rot: elapsedTime * 1.1,
+      primary: "#E11D48",
+      secondary: "#CBD5E1",
+      darkRim: "#4C0519",
+      coreWash: "rgba(225, 29, 72, 0.14)",
+      midWash: "rgba(203, 213, 225, 0.08)",
+      segments: 4,
+      isMono,
+    });
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI * 0.5) * i;
+      ctx.strokeStyle = isMono ? "#FFFFFF" : "#F43F5E";
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * rad * 0.35, Math.sin(a) * rad * 0.35 * 0.72);
+      ctx.lineTo(Math.cos(a) * rad * 0.96, Math.sin(a) * rad * 0.96 * 0.72);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+export function drawLamWorldEffects(ctx, engine, elapsedTime, isMono) {
+  if (!engine) return;
+  const anchors = engine.lam_anchors || [];
+  const baguas = engine.lam_baguaRings || [];
+  const scrolls = engine.lam_scrollDomains || [];
+
+  // 1. Scroll domains (C3 5-Pillar Heaven Scroll)
+  for (let sc of scrolls) {
+    const rad = Math.max(24, sc.radius || 250);
+    const fade = clamp((sc.life || 1) / Math.max(0.5, sc.maxLife || 5), 0.2, 1);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(sc.x, sc.y);
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: rad,
+      tiltY: 0.72,
+      rot: elapsedTime * 0.9,
+      sides: 5,
+      starMode: true,
+      primary: "#2563EB",
+      highlight: "#EFF6FF",
+      darkRim: "#172554",
+      rim: "#FBBF24",
+      coreWash: "rgba(37, 99, 235, 0.14)",
+      isMono,
+    });
+    ctx.restore();
+  }
+
+  // 2. Bagua Refraction Rings (C2)
+  for (let bg of baguas) {
+    const rad = Math.max(18, bg.radius || 165);
+    const fade = clamp((bg.life || 1) / Math.max(0.5, bg.maxLife || 5), 0.25, 1);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(bg.x, bg.y);
+    drawArcaneMagicCircle(ctx, {
+      x: 0,
+      y: 0,
+      radius: rad,
+      tiltY: 0.74,
+      rot: -elapsedTime * 1.8,
+      sides: 8,
+      starMode: false,
+      primary: "#FBBF24",
+      highlight: "#FFFFFF",
+      darkRim: "#172554",
+      rim: "#60A5FA",
+      coreWash: "rgba(251, 191, 36, 0.12)",
+      isMono,
+    });
+    ctx.restore();
+  }
+
+  // 3. Constellation Anchor Links + Anchor Nodes (C1)
+  for (let i = 0; i < anchors.length; i++) {
+    for (let j = i + 1; j < anchors.length; j++) {
+      const a = anchors[i];
+      const b = anchors[j];
+      if (Math.hypot(a.x - b.x, a.y - b.y) <= 440) {
+        drawBranchingArc(ctx, {
+          x1: a.x,
+          y1: a.y,
+          x2: b.x,
+          y2: b.y,
+          color: "#60A5FA",
+          coreColor: "#FBBF24",
+          width: 3.4,
+          seed: elapsedTime * 16 + i * 7 + j,
+          isMono,
+        });
+      }
+    }
+  }
+  for (let a of anchors) {
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    const sCol = isMono ? "#FFFFFF" : a.seal === "hoa" ? "#F97316" : a.seal === "loi" ? "#38BDF8" : "#A855F7";
+    ctx.fillStyle = sCol;
+    ctx.strokeStyle = "#FBBF24";
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    drawFourPointStar(ctx, 0, 0, 14, 3.6, "#FFFFFF", sCol);
+    ctx.restore();
+  }
+}
+
 export function drawHeroPassiveAura(ctx, opts = {}) {
   let {
     heroId,
@@ -17283,6 +17824,64 @@ export function drawHeroPassiveAura(ctx, opts = {}) {
       break;
     }
 
+    case "uyen": {
+      let c3 = (p.uyen_c3Timer || 0) > 0 || Boolean(b.uyen_c3);
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + (c3 ? 20 : 14),
+        tiltY: 0.78,
+        rot: elapsedTime * 1.1,
+        primary: c3 ? "#FDE68A" : "#2DD4BF",
+        secondary: "#0F766E",
+        darkRim: "#0F3D3E",
+        coreWash: "rgba(45, 212, 191, 0.09)",
+        midWash: "rgba(253, 230, 138, 0.05)",
+        segments: 4,
+        isMono,
+      });
+      break;
+    }
+
+    case "hau": {
+      let parrying = (p.hau_parryTimer || 0) > 0 || Boolean(b.hau_parrying);
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + (parrying ? 20 : 14),
+        tiltY: 0.78,
+        rot: -elapsedTime * 1.6,
+        primary: parrying ? "#FFF1F2" : "#E11D48",
+        secondary: "#CBD5E1",
+        darkRim: "#4C0519",
+        coreWash: "rgba(225, 29, 72, 0.1)",
+        midWash: "rgba(203, 213, 225, 0.05)",
+        segments: 4,
+        isMono,
+      });
+      break;
+    }
+
+    case "lam": {
+      let seal = p.lam_queuedSeal || b.lam_seal || "hoa";
+      let pCol = seal === "hoa" ? "#F97316" : seal === "loi" ? "#38BDF8" : "#A855F7";
+      drawPerspectiveZoneBase(ctx, {
+        x: 0,
+        y: 0,
+        radius: radius + 15,
+        tiltY: 0.78,
+        rot: elapsedTime * 1.2,
+        primary: pCol,
+        secondary: "#FBBF24",
+        darkRim: "#172554",
+        coreWash: "rgba(37, 99, 235, 0.09)",
+        midWash: "rgba(251, 191, 36, 0.05)",
+        segments: 5,
+        isMono,
+      });
+      break;
+    }
+
     default: {
       drawTaperedArc(ctx, 0, 0, radius + 13, facing - 0.6, facing + 0.6, 3.8, "#38BDF8", "#FFFFFF", isMono);
       break;
@@ -17355,6 +17954,59 @@ export function drawEnemyStatusVfx(ctx, enemy, elapsedTime, isMono, enableAdditi
       ctx.arc(ox, 0, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+  }
+
+  // 3. Hậu Directional Vital Quadrant / C3 Four-Corners Execution Marks
+  if (typeof enemy.hau_vitalAngle === "number" || enemy.hau_allVitalsOpen) {
+    const arcR = Math.max(14, r + 10);
+    const halfArc = 1.12;
+    const angles = enemy.hau_allVitalsOpen
+      ? [0, Math.PI * 0.5, Math.PI, -Math.PI * 0.5]
+      : [enemy.hau_vitalAngle];
+    for (let va of angles) {
+      ctx.save();
+      ctx.strokeStyle = isMono ? "#FFFFFF" : enemy.hau_allVitalsOpen ? "#FDE047" : "#F43F5E";
+      ctx.lineWidth = enemy.hau_allVitalsOpen ? 3.2 : 3.8;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(0, 0, arcR, va - halfArc, va + halfArc);
+      ctx.stroke();
+      const vx = Math.cos(va) * arcR;
+      const vy = Math.sin(va) * arcR;
+      drawFourPointStar(ctx, vx, vy, 6.2, 2.0, "#FFFFFF", isMono ? "#333333" : "#E11D48");
+      ctx.restore();
+    }
+  }
+
+  // 4. Lâm Calligraphy Elemental Seal Badge (hoa / loi / huyen)
+  if (enemy.lam_seal) {
+    const sCol = isMono ? "#FFFFFF" : enemy.lam_seal === "hoa" ? "#F97316" : enemy.lam_seal === "loi" ? "#38BDF8" : "#A855F7";
+    ctx.save();
+    ctx.translate(0, -r - 20);
+    ctx.rotate(elapsedTime * 1.8);
+    ctx.fillStyle = sCol;
+    ctx.strokeStyle = "#FBBF24";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(7, 0);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(-7, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 5. Uyên Discord Weaken Mark (-18% Enemy Dmg)
+  if ((enemy.uyen_discordTimer || 0) > 0) {
+    ctx.save();
+    ctx.strokeStyle = isMono ? "#CBD5E1" : "#2DD4BF";
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(12, r + 5), elapsedTime * 2, elapsedTime * 2 + 2.2);
+    ctx.stroke();
     ctx.restore();
   }
 

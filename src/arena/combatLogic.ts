@@ -966,6 +966,9 @@ export const HERO_ROLE_CATALOG: Record<string, HeroClassRole> = {
   bach: 'assassin',
   thai: 'fighter',
   khair: 'marksman',
+  uyen: 'tank',
+  hau: 'assassin',
+  lam: 'mage',
 };
 
 export const HERO_ROLE_ORDER: HeroRoleFilter[] = [
@@ -2630,4 +2633,522 @@ export function computeKhairSniperHeal({
   const ratio = Math.min(0.26, 0.10 + extra * 0.04 + (isCrit ? 0.03 : 0));
   return Math.max(1, Math.round(safeMaxHp * ratio + safeAtk * 0.35));
 }
+
+// =========================================================================
+// UYÊN — Thiên Cầm Mệnh Vận (Trợ Thủ Cộng Hưởng: Boomerang, Khiên Chắn Đạn & Ngăn Tử Thần)
+// =========================================================================
+export const UYEN_PASSIVE_CDR_RATE = 1.22;
+export const UYEN_DEATH_SAVE_CD = 36.0;
+export const UYEN_DEATH_SAVE_HP_FLOOR = 0.15;
+export const UYEN_DEATH_SAVE_HEAL_RATIO = 0.22;
+export const UYEN_DEATH_SAVE_SHIELD_RATIO = 0.18;
+export const UYEN_DISCORD_DMG_REDUCE = 0.18;
+export const UYEN_DISCORD_DURATION = 3.0;
+export const UYEN_C1_OUT_RANGE = 460;
+export const UYEN_C1_RETURN_REFUND_PER_HIT = 0.45;
+export const UYEN_C1_RETURN_REFUND_CAP = 2.25;
+export const UYEN_C2_DURATION = 4.5;
+export const UYEN_C2_RADIUS = 175;
+export const UYEN_C2_MELEE_DR = 0.35;
+export const UYEN_C2_MAX_CHARGE = 6;
+export const UYEN_C3_DURATION = 5.0;
+export const UYEN_C3_RADIUS = 260;
+export const UYEN_C3_BEAT_INTERVAL = 1.25;
+export const UYEN_C3_TOTAL_BEATS = 4;
+
+export function computeUyenCooldownTickRate({
+  tethered = true,
+  symphonyActive = false,
+}: {
+  tethered?: boolean;
+  symphonyActive?: boolean;
+}): number {
+  let rate = tethered ? UYEN_PASSIVE_CDR_RATE : 1.0;
+  if (symphonyActive) rate += 0.18;
+  return Number(rate.toFixed(4));
+}
+
+export function evaluateUyenDeathSave({
+  currentHp,
+  incomingDamage,
+  maxHp,
+  deathSaveCd = 0,
+  symphonyActive = false,
+}: {
+  currentHp: number;
+  incomingDamage: number;
+  maxHp: number;
+  deathSaveCd?: number;
+  symphonyActive?: boolean;
+}): {
+  triggered: boolean;
+  survivingHp: number;
+  healAmt: number;
+  shieldAmt: number;
+  nextCd: number;
+} {
+  const safeMax = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1220);
+  const safeHp = Math.max(0, Number.isFinite(currentHp) ? currentHp : 0);
+  const safeDmg = Math.max(0, Number.isFinite(incomingDamage) ? incomingDamage : 0);
+  const isLethal = safeHp - safeDmg <= 0;
+  const cdReady = (deathSaveCd || 0) <= 0 || Boolean(symphonyActive);
+  if (!isLethal || !cdReady) {
+    return {
+      triggered: false,
+      survivingHp: Math.max(0, safeHp - safeDmg),
+      healAmt: 0,
+      shieldAmt: 0,
+      nextCd: Math.max(0, deathSaveCd || 0),
+    };
+  }
+  const survivingHp = Math.max(1, Math.round(safeMax * UYEN_DEATH_SAVE_HP_FLOOR));
+  const healAmt = Math.max(1, Math.round(safeMax * UYEN_DEATH_SAVE_HEAL_RATIO));
+  const shieldAmt = Math.max(1, Math.round(safeMax * UYEN_DEATH_SAVE_SHIELD_RATIO));
+  return {
+    triggered: true,
+    survivingHp,
+    healAmt,
+    shieldAmt,
+    nextCd: symphonyActive ? Math.max(0, deathSaveCd || 0) : UYEN_DEATH_SAVE_CD,
+  };
+}
+
+export function computeUyenBoomerangStats({
+  atk,
+  ap,
+  isReturn = false,
+  returnHitCount = 0,
+}: {
+  atk: number;
+  ap: number;
+  isReturn?: boolean;
+  returnHitCount?: number;
+}): { damage: number; cdrRefundSec: number; healRatio: number } {
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 26);
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 44);
+  const baseDmg = Math.max(1, Math.round((isReturn ? 82 : 68) + safeAp * (isReturn ? 1.05 : 0.85) + safeAtk * 0.35));
+  const hits = Math.max(0, Math.floor(returnHitCount || 0));
+  const refund = isReturn
+    ? Math.min(UYEN_C1_RETURN_REFUND_CAP, Number((hits * UYEN_C1_RETURN_REFUND_PER_HIT).toFixed(2)))
+    : 0;
+  return {
+    damage: baseDmg,
+    cdrRefundSec: refund,
+    healRatio: isReturn ? 0.045 : 0.025,
+  };
+}
+
+export function computeUyenDomeBurst({
+  ap,
+  atk,
+  maxHp,
+  interceptCharge = 0,
+}: {
+  ap: number;
+  atk: number;
+  maxHp: number;
+  interceptCharge?: number;
+}): { burstDmg: number; healAmt: number; shieldAmt: number; msBonus: number; chargeUsed: number } {
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 44);
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 26);
+  const safeMax = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1220);
+  const chargeUsed = Math.max(0, Math.min(UYEN_C2_MAX_CHARGE, Math.floor(interceptCharge || 0)));
+  const mult = 1 + chargeUsed * 0.22;
+  const burstDmg = Math.max(1, Math.round((95 + safeAp * 1.15 + safeAtk * 0.35) * mult));
+  const healAmt = Math.max(1, Math.round(safeMax * (0.07 + chargeUsed * 0.022) + safeAp * 0.45));
+  const shieldAmt = Math.max(1, Math.round(safeMax * (0.10 + chargeUsed * 0.025)));
+  const msBonus = Number((0.15 + chargeUsed * 0.04).toFixed(3));
+  return { burstDmg, healAmt, shieldAmt, msBonus, chargeUsed };
+}
+
+export const UYEN_CADENCE_INTERVAL = 3;
+
+export function evaluateUyenBasicCadence({
+  step = 0,
+  ap = 44,
+  atk = 26,
+  maxHp = 1080,
+}: {
+  step?: number;
+  ap?: number;
+  atk?: number;
+  maxHp?: number;
+}): {
+  isResonantChord: boolean;
+  nextStep: number;
+  noteDamage: number;
+  healAmt: number;
+  c1RefundSec: number;
+  auraExtendSec: number;
+} {
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 44);
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 26);
+  const safeMax = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1080);
+  const baseDmg = Math.max(1, Math.round(safeAtk * 0.72 + safeAp * 0.55));
+  const nextRaw = (Math.max(0, Math.floor(step || 0)) + 1);
+  const isResonantChord = nextRaw >= UYEN_CADENCE_INTERVAL;
+  return {
+    isResonantChord,
+    nextStep: isResonantChord ? 0 : nextRaw,
+    noteDamage: isResonantChord ? Math.max(1, Math.round(baseDmg * 0.88)) : baseDmg,
+    healAmt: isResonantChord ? Math.max(1, Math.round(safeMax * 0.035 + safeAp * 0.18)) : 0,
+    c1RefundSec: isResonantChord ? 0.55 : 0,
+    auraExtendSec: isResonantChord ? 0.35 : 0,
+  };
+}
+
+// =========================================================================
+// HẬU — Tử Đao Lưỡi Xích (Sát Thủ 4 Hướng Tử Huyệt, Móc Xích Kéo/Lao & Thế Thủ Phản Đao)
+// =========================================================================
+export const HAU_VITAL_HALF_ARC_RAD = (65 * Math.PI) / 180;
+export const HAU_VITAL_RANGE = 620;
+export const HAU_VITAL_BURST_MS_DUR = 1.6;
+export const HAU_VITAL_BURST_MS_BONUS = 0.38;
+export const HAU_C1_CHAIN_RANGE = 430;
+export const HAU_C2_PARRY_WINDOW = 0.75;
+export const HAU_C2_RIPOSTE_RADIUS = 165;
+export const HAU_C2_PARRY_STUN_SEC = 1.5;
+export const HAU_C3_DURATION = 6.0;
+export const HAU_C3_RADIUS = 195;
+
+export function normalizeAngleDiff(a: number, b: number): number {
+  let diff = ((a - b) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+  return Math.abs(diff);
+}
+
+export function isHitOnVitalFlank({
+  attackerX,
+  attackerY,
+  targetX,
+  targetY,
+  vitalAngle,
+  allVitalsOpen = false,
+  toleranceRad = HAU_VITAL_HALF_ARC_RAD,
+}: {
+  attackerX: number;
+  attackerY: number;
+  targetX: number;
+  targetY: number;
+  vitalAngle: number;
+  allVitalsOpen?: boolean;
+  toleranceRad?: number;
+}): boolean {
+  if (allVitalsOpen) return true;
+  const dx = (attackerX || 0) - (targetX || 0);
+  const dy = (attackerY || 0) - (targetY || 0);
+  if (dx * dx + dy * dy <= 4) return true;
+  const attackFromAngle = Math.atan2(dy, dx);
+  return normalizeAngleDiff(attackFromAngle, vitalAngle || 0) <= toleranceRad;
+}
+
+export function rotateHauVitalAngle(currentAngle: number = 0, step: number = 1): number {
+  const idx = Math.round(((currentAngle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI / 2)) % 4;
+  const nextIdx = (idx + Math.max(1, Math.floor(step || 1))) % 4;
+  return Number((nextIdx * (Math.PI / 2)).toFixed(4));
+}
+
+export function computeHauVitalShatter({
+  atk,
+  targetMaxHp,
+  playerMaxHp,
+  isBoss = false,
+  isUltActive = false,
+}: {
+  atk: number;
+  targetMaxHp: number;
+  playerMaxHp: number;
+  isBoss?: boolean;
+  isUltActive?: boolean;
+}): { trueBleedDmg: number; healAmt: number } {
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 58);
+  const safeTargetHp = Math.max(1, Number.isFinite(targetMaxHp) ? targetMaxHp : 500);
+  const safePlayerHp = Math.max(1, Number.isFinite(playerMaxHp) ? playerMaxHp : 960);
+  const pctRaw = Math.round(safeTargetHp * (isBoss ? 0.055 : 0.11));
+  const pctCap = isBoss ? 280 : 210;
+  const trueBleedDmg = Math.max(
+    18,
+    Math.min(pctCap + Math.round(safeAtk * 1.15), Math.round(42 + safeAtk * 0.95 + Math.min(pctCap, pctRaw))) *
+      (isUltActive ? 1.25 : 1)
+  );
+  const healAmt = Math.max(1, Math.round(safePlayerHp * (isUltActive ? 0.06 : 0.045) + safeAtk * 0.30));
+  return {
+    trueBleedDmg: Math.round(trueBleedDmg),
+    healAmt,
+  };
+}
+
+export function evaluateHauC1HookOutcome({
+  isBossOrMini = false,
+  targetX,
+  targetY,
+  vitalAngle = 0,
+  playerX,
+  playerY,
+}: {
+  isBossOrMini?: boolean;
+  targetX: number;
+  targetY: number;
+  vitalAngle?: number;
+  playerX: number;
+  playerY: number;
+}): { mode: 'grapple_to_vital' | 'yank_mob'; destX: number; destY: number } {
+  if (isBossOrMini) {
+    const flankOffset = 72;
+    return {
+      mode: 'grapple_to_vital',
+      destX: (targetX || 0) + Math.cos(vitalAngle || 0) * flankOffset,
+      destY: (targetY || 0) + Math.sin(vitalAngle || 0) * flankOffset,
+    };
+  }
+  const dx = (playerX || 0) - (targetX || 0);
+  const dy = (playerY || 0) - (targetY || 0);
+  const dist = Math.hypot(dx, dy) || 1;
+  const pullDist = Math.max(0, dist - 56);
+  return {
+    mode: 'yank_mob',
+    destX: (targetX || 0) + (dx / dist) * pullDist,
+    destY: (targetY || 0) + (dy / dist) * pullDist,
+  };
+}
+
+export function evaluateHauParryRiposte({
+  atk,
+  maxHp,
+  wasStruckDuringParry = false,
+}: {
+  atk: number;
+  maxHp: number;
+  wasStruckDuringParry?: boolean;
+}): {
+  damage: number;
+  stunDur: number;
+  healAmt: number;
+  shieldAmt: number;
+  resetC1Cooldown: boolean;
+} {
+  const safeAtk = Math.max(0, Number.isFinite(atk) ? atk : 58);
+  const safeMax = Math.max(1, Number.isFinite(maxHp) ? maxHp : 960);
+  const base = Math.round(85 + safeAtk * 1.45);
+  return {
+    damage: wasStruckDuringParry ? Math.round(base * 1.55) : base,
+    stunDur: wasStruckDuringParry ? HAU_C2_PARRY_STUN_SEC : 0.4,
+    healAmt: Math.max(1, Math.round(safeMax * (wasStruckDuringParry ? 0.11 : 0.05))),
+    shieldAmt: Math.max(1, Math.round(safeMax * (wasStruckDuringParry ? 0.14 : 0.06))),
+    resetC1Cooldown: Boolean(wasStruckDuringParry),
+  };
+}
+
+export const HAU_MAX_BLOOD_SEALS = 3;
+export const HAU_VITAL_C1_REFUND_SEC = 1.1;
+
+export function computeHauVitalComboBonus({
+  currentStacks = 0,
+  maxStacks = HAU_MAX_BLOOD_SEALS,
+  c1RefundSec = HAU_VITAL_C1_REFUND_SEC,
+}: {
+  currentStacks?: number;
+  maxStacks?: number;
+  c1RefundSec?: number;
+}): {
+  nextStacks: number;
+  triggeredEmpowered: boolean;
+  damageMult: number;
+  extraHealRatio: number;
+  c1RefundSec: number;
+} {
+  const cur = Math.max(0, Math.floor(currentStacks || 0));
+  const cap = Math.max(1, Math.floor(maxStacks || HAU_MAX_BLOOD_SEALS));
+  const triggeredEmpowered = cur >= cap;
+  return {
+    nextStacks: triggeredEmpowered ? 0 : cur + 1,
+    triggeredEmpowered,
+    damageMult: triggeredEmpowered ? 1.55 : 1.0,
+    extraHealRatio: triggeredEmpowered ? 0.04 : 0,
+    c1RefundSec: Math.max(0, Number.isFinite(c1RefundSec) ? c1RefundSec : HAU_VITAL_C1_REFUND_SEC),
+  };
+}
+
+// =========================================================================
+// LÂM — Bút Thánh Cổ Thư (Pháp Sư Tam Ấn Cộng Hưởng, Neo Chòm Sao & Bát Quái Khúc Xạ)
+// =========================================================================
+export type LamElementSeal = 'hoa' | 'loi' | 'huyen';
+export const LAM_SEAL_ORDER: readonly LamElementSeal[] = ['hoa', 'loi', 'huyen'] as const;
+export const LAM_MAX_ANCHORS = 3;
+export const LAM_ANCHOR_DURATION = 8.0;
+export const LAM_ANCHOR_LINK_RANGE = 440;
+export const LAM_BAGUA_DURATION = 5.0;
+export const LAM_BAGUA_RADIUS = 165;
+export const LAM_SCROLL_DURATION = 5.0;
+export const LAM_SCROLL_RADIUS = 250;
+export const LAM_SCROLL_CDR_HASTE = 1.35;
+
+export function cycleLamSeal(current: LamElementSeal | string = 'hoa'): LamElementSeal {
+  const idx = LAM_SEAL_ORDER.indexOf(current as LamElementSeal);
+  if (idx < 0) return 'loi';
+  return LAM_SEAL_ORDER[(idx + 1) % LAM_SEAL_ORDER.length];
+}
+
+export type LamReactionKind = 'overload_blast' | 'thunder_web' | 'soul_scorch';
+
+export function evaluateLamSealReaction({
+  existingSeal,
+  incomingSeal,
+  ap,
+  targetMaxHp,
+  playerMaxHp,
+  isBoss = false,
+}: {
+  existingSeal: LamElementSeal | null | undefined;
+  incomingSeal: LamElementSeal;
+  ap: number;
+  targetMaxHp: number;
+  playerMaxHp: number;
+  isBoss?: boolean;
+}): {
+  triggered: boolean;
+  reactionKind: LamReactionKind | null;
+  nextSeal: LamElementSeal | null;
+  damage: number;
+  healAmt: number;
+  stunDur: number;
+  chainCount: number;
+} {
+  if (!existingSeal || existingSeal === incomingSeal) {
+    return {
+      triggered: false,
+      reactionKind: null,
+      nextSeal: incomingSeal,
+      damage: 0,
+      healAmt: 0,
+      stunDur: 0,
+      chainCount: 0,
+    };
+  }
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 48);
+  const safeTargetHp = Math.max(1, Number.isFinite(targetMaxHp) ? targetMaxHp : 500);
+  const safePlayerHp = Math.max(1, Number.isFinite(playerMaxHp) ? playerMaxHp : 910);
+  const pair = [existingSeal, incomingSeal].sort().join('+');
+  if (pair === 'hoa+loi') {
+    return {
+      triggered: true,
+      reactionKind: 'overload_blast',
+      nextSeal: null,
+      damage: Math.max(1, Math.round(92 + safeAp * 1.45)),
+      healAmt: Math.max(1, Math.round(safePlayerHp * 0.025)),
+      stunDur: 0.45,
+      chainCount: 0,
+    };
+  }
+  if (pair === 'huyen+loi') {
+    return {
+      triggered: true,
+      reactionKind: 'thunder_web',
+      nextSeal: null,
+      damage: Math.max(1, Math.round(78 + safeAp * 1.28)),
+      healAmt: Math.max(1, Math.round(safePlayerHp * 0.025)),
+      stunDur: 0.75,
+      chainCount: 5,
+    };
+  }
+  // hoa + huyen -> soul_scorch
+  const pctShred = Math.min(isBoss ? 250 : 190, Math.round(safeTargetHp * (isBoss ? 0.045 : 0.09)));
+  return {
+    triggered: true,
+    reactionKind: 'soul_scorch',
+    nextSeal: null,
+    damage: Math.max(1, Math.round(74 + safeAp * 1.2 + pctShred)),
+    healAmt: Math.max(1, Math.round(safePlayerHp * 0.05 + safeAp * 0.35)),
+    stunDur: 0,
+    chainCount: 0,
+  };
+}
+
+export function computeLamAnchorLinkPairs<T extends { id: number; x: number; y: number }>(
+  anchors: readonly T[],
+  maxRange: number = LAM_ANCHOR_LINK_RANGE
+): Array<{ a: T; b: T }> {
+  const res: Array<{ a: T; b: T }> = [];
+  if (!Array.isArray(anchors) || anchors.length < 2) return res;
+  const r2 = maxRange * maxRange;
+  for (let i = 0; i < anchors.length; i++) {
+    for (let j = i + 1; j < anchors.length; j++) {
+      const dx = anchors[j].x - anchors[i].x;
+      const dy = anchors[j].y - anchors[i].y;
+      if (dx * dx + dy * dy <= r2) {
+        res.push({ a: anchors[i], b: anchors[j] });
+      }
+    }
+  }
+  return res;
+}
+
+export function computeLamRefractedShardDamage({
+  ap,
+  baseProjDmg,
+}: {
+  ap: number;
+  baseProjDmg: number;
+}): number {
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 48);
+  const safeBase = Math.max(1, Number.isFinite(baseProjDmg) ? baseProjDmg : 50);
+  return Math.max(1, Math.round(safeBase * 0.62 + safeAp * 0.42));
+}
+
+export const LAM_BASIC_SURGE_INTERVAL = 3;
+
+export function computeLamAnchorResonanceDmg({
+  ap,
+  baseDmg,
+}: {
+  ap: number;
+  baseDmg: number;
+}): number {
+  const safeAp = Math.max(0, Number.isFinite(ap) ? ap : 48);
+  const safeBase = Math.max(1, Number.isFinite(baseDmg) ? baseDmg : 45);
+  return Math.max(12, Math.round(safeBase * 0.65 + safeAp * 0.45));
+}
+
+export function computeLamTriangleCentroid<T extends { id: number; x: number; y: number }>(
+  anchors: readonly T[],
+  maxRange: number = LAM_ANCHOR_LINK_RANGE
+): { valid: boolean; x: number; y: number; radius: number } {
+  if (!Array.isArray(anchors) || anchors.length < 3) {
+    return { valid: false, x: 0, y: 0, radius: 0 };
+  }
+  const a = anchors[0], b = anchors[1], c = anchors[2];
+  const r2 = maxRange * maxRange;
+  const d12 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+  const d23 = (b.x - c.x) ** 2 + (b.y - c.y) ** 2;
+  const d13 = (a.x - c.x) ** 2 + (a.y - c.y) ** 2;
+  if (d12 > r2 || d23 > r2 || d13 > r2) {
+    return { valid: false, x: 0, y: 0, radius: 0 };
+  }
+  return {
+    valid: true,
+    x: Math.round(((a.x + b.x + c.x) / 3) * 10) / 10,
+    y: Math.round(((a.y + b.y + c.y) / 3) * 10) / 10,
+    radius: 135,
+  };
+}
+
+export function computeLamBaguaEmpoweredStats({
+  damage,
+  speed,
+  pierceLeft,
+}: {
+  damage: number;
+  speed: number;
+  pierceLeft: number;
+}): { damage: number; speed: number; pierceLeft: number } {
+  const safeDmg = Math.max(1, Number.isFinite(damage) ? damage : 40);
+  const safeSpd = Math.max(100, Number.isFinite(speed) ? speed : 800);
+  const safePierce = Math.max(0, Math.floor(pierceLeft || 0));
+  return {
+    damage: Math.round(safeDmg * 1.18),
+    speed: Math.round(safeSpd * 1.22),
+    pierceLeft: safePierce + 1,
+  };
+}
+
+
 

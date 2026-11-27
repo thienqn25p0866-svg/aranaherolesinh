@@ -619,6 +619,66 @@ export const HERO_CHRONICLES: Record<string, HeroChronicleEntry> = {
       en: "From the Citadel's farthest spire, Khair neutralized three obsidian sentinels before they ever spotted his laser sight.",
     },
   },
+  uyen: {
+    heroId: "uyen",
+    faction: { vi: "Thiên Cầm Giám Sát Hội", en: "Astral Choir of Fate" },
+    originTitle: {
+      vi: "Cầm Sư Nắm Giữ Sợi Tơ Sinh Mệnh Bất Tử",
+      en: "Cantor Who Weaves Unbroken Threads of Fate",
+    },
+    epitaph: {
+      vi: "“Miễn là dây đàn này còn ngân vang, không một sinh mệnh nào bên cạnh ta được phép gục ngã!”",
+      en: "“So long as these strings resonate, no soul tethered to me shall fall to death!”",
+    },
+    story: {
+      vi: "Uyên từng là nhạc sư của Dàn Hợp Xướng Hoàng Hôn trước khi thức tỉnh cây Thiên Cầm Tơ Mệnh. Nàng có thể buộc sợi tơ sinh mệnh vào đồng đội để gánh trọn khoảnh khắc tử thần gõ cửa, đồng thời giương Vòm Quang Âm nghiền nát mưa đạn và đảo ngược dòng chảy hồi chiêu.",
+      en: "Once First Cantor of the Twilight Choir, Uyên awakened the Astral Fate Harp to bind living threads between allies. At the instant of lethal ruin, her strings catch the falling soul, shatter incoming projectiles inside her Resonance Dome, and accelerate every melody of survival.",
+    },
+    citadelBond: {
+      vi: "Gảy khúc Thiên Đàn ngay giữa cơn mưa tiễn thạch của Cổ Thành, cứu sống toàn đội khỏi cửa tử chỉ trong tích tắc.",
+      en: "Struck a Celestial Symphony amid the Citadel's obsidian arrow-storm, snatching an entire squad back from the brink of death.",
+    },
+  },
+  hau: {
+    heroId: "hau",
+    faction: { vi: "Ám Sát Đoàn Thiết Xích", en: "Crimson Kusarigama Order" },
+    originTitle: {
+      vi: "Nữ Thợ Săn Nhìn Thấu Tứ Hướng Tử Huyệt",
+      en: "Reaper Who Reads the Four Flanks of Mortality",
+    },
+    epitaph: {
+      vi: "“Mọi quái vật bất khả xâm phạm đều có một góc chết — xích liềm của ta chỉ đánh đúng một hướng ấy.”",
+      en: "“Every armored colossus hides an exposed flank — and my sickle only strikes where fate bleeds.”",
+    },
+    story: {
+      vi: "Hậu rèn luyện đôi mắt nhìn thấu khe hở giáp trụ theo bốn phương Đông-Tây-Nam-Bắc. Nàng tung Xích Liềm để tự kéo mình vọt thẳng tới đúng góc tử huyệt của Đại Trùm hoặc vào thế Phản Đao chặn đứng đòn chí mạng rồi lập tức xoay liềm phản sát.",
+      en: "Trained to read directional weak-points across the four cardinal bearings, Hậu slings her barbed kusarigama to vault straight onto a colossus's vital blindside or enter a steel parry stance that turns lethal blows into instant counter-executions.",
+    },
+    citadelBond: {
+      vi: "Một mình áp sát và chặt đứt bốn tử huyệt của Thiết Vệ Cổ Thành trước khi thanh kiếm của hắn kịp chạm đất.",
+      en: "Closed in alone and severed all four cardinal vitals of a Citadel Ironclad before his greatsword even struck the flagstones.",
+    },
+  },
+  lam: {
+    heroId: "lam",
+    faction: { vi: "Tinh Túc Thiên Thư Viện", en: "Astral Scriptorium of Seals" },
+    originTitle: {
+      vi: "Ấn Sư Khắc Tam Ấn Nguyên Tố & Kính Bát Quái",
+      en: "Calligrapher of the Tri-Element Seals & Bagua Mirror",
+    },
+    epitaph: {
+      vi: "“Hỏa đốt, Lôi giật, Huyền khắc — ba nét mực giao nhau đủ viết lại bản án diệt vong cho cả binh đoàn!”",
+      en: "“Fire ignites, Thunder chains, Void brands — three strokes converge to rewrite an army's doom!”",
+    },
+    story: {
+      vi: "Lâm mang theo cây Thiên Bút Tinh Mặc có thể khắc ba nguyên tố Hỏa - Lôi - Huyền lên thực tại. Bằng cách cắm Điểm Neo Tinh Mặc tạo chùm tia chòm sao và dựng Vòng Kính Bát Quái khúc xạ đạn mực thành mưa mảnh sao, chàng biến cả chiến trường thành trang Thiên Thư bùng nổ phản ứng kép.",
+      en: "Wielding a Celestial Star-Ink Brush, Lâm inscribes Fire, Thunder, and Void seals across the battlefield. By anchoring living constellations and spinning Bagua refraction rings that split ink bolts into homing star shards, he turns every skirmish into a cascading scroll of elemental reactions.",
+    },
+    citadelBond: {
+      vi: "Trải Ngũ Trụ Thiên Thư phủ kín sảnh chính Cổ Thành, khiến hàng trăm ma binh tự hủy dưới chuỗi phản ứng Tam Ấn.",
+      en: "Unrolled the Five-Pillar Heaven Scroll across the Citadel nave, triggering a chain of Tri-Seal detonations that erased an entire legion.",
+    },
+  },
 };
 
 export const BOSS_CHRONICLES: BossChronicleEntry[] = [

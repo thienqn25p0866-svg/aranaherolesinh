@@ -539,6 +539,91 @@ function drawHeroSignatureAura(ctx, heroId, t, auraR, idleFacing, st) {
       ctx.stroke();
     }
     ctx.restore();
+    return;
+  }
+
+  if (heroId === "uyen") {
+    ctx.save();
+    // Celestial Fate-Thread Lyre Rings & orbiting resonance notes
+    ctx.rotate(t * 0.85 * activeBoost);
+    ctx.strokeStyle = "rgba(45, 212, 191, 0.72)";
+    ctx.lineWidth = 2.0;
+    ctx.lineCap = "round";
+    for (let seg = 0; seg < 4; seg++) {
+      const a0 = (Math.PI * 0.5) * seg + 0.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.1, a0, a0 + 0.95);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 3; i++) {
+      const a = (Math.PI * 2 * i) / 3 + t * 1.1;
+      const nx = Math.cos(a) * auraR * 1.12;
+      const ny = Math.sin(a) * auraR * 1.12;
+      ctx.fillStyle = i === 0 ? "#FDE68A" : "#2DD4BF";
+      ctx.beginPath();
+      ctx.arc(nx, ny, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "hau") {
+    ctx.save();
+    // 4-Directional Vital Bearing Compass & Crimson Chain Pips
+    ctx.rotate(-t * 1.15 * activeBoost);
+    ctx.strokeStyle = "rgba(225, 29, 72, 0.72)";
+    ctx.lineWidth = 2.0;
+    for (let seg = 0; seg < 4; seg++) {
+      const a0 = (Math.PI * 0.5) * seg - 0.35;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 1.1, a0, a0 + 0.7);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI * 0.5) * i;
+      const vx = Math.cos(a) * auraR * 1.15;
+      const vy = Math.sin(a) * auraR * 1.15;
+      ctx.fillStyle = i === 0 ? "#F43F5E" : "#CBD5E1";
+      ctx.beginPath();
+      ctx.moveTo(vx, vy - 4);
+      ctx.lineTo(vx + 4, vy);
+      ctx.lineTo(vx, vy + 4);
+      ctx.lineTo(vx - 4, vy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (heroId === "lam") {
+    ctx.save();
+    // Rotating Calligraphy Bagua Octagon & Tri-Element Seals (Fire, Thunder, Void)
+    ctx.rotate(t * 0.9 * activeBoost);
+    ctx.strokeStyle = "rgba(37, 99, 235, 0.7)";
+    ctx.lineWidth = 1.9;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI / 4) * i;
+      const px = Math.cos(a) * auraR * 1.12;
+      const py = Math.sin(a) * auraR * 1.12;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    const sealCols = ["#F97316", "#38BDF8", "#A855F7"];
+    for (let i = 0; i < 3; i++) {
+      const a = t * 1.4 + (Math.PI * 2 * i) / 3;
+      ctx.fillStyle = sealCols[i];
+      ctx.strokeStyle = "#FBBF24";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * auraR * 1.12, Math.sin(a) * auraR * 1.12, 4.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }
 
@@ -821,6 +906,9 @@ export default function HeroPreviewCanvas({
         bachDashing: hero.id === "bach" && st.skillTimer > 0,
         thai_inArena: hero.id === "thai" && st.skillTimer > 0,
         khair_aimZoomBlend: hero.id === "khair" && st.skillTimer > 0 ? 1 : 0,
+        uyen_c3Timer: hero.id === "uyen" && st.skillTimer > 0 ? 1 : 0,
+        hau_parryTimer: hero.id === "hau" && st.skillTimer > 0 ? 1 : 0,
+        lam_queuedSeal: hero.id === "lam" ? ["hoa", "loi", "huyen"][Math.floor(t / 1.4) % 3] : "hoa",
       };
 
       if (st.atkTimer > 0) {
@@ -840,6 +928,9 @@ export default function HeroPreviewCanvas({
           thien: "thien_sword_slash",
           bach: "bach_cross_slash",
           khair: "khair_sniper_muzzle",
+          uyen: "uyen_note_cast",
+          hau: "hau_sickle_sweep",
+          lam: "lam_ink_cast",
         };
         const slashKind = previewSlashMap[hero.id] || "cast_muzzle";
         const isMuzzleKind = slashKind === "cast_muzzle" || slashKind === "khair_sniper_muzzle";
@@ -924,6 +1015,9 @@ export default function HeroPreviewCanvas({
             bachDashing: hero.id === "bach" && st.skillTimer > 0,
             thaiInArena: hero.id === "thai" && st.skillTimer > 0,
             khairAiming: hero.id === "khair" && st.skillTimer > 0,
+            uyenActive: hero.id === "uyen" && st.skillTimer > 0,
+            hauParrying: hero.id === "hau" && st.skillTimer > 0,
+            lamSeal: fakePlayer.lam_queuedSeal,
             isMono: false,
             hitFlash: false,
             isUlt: hero.id === "thien" || st.skillTimer > 0,

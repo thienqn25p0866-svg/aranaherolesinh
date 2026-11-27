@@ -104,6 +104,43 @@ function drawSegmentedArcs(ctx, cx, cy, r, segs, gapRad, rot, stroke, lineWidth,
   ctx.restore();
 }
 
+function drawTaperedArc(ctx, cx, cy, r, a0, a1, maxW, fillCol, coreCol, isMono = false) {
+  const rad = safeR(r, 8);
+  const w = Math.max(1.2, safeNum(maxW, 4));
+  const start = safeNum(a0, 0);
+  const end = safeNum(a1, Math.PI * 0.8);
+  const steps = 10;
+  const primaryFill = isMono ? "#E5E7EB" : fillCol;
+  const innerFill = isMono ? "#FFFFFF" : coreCol || "#FFFFFF";
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps;
+    const a = start + (end - start) * u;
+    const bulge = Math.sin(u * Math.PI) * w * 0.55;
+    const px = Math.cos(a) * (rad + bulge);
+    const py = Math.sin(a) * (rad + bulge);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  for (let i = steps; i >= 0; i--) {
+    const u = i / steps;
+    const a = start + (end - start) * u;
+    const bulge = Math.sin(u * Math.PI) * w * 0.45;
+    const px = Math.cos(a) * Math.max(SAFE_MIN_R, rad - bulge);
+    const py = Math.sin(a) * Math.max(SAFE_MIN_R, rad - bulge);
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = primaryFill;
+  ctx.fill();
+  ctx.strokeStyle = innerFill;
+  ctx.lineWidth = Math.max(0.8, w * 0.24);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export const HERO_SKILL_VFX_PROFILES = {
   dung: {
     element: "lightning",
@@ -368,6 +405,39 @@ export const HERO_SKILL_VFX_PROFILES = {
     debrisShape: "shard",
     motif: "emerald_railgun",
     deathStyle: "rail_pierce",
+  },
+  uyen: {
+    element: "astral_harmony",
+    primary: "#2DD4BF",
+    secondary: "#FDE68A",
+    highlight: "#F0FDFA",
+    shadow: "#0F3D3E",
+    rim: "#99F6E4",
+    debrisShape: "petal",
+    motif: "fate_harp",
+    deathStyle: "harmonic_ascension",
+  },
+  hau: {
+    element: "chain_vital",
+    primary: "#E11D48",
+    secondary: "#CBD5E1",
+    highlight: "#FFF1F2",
+    shadow: "#4C0519",
+    rim: "#FDA4AF",
+    debrisShape: "shard",
+    motif: "crescent_kusarigama",
+    deathStyle: "vital_sever",
+  },
+  lam: {
+    element: "calligraphy_seal",
+    primary: "#2563EB",
+    secondary: "#FBBF24",
+    highlight: "#EFF6FF",
+    shadow: "#172554",
+    rim: "#93C5FD",
+    debrisShape: "paper",
+    motif: "ink_constellation",
+    deathStyle: "ink_obliteration",
   },
 };
 
@@ -649,6 +719,27 @@ export function drawHeroWeaponSkillAura(ctx, heroId, p, elapsedTime, state = {},
       }
       break;
     }
+    case "uyen": {
+      const chords = isC1 ? 3 : isC2 ? 5 : 7;
+      drawSegmentedArcs(ctx, 0, 0, reach * 0.92, chords, 0.36, t * 2.4, pal.primary, 2.1, 0.85);
+      for (let i = 0; i < 3; i++) {
+        const a = t * 3.1 + (Math.PI * 2 * i) / 3;
+        drawStarFlare(ctx, Math.cos(a) * reach * 0.85, Math.sin(a) * reach * 0.85, 7.5 * scale, 2.4, 4, a, sec, pal.highlight, 1.2);
+      }
+      break;
+    }
+    case "hau": {
+      drawSegmentedArcs(ctx, 0, 0, reach * 0.95, 2, 0.72, aimAng - 0.5 + t * 5, pal.primary, 2.8 * scale, 0.88);
+      for (let i = 0; i < 4; i++) {
+        const a = t * 4.5 + (Math.PI * 0.5) * i;
+        drawFacetedShard(ctx, { x: Math.cos(a) * reach * 0.9, y: Math.sin(a) * reach * 0.9, size: 6.5 * scale, rot: a, shape: "shard", primary: i % 2 === 0 ? pal.primary : sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.rim, isMono });
+      }
+      break;
+    }
+    case "lam": {
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: reach * 0.95, rot: t * 2.2, sides: 5, starMode: true, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, nodeShape: "paper", isMono });
+      break;
+    }
     default: {
       drawSegmentedArcs(ctx, 0, 0, reach, 4, 0.4, t * 4, pal.primary, 2.2);
       break;
@@ -840,6 +931,20 @@ export function drawHeroSkillWindup(ctx, w, elapsedTime, isMono = false) {
         nodeShape: prof.debrisShape === "shard" ? "crystal" : prof.debrisShape,
         isMono,
       });
+      break;
+    }
+    case "astral_harmony": {
+      drawSegmentedArcs(ctx, 0, 0, rad * converge, 4, 0.48, t * 2.8, pal.primary, 2.6, 0.85);
+      drawSegmentedArcs(ctx, 0, 0, rad * converge * 0.72, 3, 0.55, -t * 3.4, sec, 2.0, 0.8);
+      break;
+    }
+    case "chain_vital": {
+      drawPolygonRing(ctx, 0, 0, rad * converge, 4, ang + f * 1.5, pal.primary, 2.6);
+      drawWindStreamRibbon(ctx, { x1: -rad * 0.55, y1: 0, x2: Math.cos(ang) * rad * 0.92, y2: Math.sin(ang) * rad * 0.92, color: sec, coreColor: pal.highlight, width: 4.5, phase: t * 14, isMono });
+      break;
+    }
+    case "calligraphy_seal": {
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: rad * converge, rot: t * 2.4, sides: 8, starMode: false, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, nodeShape: "paper", isMono });
       break;
     }
     default: {
@@ -1965,6 +2070,77 @@ export function drawHeroSkillSlash(ctx, h, f, elapsedTime, isMono = false) {
     }
 
     // -----------------------------------------------------------------------
+    // 25. UYÊN (TRỢ THỦ TƠ MỆNH) — C1 Harmonic Cast, C2 Dome Burst, C3 Beat, Death-Save
+    // -----------------------------------------------------------------------
+    case "uyen_note_cast":
+    case "uyen_boomerang_cast": {
+      const curR = safeR(maxR * (0.35 + 0.65 * easeOut), 18);
+      drawSegmentedArcs(ctx, 0, 0, curR, 3, 0.62, ang - 0.8 + f * 2.2, pal.primary, 3.0 * (1 - f * 0.4), 0.9);
+      drawWindStreamRibbon(ctx, { x1: -10, y1: 0, x2: Math.cos(ang) * curR * 1.1, y2: Math.sin(ang) * curR * 1.1, color: sec, coreColor: pal.highlight, width: 5.5 * (1 - f * 0.45), phase: t * 14, isMono });
+      drawStarFlare(ctx, Math.cos(ang) * curR * 0.72, Math.sin(ang) * curR * 0.72, 11 * (1 - f * 0.35), 3.2, 4, t * 4, sec, pal.highlight, 1.3);
+      ctx.restore();
+      return true;
+    }
+    case "uyen_dome_burst":
+    case "uyen_symphony_beat":
+    case "uyen_death_save": {
+      const curR = safeR(maxR * (0.28 + 0.72 * easeOut), 22);
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR * 0.92, rot: t * 2.2, sides: kind === "uyen_death_save" ? 8 : 6, starMode: true, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, isMono });
+      drawSegmentedArcs(ctx, 0, 0, curR, 4, 0.55, -t * 3, sec, 3.4 * (1 - f * 0.5), 0.86);
+      drawStarFlare(ctx, 0, 0, curR * 0.36 * (1 - f * 0.35), 4.5, 4, t * 3, pal.highlight, sec, 1.5);
+      ctx.restore();
+      return true;
+    }
+
+    // -----------------------------------------------------------------------
+    // 26. HẬU (SÁT THỦ PHÁ HUYỆT) — Sickle Sweep, Chain Cast, Parry & 4-Star Sever
+    // -----------------------------------------------------------------------
+    case "hau_sickle_sweep":
+    case "hau_chain_cast": {
+      const curR = safeR(maxR * (0.36 + 0.64 * easeOut), 22);
+      const sp = safeNum(h.spread, 1.5);
+      drawTaperedArc(ctx, 0, 0, curR * 0.88, ang - sp * 0.65, ang + sp * 0.65, 8.5 * (1 - f * 0.45) + 1.5, pal.primary, sec, isMono);
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.68, 2, 0.75, ang - 0.6, sec, 2.4, 0.85);
+      ctx.restore();
+      return true;
+    }
+    case "hau_parry_stance":
+    case "hau_parry_riposte":
+    case "hau_exec_finisher": {
+      const curR = safeR(maxR * (0.32 + 0.68 * easeOut), 24);
+      const blades = kind === "hau_exec_finisher" ? 4 : 2;
+      for (let bi = 0; bi < blades; bi++) {
+        const ba = ang + (Math.PI * bi) / blades + 0.45;
+        drawWindStreamRibbon(ctx, { x1: -Math.cos(ba) * curR * 0.85, y1: -Math.sin(ba) * curR * 0.85, x2: Math.cos(ba) * curR * 0.95, y2: Math.sin(ba) * curR * 0.95, color: bi % 2 === 0 ? pal.primary : sec, coreColor: pal.highlight, width: 8.5 * (1 - f * 0.45), phase: t * 18 + bi, isMono });
+      }
+      drawPolygonRing(ctx, 0, 0, curR * 0.86, 4, ang + f, pal.primary, 2.4);
+      ctx.restore();
+      return true;
+    }
+
+    // -----------------------------------------------------------------------
+    // 27. LÂM (PHÁP SƯ TAM ẤN) — Ink Cast, Pincer, Bagua, Pentagram & Dual Reaction
+    // -----------------------------------------------------------------------
+    case "lam_ink_cast":
+    case "lam_pincer_cast": {
+      const curR = safeR(maxR * (0.34 + 0.66 * easeOut), 20);
+      for (let s of [-1, 1]) {
+        drawTaperedArc(ctx, 0, 0, curR * 0.85, ang + s * 0.15 - 0.55, ang + s * 0.15 + 0.55, 6.2 * (1 - f * 0.4) + 1.2, s > 0 ? pal.primary : sec, pal.highlight, isMono);
+      }
+      ctx.restore();
+      return true;
+    }
+    case "lam_bagua_cast":
+    case "lam_pentagram_pulse":
+    case "lam_seal_reaction": {
+      const curR = safeR(maxR * (0.3 + 0.7 * easeOut), 22);
+      drawArcaneMagicCircle(ctx, { x: 0, y: 0, radius: curR * 0.92, rot: t * 2.5, sides: kind === "lam_bagua_cast" ? 8 : 5, starMode: true, primary: pal.primary, highlight: pal.highlight, darkRim: pal.shadow, rim: sec, isMono });
+      drawStarFlare(ctx, 0, 0, curR * 0.42 * (1 - f * 0.3), 4, 4, ang + t * 3, pal.highlight, sec, 1.4);
+      ctx.restore();
+      return true;
+    }
+
+    // -----------------------------------------------------------------------
     // SHARED SYSTEM UTILITIES
     // -----------------------------------------------------------------------
     case "shield_burst":
@@ -2178,6 +2354,23 @@ export function drawHeroImpactSignature(ctx, b, f, isMono = false) {
       drawSegmentedArcs(ctx, 0, 0, curR * 0.92 * scale, 2, 0.55, ang + Math.PI * 0.5, sec, 2.6);
       break;
     }
+    case "uyen": {
+      drawSegmentedArcs(ctx, 0, 0, curR * 0.84 * scale, 3, 0.55, ang + f * 2, pal.primary, 2.2, 0.85);
+      drawStarFlare(ctx, 0, 0, curR * 0.65 * scale, 2.8, 4, ang, sec, pal.highlight, 1.3);
+      break;
+    }
+    case "hau": {
+      for (let i = -1; i <= 1; i += 2) {
+        const ba = ang + i * 0.55;
+        drawWindStreamRibbon(ctx, { x1: -Math.cos(ba) * curR * 0.4, y1: -Math.sin(ba) * curR * 0.4, x2: Math.cos(ba) * curR * 0.95 * scale, y2: Math.sin(ba) * curR * 0.95 * scale, color: i > 0 ? pal.primary : sec, coreColor: pal.highlight, width: 5.2 * fade, phase: f * 12, isMono });
+      }
+      break;
+    }
+    case "lam": {
+      drawPolygonRing(ctx, 0, 0, curR * 0.82 * scale, 5, ang + f * 2.5, pal.primary, 2.3);
+      drawStarFlare(ctx, 0, 0, curR * 0.74 * scale, 3.0, 5, -ang, sec, pal.highlight, 1.3);
+      break;
+    }
     default: {
       drawStarFlare(ctx, 0, 0, curR * 0.85 * scale, curR * 0.2 * scale, 4, ang + f, pal.highlight, pal.primary, 1.5);
       break;
@@ -2242,6 +2435,17 @@ export function drawEnemyHitReaction(ctx, react, elapsedTime, isMono = false) {
         const a = ang + (i - 1) * 0.9;
         drawViscousDroplet(ctx, { x: Math.cos(a) * rad * (0.65 + f * 0.4), y: Math.sin(a) * rad * (0.65 + f * 0.4), rot: a, length: 9 * fade, width: 4.5, primary: i === 1 ? sec : pal.primary, highlight: pal.highlight, shadow: pal.shadow, isMono });
       }
+      break;
+    case "astral_harmony":
+      drawSegmentedArcs(ctx, 0, 0, rad * (0.85 + f * 0.35), 3, 0.65, ang + f * 2, pal.primary, 2.2, 0.82);
+      drawStarFlare(ctx, 0, 0, rad * 0.58 * fade, 2.5, 4, ang, sec, pal.highlight, 1.2);
+      break;
+    case "chain_vital":
+      drawWindStreamRibbon(ctx, { x1: -Math.cos(ang) * rad * 0.7, y1: -Math.sin(ang) * rad * 0.7, x2: Math.cos(ang) * rad * 0.95, y2: Math.sin(ang) * rad * 0.95, color: pal.primary, coreColor: pal.highlight, width: 4.5 * fade, phase: elapsedTime * 16, isMono });
+      break;
+    case "calligraphy_seal":
+      drawPolygonRing(ctx, 0, 0, rad * (0.9 + f * 0.28), 5, ang + f * 1.4, pal.primary, 2.1);
+      drawFacetedShard(ctx, { x: Math.cos(ang) * rad * 0.55, y: Math.sin(ang) * rad * 0.55, size: 7.2 * fade, rot: ang, shape: "paper", primary: sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.primary, isMono });
       break;
     default:
       ctx.save();
@@ -2450,6 +2654,41 @@ export function drawHeroGroundDecal(ctx, d, elapsedTime, isMono = false) {
       ctx.restore();
       break;
     }
+    case "fate_harp": {
+      ctx.save();
+      ctx.scale(1, 0.68);
+      drawSegmentedArcs(ctx, 0, 0, rad * 0.86, 4, 0.45, ang + safeNum(elapsedTime, 0) * 0.3, colorWithAlpha(pal.primary, 0.62), 2.2);
+      drawPolygonRing(ctx, 0, 0, rad * 0.54, 6, -ang, colorWithAlpha(sec, 0.62), 1.8);
+      ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "spore", isMono });
+      break;
+    }
+    case "crescent_kusarigama": {
+      ctx.save();
+      ctx.rotate(ang);
+      ctx.scale(1, 0.72);
+      drawPolygonRing(ctx, 0, 0, rad * 0.82, 4, 0, colorWithAlpha(pal.primary, 0.62), 2.2);
+      for (let s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(-rad * 0.75, s * rad * 0.4);
+        ctx.lineTo(rad * 0.75, -s * rad * 0.4);
+        ctx.strokeStyle = colorWithAlpha(s > 0 ? pal.primary : sec, 0.72);
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+      }
+      ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || y, primary: pal.primary, secondary: sec, kind: "spark", isMono });
+      break;
+    }
+    case "ink_constellation": {
+      ctx.save();
+      ctx.scale(1, 0.7);
+      drawPolygonRing(ctx, 0, 0, rad * 0.86, 5, ang, colorWithAlpha(pal.primary, 0.58), 2.2, colorWithAlpha(pal.shadow, 0.25));
+      drawSegmentedArcs(ctx, 0, 0, rad * 0.62, 5, 0.32, -ang, colorWithAlpha(sec, 0.68), 1.9);
+      ctx.restore();
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: d.seed || x, primary: pal.primary, secondary: sec, kind: "spark", isMono });
+      break;
+    }
     default: {
       // cosmos, chrono_sword, celestial_chain, shinobi_decoy
       ctx.save();
@@ -2595,6 +2834,23 @@ export function renderElementalCorpseOverlay(ctx, corpse, isMono = false) {
     case "wind_disperse": {
       drawSegmentedArcs(ctx, 0, 0, rad * 0.78, 2, 0.6, ang + f, colorWithAlpha(pal.primary, 0.72), 2.2, 0.68);
       drawStage4DissipationOverlay(ctx, { radius: rad * 0.85, progress: f, seed: corpse.seed || 3, primary: pal.primary, secondary: sec, kind: resolved.deathStyle === "shadow_dissolve" ? "void" : "spark", isMono });
+      break;
+    }
+    case "harmonic_ascension": {
+      drawSegmentedArcs(ctx, 0, 0, rad * 0.85, 3, 0.6, ang + f * 1.4, colorWithAlpha(pal.primary, 0.75), 2.0, 0.7);
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.9, progress: f, seed: corpse.seed || 5, primary: pal.primary, secondary: sec, kind: "spore", isMono });
+      break;
+    }
+    case "vital_sever": {
+      for (let s of [-1, 1]) {
+        drawWindStreamRibbon(ctx, { x1: -rad * 0.6, y1: s * 5, x2: rad * 0.6, y2: -s * 5, color: pal.primary, coreColor: sec, width: 3.0 * fade, phase: f * 8, isMono });
+      }
+      drawStage4DissipationOverlay(ctx, { radius: rad * 0.82, progress: f, seed: corpse.seed || 6, primary: pal.primary, secondary: sec, kind: "spark", isMono });
+      break;
+    }
+    case "ink_obliteration": {
+      drawPolygonRing(ctx, 0, 0, rad * 0.78, 5, ang + f * 1.6, colorWithAlpha(pal.primary, 0.72), 2.0);
+      drawFacetedShard(ctx, { x: 0, y: -f * 14, size: 6.5 * fade, rot: f * 3, shape: "paper", primary: sec, highlight: pal.highlight, shadow: pal.shadow, rim: pal.primary, isMono });
       break;
     }
     default: {

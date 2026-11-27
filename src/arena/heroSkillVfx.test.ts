@@ -15,7 +15,7 @@ import {
 import { spawnEnemyDeathVfx, renderDeadCorpse } from "./deathVfx";
 import { drawUpgradedSlash } from "./weaponRenderer";
 
-const ALL_24_HEROES = [
+const ALL_27_HEROES = [
   "dung",
   "tin",
   "kin",
@@ -40,6 +40,9 @@ const ALL_24_HEROES = [
   "bach",
   "thai",
   "khair",
+  "uyen",
+  "hau",
+  "lam",
 ] as const;
 
 const HERO_SLASH_KINDS: Record<string, string[]> = {
@@ -76,6 +79,9 @@ const HERO_SLASH_KINDS: Record<string, string[]> = {
   bach: ["bach_cross_slash", "bach_c1_wind_terminus", "bach_c2_fan_recoil", "bach_c3_phantom_matrix"],
   thai: ["thai_arena_cleave", "thai_cyclone_ring", "thai_c3_colosseum_brand"],
   khair: ["khair_c1_beacon_deploy", "khair_sniper_muzzle", "khair_recoil_blast"],
+  uyen: ["uyen_note_cast", "uyen_boomerang_cast", "uyen_dome_burst", "uyen_symphony_beat", "uyen_death_save"],
+  hau: ["hau_sickle_sweep", "hau_chain_cast", "hau_parry_stance", "hau_parry_riposte", "hau_exec_finisher"],
+  lam: ["lam_ink_cast", "lam_pincer_cast", "lam_bagua_cast", "lam_pentagram_pulse", "lam_seal_reaction"],
 };
 
 function createStrictCanvasCtx(label: string) {
@@ -220,13 +226,13 @@ function createStrictCanvasCtx(label: string) {
   return ctx;
 }
 
-test("all 24 heroes have complete, distinct VFX profiles", () => {
-  assert.equal(Object.keys(HERO_SKILL_VFX_PROFILES).length, 24);
+test("all 27 heroes have complete, distinct VFX profiles", () => {
+  assert.equal(Object.keys(HERO_SKILL_VFX_PROFILES).length, 27);
   const motifs = new Set<string>();
   const elements = new Set<string>();
   const deathStyles = new Set<string>();
 
-  for (const heroId of ALL_24_HEROES) {
+  for (const heroId of ALL_27_HEROES) {
     const prof = HERO_SKILL_VFX_PROFILES[heroId];
     assert.ok(prof, `Missing VFX profile for ${heroId}`);
     assert.ok(prof.element, `Missing element for ${heroId}`);
@@ -242,14 +248,14 @@ test("all 24 heroes have complete, distinct VFX profiles", () => {
     assert.equal(resolved.deathStyle, prof.deathStyle);
   }
 
-  assert.equal(motifs.size, 24, "All 24 heroes must have unique decals/motifs");
-  assert.equal(elements.size, 24, "All 24 heroes must have distinct elemental tags");
-  assert.equal(deathStyles.size, 24, "All 24 heroes must have unique death dissolve styles");
+  assert.equal(motifs.size, 27, "All 27 heroes must have unique decals/motifs");
+  assert.equal(elements.size, 27, "All 27 heroes must have distinct elemental tags");
+  assert.equal(deathStyles.size, 27, "All 27 heroes must have unique death dissolve styles");
 });
 
-test("Stage 1A weapon skill aura & Stage 1B windup render safely across all 24 heroes (color & monochrome)", () => {
+test("Stage 1A weapon skill aura & Stage 1B windup render safely across all 27 heroes (color & monochrome)", () => {
   for (const isMono of [false, true]) {
-    for (const heroId of ALL_24_HEROES) {
+    for (const heroId of ALL_27_HEROES) {
       for (const skillIdx of [1, 2, 3, 4]) {
         const ctx = createStrictCanvasCtx(`aura:${heroId}:c${skillIdx}:mono=${isMono}`);
         const drawn = drawHeroWeaponSkillAura(
@@ -280,7 +286,7 @@ test("Stage 1A weapon skill aura & Stage 1B windup render safely across all 24 h
 
 test("Stage 2 bespoke C1/C2/C3 slash kinds render safely via drawHeroSkillSlash & drawUpgradedSlash", () => {
   for (const isMono of [false, true]) {
-    for (const heroId of ALL_24_HEROES) {
+    for (const heroId of ALL_27_HEROES) {
       const kinds = HERO_SLASH_KINDS[heroId];
       assert.ok(kinds && kinds.length >= 3, `Expected >= 3 bespoke slash kinds for ${heroId}`);
       for (const kind of kinds) {
@@ -320,9 +326,9 @@ test("Stage 2 bespoke C1/C2/C3 slash kinds render safely via drawHeroSkillSlash 
   }
 });
 
-test("Stage 3 impacts, hit reactions, and Stage 4 ground decals render safely for all 24 heroes", () => {
+test("Stage 3 impacts, hit reactions, and Stage 4 ground decals render safely for all 27 heroes", () => {
   for (const isMono of [false, true]) {
-    for (const heroId of ALL_24_HEROES) {
+    for (const heroId of ALL_27_HEROES) {
       const prof = HERO_SKILL_VFX_PROFILES[heroId];
 
       for (const tier of ["light", "heavy", "finisher"]) {
@@ -361,7 +367,7 @@ test("Stage 3 impacts, hit reactions, and Stage 4 ground decals render safely fo
   }
 });
 
-test("Stage 5 elemental death bursts and corpse overlays diversify kills cleanly across all 24 heroes", () => {
+test("Stage 5 elemental death bursts and corpse overlays diversify kills cleanly across all 27 heroes", () => {
   const archetypes = [
     { kind: "minion", radius: 18 },
     { kind: "venom_spider", radius: 20 },
@@ -370,7 +376,7 @@ test("Stage 5 elemental death bursts and corpse overlays diversify kills cleanly
     { kind: "boss", bossWave: 9, radius: 46 },
   ];
 
-  for (const heroId of ALL_24_HEROES) {
+  for (const heroId of ALL_27_HEROES) {
     for (const enemyTemplate of archetypes) {
       const decals: any[] = [];
       const engineStub: any = {
